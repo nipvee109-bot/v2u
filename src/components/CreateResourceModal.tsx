@@ -3,7 +3,8 @@ import { X, Link2, Image as ImageIcon, Sparkles, AlertCircle } from 'lucide-reac
 import type { Resource, ResourceType, ResourceRole, SubjectId } from '../types';
 import { SUBJECTS } from '../types';
 import { useStore } from '../store/useStore';
-import { isValidUrl, isDuplicateResource, getAutoThumbnail } from '../utils/resourceUtils';
+import { isValidUrl, isDuplicateResource, getAutoThumbnail, analyzeResourceUrl } from '../utils/resourceUtils';
+import type { UrlAnalysisResult } from '../utils/resourceUtils';
 
 interface CreateResourceModalProps {
   isOpen: boolean;
@@ -49,29 +50,23 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
   const [description, setDescription] = useState('');
   const [favorite, setFavorite] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [detectedAnalysis, setDetectedAnalysis] = useState<UrlAnalysisResult | null>(null);
 
-  // Auto-detect type if URL looks like youtube or pdf
+  // Auto-detect type and provider using Phase 37 URL Intelligence
   const handleUrlChange = (val: string) => {
     setUrl(val);
     setError(null);
-    const lower = val.toLowerCase();
-    if (lower.includes('youtube.com') || lower.includes('youtu.be')) {
-      setType('youtube');
-      if (!provider) setProvider('YouTube');
-      const autoThumb = getAutoThumbnail(val, 'youtube');
-      if (autoThumb && !thumbnail) {
-        setThumbnail(autoThumb);
-      }
-    } else if (lower.endsWith('.pdf') || lower.includes('/pdf')) {
-      setType('pdf');
-      if (!provider) setProvider('PDF Document');
-    } else if (lower.includes('github.com')) {
-      if (!provider) setProvider('GitHub');
-    } else if (lower.includes('coursera.org')) {
-      if (!provider) setProvider('Coursera');
-    } else if (lower.includes('ocw.mit.edu')) {
-      if (!provider) setProvider('MIT OpenCourseWare');
+    if (!val.trim()) {
+      setDetectedAnalysis(null);
+      return;
     }
+    const analysis = analyzeResourceUrl(val);
+    setDetectedAnalysis(analysis);
+    setType(analysis.type);
+    setRole(analysis.suggestedRole);
+    if (analysis.provider) setProvider(analysis.provider);
+    if (analysis.thumbnail && !thumbnail) setThumbnail(analysis.thumbnail);
+    if (!title.trim() && analysis.suggestedTitle) setTitle(analysis.suggestedTitle);
   };
 
   const handleFetchThumbnail = () => {
@@ -272,6 +267,22 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
               placeholder="https://www.youtube.com/watch?v=..."
               className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20"
             />
+            {detectedAnalysis && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs animate-in fade-in">
+                <span className="font-bold text-slate-600 text-[11px]">ตรวจพบ:</span>
+                <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 font-bold text-[10px]">
+                  {detectedAnalysis.provider}
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-700 font-bold text-[10px]">
+                  {detectedAnalysis.suggestedRole === 'primary' ? 'สื่อหลัก' : detectedAnalysis.suggestedRole === 'practice' ? 'โจทย์ฝึกฝน' : 'เอกสารอ้างอิง'}
+                </span>
+                <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
+                  detectedAnalysis.canEmbed ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'
+                }`}>
+                  {detectedAnalysis.canEmbed ? '✓ เล่นใน Study Room ได้' : 'เปิดในแท็บใหม่คู่กับจับเวลา'}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Grid: Type & Subject */}
