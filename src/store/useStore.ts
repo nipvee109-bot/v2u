@@ -21,7 +21,10 @@ import type {
   ReviewOutcome,
   KnowledgeGapReasonItem,
   KnowledgeGapSeverity,
-  KnowledgeGap
+  KnowledgeGap,
+  StudyGoal,
+  CalculatedGoalProgress,
+  GoalStatus
 } from '../types';
 import { 
   SUBJECTS,
@@ -33,7 +36,9 @@ import {
   initialWeeklyGoal, 
   createInitialSessions,
   initialReviewQueue,
-  createInitialReviewQueue
+  createInitialReviewQueue,
+  initialGoals,
+  createInitialGoals
 } from '../data/initialData';
 
 export const REVIEW_INTERVALS = [1, 3, 7, 14, 30] as const;
@@ -377,6 +382,14 @@ interface StoreState {
   // Phase 12: Knowledge Gap Analysis Actions & Getters
   getKnowledgeGaps: () => KnowledgeGap[];
 
+  // Phase 13: Study Goal System State & Actions
+  goals: StudyGoal[];
+  addGoal: (goal: StudyGoal) => void;
+  updateGoal: (id: string, updates: Partial<StudyGoal>) => void;
+  deleteGoal: (id: string) => void;
+  calculateGoalProgress: (goal: StudyGoal) => CalculatedGoalProgress;
+  getCalculatedGoals: () => (StudyGoal & CalculatedGoalProgress)[];
+
   // Import / Export / Reset
   importData: (data: {
     lessons: Lesson[];
@@ -385,6 +398,7 @@ interface StoreState {
     weeklyGoal?: WeeklyGoal;
     learningSessionsHistory?: LearningSession[];
     reviewQueue?: ReviewItem[];
+    goals?: StudyGoal[];
   }) => void;
   resetToInitial: () => void;
 }
@@ -401,6 +415,7 @@ export const useStore = create<StoreState>()(
       activeLearningSession: null,
       learningSessionsHistory: [],
       reviewQueue: initialReviewQueue,
+      goals: initialGoals,
 
       // Lesson Actions
       addLesson: (lesson) =>
@@ -927,6 +942,247 @@ export const useStore = create<StoreState>()(
         });
       },
 
+      // Phase 13: Study Goal System Actions & Auto-Progress
+      addGoal: (goal) =>
+        set((state) => ({ goals: [goal, ...(state.goals || [])] })),
+
+      updateGoal: (id, updates) =>
+        set((state) => ({
+          goals: (state.goals || []).map((g) =>
+            g.id === id ? { ...g, ...updates, updatedAt: new Date().toISOString() } : g
+          ),
+        })),
+
+      deleteGoal: (id) =>
+        set((state) => ({
+          goals: (state.goals || []).filter((g) => g.id !== id),
+        })),
+
+      calculateGoalProgress: (goal: StudyGoal): CalculatedGoalProgress => {
+        const state = get();
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        // Normalize date strings
+        const startDayStr = goal.startDate.includes('T') ? goal.startDate.split('T')[0] : goal.startDate;
+        const targetDayStr = goal.targetDate.includes('T') ? goal.targetDate.split('T')[0] : goal.targetDate;
+
+        const todayTime = new Date(todayStr).getTime();
+        const targetTime = new Date(targetDayStr).getTime();
+        const remainingDays = Math.ceil((targetTime - todayTime) / (1000 * 60 * 60 * 24));
+
+        let currentValue = 0;
+        let recentActivityText: string | undefined;
+
+        switch (goal.type) {
+          case 'study_hours': {
+            // Real source 1: Completed learning sessions
+            const completedLearningSessions = (state.learningSessionsHistory || []).filter((s) => {
+              if (s.status !== 'completed' || !s.completedAt) return false;
+              const dateStr = s.completedAt.split('T')[0];
+              if (dateStr < startDayStr || dateStr > targetDayStr) return false;
+              if (goal.subjectId) {
+                const l = state.lessons.find((les) => les.id === s.lessonId);
+                return l?.subjectId === goal.subjectId;
+              }
+              return true;
+            });
+
+            // Real source 2: Completed study planner sessions (exclude if already in learning sessions)
+            const completedPlannerSessions = (state.sessions || []).filter((s) => {
+              if (s.status !== 'completed') return false;
+              const dateStr = s.completedAt ? s.completedAt.split('T')[0] : s.date;
+              if (dateStr < startDayStr || dateStr > targetDayStr) return false;
+              if (goal.subjectId && s.subjectId !== goal.subjectId) return false;
+              const alreadyInLearning = completedLearningSessions.some(ls => ls.plannedSessionId === s.id);
+              return !alreadyInLearning;
+            });
+
+            const minutesLearning = completedLearningSessions.reduce((acc, s) => acc + Math.round((s.actualSeconds || 0) / 60), 0);
+            const minutesPlanner = completedPlannerSessions.reduce((acc, s) => acc + (s.actualMinutes || s.plannedMinutes || 0), 0);
+            const totalMinutes = minutesLearning + minutesPlanner;
+
+            currentValue = Math.round((totalMinutes / 60) * 10) / 10;
+
+            const allCompletedSessions = [
+              ...completedLearningSessions.map(s => ({
+                title: state.lessons.find(l => l.id === s.lessonId)?.title || 'เซสชันเรียน',
+                date: s.completedAt!,
+                minutes: Math.round(s.actualSeconds / 60),
+              })),
+              ...completedPlannerSessions.map(s => ({
+                title: s.title,
+                date: s.completedAt || s.date,
+                minutes: s.actualMinutes || s.plannedMinutes,
+              })),
+            ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+            if (allCompletedSessions.length > 0) {
+              const latest = allCompletedSessions[0];
+              recentActivityText = `เรียน ${latest.minutes} นาที (${latest.title})`;
+            }
+            break;
+          }
+
+          case 'lessons_completed': {
+            const completedLessons = state.lessons.filter((l) => {
+              if (l.status !== 'COMPLETED' || !l.completedAt) return false;
+              const dateStr = l.completedAt.split('T')[0];
+              if (dateStr < startDayStr || dateStr > targetDayStr) return false;
+              if (goal.subjectId && l.subjectId !== goal.subjectId) return false;
+              return true;
+            });
+
+            currentValue = completedLessons.length;
+            if (completedLessons.length > 0) {
+              const latest = [...completedLessons].sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime())[0];
+              recentActivityText = `เรียนจบ: ${latest.title}`;
+            }
+            break;
+          }
+
+          case 'subject_milestones': {
+            const targetSubject = goal.subjectId;
+            const completedLessons = state.lessons.filter((l) => {
+              if (l.status !== 'COMPLETED' || !l.completedAt) return false;
+              if (targetSubject && l.subjectId !== targetSubject) return false;
+              if (goal.scope !== 'six_month') {
+                const dateStr = l.completedAt.split('T')[0];
+                if (dateStr < startDayStr || dateStr > targetDayStr) return false;
+              }
+              return true;
+            });
+
+            currentValue = completedLessons.length;
+            if (completedLessons.length > 0) {
+              const latest = [...completedLessons].sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime())[0];
+              recentActivityText = `จบวิชา: ${latest.title}`;
+            }
+            break;
+          }
+
+          case 'review_consistency': {
+            const reviewedItems = (state.reviewQueue || []).filter((r) => {
+              if (!r.lastReviewedAt) return false;
+              const dateStr = r.lastReviewedAt.split('T')[0];
+              return dateStr >= startDayStr && dateStr <= targetDayStr;
+            });
+
+            const reviewSessions = (state.sessions || []).filter((s) => {
+              if (s.type !== 'review' || s.status !== 'completed') return false;
+              const dateStr = s.completedAt ? s.completedAt.split('T')[0] : s.date;
+              return dateStr >= startDayStr && dateStr <= targetDayStr;
+            });
+
+            currentValue = reviewedItems.length + reviewSessions.length;
+            if (reviewedItems.length > 0) {
+              const latest = [...reviewedItems].sort((a, b) => new Date(b.lastReviewedAt!).getTime() - new Date(a.lastReviewedAt!).getTime())[0];
+              recentActivityText = `ทบทวน: ${latest.topic}`;
+            }
+            break;
+          }
+
+          case 'quiz_target': {
+            const allAttempts: { score: number; timestamp: string; title: string }[] = [];
+            state.lessons.forEach((l) => {
+              if (goal.subjectId && l.subjectId !== goal.subjectId) return;
+              (l.quizAttempts || []).forEach((a) => {
+                const dateStr = a.timestamp.split('T')[0];
+                if (dateStr >= startDayStr && dateStr <= targetDayStr) {
+                  allAttempts.push({ score: a.score, timestamp: a.timestamp, title: l.title });
+                }
+              });
+              if ((!l.quizAttempts || l.quizAttempts.length === 0) && l.quizScore !== undefined && l.completedAt) {
+                const dateStr = l.completedAt.split('T')[0];
+                if (dateStr >= startDayStr && dateStr <= targetDayStr) {
+                  allAttempts.push({ score: l.quizScore, timestamp: l.completedAt, title: l.title });
+                }
+              }
+            });
+
+            if (goal.unit === '%') {
+              currentValue = allAttempts.length > 0
+                ? Math.round(allAttempts.reduce((acc, a) => acc + a.score, 0) / allAttempts.length)
+                : 0;
+            } else {
+              currentValue = allAttempts.filter((a) => a.score >= 70).length;
+            }
+
+            if (allAttempts.length > 0) {
+              const latest = allAttempts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+              recentActivityText = `แบบทดสอบได้ ${latest.score}% (${latest.title})`;
+            }
+            break;
+          }
+
+          case 'custom':
+          default: {
+            currentValue = goal.customProgress ?? goal.currentValue ?? 0;
+            if (goal.customProgress !== undefined) {
+              recentActivityText = `อัปเดตล่าสุด: ${currentValue} ${goal.unit}`;
+            }
+            break;
+          }
+        }
+
+        // QA: Zero values & progress computation
+        let progressPercent = 0;
+        if (goal.targetValue > 0) {
+          progressPercent = Math.min(100, Math.round((currentValue / goal.targetValue) * 100));
+        } else {
+          progressPercent = currentValue > 0 ? 100 : 0;
+        }
+
+        const remainingValue = Math.max(0, Math.round((goal.targetValue - currentValue) * 10) / 10);
+
+        // QA: Completed & Expired status
+        let status: GoalStatus = 'in_progress';
+        if (goal.targetValue > 0 && currentValue >= goal.targetValue) {
+          status = 'completed';
+        } else if (todayStr > targetDayStr) {
+          status = 'expired';
+        } else {
+          status = 'in_progress';
+        }
+
+        return {
+          currentValue,
+          progressPercent,
+          remainingValue,
+          remainingDays,
+          status,
+          recentActivityText,
+        };
+      },
+
+      getCalculatedGoals: () => {
+        const state = get();
+        const rawGoals = state.goals || [];
+
+        const calculated = rawGoals.map((g) => {
+          const progress = state.calculateGoalProgress(g);
+          return {
+            ...g,
+            ...progress,
+          };
+        });
+
+        // Sort: in_progress first (sorted by remainingDays ascending), then completed, then expired
+        return calculated.sort((a, b) => {
+          const statusOrder: Record<GoalStatus, number> = {
+            in_progress: 1,
+            completed: 2,
+            expired: 3,
+          };
+          if (statusOrder[a.status] !== statusOrder[b.status]) {
+            return statusOrder[a.status] - statusOrder[b.status];
+          }
+          if (a.status === 'in_progress') {
+            return a.remainingDays - b.remainingDays;
+          }
+          return new Date(b.targetDate).getTime() - new Date(a.targetDate).getTime();
+        });
+      },
+
       // Unclear Topic Actions
       addUnclearTopic: (topic) => 
         set((state) => ({ unclearTopics: [...state.unclearTopics, topic] })),
@@ -1290,6 +1546,7 @@ export const useStore = create<StoreState>()(
           weeklyGoal: data.weeklyGoal || initialWeeklyGoal,
           learningSessionsHistory: data.learningSessionsHistory || [],
           reviewQueue: data.reviewQueue || createInitialReviewQueue(data.lessons || []),
+          goals: data.goals || initialGoals,
         }),
       resetToInitial: () =>
         set({
@@ -1300,6 +1557,7 @@ export const useStore = create<StoreState>()(
           activeLearningSession: null,
           learningSessionsHistory: [],
           reviewQueue: createInitialReviewQueue(initialLessons),
+          goals: createInitialGoals(),
         }),
     }),
     {

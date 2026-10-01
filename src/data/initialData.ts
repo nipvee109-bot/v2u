@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Lesson, ReviewItem } from '../types';
+import type { Lesson, ReviewItem, StudyGoal } from '../types';
 
 export const initialLessons: Lesson[] = [
   // Month 1
@@ -368,7 +368,7 @@ export const initialLessons: Lesson[] = [
   },
 ];
 
-import { format, addDays, subDays } from 'date-fns';
+import { format, addDays, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths } from 'date-fns';
 import type { StudySession, WeeklyGoal } from '../types';
 
 export const initialWeeklyGoal: WeeklyGoal = {
@@ -604,3 +604,135 @@ export const createInitialReviewQueue = (lessons: Lesson[] = initialLessons): Re
 };
 
 export const initialReviewQueue = createInitialReviewQueue();
+
+export const createInitialGoals = (): StudyGoal[] => {
+  const now = new Date();
+  const todayStr = format(now, 'yyyy-MM-dd');
+  const weekStartStr = format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  const weekEndStr = format(endOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  const monthStartStr = format(startOfMonth(now), 'yyyy-MM-dd');
+  const monthEndStr = format(endOfMonth(now), 'yyyy-MM-dd');
+  const sixMonthsEndStr = format(endOfMonth(addMonths(now, 5)), 'yyyy-MM-dd');
+
+  return [
+    // Daily Goal
+    {
+      id: uuidv4(),
+      title: 'เรียนตามแผนวันนี้ 2 ชั่วโมง',
+      description: 'โฟกัสบทเรียนประจำวันและทำตามตารางที่วางไว้',
+      type: 'study_hours',
+      scope: 'daily',
+      targetValue: 2,
+      currentValue: 0,
+      unit: 'ชม.',
+      startDate: todayStr,
+      targetDate: todayStr,
+      status: 'in_progress',
+      createdAt: now.toISOString(),
+    },
+    // Weekly Goals
+    {
+      id: uuidv4(),
+      title: 'ชั่วโมงเรียนรวมสัปดาห์นี้ 10 ชั่วโมง',
+      description: 'กระจายเวลาเรียนสม่ำเสมอเฉลี่ยวันละ 1.5 - 2 ชั่วโมง',
+      type: 'study_hours',
+      scope: 'weekly',
+      targetValue: 10,
+      currentValue: 0,
+      unit: 'ชม.',
+      startDate: weekStartStr,
+      targetDate: weekEndStr,
+      status: 'in_progress',
+      createdAt: now.toISOString(),
+    },
+    {
+      id: uuidv4(),
+      title: 'ทบทวน Spaced Review ให้ครบ 4 รอบ',
+      description: 'ทบทวนหัวข้อที่ถึงกำหนดเพื่อไม่ให้ความรู้ตกหล่น',
+      type: 'review_consistency',
+      scope: 'weekly',
+      targetValue: 4,
+      currentValue: 0,
+      unit: 'รอบ',
+      startDate: weekStartStr,
+      targetDate: weekEndStr,
+      status: 'in_progress',
+      createdAt: now.toISOString(),
+    },
+    // Monthly Goals
+    {
+      id: uuidv4(),
+      title: 'เป้าหมายเดือนที่ 1: เก็บเนื้อหาพื้นฐาน 40 ชั่วโมง',
+      description: 'สร้างรากฐานที่มั่นคงในเดือนแรกของการเตรียมสอบ',
+      type: 'study_hours',
+      scope: 'monthly',
+      targetValue: 40,
+      currentValue: 0,
+      unit: 'ชม.',
+      startDate: monthStartStr,
+      targetDate: monthEndStr,
+      status: 'in_progress',
+      createdAt: now.toISOString(),
+    },
+    {
+      id: uuidv4(),
+      title: 'จบพื้นฐาน Programming & Python 3 บท',
+      description: 'เขียนโค้ดและผ่านแบบทดสอบพื้นฐาน Python',
+      type: 'subject_milestones',
+      subjectId: 'programming',
+      scope: 'monthly',
+      targetValue: 3,
+      currentValue: 0,
+      unit: 'บท',
+      startDate: monthStartStr,
+      targetDate: monthEndStr,
+      status: 'in_progress',
+      createdAt: now.toISOString(),
+    },
+    // 6-Month Roadmap Goals
+    {
+      id: uuidv4(),
+      title: 'สะสมเวลาเรียนเตรียมสอบวิศวะ 200 ชั่วโมง',
+      description: 'เป้าหมายรวมตลอดระยะเวลา 6 เดือนสู่ความพร้อมขั้นสูงสุด',
+      type: 'study_hours',
+      scope: 'six_month',
+      targetValue: 200,
+      currentValue: 0,
+      unit: 'ชม.',
+      startDate: monthStartStr,
+      targetDate: sixMonthsEndStr,
+      status: 'in_progress',
+      createdAt: now.toISOString(),
+    },
+    {
+      id: uuidv4(),
+      title: 'เรียนจบครบ 23 บทเรียนตามแผน 6 เดือน',
+      description: 'ผ่านเนื้อหาครบทุกหมวด: คณิต, ฟิสิกส์, Programming, TGAT, AI',
+      type: 'lessons_completed',
+      scope: 'six_month',
+      targetValue: 23,
+      currentValue: 0,
+      unit: 'บท',
+      startDate: monthStartStr,
+      targetDate: sixMonthsEndStr,
+      status: 'in_progress',
+      createdAt: now.toISOString(),
+    },
+    {
+      id: uuidv4(),
+      title: 'คะแนนเฉลี่ยแบบทดสอบ 75% ขึ้นไป',
+      description: 'รักษามาตรฐานความเข้าใจในเกณฑ์สูงตลอดหลักสูตร',
+      type: 'quiz_target',
+      scope: 'six_month',
+      targetValue: 75,
+      currentValue: 0,
+      unit: '%',
+      startDate: monthStartStr,
+      targetDate: sixMonthsEndStr,
+      status: 'in_progress',
+      createdAt: now.toISOString(),
+    },
+  ];
+};
+
+export const initialGoals = createInitialGoals();

@@ -17,6 +17,7 @@ import {
   ExternalLink,
   Brain,
   Award,
+  Target,
 } from 'lucide-react';
 import { SUBJECTS } from '../types';
 import type { SubjectId, ReviewItem, KnowledgeGap } from '../types';
@@ -85,11 +86,17 @@ export function Dashboard() {
     learningSessionsHistory = [], 
     getDueReviewItems,
     getKnowledgeGaps,
+    getCalculatedGoals,
     createReviewItemForLesson,
     startLearningSession,
     reviewQueue = []
   } = useStore();
   const [calendarDate] = useState(new Date());
+
+  // ── Study Goals ────────────────────────────────────────────────
+  const allCalculatedGoals = getCalculatedGoals();
+  const goalTotalCount = allCalculatedGoals.length;
+  const goalCompletedCount = allCalculatedGoals.filter(g => g.status === 'completed').length;
 
   // ── Knowledge Gap Analysis ──────────────────────────────────────
   const [selectedGap, setSelectedGap] = useState<KnowledgeGap | null>(null);
@@ -476,6 +483,24 @@ export function Dashboard() {
               <p className="text-2xl font-bold text-white">
                 {overallAverageMastery}{' '}
                 <span className="text-sm font-normal text-purple-300">/ 4.0</span>
+              </p>
+            </Link>
+
+            {/* Study Goals */}
+            <Link
+              to="/goals"
+              className="bg-white/[0.07] hover:bg-white/[0.12] transition-colors backdrop-blur border border-blue-400/30 rounded-2xl p-4 min-w-[130px] group"
+              title="ดูเป้าหมายการเรียน 4 ระดับ (Goals)"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Target className="w-4 h-4 text-blue-300 group-hover:scale-110 transition-transform" />
+                <span className="text-xs text-blue-200 font-medium">
+                  Goals
+                </span>
+              </div>
+              <p className="text-2xl font-bold text-white">
+                {goalCompletedCount}{' '}
+                <span className="text-sm font-normal text-blue-300">/ {goalTotalCount}</span>
               </p>
             </Link>
           </div>

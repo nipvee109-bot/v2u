@@ -328,3 +328,47 @@ export interface KnowledgeGap {
   reviewNotes?: string;
 }
 
+/* ==================================================
+   Phase 13: Study Goal System Models
+   ================================================== */
+
+export type GoalType = 
+  | 'study_hours'
+  | 'lessons_completed'
+  | 'subject_milestones'
+  | 'review_consistency'
+  | 'quiz_target'
+  | 'custom';
+
+export type GoalScope = 'daily' | 'weekly' | 'monthly' | 'six_month';
+
+export type GoalStatus = 'in_progress' | 'completed' | 'expired';
+
+export interface StudyGoal {
+  id: string;
+  title: string;
+  description?: string;
+  type: GoalType;
+  scope: GoalScope;
+  targetValue: number;
+  currentValue: number;
+  unit: string;
+  startDate: string; // YYYY-MM-DD
+  targetDate: string; // YYYY-MM-DD (Deadline)
+  status: GoalStatus;
+  subjectId?: SubjectId;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+  customProgress?: number;
+}
+
+export interface CalculatedGoalProgress {
+  currentValue: number;
+  progressPercent: number;
+  remainingValue: number;
+  remainingDays: number;
+  status: GoalStatus;
+  recentActivityText?: string;
+}
+

@@ -11,6 +11,7 @@ import {
   Cpu,
   HelpCircle,
   TrendingUp,
+  Target,
   Settings,
   X,
 } from 'lucide-react';
@@ -42,6 +43,7 @@ const subjectNav: NavItemConfig[] = [
 ];
 
 const learningNav: NavItemConfig[] = [
+  { to: '/goals', icon: Target, label: 'เป้าหมายการเรียน' },
   { to: '/not-understood', icon: HelpCircle, label: 'สิ่งที่ยังไม่เข้าใจ' },
   { to: '/progress', icon: TrendingUp, label: 'บันทึกความก้าวหน้า' },
 ];
