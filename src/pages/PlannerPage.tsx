@@ -796,6 +796,89 @@ export function PlannerPage() {
             </div>
           </div>
 
+          {/* Unfinished Session Queue (Phase 6) */}
+          {unfinishedQueue.length > 0 && (
+            <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 bg-amber-100 rounded-lg text-amber-700">
+                    <AlertCircle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">
+                      เซสชันที่ค้าง / ยังไม่เสร็จสิ้น (Unfinished Sessions Queue)
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      เลือกย้ายไปพรุ่งนี้, ย้ายวันอื่น, แบ่งเซสชันย่อย หรือข้าม
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  {unfinishedQueue.length} รายการ
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                {unfinishedQueue.map((s) => {
+                  const subject = SUBJECTS[s.subjectId];
+                  const tomorrowStr = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+                  return (
+                    <div
+                      key={s.id}
+                      className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/50 flex flex-col justify-between gap-3"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-1 mb-1.5">
+                          <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded text-white ${subject.color}`}>
+                            {subject.name.split('/')[0]}
+                          </span>
+                          <span className="text-[10px] text-slate-400">{s.plannedMinutes} นาที ({s.date})</span>
+                        </div>
+                        <p className="text-xs font-bold text-slate-800 line-clamp-2">{s.title}</p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-1.5 pt-2 border-t border-slate-200/60">
+                        <button
+                          onClick={() => rescheduleSession(s.id, tomorrowStr)}
+                          className="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg text-[10px] font-semibold text-center transition-colors"
+                        >
+                          → เลื่อนไปพรุ่งนี้
+                        </button>
+                        <button
+                          onClick={() => setReschedulingSession(s)}
+                          className="px-2 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg text-[10px] font-semibold text-center transition-colors"
+                        >
+                          📅 เลื่อนวันอื่น
+                        </button>
+                        {s.plannedMinutes >= 60 ? (
+                          <button
+                            onClick={() => splitSession(s.id)}
+                            className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-blue-600 rounded-lg text-[10px] font-semibold text-center transition-colors"
+                          >
+                            ✂️ แบ่งเซสชัน
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => rescheduleSession(s.id, todayStr)}
+                            className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-blue-600 rounded-lg text-[10px] font-semibold text-center transition-colors"
+                          >
+                            ⚡ เรียนวันนี้
+                          </button>
+                        )}
+                        <button
+                          onClick={() => skipSession(s.id)}
+                          className="px-2 py-1 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-rose-600 rounded-lg text-[10px] font-semibold text-center transition-colors"
+                        >
+                          ✕ ข้าม
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Mobile Day Selector (Horizontal Scroller) */}
           <div className="lg:hidden flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
             {weekDays.map((day) => {
@@ -931,6 +1014,27 @@ export function PlannerPage() {
                 </div>
               );
             })}
+          </div>
+
+          {/* Workload Threshold Legend */}
+          <div className="p-4 bg-white rounded-2xl border border-slate-200/60 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+            <span className="font-bold text-slate-800">
+              เกณฑ์ประเมินระดับภาระงานรายวัน (Daily Workload Thresholds):
+            </span>
+            <div className="flex flex-wrap items-center gap-4 text-xs">
+              <span className="flex items-center gap-1.5 font-medium text-slate-600">
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-300" /> Rest day (0 ชม.)
+              </span>
+              <span className="flex items-center gap-1.5 font-medium text-emerald-700">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Light day (&le; 2 ชม.)
+              </span>
+              <span className="flex items-center gap-1.5 font-medium text-blue-700">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Normal day (2 - 4 ชม.)
+              </span>
+              <span className="flex items-center gap-1.5 font-medium text-rose-700">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Heavy day (&gt; 4 ชม.)
+              </span>
+            </div>
           </div>
         </div>
       )}
