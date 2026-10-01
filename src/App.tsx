@@ -6,6 +6,8 @@ import { LessonDetail } from './pages/LessonDetail';
 import { Settings } from './pages/Settings';
 import { CalendarPage } from './pages/CalendarPage';
 import { NotUnderstoodPage } from './pages/NotUnderstoodPage';
+import { ProgressPage } from './pages/ProgressPage';
+import { SearchPage } from './pages/SearchPage';
 
 // Placeholder components for other routes
 const Placeholder = ({ title }: { title: string }) => (
@@ -20,12 +22,13 @@ function App() {
     <Layout>
       <Routes>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/search" element={<SearchPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/roadmap" element={<Placeholder title="แผน 6 เดือน" />} />
         <Route path="/subjects/:id" element={<SubjectPage />} />
         <Route path="/lessons/:id" element={<LessonDetail />} />
         <Route path="/not-understood" element={<NotUnderstoodPage />} />
-        <Route path="/progress" element={<Placeholder title="บันทึกความก้าวหน้า" />} />
+        <Route path="/progress" element={<ProgressPage />} />
         <Route path="/settings" element={<Settings />} />
       </Routes>
     </Layout>

@@ -21,6 +21,10 @@ export interface Lesson {
   status: 'NOT STARTED' | 'IN PROGRESS' | 'COMPLETED';
   difficulty: 'Easy' | 'Medium' | 'Hard';
   notes: string;
+  learnedNotes?: string;
+  stillUnclearNotes?: string;
+  reviewNotes?: string;
+  completedAt?: string;
   resources: Resource[];
   images: string[];
 }

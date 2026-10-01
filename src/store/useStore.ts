@@ -4,6 +4,8 @@ import type { Lesson, UnclearTopic } from '../types';
 import { initialLessons } from '../data/initialData';
 
 interface StoreState {
+  theme: 'light' | 'dark' | 'system';
+  setTheme: (theme: 'light' | 'dark' | 'system') => void;
   lessons: Lesson[];
   unclearTopics: UnclearTopic[];
   addLesson: (lesson: Lesson) => void;
@@ -19,15 +21,25 @@ interface StoreState {
 export const useStore = create<StoreState>()(
   persist(
     (set) => ({
+      theme: 'system',
+      setTheme: (theme) => set({ theme }),
       lessons: initialLessons,
       unclearTopics: [],
       addLesson: (lesson) =>
         set((state) => ({ lessons: [...state.lessons, lesson] })),
       updateLesson: (id, updatedLesson) =>
         set((state) => ({
-          lessons: state.lessons.map((lesson) =>
-            lesson.id === id ? { ...lesson, ...updatedLesson } : lesson
-          ),
+          lessons: state.lessons.map((lesson) => {
+            if (lesson.id === id) {
+              const merged = { ...lesson, ...updatedLesson };
+              // Auto-set completedAt when status changes to COMPLETED
+              if (updatedLesson.status === 'COMPLETED' && lesson.status !== 'COMPLETED' && !merged.completedAt) {
+                merged.completedAt = new Date().toISOString();
+              }
+              return merged;
+            }
+            return lesson;
+          }),
         })),
       deleteLesson: (id) =>
         set((state) => ({
