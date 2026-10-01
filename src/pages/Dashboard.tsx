@@ -43,6 +43,7 @@ import { ReviewTodaySection } from '../components/dashboard/ReviewTodaySection';
 import { ContinueLearningSection } from '../components/dashboard/ContinueLearningSection';
 import { WeeklySummarySection } from '../components/dashboard/WeeklySummarySection';
 import { RecentMemorySection } from '../components/dashboard/RecentMemorySection';
+import { DailyLearningChoice } from '../components/dashboard/DailyLearningChoice';
 import { SIX_MONTH_ROADMAP } from '../data/roadmapData';
 
 // ─── Subject raw color mapping ───────────────────────────────────────
@@ -485,6 +486,18 @@ export function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* ═══════════ PRIMARY ACTION: วันนี้อยากเรียนอะไร? (DAILY LEARNING CHOICE) ═══════════ */}
+      <DailyLearningChoice
+        lessons={lessons}
+        sessions={sessions}
+        learningSessionsHistory={learningSessionsHistory}
+        reviewQueue={reviewQueue}
+        onStartLesson={(lessonId, resource) => {
+          startLearningSession({ lessonId, source: resource });
+          navigate(`/lessons/${lessonId}?action=study`);
+        }}
+      />
 
       {/* ═══════════ SECTION 1: TODAY PLAN (วันนี้ต้องทำอะไร?) ═══════════ */}
       <TodayPlanSection
