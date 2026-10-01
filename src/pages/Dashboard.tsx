@@ -1,23 +1,16 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import {
-  Calendar as CalendarIcon,
-  BookOpen,
-  AlertCircle,
   Flame,
   Clock,
   CheckCircle2,
   TrendingUp,
   ArrowRight,
   Map as MapIcon,
-  GraduationCap,
-  Zap,
-  PlayCircle,
-  FileText,
-  ExternalLink,
-  Brain,
   Award,
   Target,
+  AlertTriangle,
+  Compass,
 } from 'lucide-react';
 import { SUBJECTS } from '../types';
 import type { SubjectId, ReviewItem, KnowledgeGap } from '../types';
@@ -31,25 +24,25 @@ import {
   isSameDay,
   subDays,
   parseISO,
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  endOfWeek,
-  addDays,
-  isSameMonth,
 } from 'date-fns';
-import { th } from 'date-fns/locale';
 
-// ─── Subject icon mapping ───────────────────────────────────────────
-const subjectIconMap: Record<SubjectId, typeof BookOpen> = {
-  math: TrendingUp,
-  programming: Zap,
-  physics: GraduationCap,
-  tgat3: BookOpen,
-  ai: Zap,
-};
+// Phase 17 Smart Dashboard Components & Utils
+import {
+  getSmartDashboardRecommendation,
+  getDashboardRoadmapStatus,
+  getDashboardWeeklySummary,
+  getRecentLearningMemory,
+  checkIsNewUserOnboarding,
+} from '../utils/dashboardUtils';
+import { OnboardingBanner } from '../components/dashboard/OnboardingBanner';
+import { TodayPlanSection } from '../components/dashboard/TodayPlanSection';
+import { ReviewTodaySection } from '../components/dashboard/ReviewTodaySection';
+import { ContinueLearningSection } from '../components/dashboard/ContinueLearningSection';
+import { WeeklySummarySection } from '../components/dashboard/WeeklySummarySection';
+import { RecentMemorySection } from '../components/dashboard/RecentMemorySection';
+import { SIX_MONTH_ROADMAP } from '../data/roadmapData';
 
-// ─── Subject raw color mapping (for inline styles) ──────────────────
+// ─── Subject raw color mapping ───────────────────────────────────────
 const subjectRawColor: Record<SubjectId, string> = {
   math: '#3b82f6',
   programming: '#10b981',
@@ -58,7 +51,6 @@ const subjectRawColor: Record<SubjectId, string> = {
   ai: '#ef4444',
 };
 
-// ─── Subject bg class mapping ───────────────────────────────────────
 const subjectBgClass: Record<SubjectId, string> = {
   math: 'bg-math',
   programming: 'bg-programming',
@@ -67,45 +59,134 @@ const subjectBgClass: Record<SubjectId, string> = {
   ai: 'bg-ai',
 };
 
-// ─── 6-Month Roadmap labels ─────────────────────────────────────────
-const monthLabels = [
-  'พื้นฐานเข้มข้น',
-  'เนื้อหาขั้นกลาง',
-  'เนื้อหาขั้นสูง',
-  'คณิต + AI Prep',
-  'Computer Eng',
-  'AI & Final Project',
-];
-
 export function Dashboard() {
   const navigate = useNavigate();
-  const { 
-    lessons, 
-    unclearTopics, 
-    sessions = [], 
-    learningSessionsHistory = [], 
+  const {
+    lessons,
+    sessions = [],
+    learningSessionsHistory = [],
     getDueReviewItems,
     getKnowledgeGaps,
     getCalculatedGoals,
     createReviewItemForLesson,
     startLearningSession,
     reviewQueue = [],
-    getAllResources,
-    recordResourceOpened,
   } = useStore();
-  const [calendarDate] = useState(new Date());
 
-  // ── Study Goals ────────────────────────────────────────────────
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+  // ── 1. Smart Recommendation (Section 3: Continue Learning) ───────
+  const recommendation = useMemo(() => {
+    return getSmartDashboardRecommendation({
+      lessons,
+      sessions,
+      learningSessionsHistory,
+    });
+  }, [lessons, sessions, learningSessionsHistory]);
+
+  // Secondary upcoming lessons in queue (not started, excluding recommendation)
+  const secondaryLessons = useMemo(() => {
+    return lessons
+      .filter((l) => l.status === 'NOT STARTED' && l.id !== recommendation?.lesson.id)
+      .slice(0, 2);
+  }, [lessons, recommendation]);
+
+  // ── 2. 6-Month Roadmap Status (Section 7) ────────────────────────
+  const roadmapStatus = useMemo(() => {
+    return getDashboardRoadmapStatus({ lessons });
+  }, [lessons]);
+
+  // ── 3. Weekly Summary Snapshot (Section 6) ───────────────────────
+  const weeklySummary = useMemo(() => {
+    return getDashboardWeeklySummary({
+      lessons,
+      sessions,
+      learningSessionsHistory,
+      reviewQueue,
+      targetWeeklyHours: 12,
+    });
+  }, [lessons, sessions, learningSessionsHistory, reviewQueue]);
+
+  // ── 4. Recent Learning Memory (Section 8) ────────────────────────
+  const recentMemories = useMemo(() => {
+    return getRecentLearningMemory({
+      lessons,
+      learningSessionsHistory,
+      sessions,
+      limit: 3,
+    });
+  }, [lessons, learningSessionsHistory, sessions]);
+
+  // ── 5. New User Onboarding Check ─────────────────────────────────
+  const isNewUser = useMemo(() => {
+    return checkIsNewUserOnboarding({
+      lessons,
+      sessions,
+      learningSessionsHistory,
+    });
+  }, [lessons, sessions, learningSessionsHistory]);
+
+  // ── 6. Study Goals (Section 5: Next Goal) ────────────────────────
   const allCalculatedGoals = getCalculatedGoals();
   const goalTotalCount = allCalculatedGoals.length;
-  const goalCompletedCount = allCalculatedGoals.filter(g => g.status === 'completed').length;
+  const goalCompletedCount = allCalculatedGoals.filter((g) => g.status === 'completed').length;
+  // Immediate active goal
+  const nextActiveGoal = useMemo(() => {
+    const inProgress = allCalculatedGoals.filter((g) => g.status === 'in_progress');
+    if (inProgress.length > 0) return inProgress[0];
+    return allCalculatedGoals[0] || null;
+  }, [allCalculatedGoals]);
 
-  // ── Knowledge Gap Analysis ──────────────────────────────────────
+  // ── 7. Today's Planned Sessions (Section 1) ──────────────────────
+  const todayPlannedSessions = useMemo(() => {
+    return sessions
+      .filter((s) => s.date === todayStr)
+      .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+  }, [sessions, todayStr]);
+
+  // ── 8. Overdue Items Check (Question 2: มีอะไรค้าง?) ─────────────
+  const overdueSessions = useMemo(() => {
+    return sessions.filter(
+      (s) => s.status === 'overdue' || (s.status === 'planned' && s.date < todayStr)
+    );
+  }, [sessions, todayStr]);
+
+  // ── 9. Review Engine Queue (Section 2) ───────────────────────────
+  const { overdue: reviewOverdue, dueToday: reviewDueToday, upcoming: reviewUpcoming } =
+    getDueReviewItems();
+  const totalReviewDueCount = reviewOverdue.length + reviewDueToday.length;
+  const [activeReviewItem, setActiveReviewItem] = useState<ReviewItem | null>(null);
+
+  const handleStartReviewItem = (item: ReviewItem) => {
+    setActiveReviewItem(item);
+  };
+
+  const handleStartAllDue = () => {
+    if (reviewOverdue.length > 0) setActiveReviewItem(reviewOverdue[0]);
+    else if (reviewDueToday.length > 0) setActiveReviewItem(reviewDueToday[0]);
+    else if (reviewUpcoming.length > 0) setActiveReviewItem(reviewUpcoming[0]);
+  };
+
+  const handleNextReview = () => {
+    const freshDue = getDueReviewItems();
+    const nextList = [...freshDue.overdue, ...freshDue.dueToday].filter(
+      (r) => r.id !== activeReviewItem?.id
+    );
+    if (nextList.length > 0) {
+      setActiveReviewItem(nextList[0]);
+    } else {
+      setActiveReviewItem(null);
+    }
+  };
+
+  // ── 10. Knowledge Gap Analysis (Section 4) ───────────────────────
   const [selectedGap, setSelectedGap] = useState<KnowledgeGap | null>(null);
   const knowledgeGaps = getKnowledgeGaps();
 
   const handleGapStartReview = (lessonId: string) => {
-    const existing = (reviewQueue || []).find((r) => r.lessonId === lessonId && r.status !== 'completed');
+    const existing = (reviewQueue || []).find(
+      (r) => r.lessonId === lessonId && r.status !== 'completed'
+    );
     if (existing) {
       setActiveReviewItem(existing);
     } else {
@@ -127,65 +208,11 @@ export function Dashboard() {
     navigate(`/lessons/${lessonId}?tab=notebook`);
   };
 
-  // ── Review Engine Queue ─────────────────────────────────────────
-  const { overdue: reviewOverdue, dueToday: reviewDueToday, upcoming: reviewUpcoming } = getDueReviewItems();
-  const totalReviewDueCount = reviewOverdue.length + reviewDueToday.length;
-  const [activeReviewItem, setActiveReviewItem] = useState<ReviewItem | null>(null);
-  const [reviewTab, setReviewTab] = useState<'dueToday' | 'overdue' | 'upcoming'>('dueToday');
+  // ── 11. Core Metrics & Streak ────────────────────────────────────
+  const completedLessons = useMemo(() => {
+    return lessons.filter((l) => l.status === 'COMPLETED');
+  }, [lessons]);
 
-  const handleStartNextReview = () => {
-    if (reviewOverdue.length > 0) setActiveReviewItem(reviewOverdue[0]);
-    else if (reviewDueToday.length > 0) setActiveReviewItem(reviewDueToday[0]);
-    else if (reviewUpcoming.length > 0) setActiveReviewItem(reviewUpcoming[0]);
-  };
-
-  const handleNextReview = () => {
-    const freshDue = getDueReviewItems();
-    const nextList = [...freshDue.overdue, ...freshDue.dueToday].filter(r => r.id !== activeReviewItem?.id);
-    if (nextList.length > 0) {
-      setActiveReviewItem(nextList[0]);
-    } else {
-      setActiveReviewItem(null);
-    }
-  };
-
-  // ── Derived data ────────────────────────────────────────────────
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
-  const todayPlannedSessions = sessions.filter((s) => s.date === todayStr);
-  const todayPlannedHours = Math.round((todayPlannedSessions.reduce((acc, s) => acc + s.plannedMinutes, 0) / 60) * 10) / 10;
-  const todayCompletedHours = Math.round(
-    (todayPlannedSessions
-      .filter((s) => s.status === 'completed')
-      .reduce((acc, s) => acc + (s.actualMinutes || s.plannedMinutes), 0) /
-      60) *
-      10
-  ) / 10;
-  const overdueSessionsCount = sessions.filter(
-    (s) => s.status === 'overdue' || (s.status === 'planned' && s.date < todayStr)
-  ).length;
-
-  const completedLessons = lessons.filter((l) => l.status === 'COMPLETED');
-  const todayLessons = lessons
-    .filter(
-      (l) =>
-        l.status === 'IN PROGRESS' ||
-        (l.month === 1 && l.status === 'NOT STARTED')
-    )
-    .slice(0, 3);
-  const urgentUnclear = unclearTopics
-    .filter((t) => t.status !== 'Understood')
-    .slice(0, 5);
-  const allResources = getAllResources()
-    .slice(0, 4)
-    .map((r) => {
-      const parentLesson = r.lessonId ? lessons.find((l) => l.id === r.lessonId) : null;
-      return {
-        ...r,
-        lessonTitle: parentLesson ? parentLesson.title : (r.subject ? SUBJECTS[r.subject].name : ''),
-      };
-    });
-
-  // ── Streak calculation ──────────────────────────────────────────
   let streak = 0;
   const today = new Date();
   for (let i = 0; i < 365; i++) {
@@ -200,448 +227,257 @@ export function Dashboard() {
     }
   }
 
-  // ── Progress ────────────────────────────────────────────────────
   const totalLessons = lessons.length;
   const progressPercent =
-    totalLessons > 0
-      ? Math.round((completedLessons.length / totalLessons) * 100)
-      : 0;
+    totalLessons > 0 ? Math.round((completedLessons.length / totalLessons) * 100) : 0;
 
-  // ── Study hours ─────────────────────────────────────────────────
   const totalMinutes = completedLessons.reduce(
     (acc, l) => acc + (l.actualStudyMinutes || 0),
     0
   );
   const totalHoursDisplay = (totalMinutes / 60).toFixed(1);
 
-  // ── Overall Mastery (0-4) ───────────────────────────────────────
   const totalMasteryPoints = lessons.reduce((acc, l) => {
     const record = computeLessonLearningRecord(l, learningSessionsHistory, sessions);
     return acc + (record.masteryScore ?? 0);
   }, 0);
-  const overallAverageMastery = lessons.length > 0 
-    ? (Math.round((totalMasteryPoints / lessons.length) * 10) / 10).toFixed(1)
-    : '0.0';
+  const overallAverageMastery =
+    lessons.length > 0 ? (Math.round((totalMasteryPoints / lessons.length) * 10) / 10).toFixed(1) : '0.0';
 
-  // ── Subject progress ───────────────────────────────────────────
-  const subjectProgress = (Object.keys(SUBJECTS) as SubjectId[]).map(
-    (subjectId) => {
-      const subjectLessons = lessons.filter((l) => l.subjectId === subjectId);
-      const completed = subjectLessons.filter(
-        (l) => l.status === 'COMPLETED'
-      ).length;
-      const total = subjectLessons.length;
-      const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+  // Subject progress breakdown
+  const subjectProgress = (Object.keys(SUBJECTS) as SubjectId[]).map((subjectId) => {
+    const subjectLessons = lessons.filter((l) => l.subjectId === subjectId);
+    const completed = subjectLessons.filter((l) => l.status === 'COMPLETED').length;
+    const total = subjectLessons.length;
+    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-      const subjectMasterySum = subjectLessons.reduce((acc, l) => {
-        const record = computeLessonLearningRecord(l, learningSessionsHistory, sessions);
-        return acc + (record.masteryScore ?? 0);
-      }, 0);
-      const avgMastery = total > 0 ? (Math.round((subjectMasterySum / total) * 10) / 10).toFixed(1) : '0.0';
+    const subjectMasterySum = subjectLessons.reduce((acc, l) => {
+      const record = computeLessonLearningRecord(l, learningSessionsHistory, sessions);
+      return acc + (record.masteryScore ?? 0);
+    }, 0);
+    const avgMastery =
+      total > 0 ? (Math.round((subjectMasterySum / total) * 10) / 10).toFixed(1) : '0.0';
 
-      return {
-        ...SUBJECTS[subjectId],
-        completed,
-        total,
-        percent,
-        avgMastery,
-      };
-    }
-  );
+    return {
+      ...SUBJECTS[subjectId],
+      completed,
+      total,
+      percent,
+      avgMastery,
+    };
+  });
 
-  // ── Month-level progress for roadmap ────────────────────────────
+  // Month-by-month progress for roadmap cards
   const monthProgress = Array.from({ length: 6 }, (_, i) => {
     const month = i + 1;
     const monthLessons = lessons.filter((l) => l.month === month);
-    const completed = monthLessons.filter(
-      (l) => l.status === 'COMPLETED'
-    ).length;
+    const completed = monthLessons.filter((l) => l.status === 'COMPLETED').length;
     const total = monthLessons.length;
-    return { month, completed, total, label: monthLabels[i] };
+    const cfg = SIX_MONTH_ROADMAP.find((m) => m.month === month);
+    return {
+      month,
+      completed,
+      total,
+      title: cfg ? cfg.title.split(':')[1]?.trim() || `เดือนที่ ${month}` : `เดือนที่ ${month}`,
+      isActive: month === roadmapStatus.currentMonth,
+    };
   });
 
-  // ── Mini calendar ──────────────────────────────────────────────
-  const monthStart = startOfMonth(calendarDate);
-  const monthEnd = endOfMonth(calendarDate);
-  const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const calEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
-  const calendarDays: Date[] = [];
-  let cursor = calStart;
-  while (cursor <= calEnd) {
-    calendarDays.push(cursor);
-    cursor = addDays(cursor, 1);
-  }
 
-  const hasCompletedOnDay = (day: Date) =>
-    completedLessons.some(
-      (l) => l.completedAt && isSameDay(parseISO(l.completedAt), day)
-    );
-
-  const hasLessonOnDay = (day: Date) => {
-    const dStr = format(day, 'yyyy-MM-dd');
-    return (
-      lessons.some((l) => l.date && isSameDay(parseISO(l.date), day)) ||
-      sessions.some((s) => s.date === dStr)
-    );
-  };
-
-  // ── Difficulty color helpers ────────────────────────────────────
-  const difficultyStyle = (d: string) => {
-    switch (d) {
-      case 'Easy':
-        return 'bg-emerald-50 text-emerald-600';
-      case 'Medium':
-        return 'bg-amber-50 text-amber-600';
-      case 'Hard':
-        return 'bg-rose-50 text-rose-600';
-      default:
-        return 'bg-slate-50 text-slate-600';
-    }
-  };
-
-  const priorityStyle = (p: string) => {
-    switch (p) {
-      case 'High':
-        return 'bg-rose-50 text-rose-600';
-      case 'Medium':
-        return 'bg-amber-50 text-amber-600';
-      case 'Low':
-        return 'bg-emerald-50 text-emerald-600';
-      default:
-        return 'bg-slate-50 text-slate-600';
-    }
-  };
-
-  const resourceIcon = (type: string) => {
-    switch (type) {
-      case 'youtube':
-        return <PlayCircle className="w-5 h-5 text-rose-500" />;
-      case 'document':
-        return <FileText className="w-5 h-5 text-blue-500" />;
-      default:
-        return <ExternalLink className="w-5 h-5 text-slate-400" />;
-    }
-  };
-
-  const renderReviewItemRow = (item: ReviewItem) => {
-    const parentLesson = lessons.find((l) => l.id === item.lessonId);
-    const itemSubject = parentLesson ? SUBJECTS[parentLesson.subjectId] : null;
-    const isOverdue = item.status === 'overdue' || item.nextReviewAt.split('T')[0] < todayStr;
-
-    return (
-      <div
-        key={item.id}
-        className="flex items-center justify-between gap-3 p-3.5 bg-slate-50/70 hover:bg-white rounded-xl border border-slate-200/70 hover:border-purple-300 transition-all"
-      >
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-xs shrink-0">
-            <Brain className="w-4.5 h-4.5" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-900 truncate">
-                {item.topic}
-              </span>
-              {itemSubject && (
-                <span className="text-[10px] text-slate-400 shrink-0">
-                  ({itemSubject.name.split('/')[0]})
-                </span>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-2 mt-0.5">
-              <span className="text-[10px] text-slate-500">
-                รอบที่ {item.reviewCount + 1}
-              </span>
-              <span className="text-[10px] text-slate-400">&middot;</span>
-              <span className={`text-[10px] font-semibold ${
-                isOverdue ? 'text-rose-600 font-bold' : 'text-slate-500'
-              }`}>
-                {isOverdue ? 'เลยกำหนด' : `กำหนด: ${format(parseISO(item.nextReviewAt), 'dd/MM/yyyy')}`}
-              </span>
-              <span className={`text-[9px] px-1.5 py-0.2 rounded-md font-semibold ${priorityStyle(item.priority)}`}>
-                {item.priority === 'High' ? 'สำคัญสูง' : item.priority === 'Medium' ? 'ปานกลาง' : 'ทั่วไป'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <button
-          onClick={() => setActiveReviewItem(item)}
-          className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold shrink-0 transition-colors shadow-xs"
-        >
-          เริ่มทบทวน
-        </button>
-      </div>
-    );
-  };
-
-  // ─────────────────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-5">
-      {/* ═══════════ ROW 1: Welcome Hero ═══════════ */}
-      <div className="bg-gradient-to-br from-[#0B1120] via-[#131C31] to-[#0B1120] rounded-2xl p-6 md:p-8 text-white relative overflow-hidden">
-        {/* Subtle glow effect */}
-        <div className="absolute -top-24 -right-24 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-purple-500/10 rounded-full blur-3xl" />
+    <div className="space-y-6 pb-20">
+      {/* ═══════════ COMMAND CENTER HERO ═══════════ */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0B1120] via-[#131C31] to-[#0B1120] p-6 md:p-8 text-white shadow-xl border border-slate-800">
+        <div className="absolute -top-24 -right-24 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          {/* Left: Greeting */}
+          {/* Left Greeting & Roadmap position */}
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold tracking-tight">สวัสดีครับ!</h1>
-            <p className="text-white/60 text-sm max-w-md">
-              มาเรียนรู้และพัฒนาตัวเองกันต่อ — ทุกก้าวเล็กๆ สำคัญเสมอ
+            <div className="inline-flex items-center gap-2 rounded-full bg-blue-500/20 px-3.5 py-1 text-xs font-semibold text-blue-300 border border-blue-400/20">
+              <Compass className="h-3.5 w-3.5" />
+              <span>Phase 17 &middot; Smart Learning Command Center</span>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+              ศูนย์ควบคุมการเรียนรู้
+            </h1>
+            <p className="text-white/70 text-xs md:text-sm max-w-lg">
+              ตอบคำถามครบ 7 ด้าน: งานวันนี้ &middot; คิวทบทวน &middot; Roadmap &middot; จุดเสริม &middot; เป้าหมายถัดไป
             </p>
-            <div className="flex items-center gap-2 mt-3">
-              <MapIcon className="w-4 h-4 text-blue-400" />
-              <span className="text-sm text-blue-400 font-medium">
-                เดือนที่ 1/6
-              </span>
-              <span className="text-white/30 text-xs">
-                — แผนเตรียมตัวสอบวิศวะ
-              </span>
+
+            {/* Answer 4: ตอนนี้ roadmap อยู่ตรงไหน? */}
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              <Link
+                to="/roadmap"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-xs text-blue-300 border border-white/10 transition-colors"
+              >
+                <MapIcon className="w-3.5 h-3.5 text-blue-400" />
+                <span className="font-bold">
+                  Roadmap: เดือนที่ {roadmapStatus.currentMonth}/6
+                </span>
+                <span className="text-white/50">&middot;</span>
+                <span className="text-white/80 line-clamp-1">
+                  {roadmapStatus.monthTitle.split(':')[1]?.trim() || roadmapStatus.monthTitle}
+                </span>
+                <ArrowRight className="w-3 h-3 text-blue-400 ml-1" />
+              </Link>
             </div>
           </div>
 
-          {/* Right: Stat mini-cards */}
-          <div className="flex flex-wrap gap-3">
+          {/* Right Stat Cards */}
+          <div className="flex flex-wrap gap-2.5 sm:gap-3">
             {/* Streak */}
-            <div className="bg-white/[0.07] backdrop-blur border border-white/[0.08] rounded-2xl p-4 min-w-[130px]">
-              <div className="flex items-center gap-2 mb-1">
+            <div className="bg-white/[0.07] backdrop-blur border border-white/[0.08] rounded-2xl p-3.5 min-w-[110px] sm:min-w-[125px]">
+              <div className="flex items-center gap-1.5 mb-1">
                 <Flame className="w-4 h-4 text-orange-400" />
-                <span className="text-xs text-white/50 font-medium">
-                  Streak
-                </span>
+                <span className="text-[11px] text-white/60 font-medium">Streak</span>
               </div>
-              <p className="text-2xl font-bold">
-                {streak}{' '}
-                <span className="text-sm font-normal text-white/50">วัน</span>
+              <p className="text-xl font-bold">
+                {streak} <span className="text-xs font-normal text-white/50">วัน</span>
               </p>
             </div>
 
-            {/* Progress */}
-            <div className="bg-white/[0.07] backdrop-blur border border-white/[0.08] rounded-2xl p-4 min-w-[130px]">
-              <div className="flex items-center gap-2 mb-1">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span className="text-xs text-white/50 font-medium">
-                  Progress
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <p className="text-2xl font-bold">{progressPercent}%</p>
-                {/* Tiny circular indicator */}
-                <svg width="32" height="32" className="-rotate-90">
-                  <circle
-                    cx="16"
-                    cy="16"
-                    r="12"
-                    fill="none"
-                    stroke="rgba(255,255,255,0.1)"
-                    strokeWidth="3"
-                  />
-                  <circle
-                    cx="16"
-                    cy="16"
-                    r="12"
-                    fill="none"
-                    stroke="#10b981"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeDasharray={`${(progressPercent / 100) * 75.4} 75.4`}
-                  />
-                </svg>
-              </div>
-            </div>
-
-            {/* Study Hours */}
-            <div className="bg-white/[0.07] backdrop-blur border border-white/[0.08] rounded-2xl p-4 min-w-[130px]">
-              <div className="flex items-center gap-2 mb-1">
+            {/* Total Study Hours */}
+            <div className="bg-white/[0.07] backdrop-blur border border-white/[0.08] rounded-2xl p-3.5 min-w-[110px] sm:min-w-[125px]">
+              <div className="flex items-center gap-1.5 mb-1">
                 <Clock className="w-4 h-4 text-blue-400" />
-                <span className="text-xs text-white/50 font-medium">
-                  Study Hours
-                </span>
+                <span className="text-[11px] text-white/60 font-medium">เวลาเรียน</span>
               </div>
-              <p className="text-2xl font-bold">
-                {totalHoursDisplay}{' '}
-                <span className="text-sm font-normal text-white/50">ชม.</span>
+              <p className="text-xl font-bold">
+                {totalHoursDisplay} <span className="text-xs font-normal text-white/50">ชม.</span>
               </p>
             </div>
 
-            {/* Mastery Score (0-4) */}
+            {/* Overall Progress */}
+            <div className="bg-white/[0.07] backdrop-blur border border-white/[0.08] rounded-2xl p-3.5 min-w-[110px] sm:min-w-[125px]">
+              <div className="flex items-center gap-1.5 mb-1">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span className="text-[11px] text-white/60 font-medium">ความก้าวหน้า</span>
+              </div>
+              <p className="text-xl font-bold">
+                {progressPercent}% <span className="text-xs font-normal text-white/50">รวม</span>
+              </p>
+            </div>
+
+            {/* Mastery Score */}
             <Link
               to="/progress"
-              className="bg-white/[0.07] hover:bg-white/[0.12] transition-colors backdrop-blur border border-purple-400/30 rounded-2xl p-4 min-w-[130px] group"
+              className="bg-white/[0.07] hover:bg-white/[0.12] transition-colors backdrop-blur border border-purple-400/30 rounded-2xl p-3.5 min-w-[110px] sm:min-w-[125px] group"
               title="ดูรายละเอียดระดับความเข้าใจ (Mastery 0-4)"
             >
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-1.5 mb-1">
                 <Award className="w-4 h-4 text-purple-300 group-hover:scale-110 transition-transform" />
-                <span className="text-xs text-purple-200 font-medium">
-                  Mastery
-                </span>
+                <span className="text-[11px] text-purple-200 font-medium">Mastery</span>
               </div>
-              <p className="text-2xl font-bold text-white">
+              <p className="text-xl font-bold text-white">
                 {overallAverageMastery}{' '}
-                <span className="text-sm font-normal text-purple-300">/ 4.0</span>
+                <span className="text-xs font-normal text-purple-300">/ 4.0</span>
               </p>
             </Link>
 
-            {/* Study Goals */}
+            {/* Goals */}
             <Link
               to="/goals"
-              className="bg-white/[0.07] hover:bg-white/[0.12] transition-colors backdrop-blur border border-blue-400/30 rounded-2xl p-4 min-w-[130px] group"
+              className="bg-white/[0.07] hover:bg-white/[0.12] transition-colors backdrop-blur border border-blue-400/30 rounded-2xl p-3.5 min-w-[110px] sm:min-w-[125px] group"
               title="ดูเป้าหมายการเรียน 4 ระดับ (Goals)"
             >
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-1.5 mb-1">
                 <Target className="w-4 h-4 text-blue-300 group-hover:scale-110 transition-transform" />
-                <span className="text-xs text-blue-200 font-medium">
-                  Goals
-                </span>
+                <span className="text-[11px] text-blue-200 font-medium">เป้าหมาย</span>
               </div>
-              <p className="text-2xl font-bold text-white">
+              <p className="text-xl font-bold text-white">
                 {goalCompletedCount}{' '}
-                <span className="text-sm font-normal text-blue-300">/ {goalTotalCount}</span>
+                <span className="text-xs font-normal text-blue-300">/ {goalTotalCount}</span>
               </p>
             </Link>
           </div>
         </div>
       </div>
 
-      {/* Overdue Alert Banner */}
-      {overdueSessionsCount > 0 && (
-        <div className="bg-amber-50/90 border border-amber-200/80 rounded-2xl p-4 flex items-center justify-between gap-4 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 text-amber-700">
-              <AlertCircle className="w-4 h-4" />
+      {/* ═══════════ EMPTY STATE / ONBOARDING ═══════════ */}
+      {isNewUser && (
+        <OnboardingBanner
+          firstLesson={lessons[0]}
+          onStartFirstLesson={(id) => {
+            startLearningSession({ lessonId: id });
+            navigate(`/lessons/${id}?action=study`);
+          }}
+        />
+      )}
+
+      {/* ═══════════ ANSWER 2: มีอะไรค้าง? (OVERDUE ALERT BANNER) ═══════════ */}
+      {(overdueSessions.length > 0 || reviewOverdue.length > 0) && (
+        <div className="bg-amber-50/90 border border-amber-200/90 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 border border-amber-200">
+              <AlertTriangle className="w-5 h-5 text-amber-700" />
             </div>
             <div>
-              <p className="text-xs font-bold text-amber-900">
-                มี {overdueSessionsCount} รายการในตารางที่เลยกำหนดหรือค้างทบทวน
+              <p className="text-sm font-bold text-amber-900">
+                2. มีงานค้างที่ต้องจัดการ: {overdueSessions.length} เซสชันค้าง &middot;{' '}
+                {reviewOverdue.length} หัวข้อเลยกำหนดทบทวน
               </p>
-              <p className="text-[11px] text-amber-700 mt-0.5">
-                ย้ายไปเรียนวันนี้ หรือจัดสัดส่วนใหม่ในระบบวางแผนการเรียน
+              <p className="text-xs text-amber-700 mt-0.5">
+                รีบเคลียร์คิวทบทวน Spaced Repetition หรือจัดตารางใหม่ใน Planner เพื่อรักษาความจำระยะยาว
               </p>
             </div>
           </div>
-          <Link
-            to="/planner"
-            className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shrink-0 shadow-xs transition-colors"
-          >
-            เปิดตาราง &rarr;
-          </Link>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            {reviewOverdue.length > 0 && (
+              <button
+                onClick={handleStartAllDue}
+                className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+              >
+                เคลียร์ทบทวน ({reviewOverdue.length})
+              </button>
+            )}
+            {overdueSessions.length > 0 && (
+              <Link
+                to="/planner"
+                className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+              >
+                จัดตารางใหม่ &rarr;
+              </Link>
+            )}
+          </div>
         </div>
       )}
 
-      {/* ═══════════ REVIEW ENGINE: Spaced Repetition Queue ═══════════ */}
-      <div className="bg-white rounded-2xl border border-purple-200/70 shadow-xs p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
-              <Brain className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-slate-900">
-                  คิวทบทวนเนื้อหา (Spaced Review)
-                </h2>
-                {totalReviewDueCount > 0 ? (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 animate-pulse">
-                    ถึงกำหนด {totalReviewDueCount} หัวข้อ
-                  </span>
-                ) : (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
-                    ทบทวนครบแล้ววันนี้ 🎉
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                ทบทวนตามช่วงเวลา 1, 3, 7, 14, 30 วัน เพื่อความจำระยะยาวและเพิ่มระดับความเชี่ยวชาญ (Mastery)
-              </p>
-            </div>
-          </div>
+      {/* ═══════════ SECTION 1: TODAY PLAN (วันนี้ต้องทำอะไร?) ═══════════ */}
+      <TodayPlanSection
+        todaySessions={todayPlannedSessions}
+        onStartSession={(session) => {
+          if (session.lessonId) {
+            startLearningSession({ lessonId: session.lessonId, plannedSessionId: session.id });
+            navigate(`/lessons/${session.lessonId}?action=study`);
+          } else {
+            navigate('/planner');
+          }
+        }}
+      />
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleStartNextReview}
-              disabled={totalReviewDueCount === 0 && reviewUpcoming.length === 0}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Brain className="w-4 h-4" />
-              <span>เริ่มทบทวนทันที</span>
-            </button>
-          </div>
-        </div>
+      {/* ═══════════ SECTION 2: REVIEW TODAY (วันนี้ต้องทบทวนอะไร?) ═══════════ */}
+      <ReviewTodaySection
+        overdue={reviewOverdue}
+        dueToday={reviewDueToday}
+        upcoming={reviewUpcoming}
+        lessons={lessons}
+        onStartReview={handleStartReviewItem}
+        onStartAllDue={handleStartAllDue}
+      />
 
-        {/* Tab Filters */}
-        <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-          <button
-            onClick={() => setReviewTab('dueToday')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-              reviewTab === 'dueToday'
-                ? 'bg-purple-100 text-purple-800'
-                : 'text-slate-500 hover:bg-slate-100'
-            }`}
-          >
-            ครบกำหนดวันนี้ ({reviewDueToday.length})
-          </button>
-          <button
-            onClick={() => setReviewTab('overdue')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-              reviewTab === 'overdue'
-                ? 'bg-rose-100 text-rose-800'
-                : 'text-slate-500 hover:bg-slate-100'
-            }`}
-          >
-            เลยกำหนด ({reviewOverdue.length})
-          </button>
-          <button
-            onClick={() => setReviewTab('upcoming')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-              reviewTab === 'upcoming'
-                ? 'bg-slate-200 text-slate-800'
-                : 'text-slate-500 hover:bg-slate-100'
-            }`}
-          >
-            คิวเร็วๆ นี้ ({reviewUpcoming.length})
-          </button>
-        </div>
+      {/* ═══════════ SECTION 3: CONTINUE LEARNING (เรียนรู้ต่อ) ═══════════ */}
+      <ContinueLearningSection
+        recommendation={recommendation}
+        secondaryLessons={secondaryLessons}
+        onStartLesson={(id) => {
+          startLearningSession({ lessonId: id });
+          navigate(`/lessons/${id}?action=study`);
+        }}
+      />
 
-        {/* Tab Content */}
-        <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-          {reviewTab === 'dueToday' && (
-            reviewDueToday.length > 0 ? (
-              reviewDueToday.map((item) => renderReviewItemRow(item))
-            ) : (
-              <div className="py-8 text-center text-slate-400 text-xs">
-                ไม่มีรายการที่ต้องทบทวนวันนี้ ยอดเยี่ยมมาก!
-              </div>
-            )
-          )}
-
-          {reviewTab === 'overdue' && (
-            reviewOverdue.length > 0 ? (
-              reviewOverdue.map((item) => renderReviewItemRow(item))
-            ) : (
-              <div className="py-8 text-center text-slate-400 text-xs">
-                ไม่มีรายการทบทวนที่ค้างหรือเลยกำหนด
-              </div>
-            )
-          )}
-
-          {reviewTab === 'upcoming' && (
-            reviewUpcoming.length > 0 ? (
-              reviewUpcoming.map((item) => renderReviewItemRow(item))
-            ) : (
-              <div className="py-8 text-center text-slate-400 text-xs">
-                ไม่มีรายการทบทวนในคิวล่วงหน้า
-              </div>
-            )
-          )}
-        </div>
-      </div>
-
-      {/* ═══════════ KNOWLEDGE GAP ANALYSIS: ควรกลับไปดู ═══════════ */}
+      {/* ═══════════ SECTION 4: KNOWLEDGE GAPS (มีวิชาไหนที่ต้องกลับไปเสริม?) ═══════════ */}
       <KnowledgeGapSection
         gaps={knowledgeGaps}
         onSelectGap={(gap) => setSelectedGap(gap)}
@@ -649,186 +485,109 @@ export function Dashboard() {
         onReStudy={(lessonId) => handleGapReStudy(lessonId)}
       />
 
-      {/* ═══════════ ROW 2: Today's Study + Subject Progress ═══════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-        {/* Today's Study */}
-        <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
-                <CalendarIcon className="w-4.5 h-4.5 text-blue-600" />
+      {/* ═══════════ SECTION 5: PROGRESS & ACTIVE GOALS (เป้าหมายถัดไปคืออะไร?) ═══════════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Left: Active Goal Card (Answer 7: เป้าหมายถัดไปคืออะไร?) */}
+        <div className="lg:col-span-3 bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100/60">
+                <Target className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  วันนี้ต้องเรียนอะไร?
+                <h2 className="text-base md:text-lg font-bold text-slate-900">
+                  5. เป้าหมายถัดไปคืออะไร? (Next Goal)
                 </h2>
-                {todayPlannedSessions.length > 0 && (
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {todayPlannedSessions.length} เซสชัน &middot; แผน {todayPlannedHours} ชม. &middot; เสร็จแล้ว {todayCompletedHours} ชม.
-                  </p>
-                )}
+                <p className="text-xs text-slate-500 mt-0.5">
+                  ความก้าวหน้าสู่เป้าหมายสำคัญที่อยู่ระหว่างดำเนินการ
+                </p>
               </div>
             </div>
             <Link
-              to="/planner"
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 transition-colors"
+              to="/goals"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700"
             >
-              ตารางเรียนเต็ม <ArrowRight className="w-3.5 h-3.5" />
+              <span>เป้าหมายทั้งหมด</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
-          {todayPlannedSessions.length > 0 ? (
-            <div className="space-y-3">
-              {todayPlannedSessions.map((session) => {
-                const SubjectIcon = subjectIconMap[session.subjectId] || BookOpen;
-                const isCompleted = session.status === 'completed';
-                return (
-                  <div
-                    key={session.id}
-                    className={`flex items-center gap-4 p-3.5 rounded-xl border transition-all duration-200 group ${
-                      isCompleted
-                        ? 'bg-slate-50/60 border-slate-100 opacity-75'
-                        : 'bg-white border-slate-200/70 hover:border-blue-300 hover:bg-slate-50/50'
-                    }`}
-                  >
-                    {/* Subject icon square */}
-                    <div
-                      className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{
-                        backgroundColor: `${subjectRawColor[session.subjectId]}18`,
-                      }}
-                    >
-                      <SubjectIcon
-                        className="w-5 h-5"
-                        style={{
-                          color: subjectRawColor[session.subjectId],
-                        }}
-                      />
-                    </div>
+          {nextActiveGoal ? (
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/40 border border-blue-100 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 uppercase tracking-wider">
+                    {nextActiveGoal.type.replace('_', ' ')}
+                  </span>
+                  <h3 className="text-base font-bold text-slate-900 mt-1.5">
+                    {nextActiveGoal.title}
+                  </h3>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    {nextActiveGoal.description}
+                  </p>
+                </div>
+                <span className="text-xl font-extrabold text-blue-600 shrink-0">
+                  {nextActiveGoal.progressPercent}%
+                </span>
+              </div>
 
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className={`font-semibold text-sm truncate ${isCompleted ? 'line-through text-slate-500' : 'text-slate-900'}`}>
-                        {session.title}
-                      </p>
-                      <div className="flex flex-wrap items-center gap-2 mt-1">
-                        <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-slate-400" />
-                          {session.startTime} - {session.endTime} ({session.plannedMinutes} นาที)
-                        </span>
-                        <span className={`text-[10px] px-2 py-0.2 rounded-full font-semibold ${priorityStyle(session.priority)}`}>
-                          {session.priority === 'High' ? 'สำคัญสูง' : session.priority === 'Medium' ? 'ปานกลาง' : 'ทั่วไป'}
-                        </span>
-                        <span className="text-xs text-slate-400">
-                          {SUBJECTS[session.subjectId].name.split('/')[0]}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Action button */}
-                    {isCompleted ? (
-                      <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold flex items-center gap-1 shrink-0">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> เสร็จแล้ว
-                      </span>
-                    ) : session.lessonId ? (
-                      <Link
-                        to={`/lessons/${session.lessonId}`}
-                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-1.5 text-xs font-bold transition-all duration-200 shadow-xs flex-shrink-0"
-                      >
-                        เริ่มเรียน
-                      </Link>
-                    ) : (
-                      <Link
-                        to="/planner"
-                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all duration-200 flex-shrink-0"
-                      >
-                        ดูแผน
-                      </Link>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : todayLessons.length > 0 ? (
-            <div className="space-y-3">
-              {todayLessons.map((lesson) => {
-                const SubjectIcon = subjectIconMap[lesson.subjectId] || BookOpen;
-                return (
+              {/* Progress bar */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span>
+                    ปัจจุบัน: <strong className="text-slate-800">{nextActiveGoal.currentValue}</strong> / {nextActiveGoal.targetValue} {nextActiveGoal.unit}
+                  </span>
+                  <span>
+                    เหลืออีก: <strong className="text-slate-800">{nextActiveGoal.remainingValue}</strong> {nextActiveGoal.unit}
+                  </span>
+                </div>
+                <div className="h-2 bg-slate-200/80 rounded-full overflow-hidden">
                   <div
-                    key={lesson.id}
-                    className="flex items-center gap-4 p-3.5 rounded-xl border border-slate-200/70 hover:bg-slate-50/80 transition-all duration-200 group"
-                  >
-                    <div
-                      className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{
-                        backgroundColor: `${subjectRawColor[lesson.subjectId]}18`,
-                      }}
-                    >
-                      <SubjectIcon
-                        className="w-5 h-5"
-                        style={{
-                          color: subjectRawColor[lesson.subjectId],
-                        }}
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-slate-900 text-sm truncate">
-                        {lesson.title}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-slate-400 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {lesson.durationHours} ชม.
-                        </span>
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded-full font-medium ${difficultyStyle(
-                            lesson.difficulty
-                          )}`}
-                        >
-                          {lesson.difficulty}
-                        </span>
-                        <span className="text-xs text-slate-400">
-                          {SUBJECTS[lesson.subjectId].name}
-                        </span>
-                      </div>
-                    </div>
-                    <Link
-                      to={`/lessons/${lesson.id}`}
-                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-1.5 text-xs font-bold transition-all duration-200 opacity-80 group-hover:opacity-100 flex-shrink-0"
-                    >
-                      เริ่มเรียน
-                    </Link>
-                  </div>
-                );
-              })}
+                    className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, nextActiveGoal.progressPercent)}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                <span>
+                  กำหนดเสร็จ: {format(parseISO(nextActiveGoal.targetDate), 'dd/MM/yyyy')}
+                </span>
+                <span className="font-semibold text-blue-700">
+                  {nextActiveGoal.remainingDays > 0
+                    ? `เหลือเวลาอีก ${nextActiveGoal.remainingDays} วัน`
+                    : 'ครบกำหนดวันนี้'}
+                </span>
+              </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
-                <CheckCircle2 className="w-8 h-8 text-slate-300" />
-              </div>
-              <p className="text-slate-500 font-medium">
-                ไม่มีบทเรียนที่ต้องเรียนวันนี้
-              </p>
-              <Link
-                to="/planner"
-                className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all"
-              >
-                + วางแผนการเรียนวันนี้
-              </Link>
+            <div className="py-8 text-center text-slate-400 text-xs">
+              ยังไม่มีเป้าหมายที่ตั้งไว้ คลิกเพื่อตั้งเป้าหมายแรก
             </div>
           )}
+
+          {/* Quick link to Analytics */}
+          <div className="pt-2 flex items-center justify-between text-xs text-slate-500 border-t border-slate-100">
+            <span>ดูรายงานและสถิติการเรียนรู้เชิงลึก 10 มิติ</span>
+            <Link
+              to="/analytics"
+              className="font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+            >
+              <span>เปิด Analytics Dashboard</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </div>
 
-        {/* Subject Progress */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-200 p-6">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
-                <TrendingUp className="w-4.5 h-4.5 text-emerald-600" />
+        {/* Right: Subject Progress Matrix */}
+        <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100/60">
+                <TrendingUp className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">
+                <h2 className="text-base font-bold text-slate-900">
                   ความก้าวหน้าแยกวิชา
                 </h2>
                 <p className="text-xs text-slate-400">Completion vs Mastery</p>
@@ -836,39 +595,37 @@ export function Dashboard() {
             </div>
             <Link
               to="/progress"
-              className="text-xs font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1 transition-colors"
+              className="text-xs font-semibold text-purple-600 hover:text-purple-700 flex items-center gap-1"
             >
-              เมทริกซ์เต็ม <ArrowRight className="w-3.5 h-3.5" />
+              <span>เมทริกซ์เต็ม</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
-          <div className="space-y-4">
-            {subjectProgress.map((subject) => (
-              <div key={subject.id}>
-                <div className="flex items-center gap-3 mb-1.5">
-                  <div
-                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                    style={{
-                      backgroundColor: subjectRawColor[subject.id],
-                    }}
-                  />
-                  <span className="text-sm font-medium text-slate-700 flex-1 truncate">
-                    {subject.name}
-                  </span>
-                  <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-100">
-                    M {subject.avgMastery}/4
-                  </span>
-                  <span className="text-xs text-slate-400">
-                    {subject.completed}/{subject.total}
-                  </span>
-                  <span className="text-xs font-semibold text-slate-600 w-9 text-right">
-                    {subject.percent}%
-                  </span>
+          <div className="space-y-3.5">
+            {subjectProgress.map((sub) => (
+              <div key={sub.id} className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{ backgroundColor: subjectRawColor[sub.id] }}
+                    />
+                    <span className="font-semibold text-slate-800">{sub.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-100">
+                      M {sub.avgMastery}/4
+                    </span>
+                    <span className="text-slate-500 font-medium">
+                      {sub.completed}/{sub.total} ({sub.percent}%)
+                    </span>
+                  </div>
                 </div>
                 <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${subjectBgClass[subject.id]}`}
-                    style={{ width: `${subject.percent}%` }}
+                    className={`h-full rounded-full transition-all duration-500 ${subjectBgClass[sub.id]}`}
+                    style={{ width: `${sub.percent}%` }}
                   />
                 </div>
               </div>
@@ -877,259 +634,90 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* ═══════════ ROW 3: Roadmap + Calendar ═══════════ */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {/* 6-Month Roadmap */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-200 p-6">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center">
-                <MapIcon className="w-4.5 h-4.5 text-purple-600" />
-              </div>
-              <h2 className="text-lg font-semibold text-slate-900">
-                แผนเตรียมตัว 6 เดือน
-              </h2>
+      {/* ═══════════ SECTION 6: WEEKLY SUMMARY (สัปดาห์นี้เรียนไปเท่าไร?) ═══════════ */}
+      <WeeklySummarySection summary={weeklySummary} />
+
+      {/* ═══════════ SECTION 7: 6-MONTH ROADMAP (ตอนนี้ roadmap อยู่ตรงไหน?) ═══════════ */}
+      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100/60">
+              <MapIcon className="w-5 h-5" />
             </div>
-            <Link
-              to="/roadmap"
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 transition-colors"
-            >
-              ดูแผน <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {monthProgress.map((m) => {
-              const pct =
-                m.total > 0
-                  ? Math.round((m.completed / m.total) * 100)
-                  : 0;
-              return (
-                <div
-                  key={m.month}
-                  className="bg-slate-50/70 border border-slate-100 rounded-xl p-4 hover:bg-slate-50 transition-all duration-200"
-                >
-                  <div className="flex items-center gap-2.5 mb-2">
-                    <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 font-bold flex items-center justify-center text-xs">
-                      {m.month}
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-slate-700">
-                        เดือนที่ {m.month}
-                      </p>
-                      <p className="text-[10px] text-slate-400 truncate max-w-[100px]">
-                        {m.label}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs text-slate-400">
-                      {m.completed}/{m.total}
-                    </span>
-                    <span className="text-xs font-semibold text-slate-600">
-                      {pct}%
-                    </span>
-                  </div>
-                  <div className="h-1 bg-slate-200/60 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Mini Calendar */}
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-200 p-6">
-          <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
-              <CalendarIcon className="w-4.5 h-4.5 text-blue-600" />
-            </div>
-            <h2 className="text-lg font-semibold text-slate-900 capitalize">
-              {format(calendarDate, 'LLLL yyyy', { locale: th })}
-            </h2>
-          </div>
-
-          {/* Day headers */}
-          <div className="grid grid-cols-7 mb-1">
-            {['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'].map((d) => (
-              <div
-                key={d}
-                className="text-center text-[10px] font-medium text-slate-400 py-1"
-              >
-                {d}
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base md:text-lg font-bold text-slate-900">
+                  7. แผนเตรียมตัว 6 เดือน (6-Month Roadmap)
+                </h2>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                  กำลังอยู่ในเดือนที่ {roadmapStatus.currentMonth}
+                </span>
               </div>
-            ))}
+              <p className="text-xs text-slate-500 mt-0.5">
+                {roadmapStatus.monthTitle} &middot; เป้าหมาย {roadmapStatus.targetHours} ชม. &middot; สำเร็จแล้ว {roadmapStatus.completedLessonsCount}/{roadmapStatus.totalLessonsCount} บท ({roadmapStatus.progressPercent}%)
+              </p>
+            </div>
           </div>
 
-          {/* Calendar grid */}
-          <div className="grid grid-cols-7 gap-y-0.5">
-            {calendarDays.map((day, idx) => {
-              const isToday = isSameDay(day, today);
-              const isCurrentMonth = isSameMonth(day, calendarDate);
-              const completed = hasCompletedOnDay(day);
-              const hasLesson = hasLessonOnDay(day);
-
-              let cellClasses =
-                'w-8 h-8 mx-auto flex items-center justify-center text-xs rounded-full relative transition-all duration-200';
-
-              if (!isCurrentMonth) {
-                cellClasses += ' text-slate-300';
-              } else if (isToday) {
-                cellClasses +=
-                  ' bg-blue-600 text-white font-bold shadow-md shadow-blue-600/20';
-              } else if (completed) {
-                cellClasses +=
-                  ' bg-emerald-100 text-emerald-700 font-semibold';
-              } else {
-                cellClasses += ' text-slate-600 hover:bg-slate-50';
-              }
-
-              return (
-                <div key={idx} className="flex flex-col items-center">
-                  <div className={cellClasses}>{format(day, 'd')}</div>
-                  {/* Dot indicator for lesson days */}
-                  {hasLesson && !completed && isCurrentMonth && !isToday && (
-                    <div className="w-1 h-1 rounded-full bg-blue-400 mt-0.5" />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Footer link */}
           <Link
-            to="/calendar"
-            className="mt-4 w-full flex items-center justify-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium py-2 rounded-xl hover:bg-blue-50/50 transition-all duration-200"
+            to="/roadmap"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200/70 transition-colors shrink-0"
           >
-            <CalendarIcon className="w-3.5 h-3.5" />
-            ดูปฏิทินเต็ม
+            <span>เปิด Roadmap เต็ม</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
-      </div>
 
-      {/* ═══════════ ROW 4: Unclear Topics + Recent Resources ═══════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Unclear Topics */}
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-200 p-6">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center">
-                <AlertCircle className="w-4.5 h-4.5 text-rose-500" />
-              </div>
-              <h2 className="text-lg font-semibold text-slate-900">
-                สิ่งที่ยังไม่เข้าใจ
-              </h2>
-            </div>
-            <Link
-              to="/not-understood"
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 transition-colors"
-            >
-              ดูทั้งหมด <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          {urgentUnclear.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mb-3">
-                <CheckCircle2 className="w-7 h-7 text-emerald-400" />
-              </div>
-              <p className="text-slate-500 font-medium text-sm">
-                ไม่มีหัวข้อที่ยังไม่เข้าใจ
-              </p>
-              <p className="text-slate-400 text-xs mt-1">
-                เก่งมาก! ทำความเข้าใจได้ครบทุกเรื่อง
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {urgentUnclear.map((item) => (
-                <div key={item.id} className="py-3 first:pt-0 last:pb-0">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-sm text-slate-900 truncate">
-                        {item.topic}
-                      </p>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {SUBJECTS[item.subjectId].name}
-                      </p>
-                    </div>
-                    <span
-                      className={`text-xs px-2.5 py-0.5 rounded-full font-medium flex-shrink-0 ${priorityStyle(
-                        item.priority
-                      )}`}
-                    >
-                      {item.priority}
-                    </span>
-                  </div>
+        {/* 6 Month Progression Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {monthProgress.map((m) => {
+            const pct = m.total > 0 ? Math.round((m.completed / m.total) * 100) : 0;
+            return (
+              <Link
+                key={m.month}
+                to={`/roadmap?month=${m.month}`}
+                className={`p-3.5 rounded-2xl border transition-all text-left block ${
+                  m.isActive
+                    ? 'bg-blue-50/50 border-blue-300 ring-2 ring-blue-500/20 shadow-xs'
+                    : 'bg-slate-50/60 border-slate-200/60 hover:bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span
+                    className={`w-6 h-6 rounded-lg text-xs font-bold flex items-center justify-center ${
+                      m.isActive
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {m.month}
+                  </span>
+                  <span className="text-[11px] font-bold text-slate-600">{pct}%</span>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Recent Resources */}
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-200 p-6">
-          <div className="flex items-center justify-between gap-2.5 mb-5">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
-                <BookOpen className="w-4.5 h-4.5 text-amber-600" />
-              </div>
-              <h2 className="text-lg font-semibold text-slate-900">
-                ทรัพยากรล่าสุด
-              </h2>
-            </div>
-            <Link
-              to="/resources"
-              className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 transition-colors"
-            >
-              ดูทั้งหมด <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          {allResources.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center mb-3">
-                <BookOpen className="w-7 h-7 text-slate-300" />
-              </div>
-              <p className="text-slate-500 font-medium text-sm">
-                ยังไม่มีทรัพยากรที่เพิ่มไว้
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {allResources.map((resource) => (
-                <a
-                  key={resource.id}
-                  href={resource.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => recordResourceOpened(resource.id)}
-                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50/80 transition-all duration-200 group"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center flex-shrink-0 group-hover:bg-slate-100 transition-colors">
-                    {resourceIcon(resource.type)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-900 truncate group-hover:text-blue-600 transition-colors">
-                      {resource.title}
-                    </p>
-                    <p className="text-xs text-slate-400 truncate">
-                      {resource.lessonTitle}
-                    </p>
-                  </div>
-                  <ExternalLink className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-400 flex-shrink-0 transition-colors" />
-                </a>
-              ))}
-            </div>
-          )}
+                <p className="text-xs font-bold text-slate-900 truncate">
+                  เดือนที่ {m.month}
+                </p>
+                <p className="text-[10px] text-slate-500 truncate mt-0.5">
+                  {m.title}
+                </p>
+                <div className="mt-2 h-1.5 bg-slate-200/70 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      m.isActive ? 'bg-blue-600' : 'bg-slate-400'
+                    }`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </div>
 
-      {/* Review Session Modal */}
+      {/* ═══════════ SECTION 8: RECENT LEARNING MEMORY ═══════════ */}
+      <RecentMemorySection recentMemories={recentMemories} />
+
+      {/* Modals */}
       <ReviewSessionModal
         reviewItem={activeReviewItem}
         onClose={() => setActiveReviewItem(null)}
@@ -1137,7 +725,6 @@ export function Dashboard() {
         hasMoreDue={totalReviewDueCount > 1}
       />
 
-      {/* Knowledge Gap Detail Modal */}
       <KnowledgeGapDetailModal
         gap={selectedGap}
         onClose={() => setSelectedGap(null)}
