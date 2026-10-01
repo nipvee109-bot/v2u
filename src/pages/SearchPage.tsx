@@ -17,7 +17,7 @@ import { th } from 'date-fns/locale';
 export function SearchPage() {
   const [searchParams] = useSearchParams();
   const q = searchParams.get('q')?.toLowerCase().trim() || '';
-  const { lessons, unclearTopics, learningSessionsHistory } = useStore();
+  const { lessons, unclearTopics, learningSessionsHistory, getAllResources, recordResourceOpened } = useStore();
 
   if (!q) {
     return (
@@ -77,10 +77,20 @@ export function SearchPage() {
   });
 
   // 3. Search in Resources
-  const matchedResources = lessons.flatMap(l => 
-    l.resources.filter(r => r.title.toLowerCase().includes(q) || r.url.toLowerCase().includes(q) || (r.description && r.description.toLowerCase().includes(q)))
-    .map(r => ({ ...r, lessonId: l.id, lessonTitle: l.title }))
-  );
+  const allResources = getAllResources();
+  const matchedResources = allResources.filter(r => {
+    const titleMatch = r.title.toLowerCase().includes(q);
+    const urlMatch = r.url.toLowerCase().includes(q);
+    const descMatch = r.description ? r.description.toLowerCase().includes(q) : false;
+    let lessonMatch = false;
+    if (r.lessonId) {
+      const parentLesson = lessons.find(l => l.id === r.lessonId);
+      if (parentLesson && parentLesson.title.toLowerCase().includes(q)) {
+        lessonMatch = true;
+      }
+    }
+    return titleMatch || urlMatch || descMatch || lessonMatch;
+  });
 
   // 4. Search in Unclear Topics
   const matchedUnclear = unclearTopics.filter(t => 
@@ -235,25 +245,51 @@ export function SearchPage() {
                 <LinkIcon className="w-4 h-4 text-emerald-600" /> แหล่งเรียนรู้ ({matchedResources.length})
               </h2>
               <div className="grid gap-3">
-                {matchedResources.map(r => (
-                  <a 
-                    href={r.url} 
-                    target="_blank" 
-                    rel="noreferrer" 
-                    key={r.id} 
-                    className="block bg-white p-4 rounded-2xl shadow-xs border border-slate-200/80 hover:border-emerald-300 hover:shadow-md transition-all"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center flex-shrink-0 text-slate-500">
-                        {r.type === 'document' ? <FileText className="w-5 h-5" /> : <LinkIcon className="w-5 h-5" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-bold text-slate-900 truncate text-xs">{r.title}</div>
-                        <div className="text-[10px] text-slate-500 mt-0.5 truncate">ในบทเรียน: {r.lessonTitle} &middot; {r.url}</div>
-                      </div>
+                {matchedResources.map(r => {
+                  const parentLesson = r.lessonId ? lessons.find(l => l.id === r.lessonId) : null;
+                  const subject = r.subject ? SUBJECTS[r.subject] : null;
+                  return (
+                    <div 
+                      key={r.id} 
+                      className="flex items-center justify-between gap-3 bg-white p-4 rounded-2xl shadow-xs border border-slate-200/80 hover:border-emerald-300 hover:shadow-md transition-all group"
+                    >
+                      <a
+                        href={r.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() => recordResourceOpened(r.id)}
+                        className="flex items-center gap-3 min-w-0 flex-1"
+                      >
+                        <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center shrink-0 text-slate-500 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
+                          {r.type === 'document' ? <FileText className="w-5 h-5" /> : <LinkIcon className="w-5 h-5" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-slate-900 truncate text-xs group-hover:text-emerald-600 transition-colors">
+                            {r.title}
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5 truncate flex items-center gap-2">
+                            {subject && (
+                              <span className="inline-flex items-center gap-1 font-medium text-slate-600">
+                                <span className={`w-1.5 h-1.5 rounded-full ${subject.color}`} />
+                                {subject.name}
+                              </span>
+                            )}
+                            <span className="truncate">{r.url}</span>
+                          </div>
+                        </div>
+                      </a>
+
+                      {parentLesson && (
+                        <Link
+                          to={`/lessons/${parentLesson.id}`}
+                          className="shrink-0 text-[11px] font-medium text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg hover:bg-blue-100 transition-colors"
+                        >
+                          ไปที่บทเรียน
+                        </Link>
+                      )}
                     </div>
-                  </a>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useStore, computeSessionElapsedSeconds, computeLessonLearningRecord } from '../store/useStore';
 import { 
   ArrowLeft, 
@@ -24,10 +24,10 @@ import {
   Clock,
   Brain
 } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
-import type { Lesson, Resource, ConfidenceLevel, ReviewItem } from '../types';
+import type { Lesson, ConfidenceLevel, ReviewItem } from '../types';
 import { ReviewSessionModal } from '../components/ReviewSessionModal';
 import { MasteryBar } from '../components/MasteryBar';
+import { CreateResourceModal } from '../components/CreateResourceModal';
 import { SUBJECTS } from '../types';
 import { format, parseISO, isPast, differenceInDays } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -57,12 +57,15 @@ export function LessonDetail() {
     setLessonConfidence,
     recordLessonReview,
     recordQuizAttempt,
+    deleteResource,
+    recordResourceOpened,
   } = useStore();
   
   const [searchParams] = useSearchParams();
   const urlTab = searchParams.get('tab');
   const urlAction = searchParams.get('action');
 
+  const [isResourceModalOpen, setIsResourceModalOpen] = useState(false);
   const existingLesson = lessons.find(l => l.id === id);
   const [lesson, setLesson] = useState<Lesson | null>(existingLesson || null);
   const [activeReviewItem, setActiveReviewItem] = useState<ReviewItem | null>(null);
@@ -346,16 +349,14 @@ export function LessonDetail() {
   };
 
   const handleAddResource = () => {
-    const url = prompt('ใส่ URL (เช่น YouTube, Website, Document):');
-    if (url) {
-      let type: Resource['type'] = 'website';
-      if (url.includes('youtube.com') || url.includes('youtu.be')) type = 'youtube';
-      else if (url.includes('.pdf') || url.includes('docs.google.com')) type = 'document';
-      updateField('resources', [...lesson.resources, { id: uuidv4(), type, title: type === 'youtube' ? 'YouTube Video' : 'Link / Document', url } as Resource]);
-    }
+    setIsResourceModalOpen(true);
   };
 
-  const handleRemoveResource = (rId: string) => updateField('resources', lesson.resources.filter(r => r.id !== rId));
+  const handleRemoveResource = (rId: string) => {
+    if (window.confirm('ต้องการลบแหล่งเรียนรู้นี้?')) {
+      deleteResource(rId);
+    }
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { 
     if (e.target.files) Array.from(e.target.files).forEach(f => { 
@@ -852,8 +853,19 @@ export function LessonDetail() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <div className="card p-6 shadow-xs">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-sm font-bold text-slate-900">แหล่งเรียนรู้</h3>
-                <button onClick={handleAddResource} className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-1.5 rounded-lg transition-colors"><Plus className="w-4 h-4" /></button>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-slate-900">แหล่งเรียนรู้</h3>
+                  <Link to="/resources" className="text-[11px] text-blue-600 hover:underline">
+                    ดูคลังทั้งหมด
+                  </Link>
+                </div>
+                <button 
+                  onClick={handleAddResource} 
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-1.5 rounded-lg transition-colors"
+                  title="เพิ่มแหล่งเรียนรู้"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
               </div>
               <div className="space-y-2">
                 {lesson.resources.length === 0 && <p className="text-slate-400 text-xs py-4 text-center">ยังไม่มีแหล่งเรียนรู้</p>}
@@ -861,9 +873,36 @@ export function LessonDetail() {
                   const yId = r.type === 'youtube' ? getYoutubeId(r.url) : null;
                   return (
                     <div key={r.id} className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-xl group hover:bg-slate-100 transition-colors">
-                      {yId ? <img src={`https://img.youtube.com/vi/${yId}/mqdefault.jpg`} className="w-14 h-10 object-cover rounded-lg flex-shrink-0" alt="" /> : <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-xs">{r.type === 'document' ? <FileText className="w-4 h-4 text-slate-400" /> : <LinkIcon className="w-4 h-4 text-slate-400" />}</div>}
-                      <div className="flex-1 min-w-0"><a href={r.url} target="_blank" rel="noreferrer" className="text-xs font-semibold text-slate-900 hover:text-blue-600 truncate block">{r.title}</a><p className="text-[10px] text-slate-400 truncate">{r.url}</p></div>
-                      <button onClick={() => handleRemoveResource(r.id)} className="text-slate-300 hover:text-rose-500 p-1 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                      {yId ? (
+                        <img 
+                          src={`https://img.youtube.com/vi/${yId}/mqdefault.jpg`} 
+                          className="w-14 h-10 object-cover rounded-lg flex-shrink-0" 
+                          alt="" 
+                        />
+                      ) : (
+                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-xs">
+                          {r.type === 'document' ? <FileText className="w-4 h-4 text-slate-400" /> : <LinkIcon className="w-4 h-4 text-slate-400" />}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <a 
+                          href={r.url} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          onClick={() => recordResourceOpened(r.id)}
+                          className="text-xs font-semibold text-slate-900 hover:text-blue-600 truncate block"
+                        >
+                          {r.title}
+                        </a>
+                        <p className="text-[10px] text-slate-400 truncate">{r.url}</p>
+                      </div>
+                      <button 
+                        onClick={() => handleRemoveResource(r.id)} 
+                        className="text-slate-300 hover:text-rose-500 p-1 opacity-0 group-hover:opacity-100 transition-all"
+                        title="ลบ"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   );
                 })}
@@ -1086,6 +1125,16 @@ export function LessonDetail() {
         reviewItem={activeReviewItem}
         onClose={() => setActiveReviewItem(null)}
       />
+
+      {/* Create Resource Modal */}
+      {lesson && (
+        <CreateResourceModal
+          isOpen={isResourceModalOpen}
+          onClose={() => setIsResourceModalOpen(false)}
+          defaultSubject={lesson.subjectId}
+          defaultLessonId={lesson.id}
+        />
+      )}
     </div>
   );
 }

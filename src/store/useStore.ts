@@ -38,8 +38,15 @@ import {
   initialReviewQueue,
   createInitialReviewQueue,
   initialGoals,
-  createInitialGoals
+  createInitialGoals,
+  initialResources,
+  createInitialResources
 } from '../data/initialData';
+import { 
+  isValidUrl, 
+  isDuplicateResource, 
+  getAutoThumbnail 
+} from '../utils/resourceUtils';
 
 export const REVIEW_INTERVALS = [1, 3, 7, 14, 30] as const;
 
@@ -390,6 +397,15 @@ interface StoreState {
   calculateGoalProgress: (goal: StudyGoal) => CalculatedGoalProgress;
   getCalculatedGoals: () => (StudyGoal & CalculatedGoalProgress)[];
 
+  // Phase 14: Resource Library State & Actions
+  resources: Resource[];
+  addResource: (resource: Resource) => { success: boolean; error?: string };
+  updateResource: (id: string, updates: Partial<Resource>) => { success: boolean; error?: string };
+  deleteResource: (id: string) => void;
+  toggleFavoriteResource: (id: string) => void;
+  recordResourceOpened: (id: string) => void;
+  getAllResources: () => Resource[];
+
   // Import / Export / Reset
   importData: (data: {
     lessons: Lesson[];
@@ -399,6 +415,7 @@ interface StoreState {
     learningSessionsHistory?: LearningSession[];
     reviewQueue?: ReviewItem[];
     goals?: StudyGoal[];
+    resources?: Resource[];
   }) => void;
   resetToInitial: () => void;
 }
@@ -416,6 +433,7 @@ export const useStore = create<StoreState>()(
       learningSessionsHistory: [],
       reviewQueue: initialReviewQueue,
       goals: initialGoals,
+      resources: initialResources,
 
       // Lesson Actions
       addLesson: (lesson) =>
@@ -1183,6 +1201,212 @@ export const useStore = create<StoreState>()(
         });
       },
 
+      // Phase 14: Resource Library Actions
+      getAllResources: () => {
+        const state = get();
+        const resMap = new Map<string, Resource>();
+
+        // 1. Add all from state.resources
+        (state.resources || []).forEach((r) => {
+          if (r && r.id) {
+            resMap.set(r.id, r);
+          }
+        });
+
+        // 2. Also merge any embedded lesson resources (for backward compatibility)
+        (state.lessons || []).forEach((lesson) => {
+          (lesson.resources || []).forEach((lr) => {
+            if (lr && lr.id) {
+              if (!resMap.has(lr.id)) {
+                resMap.set(lr.id, {
+                  ...lr,
+                  lessonId: lr.lessonId || lesson.id,
+                  subject: lr.subject || lesson.subjectId,
+                  createdAt: lr.createdAt || new Date().toISOString(),
+                });
+              }
+            }
+          });
+        });
+
+        return Array.from(resMap.values());
+      },
+
+      addResource: (resource) => {
+        if (!resource.title || !resource.title.trim()) {
+          return { success: false, error: 'กรุณากรอกชื่อแหล่งเรียนรู้' };
+        }
+        if (!isValidUrl(resource.url)) {
+          return { success: false, error: 'URL ไม่ถูกต้อง กรุณากรอก URL ที่ขึ้นต้นด้วย http:// หรือ https://' };
+        }
+        const allCurrent = get().getAllResources();
+        if (isDuplicateResource(resource.url, resource.id, allCurrent)) {
+          return { success: false, error: 'มีแหล่งเรียนรู้ที่ใช้ URL นี้อยู่ในระบบแล้ว' };
+        }
+
+        const id = resource.id || uuidv4();
+        const thumbnail = getAutoThumbnail(resource.url, resource.type, resource.thumbnail);
+        const now = new Date().toISOString();
+
+        const newResource: Resource = {
+          ...resource,
+          id,
+          thumbnail,
+          createdAt: resource.createdAt || now,
+          favorite: !!resource.favorite,
+        };
+
+        set((state) => {
+          const updatedResources = [newResource, ...(state.resources || [])];
+
+          let updatedLessons = state.lessons;
+          if (newResource.lessonId) {
+            updatedLessons = state.lessons.map((lesson) => {
+              if (lesson.id === newResource.lessonId) {
+                const existsInLesson = (lesson.resources || []).some((r) => r.id === id);
+                return {
+                  ...lesson,
+                  resources: existsInLesson
+                    ? lesson.resources.map((r) => (r.id === id ? newResource : r))
+                    : [...(lesson.resources || []), newResource],
+                };
+              }
+              return lesson;
+            });
+          }
+
+          return {
+            resources: updatedResources,
+            lessons: updatedLessons,
+          };
+        });
+
+        return { success: true };
+      },
+
+      updateResource: (id, updates) => {
+        if (updates.url !== undefined && !isValidUrl(updates.url)) {
+          return { success: false, error: 'URL ไม่ถูกต้อง กรุณากรอก URL ที่ขึ้นต้นด้วย http:// หรือ https://' };
+        }
+        const allCurrent = get().getAllResources();
+        if (updates.url && isDuplicateResource(updates.url, id, allCurrent)) {
+          return { success: false, error: 'มีแหล่งเรียนรู้ที่ใช้ URL นี้อยู่ในระบบแล้ว' };
+        }
+
+        set((state) => {
+          let foundResource = (state.resources || []).find((r) => r.id === id);
+          if (!foundResource) {
+            for (const l of state.lessons) {
+              const found = (l.resources || []).find((r) => r.id === id);
+              if (found) {
+                foundResource = { ...found, lessonId: found.lessonId || l.id, subject: found.subject || l.subjectId };
+                break;
+              }
+            }
+          }
+
+          const mergedResource: Resource = {
+            ...(foundResource || { id, title: '', url: '', type: 'other', subject: 'math' }),
+            ...updates,
+            id,
+          };
+
+          if (updates.url || updates.type || updates.thumbnail !== undefined) {
+            mergedResource.thumbnail = getAutoThumbnail(
+              mergedResource.url,
+              mergedResource.type,
+              mergedResource.thumbnail
+            );
+          }
+
+          const updatedResources = (state.resources || []).some((r) => r.id === id)
+            ? state.resources.map((r) => (r.id === id ? mergedResource : r))
+            : [mergedResource, ...(state.resources || [])];
+
+          const updatedLessons = state.lessons.map((lesson) => {
+            const hasInLesson = (lesson.resources || []).some((r) => r.id === id);
+            const shouldBeInLesson = mergedResource.lessonId === lesson.id;
+
+            if (shouldBeInLesson) {
+              return {
+                ...lesson,
+                resources: hasInLesson
+                  ? lesson.resources.map((r) => (r.id === id ? mergedResource : r))
+                  : [...(lesson.resources || []), mergedResource],
+              };
+            } else if (hasInLesson) {
+              return {
+                ...lesson,
+                resources: lesson.resources.filter((r) => r.id !== id),
+              };
+            }
+            return lesson;
+          });
+
+          return {
+            resources: updatedResources,
+            lessons: updatedLessons,
+          };
+        });
+
+        return { success: true };
+      },
+
+      deleteResource: (id) =>
+        set((state) => ({
+          resources: (state.resources || []).filter((r) => r.id !== id),
+          lessons: state.lessons.map((lesson) => ({
+            ...lesson,
+            resources: (lesson.resources || []).filter((r) => r.id !== id),
+          })),
+        })),
+
+      toggleFavoriteResource: (id) =>
+        set((state) => {
+          let currentFav = false;
+          const resInState = (state.resources || []).find((r) => r.id === id);
+          if (resInState) {
+            currentFav = !!resInState.favorite;
+          } else {
+            for (const l of state.lessons) {
+              const found = (l.resources || []).find((r) => r.id === id);
+              if (found) {
+                currentFav = !!found.favorite;
+                break;
+              }
+            }
+          }
+          const newFav = !currentFav;
+
+          return {
+            resources: (state.resources || []).map((r) =>
+              r.id === id ? { ...r, favorite: newFav } : r
+            ),
+            lessons: state.lessons.map((lesson) => ({
+              ...lesson,
+              resources: (lesson.resources || []).map((r) =>
+                r.id === id ? { ...r, favorite: newFav } : r
+              ),
+            })),
+          };
+        }),
+
+      recordResourceOpened: (id) =>
+        set((state) => {
+          const now = new Date().toISOString();
+          return {
+            resources: (state.resources || []).map((r) =>
+              r.id === id ? { ...r, lastOpened: now } : r
+            ),
+            lessons: state.lessons.map((lesson) => ({
+              ...lesson,
+              resources: (lesson.resources || []).map((r) =>
+                r.id === id ? { ...r, lastOpened: now } : r
+              ),
+            })),
+          };
+        }),
+
       // Unclear Topic Actions
       addUnclearTopic: (topic) => 
         set((state) => ({ unclearTopics: [...state.unclearTopics, topic] })),
@@ -1547,6 +1771,7 @@ export const useStore = create<StoreState>()(
           learningSessionsHistory: data.learningSessionsHistory || [],
           reviewQueue: data.reviewQueue || createInitialReviewQueue(data.lessons || []),
           goals: data.goals || initialGoals,
+          resources: data.resources || initialResources,
         }),
       resetToInitial: () =>
         set({
@@ -1558,6 +1783,7 @@ export const useStore = create<StoreState>()(
           learningSessionsHistory: [],
           reviewQueue: createInitialReviewQueue(initialLessons),
           goals: createInitialGoals(),
+          resources: createInitialResources(initialLessons),
         }),
     }),
     {

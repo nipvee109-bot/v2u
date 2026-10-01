@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Lesson, ReviewItem, StudyGoal } from '../types';
+import type { Lesson, ReviewItem, StudyGoal, Resource } from '../types';
 
 export const initialLessons: Lesson[] = [
   // Month 1
@@ -736,3 +736,96 @@ export const createInitialGoals = (): StudyGoal[] => {
 };
 
 export const initialGoals = createInitialGoals();
+
+export const createInitialResources = (lessons: Lesson[] = initialLessons): Resource[] => {
+  const now = new Date().toISOString();
+  const mathLesson = lessons.find((l) => l.subjectId === 'math');
+  const progLesson = lessons.find((l) => l.subjectId === 'programming');
+  const physicsLesson = lessons.find((l) => l.subjectId === 'physics');
+  const tgatLesson = lessons.find((l) => l.subjectId === 'tgat3');
+  const aiLesson = lessons.find((l) => l.subjectId === 'ai');
+
+  return [
+    {
+      id: uuidv4(),
+      title: 'สมการเชิงเส้นสำหรับผู้เริ่มต้น (Linear Equations Crash Course)',
+      url: 'https://youtube.com/watch?v=sample1',
+      type: 'youtube',
+      subject: 'math',
+      lessonId: mathLesson?.id,
+      thumbnail: 'https://img.youtube.com/vi/sample1/hqdefault.jpg',
+      description: 'คลิปทบทวนการแก้สมการเชิงเส้นและการย้ายข้าง สำหรับเตรียมสอบวิศวะ',
+      createdAt: now,
+      favorite: true,
+      lastOpened: now,
+    },
+    {
+      id: uuidv4(),
+      title: 'Python 3 Official Documentation & Tutorial',
+      url: 'https://docs.python.org/3/tutorial/',
+      type: 'website',
+      subject: 'programming',
+      lessonId: progLesson?.id,
+      description: 'เอกสารทางการของภาษา Python ครอบคลุม Control Flow, Data Structures และ Functions',
+      createdAt: now,
+      favorite: true,
+    },
+    {
+      id: uuidv4(),
+      title: 'สรุปสูตรฟิสิกส์ ม.ปลาย: เวกเตอร์และการเคลื่อนที่ 1 มิติ',
+      url: 'https://example.com/physics-summary-vectors.pdf',
+      type: 'document',
+      subject: 'physics',
+      lessonId: physicsLesson?.id,
+      description: 'แผ่นสรุป 5 สูตรการเคลื่อนที่แนวตรง กราฟการกระจัด-ความเร็ว-ความเร่ง',
+      createdAt: now,
+      favorite: true,
+    },
+    {
+      id: uuidv4(),
+      title: 'โครงสร้างข้อสอบ TGAT 3 สมรรถนะการทำงาน (Blueprint)',
+      url: 'https://mytgat.com/tgat3-blueprint',
+      type: 'website',
+      subject: 'tgat3',
+      lessonId: tgatLesson?.id,
+      description: 'เกณฑ์คะแนน แนวข้อสอบการคิดอย่างมีเหตุผล และการแก้ไขปัญหาที่ซับซ้อน',
+      createdAt: now,
+      favorite: false,
+    },
+    {
+      id: uuidv4(),
+      title: 'Machine Learning Crash Course by Google',
+      url: 'https://developers.google.com/machine-learning/crash-course',
+      type: 'website',
+      subject: 'ai',
+      lessonId: aiLesson?.id,
+      description: 'คอร์สเรียนรู้พื้นฐาน Supervised Learning, Loss Function และ Gradient Descent',
+      createdAt: now,
+      favorite: true,
+    },
+    {
+      id: uuidv4(),
+      title: 'MIT OpenCourseWare: Linear Algebra (Gilbert Strang)',
+      url: 'https://youtube.com/watch?v=7UJ4CFr9KAw',
+      type: 'youtube',
+      subject: 'math',
+      thumbnail: 'https://img.youtube.com/vi/7UJ4CFr9KAw/hqdefault.jpg',
+      description: 'เลกเชอร์ระดับตำนานวิชา Linear Algebra สำหรับวิทยาศาสตร์และวิศวกรรมศาสตร์',
+      createdAt: now,
+      favorite: false,
+    },
+    {
+      id: uuidv4(),
+      title: 'แผนภาพความสัมพันธ์ Free Body Diagram Cheat Sheet',
+      url: 'https://example.com/fbd-cheat-sheet.png',
+      type: 'image',
+      subject: 'physics',
+      lessonId: physicsLesson?.id,
+      description: 'รวมภาพตัวอย่างการแตกแรงในระบบรอก พื้นเอียง และแรงเสียดทาน',
+      createdAt: now,
+      favorite: false,
+    },
+  ];
+};
+
+export const initialResources = createInitialResources();

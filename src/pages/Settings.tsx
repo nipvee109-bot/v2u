@@ -3,11 +3,11 @@ import { useStore } from '../store/useStore';
 import { Download, Upload, RotateCcw, Monitor, Moon, Sun } from 'lucide-react';
 
 export function Settings() {
-  const { theme, setTheme, lessons, unclearTopics, sessions, weeklyGoal, learningSessionsHistory, reviewQueue, importData, resetToInitial } = useStore();
+  const { theme, setTheme, lessons, unclearTopics, sessions, weeklyGoal, learningSessionsHistory, reviewQueue, goals, resources, importData, resetToInitial } = useStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = () => {
-    const exportData = { lessons, unclearTopics, sessions, weeklyGoal, learningSessionsHistory, reviewQueue };
+    const exportData = { lessons, unclearTopics, sessions, weeklyGoal, learningSessionsHistory, reviewQueue, goals, resources };
     const dataStr = JSON.stringify(exportData, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     const exportFileDefaultName = 'engineering-study-hub-backup.json';
@@ -36,6 +36,8 @@ export function Settings() {
                 weeklyGoal: importedData.weeklyGoal,
                 learningSessionsHistory: importedData.learningSessionsHistory,
                 reviewQueue: importedData.reviewQueue,
+                goals: importedData.goals,
+                resources: importedData.resources,
               });
            }
            alert('นำเข้าข้อมูลสำเร็จ');

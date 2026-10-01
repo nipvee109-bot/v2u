@@ -1,12 +1,19 @@
 export type SubjectId = 'math' | 'programming' | 'physics' | 'tgat3' | 'ai';
 
+export type ResourceType = 'youtube' | 'website' | 'image' | 'document' | 'other';
+
 export interface Resource {
   id: string;
-  type: 'youtube' | 'website' | 'image' | 'document' | 'other';
+  type: ResourceType;
   title: string;
   url: string;
+  subject?: SubjectId;
+  lessonId?: string;
   thumbnail?: string;
   description?: string;
+  createdAt?: string;
+  favorite?: boolean;
+  lastOpened?: string;
 }
 
 export type ConfidenceLevel = 'Low' | 'Medium' | 'High';

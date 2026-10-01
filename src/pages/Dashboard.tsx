@@ -89,7 +89,9 @@ export function Dashboard() {
     getCalculatedGoals,
     createReviewItemForLesson,
     startLearningSession,
-    reviewQueue = []
+    reviewQueue = [],
+    getAllResources,
+    recordResourceOpened,
   } = useStore();
   const [calendarDate] = useState(new Date());
 
@@ -173,16 +175,15 @@ export function Dashboard() {
   const urgentUnclear = unclearTopics
     .filter((t) => t.status !== 'Understood')
     .slice(0, 5);
-  const allResources = lessons
-    .flatMap((l) =>
-      l.resources.map((r) => ({
+  const allResources = getAllResources()
+    .slice(0, 4)
+    .map((r) => {
+      const parentLesson = r.lessonId ? lessons.find((l) => l.id === r.lessonId) : null;
+      return {
         ...r,
-        lessonId: l.id,
-        lessonTitle: l.title,
-      }))
-    )
-    .reverse()
-    .slice(0, 4);
+        lessonTitle: parentLesson ? parentLesson.title : (r.subject ? SUBJECTS[r.subject].name : ''),
+      };
+    });
 
   // ── Streak calculation ──────────────────────────────────────────
   let streak = 0;
@@ -1072,13 +1073,21 @@ export function Dashboard() {
 
         {/* Recent Resources */}
         <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-200 p-6">
-          <div className="flex items-center gap-2.5 mb-5">
-            <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
-              <BookOpen className="w-4.5 h-4.5 text-amber-600" />
+          <div className="flex items-center justify-between gap-2.5 mb-5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
+                <BookOpen className="w-4.5 h-4.5 text-amber-600" />
+              </div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                ทรัพยากรล่าสุด
+              </h2>
             </div>
-            <h2 className="text-lg font-semibold text-slate-900">
-              ทรัพยากรล่าสุด
-            </h2>
+            <Link
+              to="/resources"
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 transition-colors"
+            >
+              ดูทั้งหมด <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
 
           {allResources.length === 0 ? (
@@ -1098,6 +1107,7 @@ export function Dashboard() {
                   href={resource.url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => recordResourceOpened(resource.id)}
                   className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50/80 transition-all duration-200 group"
                 >
                   <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center flex-shrink-0 group-hover:bg-slate-100 transition-colors">
