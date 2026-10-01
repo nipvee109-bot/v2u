@@ -458,7 +458,7 @@ interface StoreState {
   pauseLearningSession: () => void;
   resumeLearningSession: () => void;
   updateLearningSessionDraft: (draft: Partial<NonNullable<LearningSession['notesDraft']>>) => void;
-  finishLearningSession: (actualStudyMinutes?: number, quizScore?: number) => void;
+  finishLearningSession: (actualStudyMinutes?: number, quizScore?: number, confidence?: ConfidenceLevel) => void;
   abandonLearningSession: () => void;
   recoverLearningSession: (confirmedMinutes?: number) => void;
   heartbeatLearningSession: () => void;
@@ -1762,7 +1762,7 @@ export const useStore = create<StoreState>()(
         });
       },
 
-      finishLearningSession: (actualStudyMinutes, quizScore) => {
+      finishLearningSession: (actualStudyMinutes, quizScore, confidence) => {
         const current = get().activeLearningSession;
         if (!current) return;
 
@@ -1776,6 +1776,8 @@ export const useStore = create<StoreState>()(
           completedAt: now,
           actualSeconds: finalSeconds,
           lastHeartbeatAt: now,
+          quizScore: quizScore !== undefined ? quizScore : current.quizScore,
+          confidenceRating: confidence !== undefined ? confidence : current.confidenceRating,
         };
 
         const quizAttempt: QuizAttempt | null = quizScore !== undefined ? {
@@ -1806,6 +1808,7 @@ export const useStore = create<StoreState>()(
                 totalStudyMinutes: newTotalMinutes,
                 studyCount: newStudyCount,
                 nextReviewAt: nextReviewDate,
+                confidence: confidence ?? l.confidence,
                 quizScore: quizScore ?? l.quizScore,
                 quizAttempts: newAttempts,
                 learnedNotes: current.notesDraft?.learnedNotes ?? l.learnedNotes,

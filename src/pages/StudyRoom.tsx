@@ -181,7 +181,7 @@ export const StudyRoom: React.FC = () => {
 
     const parsedScore = quizScoreInput.trim() ? Math.min(100, Math.max(0, parseInt(quizScoreInput, 10))) : undefined;
 
-    finishLearningSession(undefined, parsedScore);
+    finishLearningSession(undefined, parsedScore, confidenceInput);
     setLessonConfidence(lesson.id, confidenceInput);
 
     if (parsedScore !== undefined) {

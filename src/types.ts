@@ -266,6 +266,8 @@ export interface LearningSession {
   };
   status: 'active' | 'paused' | 'completed' | 'abandoned';
   lastHeartbeatAt: string;
+  quizScore?: number;
+  confidenceRating?: ConfidenceLevel;
 }
 
 /* ==================================================

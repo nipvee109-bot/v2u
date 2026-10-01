@@ -21,13 +21,13 @@ import {
   Check,
   CalendarCheck,
   History,
-  Clock,
   Brain
 } from 'lucide-react';
 import type { Lesson, ConfidenceLevel, ReviewItem } from '../types';
 import { ReviewSessionModal } from '../components/ReviewSessionModal';
 import { MasteryBar } from '../components/MasteryBar';
 import { CreateResourceModal } from '../components/CreateResourceModal';
+import { LessonLearningHistory } from '../components/study/LessonLearningHistory';
 import { SUBJECTS } from '../types';
 import { format, parseISO, isPast, differenceInDays } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -716,7 +716,7 @@ export function LessonDetail() {
               : 'text-slate-500 hover:text-slate-900'
           }`}
         >
-          <History className="w-3.5 h-3.5" /> ไทม์ไลน์การเรียนรู้ ({timelineEvents.length})
+          <History className="w-3.5 h-3.5" /> ประวัติเซสชัน & ไทม์ไลน์ ({timelineEvents.length})
         </button>
       </div>
 
@@ -951,62 +951,12 @@ export function LessonDetail() {
           </div>
         </div>
       ) : (
-        /* Timeline View */
-        <div className="card p-6 lg:p-8 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <History className="w-5 h-5 text-blue-600" /> ไทม์ไลน์เหตุการณ์การเรียนรู้ (Learning Timeline)
-              </h3>
-              <p className="text-xs text-slate-500 mt-1">ประวัติการเรียนรู้จริงตามลำดับเวลาของบทเรียนนี้</p>
-            </div>
-            <span className="text-xs font-semibold px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg">
-              เรียนมาแล้ว {learningRecord?.studyCount || 0} ครั้ง
-            </span>
-          </div>
-
-          {timelineEvents.length === 0 ? (
-            <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-              <Clock className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-              <p className="text-sm font-semibold text-slate-700">ยังไม่มีเหตุการณ์การเรียนรู้ในบทนี้</p>
-              <p className="text-xs text-slate-400 mt-1 mb-4">กดปุ่มเริ่มเรียนเพื่อสร้างประวัติเซสชันแรกของคุณ</p>
-              <button
-                onClick={handleStartFlow}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm"
-              >
-                เริ่มเรียนตอนนี้
-              </button>
-            </div>
-          ) : (
-            <div className="relative border-l-2 border-slate-200 ml-4 space-y-6 pl-6 py-2">
-              {timelineEvents.map((evt) => (
-                <div key={evt.id} className="relative group">
-                  <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border-2 border-white ${
-                    evt.type === 'session' ? 'bg-emerald-500 ring-4 ring-emerald-50' :
-                    evt.type === 'quiz' ? 'bg-indigo-500 ring-4 ring-indigo-50' :
-                    evt.type === 'review' ? 'bg-purple-500 ring-4 ring-purple-50' :
-                    evt.type === 'unclear' ? 'bg-rose-500 ring-4 ring-rose-50' :
-                    'bg-blue-500 ring-4 ring-blue-50'
-                  }`} />
-                  <div className="card-compact p-4 bg-slate-50/70 border border-slate-200/70 hover:bg-white hover:shadow-xs transition-all space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-bold text-slate-900">{evt.title}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${evt.badgeColor}`}>
-                        {evt.badge}
-                      </span>
-                    </div>
-                    {evt.description && (
-                      <p className="text-xs text-slate-600 leading-relaxed">{evt.description}</p>
-                    )}
-                    <span className="text-[10px] text-slate-400 block pt-1">
-                      {format(parseISO(evt.date), 'dd MMMM yyyy HH:mm น.', { locale: th })}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        /* Phase 32: Permanent Session Memory & Learning History View */
+        <LessonLearningHistory 
+          lesson={lesson} 
+          sessionsHistory={learningSessionsHistory} 
+          onStartSession={handleStartFlow} 
+        />
       )}
     </div>
   );
