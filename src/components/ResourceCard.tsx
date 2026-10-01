@@ -216,30 +216,31 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
       <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/75 px-4 py-2.5">
         <button
           onClick={handleOpen}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-xs transition-colors hover:bg-blue-700 active:scale-95"
+          aria-label={`เปิดแหล่งเรียนรู้: ${resource.title}`}
+          className="inline-flex min-h-[38px] items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-blue-700 active:scale-95"
         >
           <span>เปิดเรียน</span>
-          <ExternalLink className="h-3.5 w-3.5" />
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
 
         <div className="flex items-center gap-1">
           {onEdit && (
             <button
               onClick={() => onEdit(resource)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition-colors"
-              title="แก้ไข"
+              aria-label={`แก้ไขแหล่งเรียนรู้ ${resource.title}`}
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition-colors"
             >
-              <Edit3 className="h-3.5 w-3.5" />
+              <Edit3 className="h-4 w-4" aria-hidden="true" />
             </button>
           )}
 
           {onDelete && (
             <button
               onClick={() => onDelete(resource)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
-              title="ลบ"
+              aria-label={`ลบแหล่งเรียนรู้ ${resource.title}`}
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
             </button>
           )}
         </div>

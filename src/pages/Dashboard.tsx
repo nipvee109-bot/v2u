@@ -308,7 +308,7 @@ export function Dashboard() {
   return (
     <div className="space-y-6 pb-20">
       {/* ═══════════ COMMAND CENTER HERO ═══════════ */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0B1120] via-[#131C31] to-[#0B1120] p-6 md:p-8 text-white shadow-xl border border-slate-800">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0B1120] via-[#131C31] to-[#0B1120] p-4 sm:p-6 md:p-8 text-white shadow-xl border border-slate-800">
         <div className="absolute -top-24 -right-24 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -316,7 +316,7 @@ export function Dashboard() {
           {/* Left Greeting & Roadmap position */}
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 rounded-full bg-blue-500/20 px-3.5 py-1 text-xs font-semibold text-blue-300 border border-blue-400/20">
-              <Compass className="h-3.5 w-3.5" />
+              <Compass className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Phase 17 &middot; Smart Learning Command Center</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
@@ -330,9 +330,10 @@ export function Dashboard() {
             <div className="flex flex-wrap items-center gap-2 pt-2">
               <Link
                 to="/roadmap"
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-xs text-blue-300 border border-white/10 transition-colors"
+                aria-label={`Roadmap เดือนที่ ${roadmapStatus.currentMonth} จาก 6`}
+                className="inline-flex items-center gap-2 px-3 py-1.5 min-h-[36px] rounded-xl bg-white/10 hover:bg-white/15 text-xs text-blue-300 border border-white/10 transition-colors focus:ring-2 focus:ring-blue-400"
               >
-                <MapIcon className="w-3.5 h-3.5 text-blue-400" />
+                <MapIcon className="w-3.5 h-3.5 text-blue-400" aria-hidden="true" />
                 <span className="font-bold">
                   Roadmap: เดือนที่ {roadmapStatus.currentMonth}/6
                 </span>
@@ -340,27 +341,27 @@ export function Dashboard() {
                 <span className="text-white/80 line-clamp-1">
                   {roadmapStatus.monthTitle.split(':')[1]?.trim() || roadmapStatus.monthTitle}
                 </span>
-                <ArrowRight className="w-3 h-3 text-blue-400 ml-1" />
+                <ArrowRight className="w-3 h-3 text-blue-400 ml-1" aria-hidden="true" />
               </Link>
 
               <button
                 type="button"
                 onClick={() => setIsOnboardingModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600/30 hover:bg-blue-600/50 text-xs text-blue-200 border border-blue-400/30 transition-colors"
-                title="เปิดตัวช่วยตั้งเป้าหมายและจัดตารางเรียน 6 ขั้นตอน"
+                aria-label="เปิดตัวช่วยสร้างแผนการเรียน 6 ขั้นตอน (Study Onboarding)"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-xl bg-blue-600/30 hover:bg-blue-600/50 text-xs text-blue-200 border border-blue-400/30 transition-colors focus:ring-2 focus:ring-blue-400"
               >
-                <Sparkles className="w-3.5 h-3.5 text-blue-300" />
+                <Sparkles className="w-3.5 h-3.5 text-blue-300" aria-hidden="true" />
                 <span>ตัวช่วยสร้างแผน (Onboarding)</span>
               </button>
             </div>
           </div>
 
           {/* Right Stat Cards */}
-          <div className="flex flex-wrap gap-2.5 sm:gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2.5 sm:gap-3 w-full lg:w-auto">
             {/* Streak */}
-            <div className="bg-white/[0.07] backdrop-blur border border-white/[0.08] rounded-2xl p-3.5 min-w-[110px] sm:min-w-[125px]">
+            <div className="bg-white/[0.07] backdrop-blur border border-white/[0.08] rounded-2xl p-3 sm:p-3.5">
               <div className="flex items-center gap-1.5 mb-1">
-                <Flame className="w-4 h-4 text-orange-400" />
+                <Flame className="w-4 h-4 text-orange-400" aria-hidden="true" />
                 <span className="text-[11px] text-white/60 font-medium">Streak</span>
               </div>
               <p className="text-xl font-bold">
@@ -369,9 +370,9 @@ export function Dashboard() {
             </div>
 
             {/* Total Study Hours */}
-            <div className="bg-white/[0.07] backdrop-blur border border-white/[0.08] rounded-2xl p-3.5 min-w-[110px] sm:min-w-[125px]">
+            <div className="bg-white/[0.07] backdrop-blur border border-white/[0.08] rounded-2xl p-3 sm:p-3.5">
               <div className="flex items-center gap-1.5 mb-1">
-                <Clock className="w-4 h-4 text-blue-400" />
+                <Clock className="w-4 h-4 text-blue-400" aria-hidden="true" />
                 <span className="text-[11px] text-white/60 font-medium">เวลาเรียน</span>
               </div>
               <p className="text-xl font-bold">
@@ -380,9 +381,9 @@ export function Dashboard() {
             </div>
 
             {/* Overall Progress */}
-            <div className="bg-white/[0.07] backdrop-blur border border-white/[0.08] rounded-2xl p-3.5 min-w-[110px] sm:min-w-[125px]">
+            <div className="bg-white/[0.07] backdrop-blur border border-white/[0.08] rounded-2xl p-3 sm:p-3.5">
               <div className="flex items-center gap-1.5 mb-1">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" aria-hidden="true" />
                 <span className="text-[11px] text-white/60 font-medium">ความก้าวหน้า</span>
               </div>
               <p className="text-xl font-bold">
@@ -393,11 +394,11 @@ export function Dashboard() {
             {/* Mastery Score */}
             <Link
               to="/progress"
-              className="bg-white/[0.07] hover:bg-white/[0.12] transition-colors backdrop-blur border border-purple-400/30 rounded-2xl p-3.5 min-w-[110px] sm:min-w-[125px] group"
-              title="ดูรายละเอียดระดับความเข้าใจ (Mastery 0-4)"
+              aria-label={`ระดับความเข้าใจ Mastery เฉลี่ย ${overallAverageMastery} จาก 4.0`}
+              className="bg-white/[0.07] hover:bg-white/[0.12] transition-colors backdrop-blur border border-purple-400/30 rounded-2xl p-3 sm:p-3.5 group focus:ring-2 focus:ring-purple-400 focus:outline-none"
             >
               <div className="flex items-center gap-1.5 mb-1">
-                <Award className="w-4 h-4 text-purple-300 group-hover:scale-110 transition-transform" />
+                <Award className="w-4 h-4 text-purple-300 group-hover:scale-110 transition-transform" aria-hidden="true" />
                 <span className="text-[11px] text-purple-200 font-medium">Mastery</span>
               </div>
               <p className="text-xl font-bold text-white">
@@ -409,11 +410,11 @@ export function Dashboard() {
             {/* Goals */}
             <Link
               to="/goals"
-              className="bg-white/[0.07] hover:bg-white/[0.12] transition-colors backdrop-blur border border-blue-400/30 rounded-2xl p-3.5 min-w-[110px] sm:min-w-[125px] group"
-              title="ดูเป้าหมายการเรียน 4 ระดับ (Goals)"
+              aria-label={`เป้าหมายที่สำเร็จแล้ว ${goalCompletedCount} จาก ${goalTotalCount}`}
+              className="col-span-2 sm:col-span-1 bg-white/[0.07] hover:bg-white/[0.12] transition-colors backdrop-blur border border-blue-400/30 rounded-2xl p-3 sm:p-3.5 group focus:ring-2 focus:ring-blue-400 focus:outline-none"
             >
               <div className="flex items-center gap-1.5 mb-1">
-                <Target className="w-4 h-4 text-blue-300 group-hover:scale-110 transition-transform" />
+                <Target className="w-4 h-4 text-blue-300 group-hover:scale-110 transition-transform" aria-hidden="true" />
                 <span className="text-[11px] text-blue-200 font-medium">เป้าหมาย</span>
               </div>
               <p className="text-xl font-bold text-white">

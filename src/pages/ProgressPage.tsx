@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useStore, computeLessonLearningRecord } from '../store/useStore';
 import { 
   Flame, 
@@ -38,6 +38,18 @@ export function ProgressPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [activeReviewItem, setActiveReviewItem] = useState<ReviewItem | null>(null);
+
+  // Keyboard accessibility: Escape key closes modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isGuideOpen) setIsGuideOpen(false);
+        if (activeReviewItem) setActiveReviewItem(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isGuideOpen, activeReviewItem]);
 
   // ── Metrics Computation ──────────────────────────────────────────
   const totalLessons = lessons.length;
@@ -166,9 +178,9 @@ export function ProgressPage() {
 
           <button
             onClick={() => setIsGuideOpen(true)}
-            className="px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/15 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors self-start sm:self-auto"
+            className="min-h-[44px] px-4 py-2 bg-white/10 hover:bg-white/15 border border-white/15 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors self-start sm:self-auto"
           >
-            <HelpCircle className="w-4 h-4 text-purple-300" />
+            <HelpCircle className="w-4 h-4 text-purple-300" aria-hidden="true" />
             <span>เกณฑ์ประเมิน 0–4</span>
           </button>
         </div>
@@ -235,16 +247,16 @@ export function ProgressPage() {
       </div>
 
       {/* ═══════════ Tab Navigation ═══════════ */}
-      <div className="flex items-center gap-2 border-b border-slate-200">
+      <div className="overflow-x-auto responsive-scroll-x flex items-center gap-2 border-b border-slate-200 -mx-2 sm:mx-0 px-2 sm:px-0">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all ${
+          className={`shrink-0 min-h-[44px] flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all ${
             activeTab === 'overview'
               ? 'border-purple-600 text-purple-700 bg-purple-50/50 rounded-t-xl'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Award className="w-4 h-4" /> สรุปภาพรวมรายวิชา & สิ่งที่ต้องใส่ใจ
+          <Award className="w-4 h-4" aria-hidden="true" /> สรุปภาพรวมรายวิชา & สิ่งที่ต้องใส่ใจ
           {topicsNeedingAttention.length > 0 && (
             <span className="px-2 py-0.2 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
               {topicsNeedingAttention.length}
@@ -254,24 +266,24 @@ export function ProgressPage() {
 
         <button
           onClick={() => setActiveTab('matrix')}
-          className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all ${
+          className={`shrink-0 min-h-[44px] flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all ${
             activeTab === 'matrix'
               ? 'border-blue-600 text-blue-700 bg-blue-50/50 rounded-t-xl'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Layers className="w-4 h-4" /> เมทริกซ์ความเชี่ยวชาญรายบท (Topic Matrix)
+          <Layers className="w-4 h-4" aria-hidden="true" /> เมทริกซ์ความเชี่ยวชาญรายบท (Topic Matrix)
         </button>
 
         <button
           onClick={() => setActiveTab('history')}
-          className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all ${
+          className={`shrink-0 min-h-[44px] flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all ${
             activeTab === 'history'
               ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-xl'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Clock className="w-4 h-4" /> สถิติเวลา & ประวัติการเรียน
+          <Clock className="w-4 h-4" aria-hidden="true" /> สถิติเวลา & ประวัติการเรียน
         </button>
       </div>
 

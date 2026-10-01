@@ -368,7 +368,7 @@ export function RoadmapPage() {
           </div>
 
           {/* Subject Filter */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          <div className="flex items-center gap-1.5 overflow-x-auto responsive-scroll-x pb-1 -mx-2 sm:mx-0 px-2 sm:px-0">
             <button
               onClick={() => setSelectedSubjectFilter('all')}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 border transition-all ${
@@ -428,7 +428,8 @@ export function RoadmapPage() {
                     </span>
                     <Link
                       to="/planner"
-                      className="px-3 py-1 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-600 border border-slate-200 rounded-lg text-xs font-semibold transition-colors"
+                      aria-label={`จัดบทเรียนสัปดาห์ที่ ${weekNum} ลงตารางเรียน`}
+                      className="min-h-[38px] px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-600 border border-slate-200 rounded-xl text-xs font-semibold transition-colors flex items-center"
                     >
                       จัดลงตาราง
                     </Link>

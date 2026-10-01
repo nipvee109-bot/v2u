@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   X, 
   AlertCircle, 
@@ -43,6 +43,18 @@ export function KnowledgeGapDetailModal({
 }: KnowledgeGapDetailModalProps) {
   const { lessons, unclearTopics = [] } = useStore();
   const [activeTab, setActiveTab] = useState<ModalTab>('notes');
+
+  // Close modal on Escape
+  useEffect(() => {
+    if (!gap) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [gap, onClose]);
 
   if (!gap) return null;
 
@@ -106,11 +118,15 @@ export function KnowledgeGapDetailModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-auto">
-        
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fadeIn">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="knowledge-gap-title"
+        className="bg-white rounded-3xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden my-auto"
+      >
         {/* Header */}
-        <div className="p-5 sm:p-6 bg-slate-900 text-white flex items-start justify-between gap-4 shrink-0 relative overflow-hidden">
+        <div className="p-4 sm:p-6 bg-slate-900 text-white flex items-start justify-between gap-4 shrink-0 relative overflow-hidden">
           <div className="absolute -top-12 -right-12 w-44 h-44 bg-blue-500/10 rounded-full blur-2xl" />
           <div className="relative z-10 flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -119,12 +135,12 @@ export function KnowledgeGapDetailModal({
               </span>
               <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 ${severityBadge.bg}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${severityBadge.dot}`} />
-                <SeverityIcon className="w-3 h-3" />
+                <SeverityIcon className="w-3 h-3" aria-hidden="true" />
                 <span>{severityBadge.label}</span>
               </span>
             </div>
 
-            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white leading-snug">
+            <h2 id="knowledge-gap-title" className="text-lg sm:text-xl font-bold tracking-tight text-white leading-snug">
               {gap.topic}
             </h2>
 
@@ -140,16 +156,17 @@ export function KnowledgeGapDetailModal({
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors relative z-10 shrink-0"
-            title="ปิด"
+            aria-label="ปิดรายละเอียดจุดที่ควรเสริม"
+            className="p-2 min-h-[44px] min-w-[44px] rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors relative z-10 shrink-0 flex items-center justify-center focus:ring-2 focus:ring-blue-400"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
           
           {/* Diagnostic Reasons Box */}
           <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3">

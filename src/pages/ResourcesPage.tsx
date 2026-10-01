@@ -183,25 +183,30 @@ export const ResourcesPage: React.FC = () => {
         {/* Search Bar + Favorites Toggle */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+            <label htmlFor="resource-library-search" className="sr-only">
+              ค้นหาตามชื่อคลิป ลิงก์ คำอธิบาย หรือบทเรียน
+            </label>
+            <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" aria-hidden="true" />
             <input
+              id="resource-library-search"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="ค้นหาตามชื่อคลิป, ลิงก์ URL, คำอธิบาย, หรือบทเรียนที่เกี่ยวข้อง..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-4 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500/20"
+              className="w-full min-h-[44px] rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-4 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
 
           <button
             onClick={() => setOnlyFavorites(!onlyFavorites)}
-            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-semibold transition-all shrink-0 ${
+            aria-pressed={onlyFavorites}
+            className={`inline-flex min-h-[44px] items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-semibold transition-all shrink-0 ${
               onlyFavorites
                 ? 'bg-amber-500 text-white shadow-xs'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
             }`}
           >
-            <Star className={`h-4 w-4 ${onlyFavorites ? 'fill-white' : ''}`} />
+            <Star className={`h-4 w-4 ${onlyFavorites ? 'fill-white' : ''}`} aria-hidden="true" />
             <span>{onlyFavorites ? 'กำลังแสดงเฉพาะรายการโปรด' : 'เฉพาะรายการโปรด'}</span>
           </button>
         </div>

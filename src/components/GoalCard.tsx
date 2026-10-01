@@ -204,23 +204,23 @@ export function GoalCard({
         {goal.type === 'custom' && onUpdateCustomProgress && (
           <div className="mt-2.5 flex items-center justify-between p-2 bg-slate-50 rounded-xl border border-slate-200 text-xs">
             <span className="text-slate-600 text-[11px]">ปรับความคืบหน้าเอง:</span>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => onUpdateCustomProgress(goal.id, Math.max(0, (goal.customProgress || 0) - 1))}
-                className="w-6 h-6 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-600 font-bold"
-                title="ลด 1"
+                className="w-8 h-8 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-600 font-bold transition-colors"
+                aria-label={`ลดความคืบหน้า 1 หน่วย สำหรับ ${goal.title}`}
               >
-                <Minus className="w-3 h-3" />
+                <Minus className="w-3.5 h-3.5" aria-hidden="true" />
               </button>
-              <span className="font-bold text-slate-800 px-1">{goal.currentValue}</span>
+              <span className="font-bold text-slate-800 px-1 min-w-[20px] text-center">{goal.currentValue}</span>
               <button
                 type="button"
                 onClick={() => onUpdateCustomProgress(goal.id, (goal.customProgress || 0) + 1)}
-                className="w-6 h-6 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-600 font-bold"
-                title="เพิ่ม 1"
+                className="w-8 h-8 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-600 font-bold transition-colors"
+                aria-label={`เพิ่มความคืบหน้า 1 หน่วย สำหรับ ${goal.title}`}
               >
-                <Plus className="w-3 h-3" />
+                <Plus className="w-3.5 h-3.5" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -228,13 +228,13 @@ export function GoalCard({
       </div>
 
       {/* Card Actions Footer */}
-      <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 text-xs">
+      <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-1 text-xs">
         <button
           onClick={() => onEdit(goal)}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-          title="แก้ไขเป้าหมาย"
+          className="w-9 h-9 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors"
+          aria-label={`แก้ไขเป้าหมาย ${goal.title}`}
         >
-          <Edit3 className="w-4 h-4" />
+          <Edit3 className="w-4 h-4" aria-hidden="true" />
         </button>
         <button
           onClick={() => {
@@ -242,10 +242,10 @@ export function GoalCard({
               onDelete(goal.id);
             }
           }}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-          title="ลบเป้าหมาย"
+          className="w-9 h-9 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors"
+          aria-label={`ลบเป้าหมาย ${goal.title}`}
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 className="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
     </div>

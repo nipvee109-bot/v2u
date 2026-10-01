@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { 
   Calendar as CalendarIcon, 
@@ -94,6 +94,20 @@ export function PlannerPage() {
   const [formError, setFormError] = useState<string>('');
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+  // Keyboard accessibility: Escape key closes active modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isAddModalOpen) setIsAddModalOpen(false);
+        if (completingSession) setCompletingSession(null);
+        if (reschedulingSession) setReschedulingSession(null);
+        if (isGoalModalOpen) setIsGoalModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isAddModalOpen, completingSession, reschedulingSession, isGoalModalOpen]);
 
   // Compute dynamic status: if date < today and status === 'planned', it's overdue
   const processedSessions = useMemo(() => {
@@ -1208,7 +1222,8 @@ export function PlannerPage() {
           </div>
 
           {/* Month grid */}
-          <div className="grid grid-cols-7 gap-px bg-slate-200 rounded-xl overflow-hidden border border-slate-200">
+          <div className="overflow-x-auto responsive-scroll-x -mx-2 sm:mx-0">
+            <div className="min-w-[620px] grid grid-cols-7 gap-px bg-slate-200 rounded-xl overflow-hidden border border-slate-200">
             {['จันทร์', 'อังคาร', 'พุธ', 'พฤหัส', 'ศุกร์', 'เสาร์', 'อาทิตย์'].map((dayName) => (
               <div key={dayName} className="bg-slate-50 py-2.5 text-center text-xs font-bold text-slate-600">
                 {dayName}
@@ -1288,6 +1303,7 @@ export function PlannerPage() {
                 );
               });
             })()}
+            </div>
           </div>
         </div>
       )}
@@ -1296,23 +1312,32 @@ export function PlannerPage() {
           MODAL: ADD / EDIT SESSION
           ================================================== */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div 
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-session-modal-title"
+        >
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 id="add-session-modal-title" className="text-base font-bold text-slate-900">
                 {editingSession ? 'แก้ไขแผนการเรียน' : 'เพิ่มแผนการเรียนใหม่'}
               </h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                className="w-10 h-10 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors"
+                aria-label="ปิดหน้าต่างเพิ่มแผนการเรียน"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
 
             <form onSubmit={handleSaveSession} className="p-6 space-y-4">
               {formError && (
-                <div className="p-3 rounded-xl bg-rose-50 text-rose-700 text-xs font-medium border border-rose-200">
+                <div 
+                  role="alert" 
+                  className="p-3 rounded-xl bg-rose-50 text-rose-700 text-xs font-medium border border-rose-200"
+                >
                   {formError}
                 </div>
               )}
@@ -1343,8 +1368,11 @@ export function PlannerPage() {
 
               {/* Lesson Dropdown */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">เลือกบทเรียนจากระบบ หรือ กำหนดเอง</label>
+                <label htmlFor="planner-form-lesson-select" className="block text-xs font-bold text-slate-700 mb-1.5">
+                  เลือกบทเรียนจากระบบ หรือ กำหนดเอง
+                </label>
                 <select
+                  id="planner-form-lesson-select"
                   value={formLessonId}
                   onChange={(e) => {
                     const lId = e.target.value;
@@ -1369,8 +1397,11 @@ export function PlannerPage() {
 
               {/* Title */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">ชื่อหัวข้อ / สิ่งที่จะทำ</label>
+                <label htmlFor="planner-form-title-input" className="block text-xs font-bold text-slate-700 mb-1.5">
+                  ชื่อหัวข้อ / สิ่งที่จะทำ
+                </label>
                 <input
+                  id="planner-form-title-input"
                   type="text"
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
@@ -1383,8 +1414,11 @@ export function PlannerPage() {
               {/* Type & Priority */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">ประเภทกิจกรรม</label>
+                  <label htmlFor="planner-form-type-select" className="block text-xs font-bold text-slate-700 mb-1.5">
+                    ประเภทกิจกรรม
+                  </label>
                   <select
+                    id="planner-form-type-select"
                     value={formType}
                     onChange={(e) => setFormType(e.target.value as StudySessionType)}
                     className="w-full text-xs font-medium border border-slate-200 rounded-xl p-2.5 outline-none focus:border-blue-500"
@@ -1397,8 +1431,11 @@ export function PlannerPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">ความสำคัญ (Priority)</label>
+                  <label htmlFor="planner-form-priority-select" className="block text-xs font-bold text-slate-700 mb-1.5">
+                    ความสำคัญ (Priority)
+                  </label>
                   <select
+                    id="planner-form-priority-select"
                     value={formPriority}
                     onChange={(e) => setFormPriority(e.target.value as 'Low' | 'Medium' | 'High')}
                     className="w-full text-xs font-medium border border-slate-200 rounded-xl p-2.5 outline-none focus:border-blue-500"
@@ -1413,8 +1450,11 @@ export function PlannerPage() {
               {/* Date & Time Range */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">วันที่</label>
+                  <label htmlFor="planner-form-date-input" className="block text-xs font-bold text-slate-700 mb-1.5">
+                    วันที่
+                  </label>
                   <input
+                    id="planner-form-date-input"
                     type="date"
                     value={formDate}
                     onChange={(e) => setFormDate(e.target.value)}
@@ -1423,8 +1463,11 @@ export function PlannerPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">เวลาเริ่ม</label>
+                  <label htmlFor="planner-form-starttime-input" className="block text-xs font-bold text-slate-700 mb-1.5">
+                    เวลาเริ่ม
+                  </label>
                   <input
+                    id="planner-form-starttime-input"
                     type="time"
                     value={formStartTime}
                     onChange={(e) => handleTimeChange(e.target.value, formEndTime)}
@@ -1433,8 +1476,11 @@ export function PlannerPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">เวลาเสร็จ</label>
+                  <label htmlFor="planner-form-endtime-input" className="block text-xs font-bold text-slate-700 mb-1.5">
+                    เวลาเสร็จ
+                  </label>
                   <input
+                    id="planner-form-endtime-input"
                     type="time"
                     value={formEndTime}
                     onChange={(e) => handleTimeChange(formStartTime, e.target.value)}
@@ -1452,8 +1498,11 @@ export function PlannerPage() {
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">บันทึกเพิ่มเติม</label>
+                <label htmlFor="planner-form-notes-input" className="block text-xs font-bold text-slate-700 mb-1.5">
+                  บันทึกเพิ่มเติม
+                </label>
                 <textarea
+                  id="planner-form-notes-input"
                   value={formNotes}
                   onChange={(e) => setFormNotes(e.target.value)}
                   placeholder="เช่น ทำแบบฝึกหัดท้ายบทที่ 3 ข้อ 1-10"
@@ -1465,13 +1514,13 @@ export function PlannerPage() {
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                  className="min-h-[44px] px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
                 >
                   ยกเลิก
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm transition-all"
+                  className="min-h-[44px] px-5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm transition-all"
                 >
                   {editingSession ? 'บันทึกการแก้ไข' : 'เพิ่มลงตาราง'}
                 </button>
@@ -1485,19 +1534,25 @@ export function PlannerPage() {
           MODAL: COMPLETE SESSION
           ================================================== */}
       {completingSession && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div 
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="complete-session-title"
+        >
           <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-200 space-y-4">
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" /> บันทึกการเรียนเสร็จสิ้น
+            <h3 id="complete-session-title" className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600" aria-hidden="true" /> บันทึกการเรียนเสร็จสิ้น
             </h3>
             <p className="text-xs text-slate-600">
               บทเรียน: <span className="font-bold text-slate-900">{completingSession.title}</span>
             </p>
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              <label htmlFor="complete-actual-minutes-input" className="block text-xs font-bold text-slate-700 mb-1.5">
                 เวลาที่ใช้เรียนจริง (นาที)
               </label>
               <input
+                id="complete-actual-minutes-input"
                 type="number"
                 value={actualMinutesInput}
                 onChange={(e) => setActualMinutesInput(Math.max(1, Number(e.target.value)))}
@@ -1511,13 +1566,13 @@ export function PlannerPage() {
             <div className="flex justify-end gap-2.5 pt-2">
               <button
                 onClick={() => setCompletingSession(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                className="min-h-[44px] px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
               >
                 ยกเลิก
               </button>
               <button
                 onClick={handleConfirmComplete}
-                className="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm transition-all"
+                className="min-h-[44px] px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm transition-all"
               >
                 ยืนยันเรียนจบแล้ว
               </button>
@@ -1530,10 +1585,15 @@ export function PlannerPage() {
           MODAL: RESCHEDULE SESSION
           ================================================== */}
       {reschedulingSession && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div 
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reschedule-session-title"
+        >
           <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-200 space-y-4">
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <FastForward className="w-5 h-5 text-blue-600" /> เลื่อนเวลาเรียน
+            <h3 id="reschedule-session-title" className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <FastForward className="w-5 h-5 text-blue-600" aria-hidden="true" /> เลื่อนเวลาเรียน
             </h3>
             <p className="text-xs text-slate-600">
               บทเรียน: <span className="font-bold text-slate-900">{reschedulingSession.title}</span>
@@ -1544,33 +1604,36 @@ export function PlannerPage() {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => handleConfirmReschedule(todayStr)}
-                  className="p-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 text-center transition-all"
+                  className="min-h-[44px] p-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 text-center transition-all flex items-center justify-center"
                 >
                   เรียนวันนี้ ({format(new Date(), 'd MMM')})
                 </button>
                 <button
                   onClick={() => handleConfirmReschedule(format(addDays(new Date(), 1), 'yyyy-MM-dd'))}
-                  className="p-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 text-center transition-all"
+                  className="min-h-[44px] p-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 text-center transition-all flex items-center justify-center"
                 >
                   พรุ่งนี้ ({format(addDays(new Date(), 1), 'd MMM')})
                 </button>
                 <button
                   onClick={() => handleConfirmReschedule(format(addDays(weekEnd, -1), 'yyyy-MM-dd'))}
-                  className="p-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 text-center transition-all"
+                  className="min-h-[44px] p-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 text-center transition-all flex items-center justify-center"
                 >
                   วันเสาร์นี้
                 </button>
                 <button
                   onClick={() => handleConfirmReschedule(format(weekEnd, 'yyyy-MM-dd'))}
-                  className="p-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 text-center transition-all"
+                  className="min-h-[44px] p-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 text-center transition-all flex items-center justify-center"
                 >
                   วันอาทิตย์นี้
                 </button>
               </div>
 
               <div className="pt-2">
-                <label className="block text-xs font-bold text-slate-700 mb-1">หรือเลือกวันที่กำหนดเอง:</label>
+                <label htmlFor="reschedule-custom-date" className="block text-xs font-bold text-slate-700 mb-1">
+                  หรือเลือกวันที่กำหนดเอง:
+                </label>
                 <input
+                  id="reschedule-custom-date"
                   type="date"
                   defaultValue={todayStr}
                   onChange={(e) => {
@@ -1584,7 +1647,7 @@ export function PlannerPage() {
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setReschedulingSession(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                className="min-h-[44px] px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
               >
                 ยกเลิก
               </button>
@@ -1597,10 +1660,15 @@ export function PlannerPage() {
           MODAL: WEEKLY GOAL SETTINGS
           ================================================== */}
       {isGoalModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div 
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="weekly-goal-modal-title"
+        >
           <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-200 space-y-4">
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Target className="w-5 h-5 text-purple-600" /> ตั้งเป้าหมายสัปดาห์ (Weekly Goals)
+            <h3 id="weekly-goal-modal-title" className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <Target className="w-5 h-5 text-purple-600" aria-hidden="true" /> ตั้งเป้าหมายสัปดาห์ (Weekly Goals)
             </h3>
             <p className="text-xs text-slate-500">
               กำหนดเป้าหมายเพื่อเป็นเกณฑ์วัดความก้าวหน้าและการรักษาวินัยในแต่ละสัปดาห์
@@ -1608,7 +1676,7 @@ export function PlannerPage() {
 
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="targetHoursInput" className="block text-xs font-bold text-slate-700 mb-1">
                   เป้าหมายชั่วโมงเรียนรวม (ชม./สัปดาห์)
                 </label>
                 <input
@@ -1620,7 +1688,7 @@ export function PlannerPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="targetLessonsInput" className="block text-xs font-bold text-slate-700 mb-1">
                   เป้าหมายจำนวนบทเรียนใหม่ที่จบ (บท/สัปดาห์)
                 </label>
                 <input
@@ -1632,7 +1700,7 @@ export function PlannerPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="targetReviewsInput" className="block text-xs font-bold text-slate-700 mb-1">
                   เป้าหมายจำนวนครั้งทบทวน / ทำโจทย์ (ครั้ง/สัปดาห์)
                 </label>
                 <input
@@ -1648,7 +1716,7 @@ export function PlannerPage() {
             <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
               <button
                 onClick={() => setIsGoalModalOpen(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                className="min-h-[44px] px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
               >
                 ยกเลิก
               </button>
@@ -1664,7 +1732,7 @@ export function PlannerPage() {
                   });
                   setIsGoalModalOpen(false);
                 }}
-                className="px-5 py-2 text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-sm transition-all"
+                className="min-h-[44px] px-5 py-2 text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-sm transition-all"
               >
                 บันทึกเป้าหมาย
               </button>

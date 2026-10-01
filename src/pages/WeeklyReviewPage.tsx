@@ -160,14 +160,14 @@ export const WeeklyReviewPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrevWeek}
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
-              title="สัปดาห์ก่อนหน้า"
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+              aria-label="สัปดาห์ก่อนหน้า"
             >
-              <ChevronLeft className="h-4 w-4 text-slate-300" />
+              <ChevronLeft className="h-5 w-5 text-slate-300" aria-hidden="true" />
             </button>
 
-            <div className="rounded-xl bg-white/10 px-3.5 py-1.5 text-xs font-bold text-white flex items-center gap-2">
-              <Calendar className="h-3.5 w-3.5 text-blue-400" />
+            <div className="rounded-xl bg-white/10 px-3.5 py-2 text-xs font-bold text-white flex items-center gap-2">
+              <Calendar className="h-3.5 w-3.5 text-blue-400" aria-hidden="true" />
               <span>สัปดาห์ที่ {summary.weekNumber}</span>
               <span className="text-slate-400">&middot;</span>
               <span>{formattedRange}</span>
@@ -175,10 +175,10 @@ export const WeeklyReviewPage: React.FC = () => {
 
             <button
               onClick={handleNextWeek}
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
-              title="สัปดาห์ถัดไป"
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+              aria-label="สัปดาห์ถัดไป"
             >
-              <ChevronRight className="h-4 w-4 text-slate-300" />
+              <ChevronRight className="h-5 w-5 text-slate-300" aria-hidden="true" />
             </button>
           </div>
 
@@ -636,7 +636,8 @@ export const WeeklyReviewPage: React.FC = () => {
 
                     <button
                       onClick={() => setActiveReviewItem(r)}
-                      className="shrink-0 rounded-lg bg-purple-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-purple-700 transition-colors shadow-2xs"
+                      aria-label={`ทบทวน ${r.topic}`}
+                      className="shrink-0 min-h-[38px] px-3.5 py-1.5 rounded-xl bg-purple-600 text-xs font-bold text-white hover:bg-purple-700 transition-colors shadow-2xs"
                     >
                       ทบทวน
                     </button>
@@ -728,10 +729,10 @@ export const WeeklyReviewPage: React.FC = () => {
             <div className="pt-2">
               <Link
                 to="/planner"
-                className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
+                className="w-full min-h-[44px] inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
               >
                 <span>จัดตารางเรียนสัปดาห์หน้า</span>
-                <ArrowRight className="h-3.5 w-3.5" />
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
               </Link>
             </div>
           </div>

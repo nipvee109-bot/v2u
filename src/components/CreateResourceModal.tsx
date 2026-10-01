@@ -86,6 +86,18 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
     }
   }, [initialResource, isOpen, defaultSubject, defaultLessonId]);
 
+  // Close modal on Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   // Filter lessons based on selected subject
@@ -155,16 +167,21 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl transition-all">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 sm:p-4 backdrop-blur-xs animate-fadeIn">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-resource-modal-title"
+        className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl transition-all overflow-hidden"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-slate-100 px-4 sm:px-6 py-4">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-              <Link2 className="h-5 w-5" />
+              <Link2 className="h-5 w-5" aria-hidden="true" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 id="create-resource-modal-title" className="text-base font-bold text-slate-900">
                 {initialResource ? 'แก้ไขแหล่งเรียนรู้' : 'เพิ่มแหล่งเรียนรู้ใหม่'}
               </h2>
               <p className="text-xs text-slate-500">
@@ -173,43 +190,47 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+            aria-label="ปิดหน้าต่างเพิ่มแหล่งเรียนรู้"
+            className="rounded-xl p-2 min-h-[44px] min-w-[44px] text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors flex items-center justify-center focus:ring-2 focus:ring-blue-500"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5 max-h-[80vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="space-y-4 px-4 sm:px-6 py-5 max-h-[80vh] overflow-y-auto">
           {error && (
-            <div className="flex items-center gap-2 rounded-xl bg-rose-50 p-3 text-xs text-rose-700 border border-rose-200">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" />
+            <div role="alert" className="flex items-center gap-2 rounded-xl bg-rose-50 p-3 text-xs text-rose-700 border border-rose-200">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" aria-hidden="true" />
               <span>{error}</span>
             </div>
           )}
 
           {/* Title */}
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-700">
+            <label htmlFor="resource-title-input" className="mb-1 block text-xs font-semibold text-slate-700">
               ชื่อแหล่งเรียนรู้ <span className="text-rose-500">*</span>
             </label>
             <input
+              id="resource-title-input"
               type="text"
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="เช่น MIT Linear Algebra Lecture 1 หรือ ชีทสรุปสูตรฟิสิกส์"
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
 
           {/* URL */}
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-700">
+            <label htmlFor="resource-url-input" className="mb-1 block text-xs font-semibold text-slate-700">
               URL ลิงก์ <span className="text-rose-500">*</span>
             </label>
             <input
+              id="resource-url-input"
               type="url"
               required
               value={url}
@@ -222,10 +243,11 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
           {/* Grid: Type & Subject */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-700">
+              <label htmlFor="resource-type-select" className="mb-1 block text-xs font-semibold text-slate-700">
                 ประเภทสื่อ
               </label>
               <select
+                id="resource-type-select"
                 value={type}
                 onChange={(e) => setType(e.target.value as ResourceType)}
                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-blue-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20"
@@ -239,10 +261,11 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-700">
+              <label htmlFor="resource-subject-select" className="mb-1 block text-xs font-semibold text-slate-700">
                 วิชาที่เกี่ยวข้อง
               </label>
               <select
+                id="resource-subject-select"
                 value={subject}
                 onChange={(e) => {
                   setSubject(e.target.value as SubjectId);
@@ -340,13 +363,13 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+              className="rounded-xl px-4 py-2.5 min-h-[44px] text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors focus:ring-2 focus:ring-blue-500"
             >
               ยกเลิก
             </button>
             <button
               type="submit"
-              className="rounded-xl bg-blue-600 px-5 py-2 text-xs font-medium text-white shadow-xs hover:bg-blue-700 transition-colors"
+              className="rounded-xl bg-blue-600 px-5 py-2.5 min-h-[44px] text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors focus:ring-2 focus:ring-blue-500"
             >
               {initialResource ? 'บันทึกการแก้ไข' : 'เพิ่มแหล่งเรียนรู้'}
             </button>

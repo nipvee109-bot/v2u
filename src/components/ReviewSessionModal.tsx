@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { 
   X, 
@@ -84,15 +84,30 @@ function ReviewSessionModalContent({
     setStage('summary');
   };
 
+  // Close modal on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fadeIn">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="review-session-title"
+        className="bg-white rounded-3xl w-full max-w-xl max-h-[92vh] sm:max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden my-auto"
+      >
         {/* Header */}
-        <div className="p-6 bg-slate-900 text-white flex items-center justify-between shrink-0">
+        <div className="p-4 sm:p-6 bg-slate-900 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
-              <Brain className="w-5 h-5" />
+              <Brain className="w-5 h-5" aria-hidden="true" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -103,14 +118,16 @@ function ReviewSessionModalContent({
                   {reasonLabel}
                 </span>
               </div>
-              <h2 className="text-base font-bold text-white truncate max-w-md mt-0.5">
+              <h2 id="review-session-title" className="text-base font-bold text-white truncate max-w-xs sm:max-w-md mt-0.5">
                 {reviewItem.topic}
               </h2>
             </div>
           </div>
           <button 
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80 transition-colors"
+            aria-label="ปิดหน้าต่างทบทวนเนื้อหา"
+            className="w-9 h-9 min-h-[44px] min-w-[44px] rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80 hover:text-white transition-colors focus:ring-2 focus:ring-purple-400"
           >
             <X className="w-4 h-4" />
           </button>

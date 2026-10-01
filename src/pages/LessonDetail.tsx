@@ -122,6 +122,20 @@ export function LessonDetail() {
     }
   }, [urlAction, existingLesson, activeLearningSession, startLearningSession]);
 
+  // Keyboard accessibility: Escape key closes modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showAbandonedModal) setShowAbandonedModal(false);
+        if (showReviewModal) setShowReviewModal(false);
+        if (isResourceModalOpen) setIsResourceModalOpen(false);
+        if (activeReviewItem) setActiveReviewItem(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showAbandonedModal, showReviewModal, isResourceModalOpen, activeReviewItem]);
+
   const learningRecord = useMemo(() => {
     if (!lesson) return null;
     return computeLessonLearningRecord(lesson, learningSessionsHistory, sessions);
@@ -989,24 +1003,38 @@ export function LessonDetail() {
   return (
     <div className="max-w-4xl mx-auto pb-20">
       <div className="flex items-center justify-between mb-6">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 bg-white px-3.5 py-1.5 rounded-xl shadow-xs border border-slate-200/60 text-xs font-semibold transition-colors">
-          <ArrowLeft className="w-4 h-4" /> ย้อนกลับ
+        <button 
+          onClick={() => navigate(-1)} 
+          className="min-h-[44px] flex items-center gap-2 text-slate-600 hover:text-slate-900 bg-white px-4 py-2 rounded-xl shadow-xs border border-slate-200/60 text-xs font-semibold transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" aria-hidden="true" /> ย้อนกลับ
         </button>
-        <button onClick={handleDelete} className="text-slate-400 hover:text-rose-600 p-2 transition-colors" title="ลบบทเรียน">
-          <Trash2 className="w-4 h-4" />
+        <button 
+          onClick={handleDelete} 
+          className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors" 
+          aria-label="ลบบทเรียนนี้"
+        >
+          <Trash2 className="w-4 h-4" aria-hidden="true" />
         </button>
       </div>
 
       {/* Abandoned Session Confirmation Modal */}
       {showAbandonedModal && activeLearningSession && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div 
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="abandoned-session-title"
+        >
           <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
-                <AlertCircle className="w-5 h-5" />
+                <AlertCircle className="w-5 h-5" aria-hidden="true" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900">ตรวจพบเซสชันการเรียนที่เปิดค้างไว้</h3>
+                <h3 id="abandoned-session-title" className="text-base font-bold text-slate-900">
+                  ตรวจพบเซสชันการเรียนที่เปิดค้างไว้
+                </h3>
                 <p className="text-xs text-slate-500">เซสชันนี้เปิดค้างไว้นานกว่า 2 ชั่วโมง</p>
               </div>
             </div>
@@ -1015,14 +1043,15 @@ export function LessonDetail() {
             </p>
             <div className="space-y-2 pt-2">
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label htmlFor="abandoned-minutes-input" className="block text-xs font-bold text-slate-700 mb-1">
                   หากเรียนจบแล้ว ระบุเวลาเรียนจริง (นาที):
                 </label>
                 <input
+                  id="abandoned-minutes-input"
                   type="number"
                   value={confirmedMinutesInput}
                   onChange={(e) => setConfirmedMinutesInput(Math.max(1, Number(e.target.value)))}
-                  className="w-full text-xs font-bold border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500"
+                  className="w-full text-xs font-bold border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500 min-h-[40px]"
                   min={1}
                 />
               </div>
@@ -1032,7 +1061,7 @@ export function LessonDetail() {
                   setShowAbandonedModal(false);
                   setStep('notebook');
                 }}
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+                className="w-full min-h-[44px] py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
               >
                 ✓ ยืนยันว่าเรียนจบแล้ว (บันทึกเวลาจริง)
               </button>
@@ -1042,7 +1071,7 @@ export function LessonDetail() {
                   setShowAbandonedModal(false);
                   setStep('studying');
                 }}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+                className="w-full min-h-[44px] py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
               >
                 ▶ เรียนต่อจากเดิม
               </button>
@@ -1052,7 +1081,7 @@ export function LessonDetail() {
                   setShowAbandonedModal(false);
                   setStep('idle');
                 }}
-                className="w-full py-2 text-slate-500 hover:text-rose-600 text-xs font-semibold transition-colors"
+                className="w-full min-h-[44px] py-2 text-slate-500 hover:text-rose-600 text-xs font-semibold transition-colors"
               >
                 ✕ ยกเลิกเซสชันที่ค้าง (Discard)
               </button>
@@ -1063,28 +1092,42 @@ export function LessonDetail() {
 
       {/* Spaced Repetition Review Modal */}
       {showReviewModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div 
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="spaced-review-modal-title"
+        >
           <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-purple-100 flex items-center justify-center text-purple-600 shrink-0">
-                  <CalendarCheck className="w-5 h-5" />
+                  <CalendarCheck className="w-5 h-5" aria-hidden="true" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">บันทึกการทบทวน (Spaced Repetition)</h3>
+                  <h3 id="spaced-review-modal-title" className="text-base font-bold text-slate-900">
+                    บันทึกการทบทวน (Spaced Repetition)
+                  </h3>
                   <p className="text-xs text-slate-500">รอบที่ {(learningRecord?.reviewCount || 0) + 1}</p>
                 </div>
               </div>
-              <button onClick={() => setShowReviewModal(false)} className="text-slate-400 hover:text-slate-600 text-sm p-1">✕</button>
+              <button 
+                onClick={() => setShowReviewModal(false)} 
+                className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-xl transition-colors"
+                aria-label="ปิดหน้าต่างบันทึกการทบทวน"
+              >
+                ✕
+              </button>
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">
               การทบทวนความรู้อย่างสม่ำเสมอจะช่วยส่งต่อเนื้อหาเข้าสู่ Long-term Memory ระบบจะคำนวณวันทบทวนรอบถัดไปโดยอัตโนมัติ (3 วัน &rarr; 7 วัน &rarr; 14 วัน)
             </p>
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700">
+              <label htmlFor="spaced-review-note-input" className="block text-xs font-bold text-slate-700">
                 บันทึกการทบทวน (Optional notes):
               </label>
               <textarea
+                id="spaced-review-note-input"
                 value={reviewNoteInput}
                 onChange={(e) => setReviewNoteInput(e.target.value)}
                 placeholder="เช่น ทำโจทย์เพิ่ม 2 ข้อ, ทบทวนสูตร, หรือข้อสังเกตสำคัญ..."
@@ -1094,7 +1137,7 @@ export function LessonDetail() {
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <button
                 onClick={() => setShowReviewModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
               >
                 ยกเลิก
               </button>
@@ -1104,9 +1147,9 @@ export function LessonDetail() {
                   setReviewNoteInput('');
                   setShowReviewModal(false);
                 }}
-                className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/20 transition-all flex items-center gap-1.5"
+                className="min-h-[44px] px-5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/20 transition-all flex items-center gap-1.5"
               >
-                <Check className="w-3.5 h-3.5" /> บันทึกการทบทวน
+                <Check className="w-3.5 h-3.5" aria-hidden="true" /> บันทึกการทบทวน
               </button>
             </div>
           </div>

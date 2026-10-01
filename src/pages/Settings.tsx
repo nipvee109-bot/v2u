@@ -312,33 +312,36 @@ export function Settings() {
           <div className="flex gap-3">
             <button
               onClick={() => setTheme('light')}
-              className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+              aria-pressed={theme === 'light'}
+              className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all min-h-[48px] ${
                 theme === 'light'
                   ? 'border-blue-500 bg-blue-50/70 text-blue-700 shadow-sm font-semibold'
                   : 'border-slate-100 hover:border-slate-200 text-slate-600'
               }`}
             >
-              <Sun className="w-6 h-6" /> สว่าง (Light)
+              <Sun className="w-6 h-6" aria-hidden="true" /> สว่าง (Light)
             </button>
             <button
               onClick={() => setTheme('dark')}
-              className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+              aria-pressed={theme === 'dark'}
+              className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all min-h-[48px] ${
                 theme === 'dark'
                   ? 'border-blue-500 bg-blue-50/70 text-blue-700 shadow-sm font-semibold'
                   : 'border-slate-100 hover:border-slate-200 text-slate-600'
               }`}
             >
-              <Moon className="w-6 h-6" /> มืด (Dark)
+              <Moon className="w-6 h-6" aria-hidden="true" /> มืด (Dark)
             </button>
             <button
               onClick={() => setTheme('system')}
-              className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+              aria-pressed={theme === 'system'}
+              className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all min-h-[48px] ${
                 theme === 'system'
                   ? 'border-blue-500 bg-blue-50/70 text-blue-700 shadow-sm font-semibold'
                   : 'border-slate-100 hover:border-slate-200 text-slate-600'
               }`}
             >
-              <Monitor className="w-6 h-6" /> ระบบ (System)
+              <Monitor className="w-6 h-6" aria-hidden="true" /> ระบบ (System)
             </button>
           </div>
         </div>
@@ -487,24 +490,23 @@ export function Settings() {
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => handleRestoreSnapshot(snap)}
-                      className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5"
-                      title="กู้คืนข้อมูลจาก Snapshot นี้"
+                      className="min-h-[38px] px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5"
                     >
-                      <RotateCcw className="w-3.5 h-3.5" /> กู้คืน (Restore)
+                      <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" /> กู้คืน (Restore)
                     </button>
                     <button
                       onClick={() => handleDownloadSnapshot(snap)}
-                      className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
-                      title="ดาวน์โหลดเป็นไฟล์ JSON"
+                      className="w-9 h-9 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors flex items-center justify-center"
+                      aria-label={`ดาวน์โหลดจุดสำรอง ${snap.label}`}
                     >
-                      <Download className="w-4 h-4" />
+                      <Download className="w-4 h-4" aria-hidden="true" />
                     </button>
                     <button
                       onClick={() => handleDeleteSnapshot(snap.id)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                      title="ลบ Snapshot นี้"
+                      className="w-9 h-9 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors flex items-center justify-center"
+                      aria-label={`ลบจุดสำรอง ${snap.label}`}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-4 h-4" aria-hidden="true" />
                     </button>
                   </div>
                 </div>
@@ -518,16 +520,16 @@ export function Settings() {
         {/* Danger Zone: Reset */}
         <div>
           <h2 className="text-lg font-bold text-rose-600 mb-2 flex items-center gap-2">
-            <RotateCcw className="w-5 h-5" /> รีเซ็ตข้อมูลกลับสู่ค่าเริ่มต้น (Reset to Default)
+            <RotateCcw className="w-5 h-5" aria-hidden="true" /> รีเซ็ตข้อมูลกลับสู่ค่าเริ่มต้น (Reset to Default)
           </h2>
           <p className="text-sm text-slate-500 mb-4">
             ล้างข้อมูลความคืบหน้าทั้งหมดและกลับสู่ชุดข้อมูลตั้งต้น (ระบบจะสร้าง Auto Backup ไว้ใน Local Snapshots ให้ก่อนรีเซ็ตเสมอ)
           </p>
           <button
             onClick={handleReset}
-            className="flex items-center gap-2 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 px-5 py-2.5 rounded-xl font-medium transition-colors text-sm"
+            className="min-h-[44px] flex items-center gap-2 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 px-5 py-2.5 rounded-xl font-medium transition-colors text-sm"
           >
-            <RotateCcw className="w-4 h-4" /> รีเซ็ตข้อมูล (Reset Data)
+            <RotateCcw className="w-4 h-4" aria-hidden="true" /> รีเซ็ตข้อมูล (Reset Data)
           </button>
         </div>
       </div>

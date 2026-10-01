@@ -17,11 +17,19 @@ export function CalendarPage() {
           {format(currentMonth, 'MMMM yyyy', { locale: th })}
         </h2>
         <div className="flex gap-2">
-          <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">
-            <ChevronLeft className="w-5 h-5 text-gray-600" />
+          <button 
+            onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} 
+            className="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+            aria-label="เดือนก่อนหน้า"
+          >
+            <ChevronLeft className="w-5 h-5 text-gray-600" aria-hidden="true" />
           </button>
-          <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">
-            <ChevronRight className="w-5 h-5 text-gray-600" />
+          <button 
+            onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} 
+            className="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+            aria-label="เดือนถัดไป"
+          >
+            <ChevronRight className="w-5 h-5 text-gray-600" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -70,7 +78,12 @@ export function CalendarPage() {
                <span className={`text-sm font-medium ${isSameDay(day, new Date()) ? 'bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center' : ''}`}>
                  {formattedDate}
                </span>
-               <button className="text-gray-300 hover:text-blue-500"><Plus className="w-4 h-4" /></button>
+               <button 
+                 className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-blue-500 rounded-lg hover:bg-blue-50 transition-colors"
+                 aria-label={`เพิ่มกิจกรรมวันที่ ${formattedDate}`}
+               >
+                 <Plus className="w-4 h-4" aria-hidden="true" />
+               </button>
             </div>
             <div className="mt-2 space-y-1">
               {dayLessons.map(l => (
@@ -99,10 +112,14 @@ export function CalendarPage() {
         <h1 className="text-2xl font-bold">ปฏิทินการเรียน</h1>
         <p className="text-slate-300 text-sm mt-1">วางแผนและติดตามการเรียนในแต่ละวัน</p>
       </div>
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+      <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100">
         {renderHeader()}
-        {renderDays()}
-        {renderCells()}
+        <div className="overflow-x-auto responsive-scroll-x -mx-2 sm:mx-0 px-2 sm:px-0">
+          <div className="min-w-[580px]">
+            {renderDays()}
+            {renderCells()}
+          </div>
+        </div>
       </div>
     </div>
   );

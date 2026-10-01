@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Sparkles,
@@ -133,11 +133,28 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
     navigate('/');
   };
 
+  // Close modal on Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleSkip();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col max-h-[90vh]">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="onboarding-modal-title"
+        className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh]"
+      >
         {/* Top Header & Progress */}
-        <div className="px-6 pt-5 pb-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+        <div className="px-4 sm:px-6 pt-5 pb-4 border-b border-slate-100 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-sm shadow-blue-600/30">
               {currentStep}/6
@@ -146,7 +163,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
               <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">
                 Study Onboarding &middot; ขั้นตอนที่ {currentStep}
               </p>
-              <h2 className="text-sm font-bold text-slate-800">
+              <h2 id="onboarding-modal-title" className="text-sm font-bold text-slate-800">
                 {currentStep === 1 && 'เป้าหมายหลัก 6 เดือน'}
                 {currentStep === 2 && 'วิชาที่ต้องการโฟกัส'}
                 {currentStep === 3 && 'เวลาเรียนต่อสัปดาห์'}
@@ -159,14 +176,17 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={handleSkip}
-              className="text-xs font-semibold text-slate-400 hover:text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+              className="text-xs font-semibold text-slate-500 hover:text-slate-800 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors focus:ring-2 focus:ring-blue-500"
             >
               ข้ามไปก่อน (Skip)
             </button>
             <button
+              type="button"
               onClick={handleSkip}
-              className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-colors"
+              aria-label="ปิดหน้าต่าง Onboarding"
+              className="w-9 h-9 min-h-[36px] min-w-[36px] rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors focus:ring-2 focus:ring-blue-500"
             >
               <X className="w-4 h-4" />
             </button>
@@ -182,7 +202,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
         </div>
 
         {/* Step Content (Scrollable) */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-5">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-5">
           {/* ═══════════ STEP 1: GOAL ═══════════ */}
           {currentStep === 1 && (
             <div className="space-y-4">
@@ -235,15 +255,16 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
 
               {/* Custom Goal Input */}
               <div className="pt-2">
-                <label className="block text-xs font-bold text-slate-600 mb-1">
+                <label htmlFor="custom-goal-input" className="block text-xs font-bold text-slate-700 mb-1">
                   หรือระบุเป้าหมายเฉพาะของคุณเอง:
                 </label>
                 <input
+                  id="custom-goal-input"
                   type="text"
                   value={customGoalText}
                   onChange={(e) => setCustomGoalText(e.target.value)}
                   placeholder="เช่น สอบติดวิศวะการบิน / เตรียมแข่งโอลิมปิกวิชาการ"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </div>
@@ -401,19 +422,21 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
 
               {/* Custom Hours slider */}
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
-                <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+                <label htmlFor="weekly-hours-slider" className="flex items-center justify-between text-xs font-semibold text-slate-700">
                   <span>หรือปรับจำนวนชั่วโมงเอง:</span>
                   <span className="text-blue-600 font-bold text-sm">
                     {weeklyTargetHours} ชั่วโมง/สัปดาห์
                   </span>
-                </div>
+                </label>
                 <input
+                  id="weekly-hours-slider"
                   type="range"
                   min="5"
                   max="25"
                   step="1"
                   value={weeklyTargetHours}
                   onChange={(e) => setWeeklyTargetHours(Number(e.target.value))}
+                  aria-label="ปรับจำนวนชั่วโมงเรียนต่อสัปดาห์"
                   className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                 />
               </div>
@@ -612,19 +635,21 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
         </div>
 
         {/* Bottom Actions Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/50">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0 bg-slate-50/70">
           {currentStep > 1 ? (
             <button
+              type="button"
               onClick={() => setCurrentStep((prev) => prev - 1)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 hover:bg-white text-xs font-bold text-slate-700 transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 min-h-[44px] rounded-xl border border-slate-300 hover:bg-white text-xs font-bold text-slate-700 transition-colors focus:ring-2 focus:ring-blue-500"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>ย้อนกลับ</span>
             </button>
           ) : (
             <button
+              type="button"
               onClick={handleSkip}
-              className="text-xs font-semibold text-slate-400 hover:text-slate-600 px-3 py-2 rounded-xl transition-colors"
+              className="text-xs font-semibold text-slate-500 hover:text-slate-800 px-3 py-2.5 min-h-[44px] rounded-xl transition-colors focus:ring-2 focus:ring-blue-500 text-center"
             >
               ข้าม (Skip)
             </button>
@@ -632,23 +657,26 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
 
           {currentStep < 6 ? (
             <button
+              type="button"
               onClick={() => setCurrentStep((prev) => prev + 1)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition-all"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition-all focus:ring-2 focus:ring-blue-500"
             >
               <span>ขั้นตอนถัดไป</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
               <button
+                type="button"
                 onClick={handleSaveAndGoHome}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-white text-xs font-bold text-slate-700 transition-colors"
+                className="px-4 py-2.5 min-h-[44px] rounded-xl border border-slate-300 hover:bg-white text-xs font-bold text-slate-700 transition-colors focus:ring-2 focus:ring-blue-500 text-center"
               >
                 บันทึกและไปหน้าหลัก
               </button>
               <button
+                type="button"
                 onClick={handleSaveAndStartLesson}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 transition-all"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 transition-all focus:ring-2 focus:ring-emerald-500 text-center"
               >
                 <PlayCircle className="w-4 h-4" />
                 <span>เริ่มเรียนคาบแรกเลยทันที</span>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { X, Calendar, BookOpen, Award, ArrowRight, ExternalLink } from 'lucide-react';
 import type { DailyStudyPoint, QuizTrendPoint, SubjectId, Lesson } from '../../types';
@@ -21,21 +21,38 @@ export const AnalyticsDetailModal: React.FC<AnalyticsDetailModalProps> = ({
   selectedQuiz,
   lessons,
 }) => {
+  // Close on Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl transition-all overflow-hidden flex flex-col max-h-[85vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 sm:p-4 backdrop-blur-xs animate-fadeIn">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="analytics-detail-title"
+        className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl transition-all overflow-hidden flex flex-col max-h-[85vh] my-auto"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 shrink-0">
+        <div className="flex items-center justify-between border-b border-slate-100 px-4 sm:px-6 py-4 shrink-0">
           <div className="flex items-center gap-2.5">
             {selectedDay && (
               <>
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                  <Calendar className="h-5 w-5" />
+                  <Calendar className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">{selectedDay.label}</h3>
+                  <h3 id="analytics-detail-title" className="text-sm font-bold text-slate-900">{selectedDay.label}</h3>
                   <p className="text-xs text-slate-500">
                     เวลาเรียนรวม {selectedDay.hours} ชม. ({selectedDay.minutes} นาที) &middot; {selectedDay.sessionsCount} เซสชัน
                   </p>
@@ -71,15 +88,17 @@ export const AnalyticsDetailModal: React.FC<AnalyticsDetailModalProps> = ({
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+            aria-label="ปิดรายละเอียดสถิติ"
+            className="rounded-xl p-2 min-h-[44px] min-w-[44px] text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors flex items-center justify-center focus:ring-2 focus:ring-blue-500"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto space-y-4">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
           {/* Day Detail View */}
           {selectedDay && (
             <div className="space-y-3">
@@ -227,10 +246,11 @@ export const AnalyticsDetailModal: React.FC<AnalyticsDetailModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-slate-100 px-6 py-3 bg-slate-50/75 flex justify-end shrink-0">
+        <div className="border-t border-slate-100 px-4 sm:px-6 py-3 bg-slate-50/75 flex justify-end shrink-0">
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200/60 transition-colors"
+            className="rounded-xl px-5 py-2.5 min-h-[44px] text-xs font-semibold text-slate-700 hover:bg-slate-200/60 transition-colors focus:ring-2 focus:ring-blue-500"
           >
             ปิดหน้าต่าง
           </button>

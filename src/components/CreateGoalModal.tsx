@@ -74,6 +74,18 @@ export function CreateGoalModal({
     }
   }, [initialGoal, isOpen]);
 
+  // Close modal on Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   // Preset Date handlers
@@ -172,42 +184,49 @@ export function CreateGoalModal({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl w-full max-w-xl max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-auto">
-        
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fadeIn">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-goal-modal-title"
+        className="bg-white rounded-3xl w-full max-w-xl max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden my-auto"
+      >
         {/* Modal Header */}
-        <div className="p-5 sm:p-6 bg-slate-900 text-white flex items-center justify-between shrink-0">
+        <div className="p-4 sm:p-6 bg-slate-900 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
-              <Target className="w-5 h-5" />
+              <Target className="w-5 h-5" aria-hidden="true" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold">
+              <h2 id="create-goal-modal-title" className="text-base sm:text-lg font-bold">
                 {initialGoal ? 'แก้ไขเป้าหมายการเรียน' : 'สร้างเป้าหมายการเรียนใหม่'}
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-300 mt-0.5">
                 ความคืบหน้าจะคำนวณจากบันทึกการเรียนจริงโดยอัตโนมัติ
               </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+            aria-label="ปิดหน้าต่างสร้างเป้าหมาย"
+            className="p-2 min-h-[44px] min-w-[44px] rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors flex items-center justify-center focus:ring-2 focus:ring-blue-400"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
           
           {/* Title */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label htmlFor="goal-title-input" className="block text-xs font-bold text-slate-700 mb-1">
               ชื่อเป้าหมาย <span className="text-rose-500">*</span>
             </label>
             <input
+              id="goal-title-input"
               type="text"
               required
               value={title}
@@ -219,10 +238,11 @@ export function CreateGoalModal({
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label htmlFor="goal-desc-input" className="block text-xs font-bold text-slate-700 mb-1">
               คำอธิบายเป้าหมาย (ถ้ามี)
             </label>
             <input
+              id="goal-desc-input"
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -293,9 +313,10 @@ export function CreateGoalModal({
 
             <div className="grid grid-cols-2 gap-3 pt-1">
               <div>
-                <label className="block text-[11px] text-slate-500 mb-1">วันที่เริ่มต้น</label>
+                <label htmlFor="goal-start-date" className="block text-[11px] text-slate-500 mb-1">วันที่เริ่มต้น</label>
                 <div className="relative">
                   <input
+                    id="goal-start-date"
                     type="date"
                     required
                     value={startDate}
@@ -307,9 +328,10 @@ export function CreateGoalModal({
               </div>
 
               <div>
-                <label className="block text-[11px] text-slate-500 mb-1">วันสิ้นสุด (Deadline)</label>
+                <label htmlFor="goal-target-date" className="block text-[11px] text-slate-500 mb-1">วันสิ้นสุด (Deadline)</label>
                 <div className="relative">
                   <input
+                    id="goal-target-date"
                     type="date"
                     required
                     value={targetDate}
@@ -325,10 +347,11 @@ export function CreateGoalModal({
           {/* Target Value & Unit */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label htmlFor="goal-target-value" className="block text-xs font-bold text-slate-700 mb-1">
                 เป้าหมายที่ต้องการ (Target)
               </label>
               <input
+                id="goal-target-value"
                 type="number"
                 min="0.1"
                 step="any"
@@ -340,10 +363,11 @@ export function CreateGoalModal({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label htmlFor="goal-unit-input" className="block text-xs font-bold text-slate-700 mb-1">
                 หน่วยนับ (Unit)
               </label>
               <input
+                id="goal-unit-input"
                 type="text"
                 required
                 value={unit}
@@ -397,17 +421,17 @@ export function CreateGoalModal({
           )}
 
           {/* Action Buttons */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-slate-600 hover:text-slate-800 text-xs font-semibold"
+              className="px-4 py-2.5 min-h-[44px] text-slate-600 hover:text-slate-800 text-xs font-semibold rounded-xl hover:bg-slate-100 transition-colors focus:ring-2 focus:ring-blue-500"
             >
               ยกเลิก
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
+              className="px-5 py-2.5 min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors focus:ring-2 focus:ring-blue-500"
             >
               {initialGoal ? 'บันทึกการแก้ไข' : 'สร้างเป้าหมาย'}
             </button>
