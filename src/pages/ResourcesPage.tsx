@@ -17,6 +17,7 @@ import { SUBJECTS } from '../types';
 import { ResourceCard } from '../components/ResourceCard';
 import { CreateResourceModal } from '../components/CreateResourceModal';
 import { AssignLessonModal } from '../components/AssignLessonModal';
+import { ResourceDiscoveryModal } from '../components/study/ResourceDiscoveryModal';
 
 export const ResourcesPage: React.FC = () => {
   const { getAllResources, deleteResource, toggleFavoriteResource, lessons, resources } = useStore();
@@ -31,6 +32,7 @@ export const ResourcesPage: React.FC = () => {
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDiscoveryOpen, setIsDiscoveryOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [assigningResource, setAssigningResource] = useState<Resource | null>(null);
 
@@ -139,13 +141,22 @@ export const ResourcesPage: React.FC = () => {
             </p>
           </div>
 
-          <button
-            onClick={handleOpenAdd}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500 transition-all active:scale-95 shrink-0"
-          >
-            <Plus className="h-4 w-4" />
-            <span>เพิ่มแหล่งเรียนรู้</span>
-          </button>
+          <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+            <button
+              onClick={() => setIsDiscoveryOpen(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-600/90 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-600 transition-all active:scale-95"
+            >
+              <Sparkles className="h-4 w-4 text-indigo-200" />
+              <span>ค้นหาแหล่งเรียน (Discovery)</span>
+            </button>
+            <button
+              onClick={handleOpenAdd}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500 transition-all active:scale-95"
+            >
+              <Plus className="h-4 w-4" />
+              <span>เพิ่มแหล่งเรียนรู้</span>
+            </button>
+          </div>
         </div>
 
         {/* Ambient background blur elements */}
@@ -437,6 +448,12 @@ export const ResourcesPage: React.FC = () => {
         isOpen={Boolean(assigningResource)}
         resource={assigningResource}
         onClose={() => setAssigningResource(null)}
+      />
+
+      {/* Resource Discovery Modal */}
+      <ResourceDiscoveryModal
+        isOpen={isDiscoveryOpen}
+        onClose={() => setIsDiscoveryOpen(false)}
       />
     </div>
   );
