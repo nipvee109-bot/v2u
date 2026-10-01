@@ -11,6 +11,71 @@ export interface Resource {
 
 export type ConfidenceLevel = 'Low' | 'Medium' | 'High';
 export type MasteryLevel = 'Novice' | 'Familiar' | 'Proficient' | 'Mastered';
+export type MasteryScore = 0 | 1 | 2 | 3 | 4;
+
+export interface MasteryScaleInfo {
+  score: MasteryScore;
+  title: string;
+  shortDescription: string;
+  fullDescription: string;
+  criteria: string;
+  badgeClass: string;
+  barColor: string;
+  textColor: string;
+}
+
+export const MASTERY_SCALE: Record<MasteryScore, MasteryScaleInfo> = {
+  0: {
+    score: 0,
+    title: 'ยังไม่เรียน',
+    shortDescription: 'ยังไม่ได้เริ่มศึกษา',
+    fullDescription: 'ยังไม่ได้เริ่มศึกษาเนื้อหาในบทเรียนนี้ หรือยังไม่มีบันทึกการเรียนรู้จริง',
+    criteria: 'สถานะ NOT STARTED และยังไม่มีเวลาเรียนจริงหรือคะแนนทดสอบ',
+    badgeClass: 'bg-slate-100 text-slate-600 border-slate-200',
+    barColor: 'bg-slate-200',
+    textColor: 'text-slate-500',
+  },
+  1: {
+    score: 1,
+    title: 'พอรู้ว่าคืออะไร',
+    shortDescription: 'ทราบแนวคิดคร่าวๆ',
+    fullDescription: 'ทราบภาพรวม นิยาม หรือคำศัพท์พื้นฐาน แต่ยังไม่สามารถอธิบายรายละเอียดหรือขั้นตอนได้ด้วยตนเอง',
+    criteria: 'เริ่มเรียนแล้ว หรืออ่านเนื้อหาบางส่วน แต่ยังไม่ได้ทดสอบหรือทบทวน',
+    badgeClass: 'bg-sky-50 text-sky-700 border-sky-200',
+    barColor: 'bg-sky-400',
+    textColor: 'text-sky-600',
+  },
+  2: {
+    score: 2,
+    title: 'อธิบายพื้นฐานได้',
+    shortDescription: 'อธิบายหลักการสำคัญได้',
+    fullDescription: 'เข้าใจกลไกและหลักการสำคัญ สามารถสรุปประเด็นหลักและอธิบายแนวคิดพื้นฐานได้ถูกต้อง',
+    criteria: 'เรียนจบและมีบันทึกสรุป หรือคะแนน Quiz เบื้องต้น (>= 50%) หรือผ่านการทบทวน 1 รอบ',
+    badgeClass: 'bg-amber-50 text-amber-700 border-amber-200',
+    barColor: 'bg-amber-400',
+    textColor: 'text-amber-600',
+  },
+  3: {
+    score: 3,
+    title: 'ทำโจทย์/ใช้งานได้',
+    shortDescription: 'แก้โจทย์หรือเขียนโค้ดได้',
+    fullDescription: 'สามารถนำทฤษฎีไปลงมือปฏิบัติ ทำโจทย์ปัญหา หรือเขียนโค้ดแก้ปัญหามาตรฐานได้อย่างถูกต้อง',
+    criteria: 'คะแนน Quiz >= 70% และมีความมั่นใจระดับปานกลางขึ้นไป โดยไม่มีจุดติดค้างสำคัญ',
+    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    barColor: 'bg-emerald-500',
+    textColor: 'text-emerald-600',
+  },
+  4: {
+    score: 4,
+    title: 'อธิบายและประยุกต์ได้',
+    shortDescription: 'ประยุกต์ขั้นสูง & ถ่ายทอดได้',
+    fullDescription: 'มีความเข้าใจระดับโครงสร้าง สามารถวิเคราะห์ เชื่อมโยงบริบท ประยุกต์โจทย์ซับซ้อน และถ่ายทอดให้ผู้อื่นได้',
+    criteria: 'คะแนน Quiz >= 85% + ผ่าน Spaced Review อย่างน้อย 1 รอบ (จำได้) + มีบันทึกความเข้าใจลึกซึ้ง',
+    badgeClass: 'bg-purple-50 text-purple-700 border-purple-200',
+    barColor: 'bg-purple-600',
+    textColor: 'text-purple-600',
+  },
+};
 
 export interface QuizAttempt {
   id: string;
@@ -31,6 +96,7 @@ export interface LearningRecord {
   quizLatestScore?: number;
   confidence: ConfidenceLevel;
   mastery: MasteryLevel;
+  masteryScore?: MasteryScore;
   reviewCount: number;
   nextReviewAt?: string;
 }
@@ -56,10 +122,11 @@ export interface Lesson {
   resources: Resource[];
   images: string[];
 
-  // Phase 9: Per Lesson Memory Fields
+  // Phase 9 & 11: Per Lesson Memory & Mastery Fields
   quizAttempts?: QuizAttempt[];
   confidence?: ConfidenceLevel;
   mastery?: MasteryLevel;
+  masteryScore?: MasteryScore;
   firstStudiedAt?: string;
   lastStudiedAt?: string;
   totalStudyMinutes?: number;
@@ -194,5 +261,32 @@ export interface ReviewItem {
   status: ReviewStatus;
   reason: ReviewReason;
   priority: 'Low' | 'Medium' | 'High';
+}
+
+/* ==================================================
+   Phase 11: Mastery Tracking Models
+   ================================================== */
+
+export interface SubjectMasterySummary {
+  subjectId: SubjectId;
+  totalLessons: number;
+  completedLessons: number;
+  completionRate: number; // 0-100%
+  actualStudyHours: number;
+  averageQuizScore?: number;
+  averageMasteryScore: number; // 0.0 - 4.0
+  masteryDistribution: Record<MasteryScore, number>;
+}
+
+export interface TopicAttentionItem {
+  lessonId: string;
+  topic: string;
+  subjectId: SubjectId;
+  masteryScore: MasteryScore;
+  completionStatus: 'NOT STARTED' | 'IN PROGRESS' | 'COMPLETED';
+  quizScore?: number;
+  unclearCount: number;
+  isOverdueReview: boolean;
+  reasons: string[];
 }
 

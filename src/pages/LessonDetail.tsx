@@ -27,6 +27,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import type { Lesson, Resource, ConfidenceLevel, ReviewItem } from '../types';
 import { ReviewSessionModal } from '../components/ReviewSessionModal';
+import { MasteryBar } from '../components/MasteryBar';
 import { SUBJECTS } from '../types';
 import { format, parseISO, isPast, differenceInDays } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -697,26 +698,17 @@ export function LessonDetail() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Mastery Level */}
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-2">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">ระดับความเชี่ยวชาญ (Mastery)</span>
-                <div className="flex items-center gap-2">
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border ${
-                    learningRecord?.mastery === 'Mastered' ? 'bg-amber-50 text-amber-800 border-amber-300' :
-                    learningRecord?.mastery === 'Proficient' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                    learningRecord?.mastery === 'Familiar' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                    'bg-slate-100 text-slate-700 border-slate-200'
-                  }`}>
-                    {learningRecord?.mastery === 'Mastered' && <Award className="w-3.5 h-3.5 text-amber-500" />}
-                    {learningRecord?.mastery}
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 leading-normal">
-                  {learningRecord?.mastery === 'Mastered' ? 'ยอดเยี่ยม! ผ่าน Quiz ≥ 90%, สรุปความรู้แล้ว, และทบทวนแล้ว' :
-                   learningRecord?.mastery === 'Proficient' ? 'ระดับดี: เรียนจบและทำ Quiz ≥ 70%' :
-                   learningRecord?.mastery === 'Familiar' ? 'ระดับคุ้นเคย: มีการเรียนหรือฝึกทำข้อสอบ' :
-                   'ระดับเริ่มต้น: ยังไม่เริ่มหรือยังไม่ผ่านการทดสอบ'}
-                </p>
+              {/* Mastery Level (0-4 Scale) */}
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-2.5">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                  ระดับความเข้าใจ (Mastery 0–4)
+                </span>
+                <MasteryBar
+                  score={learningRecord?.masteryScore ?? 0}
+                  showLabel={true}
+                  showDescription={true}
+                  size="md"
+                />
               </div>
 
               {/* Confidence Selector */}

@@ -16,11 +16,13 @@ import {
   FileText,
   ExternalLink,
   Brain,
+  Award,
 } from 'lucide-react';
 import { SUBJECTS } from '../types';
 import type { SubjectId, ReviewItem } from '../types';
 import { ReviewSessionModal } from '../components/ReviewSessionModal';
 import { Link } from 'react-router-dom';
+import { computeLessonLearningRecord } from '../store/useStore';
 import {
   format,
   isSameDay,
@@ -73,7 +75,7 @@ const monthLabels = [
 ];
 
 export function Dashboard() {
-  const { lessons, unclearTopics, sessions = [], getDueReviewItems } = useStore();
+  const { lessons, unclearTopics, sessions = [], learningSessionsHistory = [], getDueReviewItems } = useStore();
   const [calendarDate] = useState(new Date());
 
   // ── Review Engine Queue ─────────────────────────────────────────
@@ -164,6 +166,15 @@ export function Dashboard() {
   );
   const totalHoursDisplay = (totalMinutes / 60).toFixed(1);
 
+  // ── Overall Mastery (0-4) ───────────────────────────────────────
+  const totalMasteryPoints = lessons.reduce((acc, l) => {
+    const record = computeLessonLearningRecord(l, learningSessionsHistory, sessions);
+    return acc + (record.masteryScore ?? 0);
+  }, 0);
+  const overallAverageMastery = lessons.length > 0 
+    ? (Math.round((totalMasteryPoints / lessons.length) * 10) / 10).toFixed(1)
+    : '0.0';
+
   // ── Subject progress ───────────────────────────────────────────
   const subjectProgress = (Object.keys(SUBJECTS) as SubjectId[]).map(
     (subjectId) => {
@@ -173,11 +184,19 @@ export function Dashboard() {
       ).length;
       const total = subjectLessons.length;
       const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      const subjectMasterySum = subjectLessons.reduce((acc, l) => {
+        const record = computeLessonLearningRecord(l, learningSessionsHistory, sessions);
+        return acc + (record.masteryScore ?? 0);
+      }, 0);
+      const avgMastery = total > 0 ? (Math.round((subjectMasterySum / total) * 10) / 10).toFixed(1) : '0.0';
+
       return {
         ...SUBJECTS[subjectId],
         completed,
         total,
         percent,
+        avgMastery,
       };
     }
   );
@@ -401,6 +420,24 @@ export function Dashboard() {
                 <span className="text-sm font-normal text-white/50">ชม.</span>
               </p>
             </div>
+
+            {/* Mastery Score (0-4) */}
+            <Link
+              to="/progress"
+              className="bg-white/[0.07] hover:bg-white/[0.12] transition-colors backdrop-blur border border-purple-400/30 rounded-2xl p-4 min-w-[130px] group"
+              title="ดูรายละเอียดระดับความเข้าใจ (Mastery 0-4)"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Award className="w-4 h-4 text-purple-300 group-hover:scale-110 transition-transform" />
+                <span className="text-xs text-purple-200 font-medium">
+                  Mastery
+                </span>
+              </div>
+              <p className="text-2xl font-bold text-white">
+                {overallAverageMastery}{' '}
+                <span className="text-sm font-normal text-purple-300">/ 4.0</span>
+              </p>
+            </Link>
           </div>
         </div>
       </div>
@@ -711,13 +748,24 @@ export function Dashboard() {
 
         {/* Subject Progress */}
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-200 p-6">
-          <div className="flex items-center gap-2.5 mb-5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
-              <TrendingUp className="w-4.5 h-4.5 text-emerald-600" />
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
+                <TrendingUp className="w-4.5 h-4.5 text-emerald-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  ความก้าวหน้าแยกวิชา
+                </h2>
+                <p className="text-xs text-slate-400">Completion vs Mastery</p>
+              </div>
             </div>
-            <h2 className="text-lg font-semibold text-slate-900">
-              ความก้าวหน้าแยกวิชา
-            </h2>
+            <Link
+              to="/progress"
+              className="text-xs font-bold text-purple-600 hover:text-purple-700 flex items-center gap-1 transition-colors"
+            >
+              เมทริกซ์เต็ม <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
 
           <div className="space-y-4">
@@ -733,10 +781,13 @@ export function Dashboard() {
                   <span className="text-sm font-medium text-slate-700 flex-1 truncate">
                     {subject.name}
                   </span>
+                  <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-100">
+                    M {subject.avgMastery}/4
+                  </span>
                   <span className="text-xs text-slate-400">
                     {subject.completed}/{subject.total}
                   </span>
-                  <span className="text-xs font-semibold text-slate-600 w-10 text-right">
+                  <span className="text-xs font-semibold text-slate-600 w-9 text-right">
                     {subject.percent}%
                   </span>
                 </div>

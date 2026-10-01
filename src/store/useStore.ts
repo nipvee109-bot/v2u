@@ -10,11 +10,19 @@ import type {
   Resource,
   ConfidenceLevel,
   MasteryLevel,
+  MasteryScore,
+  SubjectMasterySummary,
+  TopicAttentionItem,
+  SubjectId,
   QuizAttempt,
   LearningRecord,
   ReviewItem,
   ReviewReason,
   ReviewOutcome
+} from '../types';
+import { 
+  SUBJECTS,
+  MASTERY_SCALE
 } from '../types';
 import { 
   initialLessons, 
@@ -87,6 +95,111 @@ export function computeSessionElapsedSeconds(session: LearningSession): number {
   return session.accumulatedSeconds + deltaSeconds;
 }
 
+export function scoreToMasteryLevel(score: MasteryScore): MasteryLevel {
+  switch (score) {
+    case 4:
+      return 'Mastered';
+    case 3:
+      return 'Proficient';
+    case 2:
+      return 'Familiar';
+    case 1:
+    case 0:
+    default:
+      return 'Novice';
+  }
+}
+
+export function calculateDeterministicMasteryScore(params: {
+  status: 'NOT STARTED' | 'IN PROGRESS' | 'COMPLETED';
+  totalStudyMinutes: number;
+  quizBestScore?: number;
+  quizLatestScore?: number;
+  confidence: ConfidenceLevel;
+  reviewCount: number;
+  lastReviewOutcome?: ReviewOutcome;
+  hasLearnedNotes?: boolean;
+  hasUnclearNotes?: boolean;
+  unclearTopicsCount?: number;
+}): MasteryScore {
+  const {
+    status,
+    totalStudyMinutes,
+    quizBestScore,
+    quizLatestScore,
+    confidence,
+    reviewCount,
+    lastReviewOutcome,
+    hasLearnedNotes = false,
+    unclearTopicsCount = 0,
+  } = params;
+
+  // Signal 0: Has the user even started?
+  if (status === 'NOT STARTED' && totalStudyMinutes === 0 && quizBestScore === undefined && reviewCount === 0) {
+    return 0;
+  }
+
+  // Blocker check: forgot during recent review, or multiple severe unclear points with low confidence
+  const hasSevereBlocker = lastReviewOutcome === 'forgot' || (unclearTopicsCount > 1 && confidence === 'Low');
+
+  // Level 4 (อธิบายและประยุกต์ได้):
+  // - Completed lesson
+  // - Strong assessment: best quiz >= 85% (and latest quiz >= 75%)
+  // - Verified memory retention: review count >= 1, last review != 'forgot' && != 'unsure'
+  // - Confidence 'High' (or 'Medium' with quiz >= 90%)
+  // - Meaningful notes recorded (hasLearnedNotes)
+  // - No severe blockers
+  if (
+    status === 'COMPLETED' &&
+    quizBestScore !== undefined &&
+    quizBestScore >= 85 &&
+    (quizLatestScore === undefined || quizLatestScore >= 75) &&
+    reviewCount >= 1 &&
+    lastReviewOutcome !== 'forgot' &&
+    lastReviewOutcome !== 'unsure' &&
+    (confidence === 'High' || (confidence === 'Medium' && quizBestScore >= 90)) &&
+    hasLearnedNotes &&
+    !hasSevereBlocker
+  ) {
+    return 4;
+  }
+
+  // Level 3 (ทำโจทย์/ใช้งานได้):
+  // - Completed lesson
+  // - Practical application: Quiz score >= 70% OR (quiz >= 60% AND reviewCount >= 1 AND lastReviewOutcome !== 'forgot')
+  // - Confidence >= 'Medium'
+  // - Has invested study time (totalStudyMinutes > 0)
+  // - Not severely blocked
+  if (
+    status === 'COMPLETED' &&
+    ((quizBestScore !== undefined && quizBestScore >= 70) ||
+     (quizBestScore !== undefined && quizBestScore >= 60 && reviewCount >= 1 && lastReviewOutcome !== 'forgot')) &&
+    confidence !== 'Low' &&
+    !hasSevereBlocker
+  ) {
+    return 3;
+  }
+
+  // Level 2 (อธิบายพื้นฐานได้):
+  // - Completed lesson with basic understanding (quiz >= 50% OR confidence >= 'Medium' OR reviewCount >= 1 OR hasLearnedNotes)
+  //   OR In-progress with substantial study time (>= 45 mins) and quiz >= 50%
+  if (
+    (status === 'COMPLETED' &&
+      ((quizBestScore !== undefined && quizBestScore >= 50) ||
+       confidence !== 'Low' ||
+       reviewCount >= 1 ||
+       hasLearnedNotes)) ||
+    (status === 'IN PROGRESS' && quizBestScore !== undefined && quizBestScore >= 50) ||
+    (status === 'IN PROGRESS' && totalStudyMinutes >= 45 && confidence !== 'Low')
+  ) {
+    return 2;
+  }
+
+  // Level 1 (พอรู้ว่าคืออะไร):
+  // Started studying, in progress, or completed with low quiz / low confidence / no notes
+  return 1;
+}
+
 export function computeLessonLearningRecord(
   lesson: Lesson,
   learningSessionsHistory: LearningSession[] = [],
@@ -145,25 +258,33 @@ export function computeLessonLearningRecord(
     nextReviewAt = reviewDate.toISOString();
   }
 
-  // Deterministic Mastery calculation
-  let calculatedMastery: MasteryLevel = 'Novice';
-  const hasLearnedNotes = Boolean(lesson.learnedNotes && lesson.learnedNotes.trim().length > 10);
-  const bestScore = quizBestScore ?? 0;
-
-  if (lesson.status === 'COMPLETED') {
-    if (bestScore >= 90 && reviewCount >= 1 && hasLearnedNotes) {
-      calculatedMastery = 'Mastered';
-    } else if (bestScore >= 70 && totalStudyMinutes > 0) {
-      calculatedMastery = 'Proficient';
-    } else {
-      calculatedMastery = 'Familiar';
-    }
-  } else if (lesson.status === 'IN PROGRESS' || studyCount > 0 || bestScore >= 40) {
-    calculatedMastery = 'Familiar';
-  } else {
-    calculatedMastery = 'Novice';
+  // Extract review outcome from review notes if present
+  let lastReviewOutcome: ReviewOutcome | undefined;
+  if (lesson.reviewNotes) {
+    if (lesson.reviewNotes.includes('(จำได้)')) lastReviewOutcome = 'remembered';
+    else if (lesson.reviewNotes.includes('(พอจำได้)')) lastReviewOutcome = 'partially';
+    else if (lesson.reviewNotes.includes('(ยังไม่แม่น)')) lastReviewOutcome = 'unsure';
+    else if (lesson.reviewNotes.includes('(จำไม่ได้)')) lastReviewOutcome = 'forgot';
   }
 
+  const hasLearnedNotes = Boolean(lesson.learnedNotes && lesson.learnedNotes.trim().length > 10);
+  const hasUnclearNotes = Boolean(lesson.stillUnclearNotes && lesson.stillUnclearNotes.trim().length > 0);
+
+  // Deterministic 0-4 Mastery calculation
+  const calculatedMasteryScore: MasteryScore = calculateDeterministicMasteryScore({
+    status: lesson.status,
+    totalStudyMinutes,
+    quizBestScore,
+    quizLatestScore,
+    confidence,
+    reviewCount,
+    lastReviewOutcome,
+    hasLearnedNotes,
+    hasUnclearNotes,
+  });
+
+  const masteryScore = lesson.masteryScore !== undefined ? lesson.masteryScore : calculatedMasteryScore;
+  const calculatedMastery: MasteryLevel = scoreToMasteryLevel(masteryScore);
   const mastery = lesson.mastery || calculatedMastery;
 
   return {
@@ -178,6 +299,7 @@ export function computeLessonLearningRecord(
     quizLatestScore,
     confidence,
     mastery,
+    masteryScore,
     reviewCount,
     nextReviewAt,
   };
@@ -243,6 +365,11 @@ interface StoreState {
   createReviewItemForLesson: (lessonId: string, reason?: ReviewReason, priority?: 'Low' | 'Medium' | 'High') => ReviewItem;
   submitReviewOutcome: (reviewItemId: string, outcome: ReviewOutcome, notes?: string) => void;
   getDueReviewItems: () => { overdue: ReviewItem[]; dueToday: ReviewItem[]; upcoming: ReviewItem[] };
+
+  // Phase 11: Mastery Tracking Actions & Getters
+  setLessonMasteryScore: (lessonId: string, score: MasteryScore) => void;
+  getSubjectMasterySummaries: () => SubjectMasterySummary[];
+  getTopicsNeedingAttention: () => TopicAttentionItem[];
 
   // Import / Export / Reset
   importData: (data: {
@@ -460,6 +587,148 @@ export const useStore = create<StoreState>()(
         });
 
         return { overdue, dueToday, upcoming };
+      },
+
+      // Phase 11: Mastery Tracking Actions & Getters
+      setLessonMasteryScore: (lessonId, score) => {
+        set((state) => ({
+          lessons: state.lessons.map((l) =>
+            l.id === lessonId
+              ? {
+                  ...l,
+                  masteryScore: score,
+                  mastery: scoreToMasteryLevel(score),
+                }
+              : l
+          ),
+        }));
+      },
+
+      getSubjectMasterySummaries: () => {
+        const state = get();
+        const subjects = Object.keys(SUBJECTS) as SubjectId[];
+        return subjects.map((subId) => {
+          const subLessons = state.lessons.filter((l) => l.subjectId === subId);
+          const totalLessons = subLessons.length;
+          const completedLessons = subLessons.filter((l) => l.status === 'COMPLETED').length;
+          const completionRate = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+          // Study hours
+          const actualStudyMinutes = subLessons.reduce((acc, l) => {
+            const record = computeLessonLearningRecord(l, state.learningSessionsHistory, state.sessions);
+            return acc + record.totalStudyMinutes;
+          }, 0);
+          const actualStudyHours = Math.round((actualStudyMinutes / 60) * 10) / 10;
+
+          // Quiz scores
+          const quizScores = subLessons
+            .map((l) => {
+              const record = computeLessonLearningRecord(l, state.learningSessionsHistory, state.sessions);
+              return record.quizBestScore;
+            })
+            .filter((s): s is number => s !== undefined);
+
+          const averageQuizScore = quizScores.length > 0
+            ? Math.round(quizScores.reduce((a, b) => a + b, 0) / quizScores.length)
+            : undefined;
+
+          // Mastery scores & distribution
+          const distribution: Record<MasteryScore, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
+          let sumMastery = 0;
+
+          subLessons.forEach((l) => {
+            const record = computeLessonLearningRecord(l, state.learningSessionsHistory, state.sessions);
+            const score = record.masteryScore ?? 0;
+            distribution[score] = (distribution[score] || 0) + 1;
+            sumMastery += score;
+          });
+
+          const averageMasteryScore = totalLessons > 0
+            ? Math.round((sumMastery / totalLessons) * 10) / 10
+            : 0;
+
+          return {
+            subjectId: subId,
+            totalLessons,
+            completedLessons,
+            completionRate,
+            actualStudyHours,
+            averageQuizScore,
+            averageMasteryScore,
+            masteryDistribution: distribution,
+          };
+        });
+      },
+
+      getTopicsNeedingAttention: () => {
+        const state = get();
+        const todayStr = new Date().toISOString().split('T')[0];
+        const items: TopicAttentionItem[] = [];
+
+        state.lessons.forEach((lesson) => {
+          const record = computeLessonLearningRecord(lesson, state.learningSessionsHistory, state.sessions);
+          const score = record.masteryScore ?? 0;
+          const reasons: string[] = [];
+
+          // Signal 1: Low mastery despite being started or completed
+          if (lesson.status === 'COMPLETED' && score <= 2) {
+            reasons.push(`เรียนจบแล้วแต่ระดับความเข้าใจยังอยู่ระดับ ${score}/4 (${MASTERY_SCALE[score].title})`);
+          } else if (lesson.status === 'IN PROGRESS' && score <= 1 && record.totalStudyMinutes >= 45) {
+            reasons.push(`กำลังเรียนและใช้เวลาไปแล้ว ${Math.round(record.totalStudyMinutes / 60)} ชม. แต่ยังอยู่ระดับ ${score}/4`);
+          }
+
+          // Signal 2: Low quiz score (< 60%)
+          if (record.quizBestScore !== undefined && record.quizBestScore < 60) {
+            reasons.push(`คะแนนแบบทดสอบ ${record.quizBestScore}% (ต่ำกว่าเกณฑ์ 60%)`);
+          }
+
+          // Signal 3: Unclear topics or repeated unclear notes
+          const unclearForLesson = (state.unclearTopics || []).filter(
+            (u) => (u.subjectId === lesson.subjectId && u.topic.toLowerCase().includes(lesson.title.toLowerCase())) ||
+                   (u.status !== 'Understood' && lesson.stillUnclearNotes && lesson.stillUnclearNotes.length > 5)
+          );
+          const hasUnclearNotes = Boolean(lesson.stillUnclearNotes && lesson.stillUnclearNotes.trim().length > 5);
+          const unclearCount = unclearForLesson.length + (hasUnclearNotes ? 1 : 0);
+
+          if (unclearCount > 0) {
+            reasons.push(`มีบันทึกจุดที่ยังไม่เข้าใจ ${unclearCount} รายการ`);
+          }
+
+          // Signal 4: Overdue review in reviewQueue
+          const overdueReviews = (state.reviewQueue || []).filter(
+            (r) => r.lessonId === lesson.id && r.status !== 'completed' && r.nextReviewAt.split('T')[0] < todayStr
+          );
+          const isOverdueReview = overdueReviews.length > 0;
+
+          if (isOverdueReview) {
+            reasons.push('มีรอบทบทวนที่เลยกำหนดเวลา (Overdue Review)');
+          }
+
+          if (reasons.length > 0) {
+            items.push({
+              lessonId: lesson.id,
+              topic: lesson.title,
+              subjectId: lesson.subjectId,
+              masteryScore: score,
+              completionStatus: lesson.status,
+              quizScore: record.quizBestScore,
+              unclearCount,
+              isOverdueReview,
+              reasons,
+            });
+          }
+        });
+
+        // Sort: overdue reviews first, then most reasons, then lowest mastery
+        return items.sort((a, b) => {
+          if (a.isOverdueReview !== b.isOverdueReview) {
+            return a.isOverdueReview ? -1 : 1;
+          }
+          if (a.reasons.length !== b.reasons.length) {
+            return b.reasons.length - a.reasons.length;
+          }
+          return a.masteryScore - b.masteryScore;
+        });
       },
 
       // Unclear Topic Actions
