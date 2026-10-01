@@ -9,7 +9,7 @@ interface PlannedVsActualChartProps {
   overallAdherencePercent: number;
 }
 
-export const PlannedVsActualChart: React.FC<PlannedVsActualChartProps> = ({
+export const PlannedVsActualChart: React.FC<PlannedVsActualChartProps> = React.memo(({
   points,
   totalPlannedHours,
   totalActualHours,
@@ -152,4 +152,4 @@ export const PlannedVsActualChart: React.FC<PlannedVsActualChartProps> = ({
       </div>
     </div>
   );
-};
+});

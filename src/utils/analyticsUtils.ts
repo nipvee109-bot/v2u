@@ -26,7 +26,7 @@ import type {
   MasteryScore,
 } from '../types';
 import { SUBJECTS, MASTERY_SCALE } from '../types';
-import { computeLessonLearningRecord } from '../store/useStore';
+import { computeLessonLearningRecord, buildSessionsIndex } from '../store/useStore';
 
 export interface ComputeAnalyticsParams {
   dateRange: AnalyticsDateRange;
@@ -108,6 +108,11 @@ export function computeLearningAnalytics(params: ComputeAnalyticsParams): Learni
   const handledPlannedIds = new Set<string>();
   const handledLessonDates = new Set<string>();
 
+  const lessonMap = new Map<string, Lesson>();
+  for (let i = 0; i < lessons.length; i++) {
+    lessonMap.set(lessons[i].id, lessons[i]);
+  }
+
   // A. Aggregate Learning Sessions History
   learningSessionsHistory.forEach((ls) => {
     if (ls.status === 'completed' && ls.completedAt) {
@@ -129,7 +134,7 @@ export function computeLearningAnalytics(params: ComputeAnalyticsParams): Learni
               handledLessonDates.add(`${ls.lessonId}_${dateKey}`);
             }
 
-            const parentLesson = lessons.find((l) => l.id === ls.lessonId);
+            const parentLesson = ls.lessonId ? lessonMap.get(ls.lessonId) : undefined;
             const subId: SubjectId = parentLesson?.subjectId || 'programming';
             dayEntry.subjects.add(subId);
             dayEntry.details.push({
@@ -433,8 +438,13 @@ export function computeLearningAnalytics(params: ComputeAnalyticsParams): Learni
 
   // 8. Mastery Distribution
   const masteryScoreCountMap: Record<MasteryScore, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
+  const { learningMap, plannerMap } = buildSessionsIndex(learningSessionsHistory, sessions);
   lessons.forEach((l) => {
-    const record = computeLessonLearningRecord(l, learningSessionsHistory, sessions);
+    const record = computeLessonLearningRecord(
+      l,
+      learningMap.get(l.id) || [],
+      plannerMap.get(l.id) || []
+    );
     const score = (record.masteryScore ?? 0) as MasteryScore;
     masteryScoreCountMap[score] = (masteryScoreCountMap[score] || 0) + 1;
   });

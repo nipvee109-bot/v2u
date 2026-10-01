@@ -16,7 +16,7 @@ const SUBJECT_BAR_COLORS: Record<SubjectId, string> = {
   ai: 'bg-rose-500',
 };
 
-export const SubjectDistributionChart: React.FC<SubjectDistributionChartProps> = ({
+export const SubjectDistributionChart: React.FC<SubjectDistributionChartProps> = React.memo(({
   data,
   totalStudyHours,
   onSelectSubject,
@@ -126,4 +126,4 @@ export const SubjectDistributionChart: React.FC<SubjectDistributionChartProps> =
       )}
     </div>
   );
-};
+});

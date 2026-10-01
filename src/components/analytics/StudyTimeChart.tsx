@@ -8,7 +8,7 @@ interface StudyTimeChartProps {
   onSelectDay: (day: DailyStudyPoint) => void;
 }
 
-export const StudyTimeChart: React.FC<StudyTimeChartProps> = ({
+export const StudyTimeChart: React.FC<StudyTimeChartProps> = React.memo(({
   data,
   averageDailyHours,
   onSelectDay,
@@ -139,4 +139,4 @@ export const StudyTimeChart: React.FC<StudyTimeChartProps> = ({
       </div>
     </div>
   );
-};
+});

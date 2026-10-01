@@ -10,7 +10,7 @@ interface QuizTrendChartProps {
   onSelectQuiz: (quiz: QuizTrendPoint) => void;
 }
 
-export const QuizTrendChart: React.FC<QuizTrendChartProps> = ({
+export const QuizTrendChart: React.FC<QuizTrendChartProps> = React.memo(({
   data,
   averageScore,
   scoreChangePercent,
@@ -241,4 +241,4 @@ export const QuizTrendChart: React.FC<QuizTrendChartProps> = ({
   function hoveredDayScore(id: string) {
     return hoveredPoint?.id === id;
   }
-};
+});
