@@ -25,6 +25,8 @@ export interface Lesson {
   stillUnclearNotes?: string;
   reviewNotes?: string;
   completedAt?: string;
+  actualStudyMinutes?: number;
+  quizScore?: number;
   resources: Resource[];
   images: string[];
 }
