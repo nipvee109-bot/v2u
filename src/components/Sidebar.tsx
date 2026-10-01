@@ -1,115 +1,157 @@
 import { NavLink } from 'react-router-dom';
-import { 
-  Home, 
-  Calendar, 
-  Map, 
-  BookOpen, 
-  Code, 
-  Zap, 
-  Brain, 
-  Target,
-  AlertCircle,
-  BarChart2,
-  Settings,
+import {
   GraduationCap,
-  X
+  LayoutDashboard,
+  Calendar,
+  Map,
+  Calculator,
+  Code2,
+  Atom,
+  Brain,
+  Cpu,
+  HelpCircle,
+  TrendingUp,
+  Settings,
+  X,
 } from 'lucide-react';
 
-const mainNavItems = [
-  { to: '/', icon: Home, label: 'หน้าหลัก' },
-  { to: '/calendar', icon: Calendar, label: 'ปฏิทิน' },
+interface SidebarProps {
+  onClose?: () => void;
+}
+
+interface NavItemConfig {
+  to: string;
+  icon: typeof LayoutDashboard;
+  label: string;
+  end?: boolean;
+  dot?: string;
+}
+
+const mainNav: NavItemConfig[] = [
+  { to: '/', icon: LayoutDashboard, label: 'หน้าหลัก', end: true },
+  { to: '/calendar', icon: Calendar, label: 'ตารางเรียน' },
   { to: '/roadmap', icon: Map, label: 'แผน 6 เดือน' },
-  { to: '/not-understood', icon: AlertCircle, label: 'สิ่งที่ยังไม่เข้าใจ' },
-  { to: '/progress', icon: BarChart2, label: 'บันทึกความก้าวหน้า' },
 ];
 
-const subjectNavItems = [
-  { to: '/subjects/math', icon: BookOpen, label: 'คณิตศาสตร์' },
-  { to: '/subjects/programming', icon: Code, label: 'Programming' },
-  { to: '/subjects/physics', icon: Zap, label: 'ฟิสิกส์' },
-  { to: '/subjects/tgat3', icon: Target, label: 'TGAT 3' },
-  { to: '/subjects/ai', icon: Brain, label: 'AI / Machine Learning' },
+const subjectNav: NavItemConfig[] = [
+  { to: '/subjects/math', icon: Calculator, label: 'คณิตศาสตร์', dot: 'bg-blue-400' },
+  { to: '/subjects/programming', icon: Code2, label: 'Programming', dot: 'bg-emerald-400' },
+  { to: '/subjects/physics', icon: Atom, label: 'ฟิสิกส์', dot: 'bg-orange-400' },
+  { to: '/subjects/tgat3', icon: Brain, label: 'TGAT 3', dot: 'bg-purple-400' },
+  { to: '/subjects/ai', icon: Cpu, label: 'AI / Machine Learning', dot: 'bg-rose-400' },
 ];
 
-export function Sidebar({ onClose }: { onClose?: () => void }) {
+const learningNav: NavItemConfig[] = [
+  { to: '/not-understood', icon: HelpCircle, label: 'สิ่งที่ยังไม่เข้าใจ' },
+  { to: '/progress', icon: TrendingUp, label: 'บันทึกความก้าวหน้า' },
+];
+
+function SectionLabel({ children }: { children: string }) {
   return (
-    <aside className="w-64 bg-slate-900 text-slate-300 h-screen flex flex-col shadow-2xl">
-      <div className="p-6 flex items-center justify-between">
+    <p className="px-3 pt-6 pb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+      {children}
+    </p>
+  );
+}
+
+function NavItem({ item, onClose }: { item: NavItemConfig; onClose?: () => void }) {
+  const Icon = item.icon;
+  return (
+    <NavLink
+      to={item.to}
+      end={item.end}
+      onClick={onClose}
+      className={({ isActive }) =>
+        `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+          isActive
+            ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25'
+            : 'text-slate-400 hover:bg-white/5 hover:text-white'
+        }`
+      }
+    >
+      {({ isActive }) => (
+        <>
+          <Icon className="h-[18px] w-[18px] shrink-0" />
+          <span className="truncate">{item.label}</span>
+          {item.dot && (
+            <span
+              className={`ml-auto h-1.5 w-1.5 shrink-0 rounded-full ${item.dot} ${
+                isActive ? 'opacity-80' : 'opacity-60 group-hover:opacity-100'
+              } transition-opacity`}
+            />
+          )}
+        </>
+      )}
+    </NavLink>
+  );
+}
+
+export function Sidebar({ onClose }: SidebarProps) {
+  return (
+    <aside className="flex h-full w-64 flex-col bg-[#0B1120]">
+      {/* Logo area */}
+      <div className="flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-3">
-          <GraduationCap className="w-8 h-8 text-blue-500" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 shadow-lg shadow-blue-600/25">
+            <GraduationCap className="h-5 w-5 text-white" />
+          </div>
           <div>
-            <h1 className="text-lg font-bold text-white leading-tight">Study Hub</h1>
+            <h1 className="text-sm font-bold text-white tracking-tight">วิศวะต่อ</h1>
+            <p className="text-[10px] text-slate-500">Engineering Study Hub</p>
           </div>
         </div>
         {onClose && (
-          <button onClick={onClose} className="md:hidden text-slate-400 hover:text-white">
-            <X className="w-5 h-5" />
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-white/5 hover:text-white transition-colors md:hidden"
+          >
+            <X className="h-5 w-5" />
           </button>
         )}
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-4 space-y-8 scrollbar-hide pb-6">
-        <div>
-           <p className="px-3 text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">เมนูหลัก</p>
-           <div className="space-y-1">
-             {mainNavItems.map((item) => (
-               <NavLink
-                 key={item.to}
-                 to={item.to}
-                 onClick={onClose}
-                 className={({ isActive }) =>
-                   `flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
-                     isActive
-                       ? 'bg-blue-600/10 text-blue-400 font-bold'
-                       : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                   }`
-                 }
-               >
-                 <item.icon className={`mr-3 h-5 w-5 flex-shrink-0 ${item.to === '/' ? 'text-blue-500' : ''}`} />
-                 {item.label}
-               </NavLink>
-             ))}
-           </div>
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-3 pb-4">
+        {/* Main */}
+        <SectionLabel>เมนูหลัก</SectionLabel>
+        <div className="flex flex-col gap-0.5">
+          {mainNav.map((item) => (
+            <NavItem key={item.to} item={item} onClose={onClose} />
+          ))}
         </div>
 
-        <div>
-           <p className="px-3 text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">วิชาเรียน</p>
-           <div className="space-y-1">
-             {subjectNavItems.map((item) => (
-               <NavLink
-                 key={item.to}
-                 to={item.to}
-                 onClick={onClose}
-                 className={({ isActive }) =>
-                   `flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
-                     isActive
-                       ? 'bg-blue-600/10 text-blue-400 font-bold'
-                       : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                   }`
-                 }
-               >
-                 <item.icon className="mr-3 h-4 w-4 flex-shrink-0" />
-                 {item.label}
-               </NavLink>
-             ))}
-           </div>
+        {/* Subjects */}
+        <SectionLabel>วิชาเรียน</SectionLabel>
+        <div className="flex flex-col gap-0.5">
+          {subjectNav.map((item) => (
+            <NavItem key={item.to} item={item} onClose={onClose} />
+          ))}
+        </div>
+
+        {/* Learning */}
+        <SectionLabel>การเรียน</SectionLabel>
+        <div className="flex flex-col gap-0.5">
+          {learningNav.map((item) => (
+            <NavItem key={item.to} item={item} onClose={onClose} />
+          ))}
         </div>
       </nav>
 
-      <div className="p-4 border-t border-slate-800">
+      {/* Bottom settings */}
+      <div className="border-t border-white/5 px-3 py-3">
         <NavLink
           to="/settings"
           onClick={onClose}
           className={({ isActive }) =>
-            `flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
+            `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
               isActive
-                ? 'bg-blue-600/10 text-blue-400 font-bold'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25'
+                : 'text-slate-400 hover:bg-white/5 hover:text-white'
             }`
           }
         >
-          <Settings className="mr-3 h-5 w-5 flex-shrink-0" />
-          การตั้งค่า / สำรองข้อมูล
+          <Settings className="h-[18px] w-[18px]" />
+          <span>การตั้งค่า</span>
         </NavLink>
       </div>
     </aside>
