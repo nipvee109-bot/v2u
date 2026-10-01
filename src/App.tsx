@@ -5,17 +5,10 @@ import { SubjectPage } from './pages/SubjectPage';
 import { LessonDetail } from './pages/LessonDetail';
 import { Settings } from './pages/Settings';
 import { PlannerPage } from './pages/PlannerPage';
+import { RoadmapPage } from './pages/RoadmapPage';
 import { NotUnderstoodPage } from './pages/NotUnderstoodPage';
 import { ProgressPage } from './pages/ProgressPage';
 import { SearchPage } from './pages/SearchPage';
-
-// Placeholder components for other routes
-const Placeholder = ({ title }: { title: string }) => (
-  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-    <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
-    <p className="text-gray-500 mt-2">หน้านี้กำลังอยู่ระหว่างการพัฒนา</p>
-  </div>
-);
 
 function App() {
   return (
@@ -25,7 +18,7 @@ function App() {
         <Route path="/search" element={<SearchPage />} />
         <Route path="/planner" element={<PlannerPage />} />
         <Route path="/calendar" element={<PlannerPage />} />
-        <Route path="/roadmap" element={<Placeholder title="แผน 6 เดือน" />} />
+        <Route path="/roadmap" element={<RoadmapPage />} />
         <Route path="/subjects/:id" element={<SubjectPage />} />
         <Route path="/lessons/:id" element={<LessonDetail />} />
         <Route path="/not-understood" element={<NotUnderstoodPage />} />

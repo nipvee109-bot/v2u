@@ -87,3 +87,27 @@ export interface WeeklyGoal {
   targetLessons: number;
   targetReviews: number;
 }
+
+/* ==================================================
+   Six Month Roadmap Engine Models
+   ================================================== */
+
+export interface Milestone {
+  id: string;
+  month: number;
+  title: string;
+  description: string;
+  targetDate?: string;
+  subjectId: SubjectId;
+  lessonKeywords?: string[];
+}
+
+export interface MonthRoadmapInfo {
+  month: number;
+  title: string;
+  subtitle: string;
+  description: string;
+  targetHours: number;
+  focusSubjects: SubjectId[];
+  milestones: Milestone[];
+}
