@@ -101,7 +101,7 @@ export function Layout({ children }: LayoutProps) {
             </button>
             <div className="hidden items-center gap-2 sm:flex md:hidden">
               <GraduationCap className="h-5 w-5 text-blue-600" />
-              <span className="text-sm font-bold text-slate-900">วิศวะต่อ</span>
+              <span className="text-sm font-bold text-slate-900">NextStep</span>
             </div>
           </div>
 

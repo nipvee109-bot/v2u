@@ -5,15 +5,23 @@ import {
   Sparkles,
   HelpCircle,
   TrendingUp,
-  CalendarCheck,
   Check,
   BookOpen,
-  X
+  X,
+  ArrowRight,
+  RotateCcw,
+  FileText,
+  Home,
+  GraduationCap,
 } from 'lucide-react';
 import type { Lesson, Resource, ConfidenceLevel, MasteryScore } from '../../types';
 import { MASTERY_SCALE } from '../../types';
 import { calculateDeterministicMasteryScore } from '../../store/useStore';
 import { formatDurationThai } from './LessonLearningHistory';
+import { VoiceSummaryInput } from './VoiceSummaryInput';
+import { getGroundedQuestionsForLesson } from '../../utils/reviewQuestions';
+
+export type NextActionChoice = 'next_lesson' | 'review' | 'dashboard' | 'notebook';
 
 interface PostLearningFlowModalProps {
   isOpen: boolean;
@@ -25,6 +33,7 @@ interface PostLearningFlowModalProps {
   initialUnclearNotes?: string;
   initialReviewNotes?: string;
   initialConfidence?: ConfidenceLevel;
+  nextLesson?: Lesson | null;
   onConfirm: (result: {
     actualMinutes: number;
     quizScore?: number;
@@ -33,6 +42,7 @@ interface PostLearningFlowModalProps {
     stillUnclearNotes: string;
     reviewNotes: string;
     newMasteryScore: MasteryScore;
+    nextAction?: NextActionChoice;
   }) => void;
 }
 
@@ -46,69 +56,108 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
   initialUnclearNotes = '',
   initialReviewNotes = '',
   initialConfidence = 'Medium',
+  nextLesson,
   onConfirm,
 }) => {
   const actualMinutes = Math.max(1, Math.round(elapsedSeconds / 60));
 
-  // State for form
+  // ── Step 1: Summary & Reflection state ──
   const [learnedNotes, setLearnedNotes] = useState(initialLearnedNotes || lesson.learnedNotes || '');
   const [stillUnclearNotes, setStillUnclearNotes] = useState(initialUnclearNotes || lesson.stillUnclearNotes || '');
   const [reviewNotes, setReviewNotes] = useState(initialReviewNotes || lesson.reviewNotes || '');
-  const [confidence, setConfidence] = useState<ConfidenceLevel>(initialConfidence || lesson.confidence || 'Medium');
+
+  // ── Step 2: Review Questions & Quiz state ──
+  const groundedQuiz = useMemo(() => getGroundedQuestionsForLesson(lesson), [lesson]);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [quizScoreInput, setQuizScoreInput] = useState<string>(lesson.quizScore !== undefined ? String(lesson.quizScore) : '');
+  const [useInteractiveQuiz, setUseInteractiveQuiz] = useState<boolean>(true);
+  const [confidence, setConfidence] = useState<ConfidenceLevel>(initialConfidence || lesson.confidence || 'Medium');
 
-  // Active step inside modal: 'recall' -> 'test' -> 'mastery'
-  const [activeStep, setActiveStep] = useState<'recall' | 'test' | 'summary'>('recall');
+  // Compute quiz score from interactive quiz or input
+  const computedQuizScore = useMemo<number | undefined>(() => {
+    if (useInteractiveQuiz && groundedQuiz.questions.length > 0) {
+      const answeredKeys = Object.keys(selectedAnswers);
+      if (answeredKeys.length === 0) return undefined;
+      let correct = 0;
+      groundedQuiz.questions.forEach((q) => {
+        if (selectedAnswers[q.id] === q.correctIndex) {
+          correct++;
+        }
+      });
+      return Math.round((correct / groundedQuiz.questions.length) * 100);
+    }
 
-  const parsedQuizScore = useMemo(() => {
     if (!quizScoreInput.trim()) return undefined;
     const num = parseInt(quizScoreInput, 10);
     return isNaN(num) ? undefined : Math.min(100, Math.max(0, num));
-  }, [quizScoreInput]);
+  }, [useInteractiveQuiz, groundedQuiz.questions, selectedAnswers, quizScoreInput]);
 
-  // Current baseline mastery
+  // ── Step 3: Mastery & Next Action state ──
   const oldMasteryScore = (lesson.masteryScore ?? 0) as MasteryScore;
   const oldMasteryMeta = MASTERY_SCALE[oldMasteryScore] || MASTERY_SCALE[0];
 
-  // Projected deterministic mastery calculation
   const newMasteryScore = useMemo<MasteryScore>(() => {
     const totalMinutes = (lesson.totalStudyMinutes || 0) + actualMinutes;
-    const bestScore = parsedQuizScore !== undefined
-      ? Math.max(parsedQuizScore, ...(lesson.quizAttempts || []).map((a) => a.score), lesson.quizScore || 0)
-      : (lesson.quizAttempts && lesson.quizAttempts.length > 0 ? Math.max(...lesson.quizAttempts.map(a => a.score)) : lesson.quizScore);
+    const bestScore = computedQuizScore !== undefined
+      ? Math.max(computedQuizScore, ...(lesson.quizAttempts || []).map((a) => a.score), lesson.quizScore || 0)
+      : (lesson.quizAttempts && lesson.quizAttempts.length > 0 ? Math.max(...lesson.quizAttempts.map((a) => a.score)) : lesson.quizScore);
 
     return calculateDeterministicMasteryScore({
       status: 'COMPLETED',
       totalStudyMinutes: totalMinutes,
       quizBestScore: bestScore,
-      quizLatestScore: parsedQuizScore,
+      quizLatestScore: computedQuizScore,
       confidence,
       reviewCount: lesson.reviewCount || 0,
       hasLearnedNotes: Boolean(learnedNotes.trim()),
       hasUnclearNotes: Boolean(stillUnclearNotes.trim()),
       unclearTopicsCount: stillUnclearNotes.trim() ? 1 : 0,
     });
-  }, [lesson, actualMinutes, parsedQuizScore, confidence, learnedNotes, stillUnclearNotes]);
+  }, [lesson, actualMinutes, computedQuizScore, confidence, learnedNotes, stillUnclearNotes]);
 
   const newMasteryMeta = MASTERY_SCALE[newMasteryScore] || MASTERY_SCALE[0];
   const isMasteryIncreased = newMasteryScore > oldMasteryScore;
 
+  // Recommended next action derived logically
+  const defaultRecommendedAction = useMemo<NextActionChoice>(() => {
+    if (stillUnclearNotes.trim() || (computedQuizScore !== undefined && computedQuizScore < 70)) {
+      return 'review';
+    }
+    if (nextLesson && newMasteryScore >= 2) {
+      return 'next_lesson';
+    }
+    return 'dashboard';
+  }, [stillUnclearNotes, computedQuizScore, nextLesson, newMasteryScore]);
+
+  const [selectedNextAction, setSelectedNextAction] = useState<NextActionChoice>(defaultRecommendedAction);
+
+  // Active step inside modal: 'recall' -> 'test' -> 'mastery'
+  const [activeStep, setActiveStep] = useState<'recall' | 'test' | 'summary'>('recall');
+
   if (!isOpen) return null;
+
+  const handleAnswerSelect = (questionId: string, optionIndex: number) => {
+    setSelectedAnswers((prev) => ({
+      ...prev,
+      [questionId]: optionIndex,
+    }));
+  };
 
   const handleFinish = () => {
     onConfirm({
       actualMinutes,
-      quizScore: parsedQuizScore,
+      quizScore: computedQuizScore,
       confidence,
       learnedNotes: learnedNotes.trim(),
       stillUnclearNotes: stillUnclearNotes.trim(),
       reviewNotes: reviewNotes.trim(),
       newMasteryScore,
+      nextAction: selectedNextAction,
     });
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-fadeIn overflow-y-auto"
       role="dialog"
       aria-modal="true"
@@ -132,7 +181,7 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-700">
-                Learn → Test → Master
+                NextStep &middot; Core Learning Loop
               </span>
               <span className="text-[10px] text-slate-400">สรุปการเรียนรู้</span>
             </div>
@@ -164,7 +213,7 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
                 : 'text-slate-400 hover:text-slate-700'
             }`}
           >
-            1. สรุปความรู้ (Recall)
+            1. สรุปความรู้ (Voice/Text)
           </button>
           <button
             type="button"
@@ -175,7 +224,7 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
                 : 'text-slate-400 hover:text-slate-700'
             }`}
           >
-            2. ประเมินความมั่นใจ & Quiz
+            2. คำถามทบทวน & Quiz
           </button>
           <button
             type="button"
@@ -186,37 +235,39 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
                 : 'text-slate-400 hover:text-slate-700'
             }`}
           >
-            <Award className="w-3.5 h-3.5" /> 3. ระดับ Mastery
+            <Award className="w-3.5 h-3.5" /> 3. Mastery & ก้าวถัดไป
           </button>
         </div>
 
-        {/* ── STEP 1: ACTIVE RECALL & NOTES ── */}
+        {/* ── STEP 1: SUMMARY & REFLECTION (VOICE / TEXT) ── */}
         {activeStep === 'recall' && (
           <div className="space-y-4 animate-in fade-in">
-            {/* Active Recall Prompt */}
+            {/* Tell NextStep what you learned prompt */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 rounded-2xl p-3.5 space-y-1">
-              <div className="flex items-center gap-1.5 text-blue-800 text-xs font-bold">
+              <div className="flex items-center gap-1.5 text-blue-900 text-xs font-bold">
                 <Sparkles className="w-4 h-4 text-blue-600" />
-                <span>Active Recall Challenge</span>
+                <span>บอก NextStep ว่าวันนี้คุณได้เรียนรู้อะไร</span>
               </div>
               <p className="text-[11px] text-blue-700 leading-relaxed">
-                การสรุปด้วยภาษาตนเองทันทีหลังเรียนจบ ช่วยเพิ่มอัตราการจำได้ในระยะยาว (Retention) มากกว่า 50%
+                ใช้ไมโครโฟนพูดสรุป 🎙️ หรือพิมพ์ ⌨️ ด้วยคำพูดของตนเอง เพื่อกระตุ้นสมองให้จดจำได้ยาวนานขึ้น (+50% Retention)
               </p>
             </div>
 
+            {/* Voice / Text Summary Input */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
                 <span>สิ่งที่ได้เรียนรู้ / สรุปสาระสำคัญ (Learned Notes)</span>
                 <span className="text-[10px] text-emerald-600 font-normal">บันทึกช่วยยกระดับ Mastery</span>
               </label>
-              <textarea
+              <VoiceSummaryInput
                 value={learnedNotes}
-                onChange={(e) => setLearnedNotes(e.target.value)}
-                placeholder="สรุปแนวคิดหลัก สูตร วิธีแก้ปัญหา หรือสิ่งที่เข้าใจชัดเจน..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 min-h-[90px] outline-none focus:border-blue-500 focus:bg-white resize-none"
+                onChange={setLearnedNotes}
+                placeholder="สรุปแนวคิดหลัก สูตร วิธีแก้ปัญหา หรือสิ่งที่เข้าใจชัดเจน... (พิมพ์หรือกดไอคอนไมโครโฟนเพื่อพูด)"
+                rows={4}
               />
             </div>
 
+            {/* Still Unclear Notes */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
                 <span className="flex items-center gap-1 text-amber-700">
@@ -228,11 +279,12 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
                 type="text"
                 value={stillUnclearNotes}
                 onChange={(e) => setStillUnclearNotes(e.target.value)}
-                placeholder="เช่น จุดที่ยังสงสัย, สัญลักษณ์คณิตศาสตร์ที่ยังไม่คล่อง..."
+                placeholder="เช่น จุดที่ยังสงสัย, สัญลักษณ์ที่ยังไม่คล่อง..."
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 outline-none focus:border-amber-500 focus:bg-white"
               />
             </div>
 
+            {/* Review Notes */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700 block">
                 สิ่งที่ต้องทบทวนเพิ่มเติม (Review Focus)
@@ -248,64 +300,126 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
           </div>
         )}
 
-        {/* ── STEP 2: TEST & CONFIDENCE ── */}
+        {/* ── STEP 2: REVIEW QUESTIONS & QUIZ ── */}
         {activeStep === 'test' && (
-          <div className="space-y-5 animate-in fade-in">
-            {/* Quiz Score Input & Presets */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
-                <span>คะแนนแบบทดสอบ (Quiz Score %)</span>
-                <span className="text-[10px] text-slate-400">เว้นว่างได้หากไม่ได้ทำ Quiz</span>
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={quizScoreInput}
-                  onChange={(e) => setQuizScoreInput(e.target.value)}
-                  placeholder="0 - 100"
-                  className="w-28 rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
-                />
-                <span className="text-xs font-bold text-slate-500">%</span>
-              </div>
-
-              {/* Quick score buttons */}
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <span className="text-[11px] text-slate-400">ปุ่มด่วน:</span>
-                {[
-                  { score: '95', label: '95% ยอดเยี่ยม' },
-                  { score: '80', label: '80% เข้าใจดี' },
-                  { score: '60', label: '60% พอใช้' },
-                  { score: '45', label: '45% ต้องทวน' },
-                ].map((item) => (
-                  <button
-                    key={item.score}
-                    type="button"
-                    onClick={() => setQuizScoreInput(item.score)}
-                    className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-semibold transition-colors"
-                  >
-                    {item.label}
-                  </button>
-                ))}
-                {quizScoreInput && (
-                  <button
-                    type="button"
-                    onClick={() => setQuizScoreInput('')}
-                    className="text-[11px] text-rose-500 hover:underline px-1"
-                  >
-                    ล้างค่า
-                  </button>
-                )}
-              </div>
+          <div className="space-y-4 animate-in fade-in">
+            {/* Mode Toggle: Interactive Quiz vs Custom Score */}
+            <div className="flex items-center justify-between bg-slate-100 p-1 rounded-xl text-xs">
+              <button
+                type="button"
+                onClick={() => setUseInteractiveQuiz(true)}
+                className={`flex-1 py-1.5 px-3 rounded-lg font-bold transition-all ${
+                  useInteractiveQuiz ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                คำถามทบทวนประจำบท ({groundedQuiz.questions.length} ข้อ)
+              </button>
+              <button
+                type="button"
+                onClick={() => setUseInteractiveQuiz(false)}
+                className={`flex-1 py-1.5 px-3 rounded-lg font-bold transition-all ${
+                  !useInteractiveQuiz ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                ป้อนคะแนนภายนอก / แบบฝึกหัด
+              </button>
             </div>
+
+            {useInteractiveQuiz ? (
+              <div className="space-y-3.5 max-h-[260px] overflow-y-auto pr-1">
+                <div className="text-[11px] text-slate-500 flex items-center justify-between">
+                  <span>{groundedQuiz.sourceDescription}</span>
+                  {computedQuizScore !== undefined && (
+                    <span className="font-bold text-blue-600">คะแนนปัจจุบัน: {computedQuizScore}%</span>
+                  )}
+                </div>
+
+                {groundedQuiz.questions.map((q, idx) => {
+                  const selected = selectedAnswers[q.id];
+                  const isAnswered = selected !== undefined;
+
+                  return (
+                    <div key={q.id} className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                      <p className="text-xs font-bold text-slate-800">
+                        {idx + 1}. {q.question}
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {q.options.map((opt, optIdx) => {
+                          const isOptionSelected = selected === optIdx;
+                          return (
+                            <button
+                              key={optIdx}
+                              type="button"
+                              onClick={() => handleAnswerSelect(q.id, optIdx)}
+                              className={`p-2 text-left rounded-xl text-xs transition-all border ${
+                                isOptionSelected
+                                  ? 'bg-blue-50 border-blue-400 text-blue-800 font-semibold'
+                                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                              }`}
+                            >
+                              <span className="text-[10px] text-slate-400 mr-1.5">
+                                {String.fromCharCode(65 + optIdx)}.
+                              </span>
+                              {opt}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {isAnswered && (
+                        <p className="text-[10px] text-slate-500 pt-1 border-t border-slate-200/60">
+                          💡 เฉลย/เหตุผล: {q.explanation}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-slate-700 block">
+                  คะแนนแบบทดสอบภายนอก (Quiz Score %)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={quizScoreInput}
+                    onChange={(e) => setQuizScoreInput(e.target.value)}
+                    placeholder="0 - 100"
+                    className="w-28 rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-bold text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
+                  />
+                  <span className="text-xs font-bold text-slate-500">%</span>
+                </div>
+
+                {/* Quick score buttons */}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className="text-[11px] text-slate-400">ปุ่มด่วน:</span>
+                  {[
+                    { score: '95', label: '95% ยอดเยี่ยม' },
+                    { score: '80', label: '80% เข้าใจดี' },
+                    { score: '60', label: '60% พอใช้' },
+                    { score: '45', label: '45% ต้องทวน' },
+                  ].map((item) => (
+                    <button
+                      key={item.score}
+                      type="button"
+                      onClick={() => setQuizScoreInput(item.score)}
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-semibold transition-colors"
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Confidence Selection */}
             <div className="space-y-2 pt-2 border-t border-slate-100">
               <label className="text-xs font-bold text-slate-700 block">
                 ระดับความมั่นใจในบทเรียนนี้ (Self-Assessment)
               </label>
-              <div className="grid grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-3 gap-2">
                 {[
                   { level: 'High' as ConfidenceLevel, title: 'มั่นใจมาก', desc: 'แก้โจทย์ได้ คล่องตัว', color: 'border-emerald-500 bg-emerald-50 text-emerald-800' },
                   { level: 'Medium' as ConfidenceLevel, title: 'ปานกลาง', desc: 'เข้าใจหลักการทั่วไป', color: 'border-blue-500 bg-blue-50 text-blue-800' },
@@ -317,7 +431,7 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
                       key={item.level}
                       type="button"
                       onClick={() => setConfidence(item.level)}
-                      className={`p-3 rounded-2xl text-left border-2 transition-all ${
+                      className={`p-2.5 rounded-2xl text-left border-2 transition-all ${
                         isSelected ? item.color + ' shadow-xs ring-2 ring-blue-500/20' : 'border-slate-200 hover:border-slate-300'
                       }`}
                     >
@@ -331,13 +445,13 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
           </div>
         )}
 
-        {/* ── STEP 3: DETERMINISTIC MASTERY PREVIEW ── */}
+        {/* ── STEP 3: MASTERY & RECOMMENDED NEXT ACTION ── */}
         {activeStep === 'summary' && (
           <div className="space-y-4 animate-in fade-in">
             {/* Projected Mastery Change Banner */}
             <div className={`p-4 rounded-2xl border transition-all ${
-              isMasteryIncreased 
-                ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200' 
+              isMasteryIncreased
+                ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200'
                 : 'bg-slate-50 border-slate-200'
             }`}>
               <div className="flex items-center justify-between gap-2">
@@ -348,9 +462,9 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
                       การคำนวณระดับความเชี่ยวชาญ (Mastery Recalculation)
                     </h4>
                     <p className="text-[11px] text-slate-500">
-                      {isMasteryIncreased 
-                        ? '🎉 ยินดีด้วย! ระดับความเชี่ยวชาญของคุณเพิ่มขึ้น' 
-                        : 'ระดับความเชี่ยวชาญได้รับการประเมินตามกฎจริง'}
+                      {isMasteryIncreased
+                        ? '🎉 ยินดีด้วย! ระดับความเชี่ยวชาญของคุณเพิ่มขึ้น'
+                        : 'ระดับความเชี่ยวชาญได้รับการประเมินตามหลักฐานจริง'}
                     </p>
                   </div>
                 </div>
@@ -380,24 +494,80 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
                 <p>
                   <strong className="text-slate-700">เกณฑ์ที่ตรง:</strong> {newMasteryMeta.criteria}
                 </p>
-                <p className="text-slate-500">
-                  {newMasteryMeta.fullDescription}
-                </p>
               </div>
             </div>
 
-            {/* Auto Spaced Review Notification */}
-            {(stillUnclearNotes.trim() || (parsedQuizScore !== undefined && parsedQuizScore < 70)) && (
-              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-purple-50 border border-purple-200 text-purple-900 text-xs">
-                <CalendarCheck className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold block">นัดหมาย Spaced Review อัตโนมัติ</span>
-                  <p className="text-[11px] text-purple-700 mt-0.5">
-                    เนื่องจากมีจุดที่ยังไม่เข้าใจหรือคะแนน Quiz ต่ำกว่าเกณฑ์ ระบบจะจัดคิวทบทวนภายใน 1 วัน เพื่อเสริมสร้างความจำถาวร
-                  </p>
-                </div>
+            {/* ── RECOMMENDED NEXT ACTION (User-controlled) ── */}
+            <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-2">
+              <div className="flex items-center gap-2 text-indigo-900 text-xs font-bold">
+                <GraduationCap className="w-4 h-4 text-indigo-600" />
+                <span>ก้าวถัดไปที่แนะนำ (Recommended Next Action)</span>
               </div>
-            )}
+              <p className="text-[11px] text-indigo-700">
+                {defaultRecommendedAction === 'review'
+                  ? '⚠️ มีจุดที่ยังติดขัดหรือคะแนนทดสอบต้องทวน แนะนำให้ตั้งคิวทบทวนพรุ่งนี้'
+                  : defaultRecommendedAction === 'next_lesson' && nextLesson
+                  ? `🌟 เข้าใจบทเรียนดีแล้ว แนะนำให้เรียนบทถัดไป: "${nextLesson.title}"`
+                  : '✅ บันทึกความก้าวหน้าเรียบร้อย สามารถกลับสู่หน้าหลักเพื่อดูภาพรวม'}
+              </p>
+
+              {/* User Selection Options */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                {nextLesson && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedNextAction('next_lesson')}
+                    className={`p-2.5 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition-all ${
+                      selectedNextAction === 'next_lesson'
+                        ? 'border-indigo-600 bg-white text-indigo-900 shadow-xs ring-2 ring-indigo-500/20'
+                        : 'border-indigo-200 bg-white/60 text-slate-700 hover:bg-white'
+                    }`}
+                  >
+                    <span className="truncate">เรียนบทถัดไป</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-indigo-600 shrink-0 ml-1" />
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedNextAction('review')}
+                  className={`p-2.5 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition-all ${
+                    selectedNextAction === 'review'
+                      ? 'border-indigo-600 bg-white text-indigo-900 shadow-xs ring-2 ring-indigo-500/20'
+                      : 'border-indigo-200 bg-white/60 text-slate-700 hover:bg-white'
+                  }`}
+                >
+                  <span>คิวทบทวน</span>
+                  <RotateCcw className="w-3.5 h-3.5 text-indigo-600 shrink-0 ml-1" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedNextAction('dashboard')}
+                  className={`p-2.5 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition-all ${
+                    selectedNextAction === 'dashboard'
+                      ? 'border-indigo-600 bg-white text-indigo-900 shadow-xs ring-2 ring-indigo-500/20'
+                      : 'border-indigo-200 bg-white/60 text-slate-700 hover:bg-white'
+                  }`}
+                >
+                  <span>กลับหน้าหลัก</span>
+                  <Home className="w-3.5 h-3.5 text-indigo-600 shrink-0 ml-1" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedNextAction('notebook')}
+                  className={`p-2.5 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition-all ${
+                    selectedNextAction === 'notebook'
+                      ? 'border-indigo-600 bg-white text-indigo-900 shadow-xs ring-2 ring-indigo-500/20'
+                      : 'border-indigo-200 bg-white/60 text-slate-700 hover:bg-white'
+                  }`}
+                >
+                  <span>สมุดบันทึก</span>
+                  <FileText className="w-3.5 h-3.5 text-indigo-600 shrink-0 ml-1" />
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

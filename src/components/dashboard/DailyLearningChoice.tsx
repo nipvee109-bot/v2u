@@ -174,8 +174,8 @@ export function DailyLearningChoice({
               <BookOpen className="w-6 h-6" />
             </div>
             <div>
-              <p className="font-bold text-slate-900 text-sm sm:text-base">เลือกเอง</p>
-              <p className="text-xs text-slate-500 mt-0.5">เลือกวิชา บทเรียน และแหล่งเรียนรู้ด้วยตัวเอง</p>
+              <p className="font-bold text-slate-900 text-sm sm:text-base">เลือกสิ่งที่อยากเรียน</p>
+              <p className="text-xs text-slate-500 mt-0.5">Choose What to Learn &middot; เลือกวิชาและบทเรียนด้วยตนเอง</p>
             </div>
             <ChevronRight className="w-5 h-5 text-slate-400 ml-auto shrink-0 group-hover:text-blue-500" />
           </button>
@@ -188,8 +188,8 @@ export function DailyLearningChoice({
               <Sparkles className="w-6 h-6" />
             </div>
             <div>
-              <p className="font-bold text-slate-900 text-sm sm:text-base">ให้ระบบจัดให้</p>
-              <p className="text-xs text-slate-500 mt-0.5">บอกเวลาที่มี แล้วระบบจะวางแผนให้อัตโนมัติ</p>
+              <p className="font-bold text-slate-900 text-sm sm:text-base">ให้ NextStep วางแผนให้</p>
+              <p className="text-xs text-slate-500 mt-0.5">Let NextStep Plan It &middot; จัดตารางอัตโนมัติตามเวลาที่คุณมี</p>
             </div>
             <ChevronRight className="w-5 h-5 text-slate-400 ml-auto shrink-0 group-hover:text-purple-500" />
           </button>

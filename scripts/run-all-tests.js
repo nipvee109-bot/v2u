@@ -8,10 +8,10 @@ const __dirname = path.dirname(__filename);
 const scriptsDir = __dirname;
 
 const files = fs.readdirSync(scriptsDir)
-  .filter(f => f.startsWith('test-phase-') && f.endsWith('.js'))
+  .filter(f => (f.startsWith('test-phase-') || f === 'test-nextstep-core-loop.js') && f.endsWith('.js'))
   .sort();
 
-console.log(`Found ${files.length} Phase test files. Executing in sequence...\n`);
+console.log(`Found ${files.length} test files. Executing in sequence...\n`);
 
 let passed = 0;
 let failed = 0;

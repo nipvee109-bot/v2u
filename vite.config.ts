@@ -9,9 +9,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'Engineering Study Hub',
-        short_name: 'StudyHub',
-        description: '6-Month Roadmap to Computer Engineering / AI',
+        name: 'NextStep — เส้นทางจากอาชีวะสู่มหาวิทยาลัย',
+        short_name: 'NextStep',
+        description: 'เส้นทางจากอาชีวะสู่มหาวิทยาลัย — Personal Learning Environment',
         theme_color: '#1e3a8a', // blue-900
         background_color: '#f9fafb', // gray-50
         display: 'standalone',

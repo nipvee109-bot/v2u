@@ -21,8 +21,10 @@ import type { Resource, ConfidenceLevel, MasteryScore } from '../types';
 import { SUBJECTS, MASTERY_SCALE } from '../types';
 import { ResourceViewer } from '../components/study/ResourceViewer';
 import { CreateResourceModal } from '../components/CreateResourceModal';
-import { PostLearningFlowModal } from '../components/study/PostLearningFlowModal';
+import { PostLearningFlowModal, type NextActionChoice } from '../components/study/PostLearningFlowModal';
+import { ResourceConfirmationModal } from '../components/study/ResourceConfirmationModal';
 import { formatVideoTime } from '../components/study/YouTubePlayer';
+import { VoiceSummaryInput } from '../components/study/VoiceSummaryInput';
 
 type ActiveTab = 'notes' | 'timestamps' | 'resources' | 'info';
 
@@ -81,14 +83,29 @@ export const StudyRoom: React.FC = () => {
   const [stillUnclearNotes, setStillUnclearNotes] = useState(lesson?.stillUnclearNotes || '');
   const [reviewNotes, setReviewNotes] = useState(lesson?.reviewNotes || '');
 
-  // Ensure active learning session is started
-  useEffect(() => {
-    if (lesson) {
-      if (!activeLearningSession || activeLearningSession.lessonId !== lesson.id) {
-        startLearningSession({ lessonId: lesson.id, source: selectedResource || undefined });
-      }
+  // Check if session is already active for this lesson
+  const isSessionStarted = activeLearningSession?.lessonId === lesson?.id;
+  const [isConfirmingResource, setIsConfirmingResource] = useState(!isSessionStarted);
+
+  // Compute next lesson for post-learning recommendation
+  const nextLesson = useMemo(() => {
+    if (!lesson) return null;
+    const sameSubjectLessons = lessons
+      .filter((l) => l.subjectId === lesson.subjectId)
+      .sort((a, b) => a.month - b.month || a.week - b.week);
+    const currentIndex = sameSubjectLessons.findIndex((l) => l.id === lesson.id);
+    if (currentIndex >= 0 && currentIndex < sameSubjectLessons.length - 1) {
+      return sameSubjectLessons[currentIndex + 1];
     }
-  }, [lesson, activeLearningSession, startLearningSession, selectedResource]);
+    return lessons.find((l) => l.status === 'NOT STARTED' && l.id !== lesson.id) || null;
+  }, [lessons, lesson]);
+
+  const handleConfirmResourceAndStart = (resourceToUse: Resource | undefined) => {
+    if (!lesson) return;
+    setSelectedResource(resourceToUse || null);
+    startLearningSession({ lessonId: lesson.id, source: resourceToUse });
+    setIsConfirmingResource(false);
+  };
 
   // Sync draft notes from active session or lesson
   useEffect(() => {
@@ -175,7 +192,7 @@ export const StudyRoom: React.FC = () => {
     setTimeout(() => setSeekTargetSeconds(null), 100);
   };
 
-  // Phase 33: Learn -> Test -> Master Finish Flow
+  // NextStep Core Learning Loop: Learn -> Test -> Master -> Next Action
   const handleModalConfirm = ({
     actualMinutes,
     quizScore,
@@ -184,6 +201,7 @@ export const StudyRoom: React.FC = () => {
     stillUnclearNotes: finalUnclearNotes,
     reviewNotes: finalReviewNotes,
     newMasteryScore,
+    nextAction,
   }: {
     actualMinutes: number;
     quizScore?: number;
@@ -192,6 +210,7 @@ export const StudyRoom: React.FC = () => {
     stillUnclearNotes: string;
     reviewNotes: string;
     newMasteryScore: MasteryScore;
+    nextAction?: NextActionChoice;
   }) => {
     if (!lesson) return;
 
@@ -233,7 +252,19 @@ export const StudyRoom: React.FC = () => {
     }
 
     setIsFinishModalOpen(false);
-    navigate(`/lessons/${lesson.id}?tab=timeline`);
+
+    // 5. Navigate to user-controlled next action
+    if (nextAction === 'next_lesson' && nextLesson) {
+      navigate(`/study/${nextLesson.id}`);
+    } else if (nextAction === 'review') {
+      navigate('/planner');
+    } else if (nextAction === 'dashboard') {
+      navigate('/');
+    } else if (nextAction === 'notebook') {
+      navigate(`/lessons/${lesson.id}?tab=notebook`);
+    } else {
+      navigate(`/lessons/${lesson.id}?tab=notebook`);
+    }
   };
 
   if (!lesson) {
@@ -478,12 +509,11 @@ export const StudyRoom: React.FC = () => {
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                   <span>สิ่งที่ฉันเรียนรู้ (Learned Notes)</span>
                 </label>
-                <textarea
+                <VoiceSummaryInput
                   value={learnedNotes}
-                  onChange={(e) => handleLearnedNotesChange(e.target.value)}
-                  placeholder="สรุปแนวคิด สูตร นิยาม หรือโค้ดตัวอย่างที่เข้าใจจากบทเรียน..."
+                  onChange={handleLearnedNotesChange}
+                  placeholder="สรุปแนวคิด สูตร นิยาม หรือโค้ดตัวอย่างที่เข้าใจจากบทเรียน... (พิมพ์หรือพูด)"
                   rows={4}
-                  className="w-full rounded-2xl border border-slate-200 p-3 text-xs sm:text-sm text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all placeholder-slate-400"
                 />
               </div>
 
@@ -715,8 +745,20 @@ export const StudyRoom: React.FC = () => {
         initialUnclearNotes={stillUnclearNotes}
         initialReviewNotes={reviewNotes}
         initialConfidence={lesson.confidence || 'Medium'}
+        nextLesson={nextLesson}
         onConfirm={handleModalConfirm}
       />
+
+      {/* Pre-study Learning Resource Confirmation */}
+      {isConfirmingResource && lesson && (
+        <ResourceConfirmationModal
+          isOpen={isConfirmingResource}
+          onClose={() => navigate(-1)}
+          lesson={lesson}
+          onConfirm={handleConfirmResourceAndStart}
+          onAddResource={() => setIsResourceModalOpen(true)}
+        />
+      )}
 
       {/* Create / Add Resource Modal */}
       <CreateResourceModal

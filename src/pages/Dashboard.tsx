@@ -46,6 +46,7 @@ import { RecentMemorySection } from '../components/dashboard/RecentMemorySection
 import { DailyLearningChoice } from '../components/dashboard/DailyLearningChoice';
 import { PersonalLearningCoachCard } from '../components/dashboard/PersonalLearningCoachCard';
 import { SIX_MONTH_ROADMAP } from '../data/roadmapData';
+import { ResourceConfirmationModal } from '../components/study/ResourceConfirmationModal';
 
 // ─── Subject raw color mapping ───────────────────────────────────────
 const subjectRawColor: Record<SubjectId, string> = {
@@ -228,7 +229,20 @@ export function Dashboard() {
   };
 
   const handleGapReStudy = (lessonId: string) => {
-    startLearningSession({ lessonId });
+    const lesson = lessons.find((l) => l.id === lessonId);
+    if (lesson && lesson.resources.length > 0) {
+      setPendingStudyLesson(lesson);
+    } else {
+      startLearningSession({ lessonId });
+      navigate(`/study/${lessonId}`);
+    }
+  };
+
+  // ── Resource Confirmation Modal state ─────────────────────────────
+  const [pendingStudyLesson, setPendingStudyLesson] = useState<typeof lessons[0] | null>(null);
+
+  const handleConfirmedStart = (lessonId: string, resource?: import('../types').Resource) => {
+    startLearningSession({ lessonId, source: resource });
     navigate(`/study/${lessonId}`);
   };
 
@@ -329,13 +343,13 @@ export function Dashboard() {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 rounded-full bg-blue-500/20 px-3.5 py-1 text-xs font-semibold text-blue-300 border border-blue-400/20">
               <Compass className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Phase 17 &middot; Smart Learning Command Center</span>
+              <span>NextStep &middot; เส้นทางจากอาชีวะสู่มหาวิทยาลัย</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-              ศูนย์ควบคุมการเรียนรู้
+              ศูนย์การเรียนรู้ NextStep
             </h1>
             <p className="text-white/70 text-xs md:text-sm max-w-lg">
-              ตอบคำถามครบ 7 ด้าน: งานวันนี้ &middot; คิวทบทวน &middot; Roadmap &middot; จุดเสริม &middot; เป้าหมายถัดไป
+              ระบบเตรียมความพร้อมสู่มหาวิทยาลัยสำหรับนักศึกษาอาชีวะ: สิ่งที่ต้องทำวันนี้ &middot; คิวทบทวน &middot; Roadmap &middot; จุดเสริมความเข้าใจ
             </p>
 
             {/* Answer 4: ตอนนี้ roadmap อยู่ตรงไหน? */}
@@ -504,8 +518,19 @@ export function Dashboard() {
         learningSessionsHistory={learningSessionsHistory}
         reviewQueue={reviewQueue}
         onStartLesson={(lessonId, resource) => {
-          startLearningSession({ lessonId, source: resource });
-          navigate(`/study/${lessonId}`);
+          if (resource) {
+            // Already selected resource in DailyLearningChoice — go directly
+            startLearningSession({ lessonId, source: resource });
+            navigate(`/study/${lessonId}`);
+          } else {
+            const lesson = lessons.find((l) => l.id === lessonId);
+            if (lesson && lesson.resources.length > 0) {
+              setPendingStudyLesson(lesson);
+            } else {
+              startLearningSession({ lessonId });
+              navigate(`/study/${lessonId}`);
+            }
+          }
         }}
       />
 
@@ -537,8 +562,13 @@ export function Dashboard() {
         recommendation={recommendation}
         secondaryLessons={secondaryLessons}
         onStartLesson={(id) => {
-          startLearningSession({ lessonId: id });
-          navigate(`/study/${id}`);
+          const lesson = lessons.find((l) => l.id === id);
+          if (lesson && lesson.resources.length > 0) {
+            setPendingStudyLesson(lesson);
+          } else {
+            startLearningSession({ lessonId: id });
+            navigate(`/study/${id}`);
+          }
         }}
       />
 
@@ -805,6 +835,19 @@ export function Dashboard() {
         onClose={() => setIsOnboardingModalOpen(false)}
         lessons={lessons}
       />
+
+      {/* Resource Confirmation Modal (pre-study) */}
+      {pendingStudyLesson && (
+        <ResourceConfirmationModal
+          isOpen={true}
+          onClose={() => setPendingStudyLesson(null)}
+          lesson={pendingStudyLesson}
+          onConfirm={(selectedResource) => {
+            handleConfirmedStart(pendingStudyLesson.id, selectedResource);
+            setPendingStudyLesson(null);
+          }}
+        />
+      )}
     </div>
   );
 }

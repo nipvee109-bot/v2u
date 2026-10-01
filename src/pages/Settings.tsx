@@ -96,7 +96,7 @@ export function Settings() {
       const dataStr = JSON.stringify(payload, null, 2);
       const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
       const dateStr = format(new Date(), 'yyyy-MM-dd_HHmm');
-      const filename = `engineering-study-hub-backup-${dateStr}.json`;
+      const filename = `nextstep-backup-${dateStr}.json`;
 
       const linkElement = document.createElement('a');
       linkElement.setAttribute('href', dataUri);
