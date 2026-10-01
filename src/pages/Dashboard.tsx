@@ -44,6 +44,7 @@ import { ContinueLearningSection } from '../components/dashboard/ContinueLearnin
 import { WeeklySummarySection } from '../components/dashboard/WeeklySummarySection';
 import { RecentMemorySection } from '../components/dashboard/RecentMemorySection';
 import { DailyLearningChoice } from '../components/dashboard/DailyLearningChoice';
+import { PersonalLearningCoachCard } from '../components/dashboard/PersonalLearningCoachCard';
 import { SIX_MONTH_ROADMAP } from '../data/roadmapData';
 
 // ─── Subject raw color mapping ───────────────────────────────────────
@@ -486,6 +487,15 @@ export function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* ═══════════ PHASE 35: PERSONAL LEARNING COACH (ตอนนี้ควรทำอะไร?) ═══════════ */}
+      <PersonalLearningCoachCard
+        lessons={lessons}
+        sessions={sessions}
+        learningSessionsHistory={learningSessionsHistory}
+        reviewQueue={reviewQueue}
+        unclearTopics={unclearTopics}
+      />
 
       {/* ═══════════ PRIMARY ACTION: วันนี้อยากเรียนอะไร? (DAILY LEARNING CHOICE) ═══════════ */}
       <DailyLearningChoice
