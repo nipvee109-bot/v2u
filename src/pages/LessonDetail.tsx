@@ -21,10 +21,12 @@ import {
   Check,
   CalendarCheck,
   History,
-  Clock
+  Clock,
+  Brain
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
-import type { Lesson, Resource, ConfidenceLevel } from '../types';
+import type { Lesson, Resource, ConfidenceLevel, ReviewItem } from '../types';
+import { ReviewSessionModal } from '../components/ReviewSessionModal';
 import { SUBJECTS } from '../types';
 import { format, parseISO, isPast, differenceInDays } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -41,6 +43,8 @@ export function LessonDetail() {
     activeLearningSession,
     learningSessionsHistory,
     sessions,
+    reviewQueue = [],
+    createReviewItemForLesson,
     startLearningSession,
     pauseLearningSession,
     resumeLearningSession,
@@ -56,6 +60,7 @@ export function LessonDetail() {
   
   const existingLesson = lessons.find(l => l.id === id);
   const [lesson, setLesson] = useState<Lesson | null>(existingLesson || null);
+  const [activeReviewItem, setActiveReviewItem] = useState<ReviewItem | null>(null);
   const [step, setStep] = useState<FlowStep>(() => {
     if (activeLearningSession && activeLearningSession.lessonId === id && activeLearningSession.status !== 'completed') {
       return 'studying';
@@ -767,7 +772,22 @@ export function LessonDetail() {
                     <p className="text-slate-400">ยังไม่มีรอบการทบทวน</p>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-400">ทบทวนแล้ว: {learningRecord?.reviewCount || 0} ครั้ง</p>
+                <div className="flex items-center justify-between pt-1">
+                  <p className="text-[11px] text-slate-400">ทบทวนแล้ว: {learningRecord?.reviewCount || 0} ครั้ง</p>
+                  <button
+                    onClick={() => {
+                      let revItem = reviewQueue.find((r) => r.lessonId === lesson.id && r.status !== 'completed');
+                      if (!revItem) {
+                        revItem = createReviewItemForLesson(lesson.id, 'spaced_repetition');
+                      }
+                      setActiveReviewItem(revItem);
+                    }}
+                    className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shadow-xs"
+                  >
+                    <Brain className="w-3.5 h-3.5" />
+                    <span>ทบทวนบทนี้</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1041,6 +1061,12 @@ export function LessonDetail() {
       {step === 'summary' && renderSummary()}
       {step === 'quiz' && renderQuiz()}
       {step === 'notebook' && renderNotebook()}
+
+      {/* Review Session Modal */}
+      <ReviewSessionModal
+        reviewItem={activeReviewItem}
+        onClose={() => setActiveReviewItem(null)}
+      />
     </div>
   );
 }

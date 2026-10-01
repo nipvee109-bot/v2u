@@ -11,9 +11,67 @@ import type {
   ConfidenceLevel,
   MasteryLevel,
   QuizAttempt,
-  LearningRecord
+  LearningRecord,
+  ReviewItem,
+  ReviewReason,
+  ReviewOutcome
 } from '../types';
-import { initialLessons, initialSessions, initialWeeklyGoal, createInitialSessions } from '../data/initialData';
+import { 
+  initialLessons, 
+  initialSessions, 
+  initialWeeklyGoal, 
+  createInitialSessions,
+  initialReviewQueue,
+  createInitialReviewQueue
+} from '../data/initialData';
+
+export const REVIEW_INTERVALS = [1, 3, 7, 14, 30] as const;
+
+export function computeNextReviewDate(
+  currentReviewCount: number,
+  outcome: ReviewOutcome
+): { nextReviewAt: string; nextReviewCount: number; intervalDays: number } {
+  const now = new Date();
+  let intervalDays = 1;
+  let nextReviewCount = currentReviewCount;
+
+  switch (outcome) {
+    case 'remembered': {
+      nextReviewCount = currentReviewCount + 1;
+      if (nextReviewCount === 1) intervalDays = 3;
+      else if (nextReviewCount === 2) intervalDays = 7;
+      else if (nextReviewCount === 3) intervalDays = 14;
+      else intervalDays = 30;
+      break;
+    }
+    case 'partially': {
+      nextReviewCount = currentReviewCount + 1;
+      if (nextReviewCount === 1) intervalDays = 1;
+      else if (nextReviewCount === 2) intervalDays = 3;
+      else if (nextReviewCount === 3) intervalDays = 7;
+      else if (nextReviewCount === 4) intervalDays = 14;
+      else intervalDays = 30;
+      break;
+    }
+    case 'unsure': {
+      nextReviewCount = currentReviewCount;
+      intervalDays = currentReviewCount > 1 ? 3 : 1;
+      break;
+    }
+    case 'forgot': {
+      nextReviewCount = 0;
+      intervalDays = 1;
+      break;
+    }
+  }
+
+  const nextDate = new Date(now.getTime() + intervalDays * 24 * 60 * 60 * 1000);
+  return {
+    nextReviewAt: nextDate.toISOString(),
+    nextReviewCount,
+    intervalDays,
+  };
+}
 
 export function computeSessionElapsedSeconds(session: LearningSession): number {
   if (session.status === 'completed' || session.status === 'abandoned') {
@@ -175,6 +233,17 @@ interface StoreState {
   recoverLearningSession: (confirmedMinutes?: number) => void;
   heartbeatLearningSession: () => void;
 
+  // Review Engine State
+  reviewQueue: ReviewItem[];
+
+  // Review Engine Actions
+  addReviewItem: (item: ReviewItem) => void;
+  updateReviewItem: (id: string, updates: Partial<ReviewItem>) => void;
+  deleteReviewItem: (id: string) => void;
+  createReviewItemForLesson: (lessonId: string, reason?: ReviewReason, priority?: 'Low' | 'Medium' | 'High') => ReviewItem;
+  submitReviewOutcome: (reviewItemId: string, outcome: ReviewOutcome, notes?: string) => void;
+  getDueReviewItems: () => { overdue: ReviewItem[]; dueToday: ReviewItem[]; upcoming: ReviewItem[] };
+
   // Import / Export / Reset
   importData: (data: {
     lessons: Lesson[];
@@ -182,6 +251,7 @@ interface StoreState {
     sessions?: StudySession[];
     weeklyGoal?: WeeklyGoal;
     learningSessionsHistory?: LearningSession[];
+    reviewQueue?: ReviewItem[];
   }) => void;
   resetToInitial: () => void;
 }
@@ -197,6 +267,7 @@ export const useStore = create<StoreState>()(
       weeklyGoal: initialWeeklyGoal,
       activeLearningSession: null,
       learningSessionsHistory: [],
+      reviewQueue: initialReviewQueue,
 
       // Lesson Actions
       addLesson: (lesson) =>
@@ -290,6 +361,105 @@ export const useStore = create<StoreState>()(
         const lesson = get().lessons.find((l) => l.id === lessonId);
         if (!lesson) return null;
         return computeLessonLearningRecord(lesson, get().learningSessionsHistory, get().sessions);
+      },
+
+      // Review Engine Actions
+      addReviewItem: (item) =>
+        set((state) => ({ reviewQueue: [item, ...(state.reviewQueue || [])] })),
+
+      updateReviewItem: (id, updates) =>
+        set((state) => ({
+          reviewQueue: (state.reviewQueue || []).map((r) => (r.id === id ? { ...r, ...updates } : r)),
+        })),
+
+      deleteReviewItem: (id) =>
+        set((state) => ({
+          reviewQueue: (state.reviewQueue || []).filter((r) => r.id !== id),
+        })),
+
+      createReviewItemForLesson: (lessonId, reason = 'spaced_repetition', priority = 'Medium') => {
+        const lesson = get().lessons.find((l) => l.id === lessonId);
+        const topic = lesson?.title || 'บทเรียน';
+        const now = new Date();
+        const nextDate = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000).toISOString();
+        const newItem: ReviewItem = {
+          id: uuidv4(),
+          lessonId,
+          topic,
+          createdAt: now.toISOString(),
+          nextReviewAt: nextDate,
+          reviewCount: 0,
+          status: 'pending',
+          reason,
+          priority,
+        };
+        set((state) => ({
+          reviewQueue: [newItem, ...(state.reviewQueue || [])],
+        }));
+        return newItem;
+      },
+
+      submitReviewOutcome: (reviewItemId, outcome, notes) => {
+        const state = get();
+        const currentItem = (state.reviewQueue || []).find((r) => r.id === reviewItemId);
+        if (!currentItem) return;
+
+        const now = new Date().toISOString();
+        const { nextReviewAt, nextReviewCount } = computeNextReviewDate(currentItem.reviewCount, outcome);
+
+        const updatedItem: ReviewItem = {
+          ...currentItem,
+          lastReviewedAt: now,
+          nextReviewAt,
+          reviewCount: nextReviewCount,
+          status: outcome === 'forgot' ? 'pending' : 'completed',
+        };
+
+        // Also update the lesson
+        const targetLesson = state.lessons.find((l) => l.id === currentItem.lessonId);
+        let updatedLessons = state.lessons;
+        if (targetLesson) {
+          const outcomeLabel = outcome === 'remembered' ? 'จำได้' : outcome === 'partially' ? 'พอจำได้' : outcome === 'unsure' ? 'ยังไม่แม่น' : 'จำไม่ได้';
+          const noteEntry = notes ? `[${new Date().toLocaleDateString('th-TH')}] (${outcomeLabel}) ${notes}` : `[${new Date().toLocaleDateString('th-TH')}] (${outcomeLabel})`;
+          const updatedReviewNotes = targetLesson.reviewNotes ? `${targetLesson.reviewNotes}\n• ${noteEntry}` : `• ${noteEntry}`;
+
+          const updatedLesson: Lesson = {
+            ...targetLesson,
+            lastStudiedAt: now,
+            reviewCount: nextReviewCount,
+            nextReviewAt,
+            reviewNotes: updatedReviewNotes,
+          };
+          const record = computeLessonLearningRecord(updatedLesson, state.learningSessionsHistory, state.sessions);
+          updatedLessons = state.lessons.map((l) => (l.id === currentItem.lessonId ? { ...updatedLesson, mastery: record.mastery } : l));
+        }
+
+        set({
+          reviewQueue: (state.reviewQueue || []).map((r) => (r.id === reviewItemId ? updatedItem : r)),
+          lessons: updatedLessons,
+        });
+      },
+
+      getDueReviewItems: () => {
+        const queue = get().reviewQueue || [];
+        const todayStr = new Date().toISOString().split('T')[0];
+        const overdue: ReviewItem[] = [];
+        const dueToday: ReviewItem[] = [];
+        const upcoming: ReviewItem[] = [];
+
+        queue.forEach((item) => {
+          if (item.status === 'completed' || item.status === 'skipped') return;
+          const itemDateStr = item.nextReviewAt.split('T')[0];
+          if (itemDateStr < todayStr) {
+            overdue.push({ ...item, status: 'overdue' });
+          } else if (itemDateStr === todayStr) {
+            dueToday.push(item);
+          } else {
+            upcoming.push(item);
+          }
+        });
+
+        return { overdue, dueToday, upcoming };
       },
 
       // Unclear Topic Actions
@@ -536,10 +706,49 @@ export const useStore = create<StoreState>()(
             return l;
           });
 
+          // Update review queue for this lesson
+          let updatedReviewQueue = state.reviewQueue || [];
+          const existingReviewIndex = updatedReviewQueue.findIndex(r => r.lessonId === current.lessonId && r.status !== 'completed');
+          const reviewReason: ReviewReason = (quizScore !== undefined && quizScore < 70) 
+            ? 'low_quiz_score' 
+            : (current.notesDraft?.stillUnclearNotes ? 'unclear_topic' : 'spaced_repetition');
+          const reviewPriority: 'Low' | 'Medium' | 'High' = (quizScore !== undefined && quizScore < 70) || current.notesDraft?.stillUnclearNotes ? 'High' : 'Medium';
+          const targetLesson = state.lessons.find(l => l.id === current.lessonId);
+          const lessonTitle = targetLesson?.title || 'บทเรียน';
+
+          // First interval is 1 day or 3 days depending on quiz score
+          const intervalDays = (quizScore !== undefined && quizScore >= 90) ? 3 : 1;
+          const nextReviewDate = new Date(Date.now() + intervalDays * 24 * 60 * 60 * 1000).toISOString();
+
+          if (existingReviewIndex >= 0) {
+            const existing = updatedReviewQueue[existingReviewIndex];
+            updatedReviewQueue = updatedReviewQueue.map((r, i) => i === existingReviewIndex ? {
+              ...existing,
+              nextReviewAt: nextReviewDate,
+              status: 'pending',
+              reason: reviewReason,
+              priority: reviewPriority,
+            } : r);
+          } else {
+            const newReviewItem: ReviewItem = {
+              id: uuidv4(),
+              lessonId: current.lessonId,
+              topic: lessonTitle,
+              createdAt: now,
+              nextReviewAt: nextReviewDate,
+              reviewCount: 0,
+              status: 'pending',
+              reason: reviewReason,
+              priority: reviewPriority,
+            };
+            updatedReviewQueue = [newReviewItem, ...updatedReviewQueue];
+          }
+
           return {
             activeLearningSession: null,
             learningSessionsHistory: updatedHistory,
             lessons: updatedLessons,
+            reviewQueue: updatedReviewQueue,
             sessions: current.plannedSessionId
               ? (state.sessions || []).map((s) =>
                   s.id === current.plannedSessionId
@@ -615,6 +824,7 @@ export const useStore = create<StoreState>()(
           sessions: data.sessions || initialSessions,
           weeklyGoal: data.weeklyGoal || initialWeeklyGoal,
           learningSessionsHistory: data.learningSessionsHistory || [],
+          reviewQueue: data.reviewQueue || createInitialReviewQueue(data.lessons || []),
         }),
       resetToInitial: () =>
         set({
@@ -624,6 +834,7 @@ export const useStore = create<StoreState>()(
           weeklyGoal: initialWeeklyGoal,
           activeLearningSession: null,
           learningSessionsHistory: [],
+          reviewQueue: createInitialReviewQueue(initialLessons),
         }),
     }),
     {

@@ -173,3 +173,26 @@ export interface LearningSession {
   lastHeartbeatAt: string;
 }
 
+/* ==================================================
+   Phase 10: Review Engine & Spaced Repetition Models
+   ================================================== */
+
+export type ReviewStatus = 'pending' | 'completed' | 'overdue' | 'skipped';
+
+export type ReviewReason = 'spaced_repetition' | 'low_quiz_score' | 'unclear_topic' | 'manual';
+
+export type ReviewOutcome = 'remembered' | 'partially' | 'unsure' | 'forgot';
+
+export interface ReviewItem {
+  id: string;
+  lessonId: string;
+  topic: string;
+  createdAt: string; // ISO string
+  lastReviewedAt?: string; // ISO string
+  nextReviewAt: string; // ISO string
+  reviewCount: number;
+  status: ReviewStatus;
+  reason: ReviewReason;
+  priority: 'Low' | 'Medium' | 'High';
+}
+

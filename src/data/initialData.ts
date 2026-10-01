@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Lesson } from '../types';
+import type { Lesson, ReviewItem } from '../types';
 
 export const initialLessons: Lesson[] = [
   // Month 1
@@ -543,3 +543,64 @@ export const createInitialSessions = (): StudySession[] => {
 };
 
 export const initialSessions = createInitialSessions();
+
+export const createInitialReviewQueue = (lessons: Lesson[] = initialLessons): ReviewItem[] => {
+  const now = new Date();
+  const todayStr = now.toISOString();
+  const yesterdayDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const tomorrowDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const threeDaysLaterDate = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+
+  return [
+    {
+      id: uuidv4(),
+      lessonId: lessons[0]?.id || 'lesson-1',
+      topic: lessons[0]?.title || 'สมการและอสมการเชิงเส้น',
+      createdAt: yesterdayDate.toISOString(),
+      lastReviewedAt: yesterdayDate.toISOString(),
+      nextReviewAt: yesterdayDate.toISOString(),
+      reviewCount: 1,
+      status: 'overdue',
+      reason: 'spaced_repetition',
+      priority: 'High',
+    },
+    {
+      id: uuidv4(),
+      lessonId: lessons[2]?.id || 'lesson-3',
+      topic: lessons[2]?.title || 'Python พื้นฐาน',
+      createdAt: todayStr,
+      lastReviewedAt: undefined,
+      nextReviewAt: todayStr,
+      reviewCount: 0,
+      status: 'pending',
+      reason: 'spaced_repetition',
+      priority: 'High',
+    },
+    {
+      id: uuidv4(),
+      lessonId: lessons[1]?.id || 'lesson-2',
+      topic: lessons[1]?.title || 'เลขยกกำลัง และราก',
+      createdAt: todayStr,
+      lastReviewedAt: todayStr,
+      nextReviewAt: tomorrowDate.toISOString(),
+      reviewCount: 1,
+      status: 'pending',
+      reason: 'spaced_repetition',
+      priority: 'Medium',
+    },
+    {
+      id: uuidv4(),
+      lessonId: lessons[3]?.id || 'lesson-4',
+      topic: lessons[3]?.title || 'หน่วย และ เวกเตอร์',
+      createdAt: todayStr,
+      lastReviewedAt: undefined,
+      nextReviewAt: threeDaysLaterDate.toISOString(),
+      reviewCount: 0,
+      status: 'pending',
+      reason: 'spaced_repetition',
+      priority: 'Low',
+    },
+  ];
+};
+
+export const initialReviewQueue = createInitialReviewQueue();

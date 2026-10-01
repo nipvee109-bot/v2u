@@ -15,9 +15,11 @@ import {
   PlayCircle,
   FileText,
   ExternalLink,
+  Brain,
 } from 'lucide-react';
 import { SUBJECTS } from '../types';
-import type { SubjectId } from '../types';
+import type { SubjectId, ReviewItem } from '../types';
+import { ReviewSessionModal } from '../components/ReviewSessionModal';
 import { Link } from 'react-router-dom';
 import {
   format,
@@ -71,8 +73,30 @@ const monthLabels = [
 ];
 
 export function Dashboard() {
-  const { lessons, unclearTopics, sessions = [] } = useStore();
+  const { lessons, unclearTopics, sessions = [], getDueReviewItems } = useStore();
   const [calendarDate] = useState(new Date());
+
+  // ── Review Engine Queue ─────────────────────────────────────────
+  const { overdue: reviewOverdue, dueToday: reviewDueToday, upcoming: reviewUpcoming } = getDueReviewItems();
+  const totalReviewDueCount = reviewOverdue.length + reviewDueToday.length;
+  const [activeReviewItem, setActiveReviewItem] = useState<ReviewItem | null>(null);
+  const [reviewTab, setReviewTab] = useState<'dueToday' | 'overdue' | 'upcoming'>('dueToday');
+
+  const handleStartNextReview = () => {
+    if (reviewOverdue.length > 0) setActiveReviewItem(reviewOverdue[0]);
+    else if (reviewDueToday.length > 0) setActiveReviewItem(reviewDueToday[0]);
+    else if (reviewUpcoming.length > 0) setActiveReviewItem(reviewUpcoming[0]);
+  };
+
+  const handleNextReview = () => {
+    const freshDue = getDueReviewItems();
+    const nextList = [...freshDue.overdue, ...freshDue.dueToday].filter(r => r.id !== activeReviewItem?.id);
+    if (nextList.length > 0) {
+      setActiveReviewItem(nextList[0]);
+    } else {
+      setActiveReviewItem(null);
+    }
+  };
 
   // ── Derived data ────────────────────────────────────────────────
   const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -233,6 +257,58 @@ export function Dashboard() {
     }
   };
 
+  const renderReviewItemRow = (item: ReviewItem) => {
+    const parentLesson = lessons.find((l) => l.id === item.lessonId);
+    const itemSubject = parentLesson ? SUBJECTS[parentLesson.subjectId] : null;
+    const isOverdue = item.status === 'overdue' || item.nextReviewAt.split('T')[0] < todayStr;
+
+    return (
+      <div
+        key={item.id}
+        className="flex items-center justify-between gap-3 p-3.5 bg-slate-50/70 hover:bg-white rounded-xl border border-slate-200/70 hover:border-purple-300 transition-all"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-xs shrink-0">
+            <Brain className="w-4.5 h-4.5" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-900 truncate">
+                {item.topic}
+              </span>
+              {itemSubject && (
+                <span className="text-[10px] text-slate-400 shrink-0">
+                  ({itemSubject.name.split('/')[0]})
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 mt-0.5">
+              <span className="text-[10px] text-slate-500">
+                รอบที่ {item.reviewCount + 1}
+              </span>
+              <span className="text-[10px] text-slate-400">&middot;</span>
+              <span className={`text-[10px] font-semibold ${
+                isOverdue ? 'text-rose-600 font-bold' : 'text-slate-500'
+              }`}>
+                {isOverdue ? 'เลยกำหนด' : `กำหนด: ${format(parseISO(item.nextReviewAt), 'dd/MM/yyyy')}`}
+              </span>
+              <span className={`text-[9px] px-1.5 py-0.2 rounded-md font-semibold ${priorityStyle(item.priority)}`}>
+                {item.priority === 'High' ? 'สำคัญสูง' : item.priority === 'Medium' ? 'ปานกลาง' : 'ทั่วไป'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setActiveReviewItem(item)}
+          className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold shrink-0 transition-colors shadow-xs"
+        >
+          เริ่มทบทวน
+        </button>
+      </div>
+    );
+  };
+
   // ─────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────
@@ -353,6 +429,114 @@ export function Dashboard() {
           </Link>
         </div>
       )}
+
+      {/* ═══════════ REVIEW ENGINE: Spaced Repetition Queue ═══════════ */}
+      <div className="bg-white rounded-2xl border border-purple-200/70 shadow-xs p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+              <Brain className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-900">
+                  คิวทบทวนเนื้อหา (Spaced Review)
+                </h2>
+                {totalReviewDueCount > 0 ? (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 animate-pulse">
+                    ถึงกำหนด {totalReviewDueCount} หัวข้อ
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+                    ทบทวนครบแล้ววันนี้ 🎉
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                ทบทวนตามช่วงเวลา 1, 3, 7, 14, 30 วัน เพื่อความจำระยะยาวและเพิ่มระดับความเชี่ยวชาญ (Mastery)
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleStartNextReview}
+              disabled={totalReviewDueCount === 0 && reviewUpcoming.length === 0}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Brain className="w-4 h-4" />
+              <span>เริ่มทบทวนทันที</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Filters */}
+        <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+          <button
+            onClick={() => setReviewTab('dueToday')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              reviewTab === 'dueToday'
+                ? 'bg-purple-100 text-purple-800'
+                : 'text-slate-500 hover:bg-slate-100'
+            }`}
+          >
+            ครบกำหนดวันนี้ ({reviewDueToday.length})
+          </button>
+          <button
+            onClick={() => setReviewTab('overdue')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              reviewTab === 'overdue'
+                ? 'bg-rose-100 text-rose-800'
+                : 'text-slate-500 hover:bg-slate-100'
+            }`}
+          >
+            เลยกำหนด ({reviewOverdue.length})
+          </button>
+          <button
+            onClick={() => setReviewTab('upcoming')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              reviewTab === 'upcoming'
+                ? 'bg-slate-200 text-slate-800'
+                : 'text-slate-500 hover:bg-slate-100'
+            }`}
+          >
+            คิวเร็วๆ นี้ ({reviewUpcoming.length})
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+          {reviewTab === 'dueToday' && (
+            reviewDueToday.length > 0 ? (
+              reviewDueToday.map((item) => renderReviewItemRow(item))
+            ) : (
+              <div className="py-8 text-center text-slate-400 text-xs">
+                ไม่มีรายการที่ต้องทบทวนวันนี้ ยอดเยี่ยมมาก!
+              </div>
+            )
+          )}
+
+          {reviewTab === 'overdue' && (
+            reviewOverdue.length > 0 ? (
+              reviewOverdue.map((item) => renderReviewItemRow(item))
+            ) : (
+              <div className="py-8 text-center text-slate-400 text-xs">
+                ไม่มีรายการทบทวนที่ค้างหรือเลยกำหนด
+              </div>
+            )
+          )}
+
+          {reviewTab === 'upcoming' && (
+            reviewUpcoming.length > 0 ? (
+              reviewUpcoming.map((item) => renderReviewItemRow(item))
+            ) : (
+              <div className="py-8 text-center text-slate-400 text-xs">
+                ไม่มีรายการทบทวนในคิวล่วงหน้า
+              </div>
+            )
+          )}
+        </div>
+      </div>
 
       {/* ═══════════ ROW 2: Today's Study + Subject Progress ═══════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
@@ -810,6 +994,14 @@ export function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* Review Session Modal */}
+      <ReviewSessionModal
+        reviewItem={activeReviewItem}
+        onClose={() => setActiveReviewItem(null)}
+        onNext={handleNextReview}
+        hasMoreDue={totalReviewDueCount > 1}
+      />
     </div>
   );
 }

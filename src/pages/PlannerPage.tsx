@@ -19,7 +19,8 @@ import {
   X,
   Play,
   Check,
-  FastForward
+  FastForward,
+  Brain
 } from 'lucide-react';
 import { 
   format, 
@@ -36,7 +37,8 @@ import {
 } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { SUBJECTS } from '../types';
-import type { SubjectId, StudySession, StudySessionType, StudySessionStatus } from '../types';
+import type { SubjectId, StudySession, StudySessionType, StudySessionStatus, ReviewItem } from '../types';
+import { ReviewSessionModal } from '../components/ReviewSessionModal';
 import { Link } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -47,6 +49,8 @@ export function PlannerPage() {
     sessions = [], 
     lessons, 
     weeklyGoal, 
+    reviewQueue = [],
+    getDueReviewItems,
     addSession, 
     updateSession, 
     deleteSession, 
@@ -61,6 +65,11 @@ export function PlannerPage() {
   const [currentWeekDate, setCurrentWeekDate] = useState<Date>(new Date());
   const [currentMonthDate, setCurrentMonthDate] = useState<Date>(new Date());
   const [selectedDayOnMobile, setSelectedDayOnMobile] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+
+  // Review Engine state
+  const [activeReviewItem, setActiveReviewItem] = useState<ReviewItem | null>(null);
+  const { overdue: reviewOverdue, dueToday: reviewDueToday, upcoming: reviewUpcoming } = getDueReviewItems();
+  const totalReviewDueCount = reviewOverdue.length + reviewDueToday.length;
 
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -497,6 +506,93 @@ export function PlannerPage() {
                 {todaySessions.filter((s) => s.status !== 'completed' && s.status !== 'skipped').length} รายการ
               </p>
             </div>
+          </div>
+
+          {/* Today Review Section */}
+          <div className="bg-white rounded-2xl border border-purple-200/80 p-5 sm:p-6 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-purple-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                  <Brain className="w-4.5 h-4.5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    คิวทบทวนเนื้อหาวันนี้ (Review Queue)
+                    {totalReviewDueCount > 0 && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-bold">
+                        {totalReviewDueCount} หัวข้อ
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {totalReviewDueCount > 0
+                      ? `มี ${totalReviewDueCount} รายการถึงกำหนด (เลยกำหนด ${reviewOverdue.length}, ครบกำหนดวันนี้ ${reviewDueToday.length})`
+                      : 'ไม่มีรายการค้างทบทวนสำหรับวันนี้'}
+                  </p>
+                </div>
+              </div>
+              {totalReviewDueCount > 0 && (
+                <button
+                  onClick={() => setActiveReviewItem(reviewOverdue[0] || reviewDueToday[0])}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 shrink-0"
+                >
+                  <Brain className="w-3.5 h-3.5" />
+                  <span>เริ่มทบทวนตอนนี้</span>
+                </button>
+              )}
+            </div>
+
+            {totalReviewDueCount > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {[...reviewOverdue, ...reviewDueToday].map((rev) => {
+                  const parentL = lessons.find((l) => l.id === rev.lessonId);
+                  const isOv = rev.status === 'overdue' || rev.nextReviewAt.split('T')[0] < todayStr;
+                  const itemSubject = parentL ? SUBJECTS[parentL.subjectId] : null;
+
+                  return (
+                    <div
+                      key={rev.id}
+                      className="p-3.5 rounded-xl border border-purple-200/80 bg-purple-50/40 hover:bg-purple-50 flex items-center justify-between gap-3 transition-all"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-slate-900 truncate">{rev.topic}</p>
+                          {isOv && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 font-bold shrink-0">
+                              เลยกำหนด
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-500">
+                          {itemSubject && (
+                            <span className="font-semibold text-slate-600">
+                              {itemSubject.name.split('/')[0]}
+                            </span>
+                          )}
+                          <span>&middot;</span>
+                          <span>รอบที่ {rev.reviewCount + 1}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setActiveReviewItem(rev)}
+                        className="px-3 py-1.5 bg-white hover:bg-purple-600 hover:text-white border border-purple-200 text-purple-700 text-xs font-bold rounded-lg shrink-0 transition-colors shadow-xs"
+                      >
+                        ทบทวน
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-3 px-4 bg-purple-50/40 rounded-xl border border-dashed border-purple-200/70 text-xs text-purple-700 flex items-center justify-between">
+                <span>ยินดีด้วย! คุณทบทวนเนื้อหาครบตามกำหนดแล้ว</span>
+                {reviewUpcoming.length > 0 && (
+                  <span className="text-[11px] text-purple-600 font-medium">
+                    คิวถัดไป: {format(new Date(reviewUpcoming[0].nextReviewAt), 'd MMM', { locale: th })} ({reviewUpcoming[0].topic})
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Today Timeline List */}
@@ -945,17 +1041,48 @@ export function PlannerPage() {
                       </span>
                     </div>
 
-                    <div className="flex justify-between items-center text-[11px] text-slate-500 py-2">
-                      <span>{daySessions.length} เซสชัน</span>
-                      <span className="font-semibold text-slate-700">{Math.round((dayMinutes / 60) * 10) / 10} ชม.</span>
-                    </div>
+                    {(() => {
+                      const dayReviews = reviewQueue.filter(
+                        (r) => r.status !== 'completed' && r.nextReviewAt.split('T')[0] === dStr
+                      );
+                      return (
+                        <>
+                          <div className="flex justify-between items-center text-[11px] text-slate-500 py-2">
+                            <span>
+                              {daySessions.length} เซสชัน
+                              {dayReviews.length > 0 && ` · ${dayReviews.length} ทบทวน`}
+                            </span>
+                            <span className="font-semibold text-slate-700">{Math.round((dayMinutes / 60) * 10) / 10} ชม.</span>
+                          </div>
 
-                    {/* Sessions list */}
-                    <div className="space-y-2 mt-1 min-h-[140px]">
-                      {daySessions.length === 0 ? (
-                        <p className="text-[11px] text-slate-300 text-center py-8 italic">วันพัก ไม่มีแผน</p>
-                      ) : (
-                        daySessions.map((session) => {
+                          {/* Sessions & Reviews list */}
+                          <div className="space-y-2 mt-1 min-h-[140px]">
+                            {/* Day Reviews if any */}
+                            {dayReviews.length > 0 && (
+                              <div className="space-y-1 mb-2">
+                                {dayReviews.map((rev) => (
+                                  <div
+                                    key={rev.id}
+                                    onClick={() => setActiveReviewItem(rev)}
+                                    className="p-2 rounded-xl border border-purple-200 bg-purple-50/80 hover:bg-purple-100 text-purple-900 cursor-pointer transition-all flex items-center justify-between gap-1 text-[11px] shadow-2xs"
+                                    title="คลิกเพื่อเริ่มทบทวนแบบ Active Recall"
+                                  >
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <Brain className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                                      <span className="font-bold truncate">{rev.topic}</span>
+                                    </div>
+                                    <span className="text-[9px] px-1.5 py-0.2 bg-purple-200 text-purple-800 rounded font-bold shrink-0">
+                                      ทบทวน
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {daySessions.length === 0 && dayReviews.length === 0 ? (
+                              <p className="text-[11px] text-slate-300 text-center py-8 italic">วันพัก ไม่มีแผน</p>
+                            ) : (
+                              daySessions.map((session) => {
                           const subject = SUBJECTS[session.subjectId];
                           const isDone = session.status === 'completed';
                           return (
@@ -1002,7 +1129,10 @@ export function PlannerPage() {
                         })
                       )}
                     </div>
-                  </div>
+                  </>
+                );
+              })()}
+            </div>
 
                   {/* Add button for this day */}
                   <button
@@ -1090,6 +1220,9 @@ export function PlannerPage() {
                 const isCurrMonth = isSameMonth(day, mStart);
                 const isCurDay = isToday(day);
                 const daySess = processedSessions.filter((s) => s.date === dStr);
+                const dayReviews = reviewQueue.filter(
+                  (r) => r.status !== 'completed' && r.nextReviewAt.split('T')[0] === dStr
+                );
 
                 return (
                   <div
@@ -1107,8 +1240,10 @@ export function PlannerPage() {
                       >
                         {format(day, 'd')}
                       </span>
-                      {daySess.length > 0 && (
-                        <span className="text-[10px] text-slate-400 font-medium">{daySess.length}</span>
+                      {(daySess.length > 0 || dayReviews.length > 0) && (
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          {daySess.length + dayReviews.length}
+                        </span>
                       )}
                     </div>
 
@@ -1123,6 +1258,19 @@ export function PlannerPage() {
                           {s.startTime} {s.title}
                         </div>
                       ))}
+                      {dayReviews.length > 0 && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveReviewItem(dayReviews[0]);
+                          }}
+                          className="text-[9px] font-bold px-1.5 py-0.5 rounded truncate bg-purple-100 text-purple-800 hover:bg-purple-200 flex items-center gap-1 transition-colors"
+                          title={`มีทบทวน ${dayReviews.length} รายการ (คลิกเพื่อเริ่ม)`}
+                        >
+                          <Brain className="w-2.5 h-2.5 shrink-0 text-purple-700" />
+                          <span>ทบทวน {dayReviews.length} บท</span>
+                        </div>
+                      )}
                       {daySess.length > 2 && (
                         <p className="text-[9px] text-slate-400 font-medium pl-1">
                           +{daySess.length - 2} รายการเพิ่มเติม
@@ -1518,6 +1666,17 @@ export function PlannerPage() {
         </div>
       )}
 
+      {/* Review Session Modal */}
+      <ReviewSessionModal
+        reviewItem={activeReviewItem}
+        onClose={() => setActiveReviewItem(null)}
+        onNext={() => {
+          const fresh = getDueReviewItems();
+          const next = [...fresh.overdue, ...fresh.dueToday].filter((r) => r.id !== activeReviewItem?.id);
+          setActiveReviewItem(next.length > 0 ? next[0] : null);
+        }}
+        hasMoreDue={totalReviewDueCount > 1}
+      />
     </div>
   );
 }
