@@ -604,3 +604,40 @@ export interface GeneratedPlanSessionPreview {
   lessonId: string;
   lessonTitle: string;
 }
+
+/* ==================================================
+   Phase 38: Course & Playlist Hierarchy Models
+   ================================================== */
+
+export interface CourseItem {
+  id: string;
+  title: string;
+  durationMinutes: number;
+  resourceId?: string;
+  sourceUrl?: string;
+  lessonId?: string;
+  completed: boolean;
+  completedAt?: string;
+  order: number;
+}
+
+export interface CourseModule {
+  id: string;
+  title: string;
+  order: number;
+  items: CourseItem[];
+}
+
+export interface Course {
+  id: string;
+  title: string;
+  description: string;
+  provider: string; // e.g., 'MIT OCW', 'YouTube', 'Coursera', 'Harvard edX'
+  subjectId: SubjectId;
+  thumbnail?: string;
+  sourceUrl?: string;
+  modules: CourseModule[];
+  createdAt: string;
+  updatedAt: string;
+}
+

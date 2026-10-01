@@ -27,7 +27,10 @@ import type {
   GoalStatus,
   WeeklyReviewReport,
   OnboardingPreferences,
-  TimestampedNote
+  TimestampedNote,
+  Course,
+  CourseModule,
+  CourseItem
 } from '../types';
 import { 
   SUBJECTS,
@@ -45,6 +48,7 @@ import {
   initialResources,
   createInitialResources
 } from '../data/initialData';
+import { initialCourses, createInitialCourses } from '../data/initialCourses';
 import { 
   isValidUrl, 
   isDuplicateResource, 
@@ -511,6 +515,15 @@ interface StoreState {
   skipOnboarding: () => void;
   resetOnboarding: () => void;
 
+  // Phase 38: Course & Playlist Hierarchy
+  courses: Course[];
+  addCourse: (course: Omit<Course, 'id' | 'createdAt' | 'updatedAt'>) => string;
+  updateCourse: (id: string, updates: Partial<Course>) => void;
+  deleteCourse: (id: string) => void;
+  toggleCourseItemCompleted: (courseId: string, moduleId: string, itemId: string) => void;
+  addModuleToCourse: (courseId: string, title: string) => string;
+  addItemToCourseModule: (courseId: string, moduleId: string, item: Omit<CourseItem, 'id' | 'order' | 'completed'>) => string;
+
   // Import / Export / Reset
   importData: (data: {
     lessons: Lesson[];
@@ -521,6 +534,7 @@ interface StoreState {
     reviewQueue?: ReviewItem[];
     goals?: StudyGoal[];
     resources?: Resource[];
+    courses?: Course[];
     hasCompletedOnboarding?: boolean;
   }) => void;
   resetToInitial: () => void;
@@ -541,6 +555,7 @@ export const useStore = create<StoreState>()(
       reviewQueue: initialReviewQueue,
       goals: initialGoals,
       resources: initialResources,
+      courses: initialCourses,
 
       // Lesson Actions
       addLesson: (lesson) =>
@@ -2058,6 +2073,109 @@ export const useStore = create<StoreState>()(
       resetOnboarding: () =>
         set({ hasCompletedOnboarding: false }),
 
+      // Phase 38: Course & Playlist Hierarchy Actions
+      addCourse: (courseData) => {
+        const id = `course-${Date.now()}`;
+        const now = new Date().toISOString();
+        const newCourse: Course = {
+          ...courseData,
+          id,
+          createdAt: now,
+          updatedAt: now,
+        };
+        set((state) => ({ courses: [newCourse, ...state.courses] }));
+        return id;
+      },
+
+      updateCourse: (id, updates) => {
+        set((state) => ({
+          courses: state.courses.map((c) =>
+            c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c
+          ),
+        }));
+      },
+
+      deleteCourse: (id) => {
+        set((state) => ({
+          courses: state.courses.filter((c) => c.id !== id),
+        }));
+      },
+
+      toggleCourseItemCompleted: (courseId, moduleId, itemId) => {
+        set((state) => ({
+          courses: state.courses.map((course) => {
+            if (course.id !== courseId) return course;
+            return {
+              ...course,
+              updatedAt: new Date().toISOString(),
+              modules: course.modules.map((mod) => {
+                if (mod.id !== moduleId) return mod;
+                return {
+                  ...mod,
+                  items: mod.items.map((item) => {
+                    if (item.id !== itemId) return item;
+                    const nextCompleted = !item.completed;
+                    return {
+                      ...item,
+                      completed: nextCompleted,
+                      completedAt: nextCompleted ? new Date().toISOString() : undefined,
+                    };
+                  }),
+                };
+              }),
+            };
+          }),
+        }));
+      },
+
+      addModuleToCourse: (courseId, title) => {
+        const moduleId = `mod-${Date.now()}`;
+        set((state) => ({
+          courses: state.courses.map((course) => {
+            if (course.id !== courseId) return course;
+            const newModule: CourseModule = {
+              id: moduleId,
+              title,
+              order: (course.modules?.length || 0) + 1,
+              items: [],
+            };
+            return {
+              ...course,
+              modules: [...(course.modules || []), newModule],
+              updatedAt: new Date().toISOString(),
+            };
+          }),
+        }));
+        return moduleId;
+      },
+
+      addItemToCourseModule: (courseId, moduleId, itemData) => {
+        const itemId = `item-${Date.now()}`;
+        set((state) => ({
+          courses: state.courses.map((course) => {
+            if (course.id !== courseId) return course;
+            return {
+              ...course,
+              updatedAt: new Date().toISOString(),
+              modules: course.modules.map((mod) => {
+                if (mod.id !== moduleId) return mod;
+                const newItem: CourseItem = {
+                  ...itemData,
+                  id: itemId,
+                  completed: false,
+                  order: (mod.items?.length || 0) + 1,
+                };
+                return {
+                  ...mod,
+                  items: [...(mod.items || []), newItem],
+                };
+              }),
+            };
+          }),
+        }));
+        return itemId;
+      },
+
       // Backward compatible import
       importData: (data) =>
         set({
@@ -2069,6 +2187,7 @@ export const useStore = create<StoreState>()(
           reviewQueue: data.reviewQueue || createInitialReviewQueue(data.lessons || []),
           goals: data.goals || initialGoals,
           resources: data.resources || initialResources,
+          courses: data.courses || initialCourses,
           hasCompletedOnboarding: data.hasCompletedOnboarding ?? true,
         }),
       resetToInitial: () =>
@@ -2083,6 +2202,7 @@ export const useStore = create<StoreState>()(
           reviewQueue: createInitialReviewQueue(initialLessons),
           goals: createInitialGoals(),
           resources: createInitialResources(initialLessons),
+          courses: createInitialCourses(),
         }),
     }),
     {

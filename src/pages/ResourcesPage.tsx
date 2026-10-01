@@ -9,7 +9,8 @@ import {
   FileText, 
   Sparkles, 
   Layers, 
-  Filter 
+  Filter,
+  GraduationCap
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import type { Resource, ResourceType, ResourceRole, SubjectId } from '../types';
@@ -18,9 +19,10 @@ import { ResourceCard } from '../components/ResourceCard';
 import { CreateResourceModal } from '../components/CreateResourceModal';
 import { AssignLessonModal } from '../components/AssignLessonModal';
 import { ResourceDiscoveryModal } from '../components/study/ResourceDiscoveryModal';
+import { CoursePlaylistView } from '../components/study/CoursePlaylistView';
 
 export const ResourcesPage: React.FC = () => {
-  const { getAllResources, deleteResource, toggleFavoriteResource, lessons, resources } = useStore();
+  const { getAllResources, deleteResource, toggleFavoriteResource, lessons, resources, courses } = useStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const deferredSearchQuery = useDeferredValue(searchQuery);
@@ -29,6 +31,7 @@ export const ResourcesPage: React.FC = () => {
   const [selectedType, setSelectedType] = useState<ResourceType | 'ALL'>('ALL');
   const [selectedRole, setSelectedRole] = useState<ResourceRole | 'ALL'>('ALL');
   const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const [activeTab, setActiveTab] = useState<'resources' | 'courses'>('resources');
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -207,10 +210,40 @@ export const ResourcesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Filter and Search Controls */}
-      <div className="card p-4 space-y-4">
-        {/* Search Bar + Favorites Toggle */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      {/* Tab Switcher: Resources vs Courses & Playlists */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+        <button
+          onClick={() => setActiveTab('resources')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition ${
+            activeTab === 'resources'
+              ? 'bg-blue-600 text-white shadow-sm'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Layers className="w-4 h-4" />
+          <span>สื่อการเรียนรายชิ้น ({stats.total})</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('courses')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition ${
+            activeTab === 'courses'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <GraduationCap className="w-4 h-4" />
+          <span>คอร์ส & เพลย์ลิสต์ ({courses.length})</span>
+        </button>
+      </div>
+
+      {activeTab === 'courses' ? (
+        <CoursePlaylistView />
+      ) : (
+        <>
+          {/* Filter and Search Controls */}
+          <div className="card p-4 space-y-4">
+            {/* Search Bar + Favorites Toggle */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="relative flex-1">
             <label htmlFor="resource-library-search" className="sr-only">
               ค้นหาตามชื่อคลิป ลิงก์ คำอธิบาย หรือบทเรียน
@@ -431,6 +464,8 @@ export const ResourcesPage: React.FC = () => {
             />
           ))}
         </div>
+      )}
+      </>
       )}
 
       {/* Create / Edit Modal */}
