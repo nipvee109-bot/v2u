@@ -1,7 +1,21 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useStore } from '../store/useStore';
-import { ArrowLeft, Trash2, Plus, Link as LinkIcon, FileText, CheckCircle2, AlertCircle, BookOpen, CheckCircle, ChevronRight, Pause, Play, Square } from 'lucide-react';
+import { useStore, computeSessionElapsedSeconds } from '../store/useStore';
+import { 
+  ArrowLeft, 
+  Trash2, 
+  Plus, 
+  Link as LinkIcon, 
+  FileText, 
+  CheckCircle2, 
+  AlertCircle, 
+  BookOpen, 
+  CheckCircle, 
+  ChevronRight, 
+  Pause, 
+  Play, 
+  Square 
+} from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import type { Lesson, Resource } from '../types';
 import { SUBJECTS } from '../types';
@@ -11,25 +25,96 @@ type FlowStep = 'idle' | 'source_selection' | 'studying' | 'summary' | 'quiz' | 
 export function LessonDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { lessons, updateLesson, deleteLesson } = useStore();
+  const { 
+    lessons, 
+    updateLesson, 
+    deleteLesson,
+    activeLearningSession,
+    startLearningSession,
+    pauseLearningSession,
+    resumeLearningSession,
+    updateLearningSessionDraft,
+    finishLearningSession,
+    abandonLearningSession,
+    recoverLearningSession,
+    heartbeatLearningSession,
+  } = useStore();
   
   const existingLesson = lessons.find(l => l.id === id);
   const [lesson, setLesson] = useState<Lesson | null>(existingLesson || null);
-  const [step, setStep] = useState<FlowStep>(existingLesson?.status === 'COMPLETED' ? 'notebook' : 'idle');
-  const [timerSeconds, setTimerSeconds] = useState(0);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const timerRef = useRef<number | null>(null);
-  const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
-  const [quizScore, setQuizScore] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (isTimerRunning) {
-      timerRef.current = window.setInterval(() => setTimerSeconds(s => s + 1), 1000);
-    } else if (timerRef.current) {
-      clearInterval(timerRef.current);
+  const [step, setStep] = useState<FlowStep>(() => {
+    if (activeLearningSession && activeLearningSession.lessonId === id && activeLearningSession.status !== 'completed') {
+      return 'studying';
     }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [isTimerRunning]);
+    return existingLesson?.status === 'COMPLETED' ? 'notebook' : 'idle';
+  });
+
+  const [timerSeconds, setTimerSeconds] = useState<number>(() => {
+    if (activeLearningSession && activeLearningSession.lessonId === id) {
+      return computeSessionElapsedSeconds(activeLearningSession);
+    }
+    return 0;
+  });
+
+  const [selectedSourceId, setSelectedSourceId] = useState<string | null>(() => {
+    if (activeLearningSession && activeLearningSession.lessonId === id && activeLearningSession.source) {
+      return activeLearningSession.source.id;
+    }
+    return null;
+  });
+
+  const [quizScore, setQuizScore] = useState<number | null>(existingLesson?.quizScore ?? null);
+  const [showAbandonedModal, setShowAbandonedModal] = useState<boolean>(false);
+  const [confirmedMinutesInput, setConfirmedMinutesInput] = useState<number>(() => (existingLesson?.durationHours || 1) * 60);
+
+  // Sync lesson with store
+  useEffect(() => {
+    const updated = lessons.find(l => l.id === id);
+    if (updated) setLesson(updated);
+  }, [lessons, id]);
+
+  // Session Recovery & Abandoned Inactivity check
+  useEffect(() => {
+    if (activeLearningSession && activeLearningSession.lessonId === id) {
+      // Check if session has been inactive/abandoned for > 2 hours
+      const lastHeartbeat = new Date(activeLearningSession.lastHeartbeatAt || activeLearningSession.startedAt).getTime();
+      const elapsedSinceHeartbeat = Date.now() - lastHeartbeat;
+      const isAbandonedCandidate = elapsedSinceHeartbeat > 2 * 60 * 60 * 1000;
+
+      if (isAbandonedCandidate && activeLearningSession.status !== 'completed') {
+        setShowAbandonedModal(true);
+      } else if (step === 'idle' || step === 'source_selection') {
+        setStep('studying');
+      }
+    }
+  }, [activeLearningSession, id, step]);
+
+  // Timer Tick: Derives elapsed time directly from timestamps
+  useEffect(() => {
+    const isCurrentSessionActive = activeLearningSession && activeLearningSession.lessonId === id;
+
+    const updateTimer = () => {
+      if (isCurrentSessionActive) {
+        const elapsed = computeSessionElapsedSeconds(activeLearningSession);
+        setTimerSeconds(elapsed);
+      }
+    };
+
+    updateTimer();
+    const interval = window.setInterval(updateTimer, 500);
+
+    // Heartbeat every 10 seconds while active
+    const heartbeatInterval = window.setInterval(() => {
+      if (isCurrentSessionActive && activeLearningSession.status === 'active') {
+        heartbeatLearningSession();
+      }
+    }, 10000);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(heartbeatInterval);
+    };
+  }, [activeLearningSession, id, heartbeatLearningSession]);
 
   if (!lesson) return (
     <div className="flex items-center justify-center h-96">
@@ -38,13 +123,60 @@ export function LessonDetail() {
   );
 
   const subject = SUBJECTS[lesson.subjectId];
-  const handleDelete = () => { if (confirm('แน่ใจหรือไม่ว่าต้องการลบบทเรียนนี้?')) { deleteLesson(lesson.id); navigate(-1); } };
-  const updateField = (field: keyof Lesson, value: any) => { const updated = { ...lesson, [field]: value }; setLesson(updated); updateLesson(lesson.id, { [field]: value }); };
-  const handleStartFlow = () => { if (lesson.resources.length === 0) { setStep('studying'); setIsTimerRunning(true); updateField('status', 'IN PROGRESS'); } else { setStep('source_selection'); } };
-  const confirmSource = () => { setStep('studying'); setIsTimerRunning(true); updateField('status', 'IN PROGRESS'); };
-  const finishStudying = () => { setIsTimerRunning(false); setStep('summary'); };
-  const formatTime = (t: number) => `${Math.floor(t / 3600).toString().padStart(2, '0')}:${Math.floor((t % 3600) / 60).toString().padStart(2, '0')}:${(t % 60).toString().padStart(2, '0')}`;
-  const handleFinishLesson = () => { updateField('status', 'COMPLETED'); updateField('actualStudyMinutes', Math.round(timerSeconds / 60)); if (quizScore !== null) updateField('quizScore', quizScore); setStep('notebook'); };
+  const isSessionRunning = activeLearningSession?.lessonId === lesson.id && activeLearningSession.status === 'active';
+
+  const handleDelete = () => { 
+    if (confirm('แน่ใจหรือไม่ว่าต้องการลบบทเรียนนี้?')) { 
+      if (activeLearningSession?.lessonId === lesson.id) {
+        abandonLearningSession();
+      }
+      deleteLesson(lesson.id); 
+      navigate(-1); 
+    } 
+  };
+
+  const updateField = (field: keyof Lesson, value: any) => { 
+    const updated = { ...lesson, [field]: value }; 
+    setLesson(updated); 
+    updateLesson(lesson.id, { [field]: value }); 
+  };
+
+  const handleStartFlow = () => { 
+    if (lesson.resources.length === 0) { 
+      startLearningSession({ lessonId: lesson.id });
+      setStep('studying'); 
+    } else { 
+      setStep('source_selection'); 
+    } 
+  };
+
+  const confirmSource = () => { 
+    const chosen = lesson.resources.find(r => r.id === selectedSourceId);
+    startLearningSession({ lessonId: lesson.id, source: chosen });
+    setStep('studying'); 
+  };
+
+  const handleTogglePause = () => {
+    if (isSessionRunning) {
+      pauseLearningSession();
+    } else {
+      resumeLearningSession();
+    }
+  };
+
+  const finishStudying = () => { 
+    pauseLearningSession(); 
+    setStep('summary'); 
+  };
+
+  const formatTime = (t: number) => 
+    `${Math.floor(t / 3600).toString().padStart(2, '0')}:${Math.floor((t % 3600) / 60).toString().padStart(2, '0')}:${(t % 60).toString().padStart(2, '0')}`;
+
+  const handleFinishLesson = () => { 
+    const actualMins = Math.max(1, Math.round(timerSeconds / 60));
+    finishLearningSession(actualMins, quizScore !== null ? quizScore : undefined);
+    setStep('notebook'); 
+  };
 
   const handleAddResource = () => {
     const url = prompt('ใส่ URL (เช่น YouTube, Website, Document):');
@@ -55,18 +187,37 @@ export function LessonDetail() {
       updateField('resources', [...lesson.resources, { id: uuidv4(), type, title: type === 'youtube' ? 'YouTube Video' : 'Link / Document', url } as Resource]);
     }
   };
+
   const handleRemoveResource = (rId: string) => updateField('resources', lesson.resources.filter(r => r.id !== rId));
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files) Array.from(e.target.files).forEach(f => { const r = new FileReader(); r.onload = ev => { if (ev.target?.result) updateField('images', [...lesson.images, ev.target.result as string]); }; r.readAsDataURL(f); }); };
-  const removeImage = (i: number) => { const n = [...lesson.images]; n.splice(i, 1); updateField('images', n); };
-  const getYoutubeId = (url: string) => { const m = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/); return m && m[2].length === 11 ? m[2] : null; };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { 
+    if (e.target.files) Array.from(e.target.files).forEach(f => { 
+      const r = new FileReader(); 
+      r.onload = ev => { 
+        if (ev.target?.result) updateField('images', [...lesson.images, ev.target.result as string]); 
+      }; 
+      r.readAsDataURL(f); 
+    }); 
+  };
+
+  const removeImage = (i: number) => { 
+    const n = [...lesson.images]; 
+    n.splice(i, 1); 
+    updateField('images', n); 
+  };
+
+  const getYoutubeId = (url: string) => { 
+    const m = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/); 
+    return m && m[2].length === 11 ? m[2] : null; 
+  };
 
   /* ============= STEP: IDLE ============= */
   const renderIdle = () => (
     <div className="max-w-2xl mx-auto">
-      <div className="card p-0 overflow-hidden">
+      <div className="card p-0 overflow-hidden shadow-sm">
         {/* Hero banner */}
-        <div className={`h-32 ${subject.color} relative flex items-end p-6`}>
-          <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+        <div className={`h-36 ${subject.color} relative flex items-end p-6`}>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
           <div className="relative z-10">
             <p className="text-white/80 text-xs font-semibold uppercase tracking-wider mb-1">{subject.name}</p>
             <h2 className="text-2xl font-bold text-white leading-tight">{lesson.title}</h2>
@@ -80,10 +231,12 @@ export function LessonDetail() {
             <div className="w-px bg-slate-200" />
             <div className="text-center"><p className="text-2xl font-bold text-slate-900">{lesson.resources.length}</p><p className="text-xs text-slate-500 mt-1">แหล่งเรียน</p></div>
           </div>
-          <button onClick={handleStartFlow} className="w-full max-w-xs mx-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-blue-600/25 transition-all duration-200 text-lg flex items-center justify-center gap-2">
+          <button onClick={handleStartFlow} className="w-full max-w-xs mx-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-blue-600/25 transition-all duration-200 text-base flex items-center justify-center gap-2">
             <Play className="w-5 h-5" /> เริ่มเรียน
           </button>
-          <button onClick={() => setStep('notebook')} className="text-slate-500 hover:text-slate-900 text-sm font-medium transition-colors">เปิดสมุดโน้ต</button>
+          <button onClick={() => setStep('notebook')} className="text-slate-500 hover:text-slate-900 text-xs font-semibold transition-colors block mx-auto">
+            เปิดสมุดโน้ต &rarr;
+          </button>
         </div>
       </div>
     </div>
@@ -111,8 +264,8 @@ export function LessonDetail() {
             const yId = r.type === 'youtube' ? getYoutubeId(r.url) : null;
             const sel = selectedSourceId === r.id;
             return (
-              <button key={r.id} onClick={() => setSelectedSourceId(r.id)} className={`text-left card-compact p-0 overflow-hidden transition-all duration-200 ${sel ? 'ring-2 ring-blue-600 ring-offset-2 shadow-lg' : 'hover:shadow-md'}`}>
-                {yId ? <img src={`https://img.youtube.com/vi/${yId}/hqdefault.jpg`} className="w-full h-28 object-cover" /> : <div className="w-full h-28 bg-slate-50 flex items-center justify-center">{r.type === 'document' ? <FileText className="w-8 h-8 text-slate-300" /> : <LinkIcon className="w-8 h-8 text-slate-300" />}</div>}
+              <button key={r.id} onClick={() => setSelectedSourceId(r.id)} className={`text-left card-compact p-0 overflow-hidden transition-all duration-200 relative ${sel ? 'ring-2 ring-blue-600 ring-offset-2 shadow-lg' : 'hover:shadow-md'}`}>
+                {yId ? <img src={`https://img.youtube.com/vi/${yId}/hqdefault.jpg`} className="w-full h-28 object-cover" alt="" /> : <div className="w-full h-28 bg-slate-50 flex items-center justify-center">{r.type === 'document' ? <FileText className="w-8 h-8 text-slate-300" /> : <LinkIcon className="w-8 h-8 text-slate-300" />}</div>}
                 <div className="p-3">
                   <p className="text-sm font-semibold text-slate-900 truncate">{r.title}</p>
                   <p className="text-xs text-slate-400 truncate mt-0.5">{r.url}</p>
@@ -132,35 +285,48 @@ export function LessonDetail() {
     </div>
   );
 
-  /* ============= STEP: STUDYING (Timer) ============= */
+  /* ============= STEP: STUDYING (Deterministic Timer) ============= */
   const renderStudying = () => {
     const progress = lesson.durationHours > 0 ? Math.min((timerSeconds / (lesson.durationHours * 3600)) * 100, 100) : 0;
     const circumference = 2 * Math.PI * 90;
     const dashOffset = circumference - (progress / 100) * circumference;
     return (
       <div className="max-w-lg mx-auto space-y-6">
-        <div className="card p-10 flex flex-col items-center text-center relative overflow-hidden">
+        <div className="card p-10 flex flex-col items-center text-center relative overflow-hidden shadow-md">
           <div className="absolute inset-0 bg-gradient-to-b from-slate-50/50 to-white" />
           <div className="relative z-10 w-full">
-            <p className="text-sm font-semibold text-slate-500 mb-8 uppercase tracking-wider">กำลังเรียน</p>
-            {/* Circular Timer */}
+            <div className="flex items-center justify-between mb-4">
+              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                isSessionRunning ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+              }`}>
+                {isSessionRunning ? '● กำลังบันทึกเวลา' : '⏸ พักชั่วคราว'}
+              </span>
+              <span className="text-xs text-slate-400 font-medium">
+                Timestamp-verified
+              </span>
+            </div>
+
+            <p className="text-sm font-bold text-slate-800 mb-6 truncate">{lesson.title}</p>
+
+            {/* Circular Timer Ring */}
             <div className="relative w-52 h-52 mx-auto mb-8">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
                 <circle cx="100" cy="100" r="90" fill="none" stroke="#e2e8f0" strokeWidth="6" />
-                <circle cx="100" cy="100" r="90" fill="none" stroke="#3b82f6" strokeWidth="6" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={dashOffset} className="transition-all duration-1000" />
+                <circle cx="100" cy="100" r="90" fill="none" stroke="#3b82f6" strokeWidth="6" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={dashOffset} className="transition-all duration-500" />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-4xl font-mono font-light text-slate-900 tracking-wider">{formatTime(timerSeconds)}</span>
                 <span className="text-xs text-slate-400 mt-2">เป้าหมาย {lesson.durationHours} ชม.</span>
               </div>
             </div>
+
             <div className="flex justify-center gap-3">
-              {isTimerRunning ? (
-                <button onClick={() => setIsTimerRunning(false)} className="bg-amber-50 text-amber-700 hover:bg-amber-100 px-6 py-3 rounded-xl font-semibold transition-colors flex items-center gap-2 border border-amber-200">
+              {isSessionRunning ? (
+                <button onClick={handleTogglePause} className="bg-amber-50 text-amber-700 hover:bg-amber-100 px-6 py-3 rounded-xl font-semibold transition-colors flex items-center gap-2 border border-amber-200">
                   <Pause className="w-5 h-5" /> พัก
                 </button>
               ) : (
-                <button onClick={() => setIsTimerRunning(true)} className="bg-blue-600 text-white hover:bg-blue-700 px-6 py-3 rounded-xl font-semibold transition-colors flex items-center gap-2 shadow-lg shadow-blue-600/20">
+                <button onClick={handleTogglePause} className="bg-blue-600 text-white hover:bg-blue-700 px-6 py-3 rounded-xl font-semibold transition-colors flex items-center gap-2 shadow-lg shadow-blue-600/20">
                   <Play className="w-5 h-5" /> เรียนต่อ
                 </button>
               )}
@@ -177,21 +343,29 @@ export function LessonDetail() {
   /* ============= STEP: SUMMARY ============= */
   const renderSummary = () => (
     <div className="max-w-xl mx-auto">
-      <div className="card p-10 text-center space-y-8">
-        <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto border-4 border-emerald-100">
-          <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+      <div className="card p-10 text-center space-y-6 shadow-md">
+        <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto border-4 border-emerald-100">
+          <CheckCircle2 className="w-8 h-8 text-emerald-600" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">เก่งมาก! เรียนจบแล้ว</h2>
-          <p className="text-slate-500">ใช้เวลาเรียน {formatTime(timerSeconds)}</p>
+          <h2 className="text-2xl font-bold text-slate-900 mb-1">เก่งมาก! เรียนจบแล้ว</h2>
+          <p className="text-slate-500 text-sm">ใช้เวลาเรียนจริง {formatTime(timerSeconds)}</p>
         </div>
-        <div className="bg-slate-50 rounded-2xl p-6 text-left">
-          <label className="block text-sm font-bold text-slate-700 mb-3">สิ่งที่ยังไม่เข้าใจ (บันทึกด่วน)</label>
-          <textarea value={lesson.stillUnclearNotes || ''} onChange={e => updateField('stillUnclearNotes', e.target.value)} placeholder="จดไว้ตรงนี้..." className="w-full bg-white border border-slate-200 rounded-xl p-4 min-h-[80px] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all resize-none text-sm" />
+        <div className="bg-slate-50 rounded-2xl p-5 text-left border border-slate-200/60">
+          <label className="block text-xs font-bold text-slate-700 mb-2">สิ่งที่ยังไม่เข้าใจ (บันทึกด่วน)</label>
+          <textarea 
+            value={lesson.stillUnclearNotes || ''} 
+            onChange={e => {
+              updateField('stillUnclearNotes', e.target.value);
+              updateLearningSessionDraft({ stillUnclearNotes: e.target.value });
+            }} 
+            placeholder="จดไว้ตรงนี้..." 
+            className="w-full bg-white border border-slate-200 rounded-xl p-3 min-h-[80px] outline-none focus:border-blue-500 text-xs resize-none" 
+          />
         </div>
-        <div className="flex justify-center gap-4">
-          <button onClick={() => setStep('quiz')} className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all">ทำแบบทดสอบ</button>
-          <button onClick={handleFinishLesson} className="bg-slate-100 text-slate-700 px-8 py-3 rounded-xl font-bold hover:bg-slate-200 transition-all">ข้ามไปสมุดโน้ต</button>
+        <div className="flex justify-center gap-3 pt-2">
+          <button onClick={() => setStep('quiz')} className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-indigo-700 shadow-md shadow-indigo-600/20 text-xs transition-all">ทำแบบทดสอบ (Quiz)</button>
+          <button onClick={handleFinishLesson} className="bg-slate-100 text-slate-700 px-6 py-2.5 rounded-xl font-bold hover:bg-slate-200 text-xs transition-all">ข้ามไปสมุดโน้ต</button>
         </div>
       </div>
     </div>
@@ -200,35 +374,41 @@ export function LessonDetail() {
   /* ============= STEP: QUIZ ============= */
   const renderQuiz = () => (
     <div className="max-w-xl mx-auto">
-      <div className="card overflow-hidden">
+      <div className="card overflow-hidden shadow-md">
         <div className="bg-indigo-600 px-8 py-5 flex justify-between items-center text-white">
-          <h2 className="font-bold text-lg">แบบทดสอบหลังเรียน</h2>
-          <span className="text-indigo-200 text-sm font-medium">ข้อ 1 / 1</span>
+          <h2 className="font-bold text-base">แบบทดสอบประเมินตนเองหลังเรียน</h2>
+          <span className="text-indigo-200 text-xs font-medium">ข้อ 1 / 1</span>
         </div>
         <div className="w-full h-1 bg-indigo-100"><div className="h-full bg-indigo-400 w-full" /></div>
         <div className="p-8">
           {quizScore === null ? (
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-slate-900">ให้คะแนนความเข้าใจในบทเรียนนี้</h3>
+            <div className="space-y-5">
+              <h3 className="text-base font-bold text-slate-900">ให้คะแนนความเข้าใจในบทเรียนนี้</h3>
               <div className="space-y-3">
-                {[{ score: 100, label: 'เข้าใจแจ่มแจ้ง', desc: 'สามารถอธิบายให้คนอื่นได้', color: 'hover:border-emerald-400 hover:bg-emerald-50/50' }, { score: 70, label: 'พอเข้าใจ', desc: 'เข้าใจหลักการแต่ยังต้องฝึก', color: 'hover:border-amber-400 hover:bg-amber-50/50' }, { score: 40, label: 'ยังงงอยู่', desc: 'ต้องกลับมาเรียนใหม่', color: 'hover:border-rose-400 hover:bg-rose-50/50' }].map(opt => (
+                {[
+                  { score: 100, label: 'เข้าใจแจ่มแจ้ง', desc: 'สามารถนำไปประยุกต์และอธิบายต่อได้', color: 'hover:border-emerald-400 hover:bg-emerald-50/50' },
+                  { score: 70, label: 'พอเข้าใจหลักการ', desc: 'เข้าใจทฤษฎีหลัก แต่ยังต้องฝึกทำโจทย์เพิ่ม', color: 'hover:border-amber-400 hover:bg-amber-50/50' },
+                  { score: 40, label: 'ยังไม่ค่อยเข้าใจ', desc: 'เนื้อหายาก ต้องกลับมาอ่านทบทวนซ้ำ', color: 'hover:border-rose-400 hover:bg-rose-50/50' }
+                ].map(opt => (
                   <button key={opt.score} onClick={() => setQuizScore(opt.score)} className={`w-full text-left p-4 border-2 border-slate-200 rounded-xl transition-all duration-200 ${opt.color}`}>
-                    <p className="font-bold text-slate-900">{opt.label} ({opt.score}%)</p>
-                    <p className="text-sm text-slate-500 mt-0.5">{opt.desc}</p>
+                    <p className="font-bold text-xs text-slate-900">{opt.label} ({opt.score}%)</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{opt.desc}</p>
                   </button>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="text-center space-y-6 py-4">
-              <div className="w-28 h-28 mx-auto rounded-full flex items-center justify-center border-[6px] border-indigo-100 bg-indigo-50">
-                <span className="text-3xl font-bold text-indigo-600">{quizScore}%</span>
+            <div className="text-center space-y-5 py-4">
+              <div className="w-24 h-24 mx-auto rounded-full flex items-center justify-center border-4 border-indigo-100 bg-indigo-50">
+                <span className="text-2xl font-bold text-indigo-600">{quizScore}%</span>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-slate-900">บันทึกผลเรียบร้อย</h3>
-                <p className="text-slate-500 mt-1">คะแนนถูกเก็บลงในสถิติของคุณ</p>
+                <h3 className="text-lg font-bold text-slate-900">บันทึกผลสำเร็จ</h3>
+                <p className="text-xs text-slate-500 mt-1">คะแนนถูกเก็บลงในสถิติการเรียนรู้ของคุณ</p>
               </div>
-              <button onClick={handleFinishLesson} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all">เสร็จสิ้นบทเรียน</button>
+              <button onClick={handleFinishLesson} className="bg-blue-600 text-white px-8 py-2.5 rounded-xl font-bold hover:bg-blue-700 shadow-md shadow-blue-600/20 text-xs transition-all">
+                เสร็จสิ้นบทเรียน
+              </button>
             </div>
           )}
         </div>
@@ -240,73 +420,73 @@ export function LessonDetail() {
   const renderNotebook = () => (
     <div className="space-y-5">
       {/* Lesson Info Header */}
-      <div className="card p-0 overflow-hidden">
+      <div className="card p-0 overflow-hidden shadow-xs">
         {lesson.status === 'COMPLETED' && <div className="h-1 bg-emerald-500" />}
         <div className="p-6 lg:p-8">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
             <div className="flex-1">
               <input type="text" value={lesson.title} onChange={e => updateField('title', e.target.value)} className="w-full text-2xl font-bold text-slate-900 bg-transparent border-none outline-none p-0 focus:ring-0" placeholder="ชื่อบทเรียน..." />
-              <p className="text-sm text-slate-500 mt-2">{subject.name} &middot; เดือนที่ {lesson.month}</p>
+              <p className="text-xs text-slate-500 mt-2">{subject.name} &middot; เดือนที่ {lesson.month}</p>
             </div>
-            <select value={lesson.status} onChange={e => updateField('status', e.target.value)} className={`px-4 py-2 rounded-lg text-sm font-semibold border-0 cursor-pointer ${lesson.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700' : lesson.status === 'IN PROGRESS' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>
+            <select value={lesson.status} onChange={e => updateField('status', e.target.value)} className={`px-4 py-2 rounded-xl text-xs font-bold border-0 cursor-pointer ${lesson.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700' : lesson.status === 'IN PROGRESS' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>
               <option value="NOT STARTED">ยังไม่เริ่ม</option>
               <option value="IN PROGRESS">กำลังเรียน</option>
               <option value="COMPLETED">เรียนจบแล้ว</option>
             </select>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="bg-slate-50 rounded-xl p-3"><p className="text-xs text-slate-500 mb-0.5">เวลาประเมิน</p><p className="text-lg font-bold text-slate-900">{lesson.durationHours} ชม.</p></div>
-            <div className="bg-slate-50 rounded-xl p-3"><p className="text-xs text-slate-500 mb-0.5">ความยาก</p><p className="text-lg font-bold text-slate-900">{lesson.difficulty === 'Easy' ? 'ง่าย' : lesson.difficulty === 'Medium' ? 'กลาง' : 'ยาก'}</p></div>
-            {lesson.actualStudyMinutes !== undefined && <div className="bg-blue-50 rounded-xl p-3"><p className="text-xs text-blue-600 mb-0.5">เรียนจริง</p><p className="text-lg font-bold text-blue-700">{lesson.actualStudyMinutes} นาที</p></div>}
-            {lesson.quizScore !== undefined && <div className="bg-indigo-50 rounded-xl p-3"><p className="text-xs text-indigo-600 mb-0.5">คะแนน Quiz</p><p className="text-lg font-bold text-indigo-700">{lesson.quizScore}%</p></div>}
+            <div className="bg-slate-50 rounded-xl p-3"><p className="text-[11px] text-slate-500 mb-0.5">เวลาประเมิน</p><p className="text-base font-bold text-slate-900">{lesson.durationHours} ชม.</p></div>
+            <div className="bg-slate-50 rounded-xl p-3"><p className="text-[11px] text-slate-500 mb-0.5">ความยาก</p><p className="text-base font-bold text-slate-900">{lesson.difficulty === 'Easy' ? 'ง่าย' : lesson.difficulty === 'Medium' ? 'กลาง' : 'ยาก'}</p></div>
+            {lesson.actualStudyMinutes !== undefined && <div className="bg-blue-50 rounded-xl p-3"><p className="text-[11px] text-blue-600 mb-0.5">เรียนจริง</p><p className="text-base font-bold text-blue-700">{lesson.actualStudyMinutes} นาที</p></div>}
+            {lesson.quizScore !== undefined && <div className="bg-indigo-50 rounded-xl p-3"><p className="text-[11px] text-indigo-600 mb-0.5">คะแนน Quiz</p><p className="text-base font-bold text-indigo-700">{lesson.quizScore}%</p></div>}
           </div>
         </div>
       </div>
 
       {/* Notebook Sections */}
       <div className="grid grid-cols-1 gap-5">
-        <div className="card p-6 lg:p-8 border-l-4 border-l-blue-500">
-          <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-blue-600" /> สิ่งที่ฉันเรียนรู้จากบทนี้</h3>
-          <textarea value={lesson.learnedNotes || ''} onChange={e => updateField('learnedNotes', e.target.value)} placeholder="จดสรุปเนื้อหา หรือ concept สำคัญที่เข้าใจแล้ว..." className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 min-h-[140px] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 text-slate-800 resize-y transition-all text-sm leading-relaxed" />
+        <div className="card p-6 lg:p-8 border-l-4 border-l-blue-500 shadow-xs">
+          <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-blue-600" /> สิ่งที่ฉันเรียนรู้จากบทนี้</h3>
+          <textarea value={lesson.learnedNotes || ''} onChange={e => updateField('learnedNotes', e.target.value)} placeholder="จดสรุปเนื้อหา หรือ concept สำคัญที่เข้าใจแล้ว..." className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 min-h-[120px] outline-none focus:border-blue-500 text-slate-800 resize-y text-xs leading-relaxed" />
         </div>
-        <div className="card p-6 lg:p-8 border-l-4 border-l-rose-500">
-          <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2"><AlertCircle className="w-5 h-5 text-rose-600" /> สิ่งที่ยังไม่เข้าใจ</h3>
-          <textarea value={lesson.stillUnclearNotes || ''} onChange={e => updateField('stillUnclearNotes', e.target.value)} placeholder="มีจุดไหนที่ยังงงอยู่บ้าง?..." className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 min-h-[120px] outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/10 text-slate-800 resize-y transition-all text-sm leading-relaxed" />
+        <div className="card p-6 lg:p-8 border-l-4 border-l-rose-500 shadow-xs">
+          <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2"><AlertCircle className="w-4 h-4 text-rose-600" /> สิ่งที่ยังไม่เข้าใจ</h3>
+          <textarea value={lesson.stillUnclearNotes || ''} onChange={e => updateField('stillUnclearNotes', e.target.value)} placeholder="มีจุดไหนที่ยังงงอยู่บ้าง?..." className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 min-h-[100px] outline-none focus:border-rose-500 text-slate-800 resize-y text-xs leading-relaxed" />
         </div>
-        <div className="card p-6 lg:p-8 border-l-4 border-l-amber-500">
-          <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2"><BookOpen className="w-5 h-5 text-amber-600" /> ต้องกลับมาทบทวนอะไร?</h3>
-          <textarea value={lesson.reviewNotes || ''} onChange={e => updateField('reviewNotes', e.target.value)} placeholder="เช่น กลับไปดูสูตรหน้า 24, ฝึกเขียน loop เพิ่ม..." className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 min-h-[120px] outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 text-slate-800 resize-y transition-all text-sm leading-relaxed" />
+        <div className="card p-6 lg:p-8 border-l-4 border-l-amber-500 shadow-xs">
+          <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2"><BookOpen className="w-4 h-4 text-amber-600" /> ต้องกลับมาทบทวนอะไร?</h3>
+          <textarea value={lesson.reviewNotes || ''} onChange={e => updateField('reviewNotes', e.target.value)} placeholder="เช่น กลับไปดูสูตรหน้า 24, ฝึกเขียน loop เพิ่ม..." className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 min-h-[100px] outline-none focus:border-amber-500 text-slate-800 resize-y text-xs leading-relaxed" />
         </div>
       </div>
 
       {/* Resources & Images */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div className="card p-6">
-          <div className="flex justify-between items-center mb-5">
-            <h3 className="text-base font-bold text-slate-900">แหล่งเรียนรู้</h3>
-            <button onClick={handleAddResource} className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-lg transition-colors"><Plus className="w-4 h-4" /></button>
+        <div className="card p-6 shadow-xs">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-sm font-bold text-slate-900">แหล่งเรียนรู้</h3>
+            <button onClick={handleAddResource} className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-1.5 rounded-lg transition-colors"><Plus className="w-4 h-4" /></button>
           </div>
           <div className="space-y-2">
-            {lesson.resources.length === 0 && <p className="text-slate-400 text-sm py-4 text-center">ยังไม่มีแหล่งเรียนรู้</p>}
+            {lesson.resources.length === 0 && <p className="text-slate-400 text-xs py-4 text-center">ยังไม่มีแหล่งเรียนรู้</p>}
             {lesson.resources.map(r => {
               const yId = r.type === 'youtube' ? getYoutubeId(r.url) : null;
               return (
-                <div key={r.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl group hover:bg-slate-100 transition-colors">
-                  {yId ? <img src={`https://img.youtube.com/vi/${yId}/mqdefault.jpg`} className="w-14 h-10 object-cover rounded-lg flex-shrink-0" /> : <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">{r.type === 'document' ? <FileText className="w-4 h-4 text-slate-400" /> : <LinkIcon className="w-4 h-4 text-slate-400" />}</div>}
-                  <div className="flex-1 min-w-0"><a href={r.url} target="_blank" rel="noreferrer" className="text-sm font-semibold text-slate-900 hover:text-blue-600 truncate block">{r.title}</a><p className="text-xs text-slate-400 truncate">{r.url}</p></div>
+                <div key={r.id} className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-xl group hover:bg-slate-100 transition-colors">
+                  {yId ? <img src={`https://img.youtube.com/vi/${yId}/mqdefault.jpg`} className="w-14 h-10 object-cover rounded-lg flex-shrink-0" alt="" /> : <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-xs">{r.type === 'document' ? <FileText className="w-4 h-4 text-slate-400" /> : <LinkIcon className="w-4 h-4 text-slate-400" />}</div>}
+                  <div className="flex-1 min-w-0"><a href={r.url} target="_blank" rel="noreferrer" className="text-xs font-semibold text-slate-900 hover:text-blue-600 truncate block">{r.title}</a><p className="text-[10px] text-slate-400 truncate">{r.url}</p></div>
                   <button onClick={() => handleRemoveResource(r.id)} className="text-slate-300 hover:text-rose-500 p-1 opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
               );
             })}
           </div>
         </div>
-        <div className="card p-6">
-          <div className="flex justify-between items-center mb-5">
-            <h3 className="text-base font-bold text-slate-900">รูปภาพประกอบ</h3>
-            <label className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-lg transition-colors cursor-pointer"><Plus className="w-4 h-4" /><input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} /></label>
+        <div className="card p-6 shadow-xs">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-sm font-bold text-slate-900">รูปภาพประกอบ</h3>
+            <label className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-1.5 rounded-lg transition-colors cursor-pointer"><Plus className="w-4 h-4" /><input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} /></label>
           </div>
           <div className="grid grid-cols-3 gap-2">
-            {lesson.images.length === 0 && <p className="text-slate-400 text-sm py-4 text-center col-span-3">ยังไม่มีรูปภาพ</p>}
+            {lesson.images.length === 0 && <p className="text-slate-400 text-xs py-4 text-center col-span-3">ยังไม่มีรูปภาพ</p>}
             {lesson.images.map((img, idx) => (
               <div key={idx} className="relative group aspect-square rounded-xl overflow-hidden bg-slate-50 border border-slate-200/60">
                 <img src={img} className="w-full h-full object-cover" alt="" />
@@ -322,11 +502,78 @@ export function LessonDetail() {
   return (
     <div className="max-w-4xl mx-auto pb-20">
       <div className="flex items-center justify-between mb-6">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200/60 text-sm font-medium transition-colors">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-slate-900 bg-white px-3.5 py-1.5 rounded-xl shadow-xs border border-slate-200/60 text-xs font-semibold transition-colors">
           <ArrowLeft className="w-4 h-4" /> ย้อนกลับ
         </button>
-        <button onClick={handleDelete} className="text-slate-400 hover:text-rose-600 p-2 transition-colors"><Trash2 className="w-4 h-4" /></button>
+        <button onClick={handleDelete} className="text-slate-400 hover:text-rose-600 p-2 transition-colors" title="ลบบทเรียน">
+          <Trash2 className="w-4 h-4" />
+        </button>
       </div>
+
+      {/* Abandoned Session Confirmation Modal */}
+      {showAbandonedModal && activeLearningSession && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">ตรวจพบเซสชันการเรียนที่เปิดค้างไว้</h3>
+                <p className="text-xs text-slate-500">เซสชันนี้เปิดค้างไว้นานกว่า 2 ชั่วโมง</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              ระบบจะไม่ตัดสินเองว่าคุณเรียนครบตามเวลาที่เปิดค้างไว้ คุณเรียน session นี้จบแล้วหรือไม่?
+            </p>
+            <div className="space-y-2 pt-2">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  หากเรียนจบแล้ว ระบุเวลาเรียนจริง (นาที):
+                </label>
+                <input
+                  type="number"
+                  value={confirmedMinutesInput}
+                  onChange={(e) => setConfirmedMinutesInput(Math.max(1, Number(e.target.value)))}
+                  className="w-full text-xs font-bold border border-slate-200 rounded-lg p-2 outline-none focus:border-blue-500"
+                  min={1}
+                />
+              </div>
+              <button
+                onClick={() => {
+                  recoverLearningSession(confirmedMinutesInput);
+                  setShowAbandonedModal(false);
+                  setStep('notebook');
+                }}
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+              >
+                ✓ ยืนยันว่าเรียนจบแล้ว (บันทึกเวลาจริง)
+              </button>
+              <button
+                onClick={() => {
+                  recoverLearningSession(); // continue learning
+                  setShowAbandonedModal(false);
+                  setStep('studying');
+                }}
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+              >
+                ▶ เรียนต่อจากเดิม
+              </button>
+              <button
+                onClick={() => {
+                  abandonLearningSession();
+                  setShowAbandonedModal(false);
+                  setStep('idle');
+                }}
+                className="w-full py-2 text-slate-500 hover:text-rose-600 text-xs font-semibold transition-colors"
+              >
+                ✕ ยกเลิกเซสชันที่ค้าง (Discard)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {step === 'idle' && renderIdle()}
       {step === 'source_selection' && renderSourceSelection()}
       {step === 'studying' && renderStudying()}

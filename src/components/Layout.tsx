@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Search, Bell, GraduationCap, Menu } from 'lucide-react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -16,8 +16,9 @@ export function Layout({ children }: LayoutProps) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
-  const { lessons } = useStore();
+  const { lessons, activeLearningSession } = useStore();
 
+  const activeLesson = activeLearningSession ? lessons.find(l => l.id === activeLearningSession.lessonId) : null;
   const completedCount = lessons.filter((l) => l.status === 'COMPLETED').length;
   const totalCount = lessons.length;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -89,6 +90,20 @@ export function Layout({ children }: LayoutProps) {
                 {completedCount}/{totalCount} บท
               </span>
             </div>
+
+            {/* Active Learning Session live pill */}
+            {activeLesson && activeLearningSession && activeLearningSession.status !== 'completed' && activeLearningSession.status !== 'abandoned' && (
+              <Link
+                to={`/lessons/${activeLesson.id}`}
+                className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition-colors shadow-xs"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="hidden lg:inline truncate max-w-[130px]">{activeLesson.title}</span>
+                <span className="text-[11px] font-mono text-emerald-800">
+                  {activeLearningSession.status === 'paused' ? 'พักชั่วคราว' : 'กำลังเรียน'}
+                </span>
+              </Link>
+            )}
 
             {/* Search */}
             <form onSubmit={handleSearch} className="hidden md:block">

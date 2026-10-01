@@ -111,3 +111,28 @@ export interface MonthRoadmapInfo {
   focusSubjects: SubjectId[];
   milestones: Milestone[];
 }
+
+/* ==================================================
+   Learning Session Engine Models (Source of Truth)
+   ================================================== */
+
+export interface LearningSession {
+  sessionId: string;
+  plannedSessionId?: string;
+  lessonId: string;
+  startedAt: string; // ISO timestamp
+  pausedAt?: string; // ISO timestamp
+  resumedAt?: string; // ISO timestamp
+  completedAt?: string; // ISO timestamp
+  accumulatedSeconds: number;
+  actualSeconds: number;
+  source?: Resource;
+  notesDraft?: {
+    learnedNotes?: string;
+    stillUnclearNotes?: string;
+    reviewNotes?: string;
+  };
+  status: 'active' | 'paused' | 'completed' | 'abandoned';
+  lastHeartbeatAt: string;
+}
+
