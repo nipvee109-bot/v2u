@@ -14,13 +14,14 @@ import {
   Layers,
   Info,
   Trash2,
-  Check,
 } from 'lucide-react';
-import { useStore, computeSessionElapsedSeconds } from '../store/useStore';
-import type { Resource, ConfidenceLevel } from '../types';
+import { v4 as uuidv4 } from 'uuid';
+import { useStore, computeSessionElapsedSeconds, scoreToMasteryLevel } from '../store/useStore';
+import type { Resource, ConfidenceLevel, MasteryScore } from '../types';
 import { SUBJECTS, MASTERY_SCALE } from '../types';
 import { ResourceViewer } from '../components/study/ResourceViewer';
 import { CreateResourceModal } from '../components/CreateResourceModal';
+import { PostLearningFlowModal } from '../components/study/PostLearningFlowModal';
 import { formatVideoTime } from '../components/study/YouTubePlayer';
 
 type ActiveTab = 'notes' | 'timestamps' | 'resources' | 'info';
@@ -44,6 +45,7 @@ export const StudyRoom: React.FC = () => {
     heartbeatLearningSession,
     recordQuizAttempt,
     setLessonConfidence,
+    addUnclearTopic,
   } = useStore();
 
   const lesson = useMemo(() => lessons.find((l) => l.id === id), [lessons, id]);
@@ -73,8 +75,6 @@ export const StudyRoom: React.FC = () => {
 
   // Finish flow modal
   const [isFinishModalOpen, setIsFinishModalOpen] = useState(false);
-  const [quizScoreInput, setQuizScoreInput] = useState<string>('');
-  const [confidenceInput, setConfidenceInput] = useState<ConfidenceLevel>('Medium');
 
   // Local draft notes
   const [learnedNotes, setLearnedNotes] = useState(lesson?.learnedNotes || '');
@@ -175,21 +175,65 @@ export const StudyRoom: React.FC = () => {
     setTimeout(() => setSeekTargetSeconds(null), 100);
   };
 
-  // Finish session
-  const handleConfirmFinish = () => {
+  // Phase 33: Learn -> Test -> Master Finish Flow
+  const handleModalConfirm = ({
+    actualMinutes,
+    quizScore,
+    confidence,
+    learnedNotes: finalLearnedNotes,
+    stillUnclearNotes: finalUnclearNotes,
+    reviewNotes: finalReviewNotes,
+    newMasteryScore,
+  }: {
+    actualMinutes: number;
+    quizScore?: number;
+    confidence: ConfidenceLevel;
+    learnedNotes: string;
+    stillUnclearNotes: string;
+    reviewNotes: string;
+    newMasteryScore: MasteryScore;
+  }) => {
     if (!lesson) return;
 
-    const parsedScore = quizScoreInput.trim() ? Math.min(100, Math.max(0, parseInt(quizScoreInput, 10))) : undefined;
+    // 1. Update draft notes in session
+    updateLearningSessionDraft({
+      learnedNotes: finalLearnedNotes,
+      stillUnclearNotes: finalUnclearNotes,
+      reviewNotes: finalReviewNotes,
+    });
 
-    finishLearningSession(undefined, parsedScore, confidenceInput);
-    setLessonConfidence(lesson.id, confidenceInput);
+    // 2. If there are still unclear notes, register as UnclearTopic
+    if (finalUnclearNotes.trim()) {
+      addUnclearTopic({
+        id: uuidv4(),
+        topic: `${lesson.title}: ${finalUnclearNotes.slice(0, 50)}`,
+        details: finalUnclearNotes,
+        subjectId: lesson.subjectId,
+        priority: 'High',
+        status: 'Not Understood',
+        createdAt: new Date().toISOString(),
+      });
+    }
 
-    if (parsedScore !== undefined) {
-      recordQuizAttempt(lesson.id, parsedScore);
+    // 3. Complete the learning session
+    finishLearningSession(actualMinutes, quizScore, confidence);
+    setLessonConfidence(lesson.id, confidence);
+
+    // 4. Update lesson explicit masteryScore and notes
+    updateLesson(lesson.id, {
+      learnedNotes: finalLearnedNotes,
+      stillUnclearNotes: finalUnclearNotes,
+      reviewNotes: finalReviewNotes,
+      masteryScore: newMasteryScore,
+      mastery: scoreToMasteryLevel(newMasteryScore),
+    });
+
+    if (quizScore !== undefined) {
+      recordQuizAttempt(lesson.id, quizScore);
     }
 
     setIsFinishModalOpen(false);
-    navigate(`/lessons/${lesson.id}?tab=notebook`);
+    navigate(`/lessons/${lesson.id}?tab=timeline`);
   };
 
   if (!lesson) {
@@ -656,84 +700,23 @@ export const StudyRoom: React.FC = () => {
         </div>
       </div>
 
-      {/* ═══════════ FINISH SESSION MODAL (Learn -> Test -> Master) ═══════════ */}
-      {isFinishModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs animate-fadeIn">
-          <div className="relative w-full max-w-md rounded-3xl bg-white shadow-2xl p-6 space-y-5">
-            <div className="text-center space-y-1">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-2">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900">สรุปผลการเรียนรู้</h3>
-              <p className="text-xs text-slate-500">
-                คุณได้ศึกษา {lesson.title} เป็นเวลา {formatVideoTime(elapsedSeconds)}
-              </p>
-            </div>
-
-            {/* Quiz Score Input */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 block">
-                คะแนนแบบทดสอบ (Quiz Score %) — ถ้ามี
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={quizScoreInput}
-                onChange={(e) => setQuizScoreInput(e.target.value)}
-                placeholder="เช่น 85 หรือเว้นว่างหากยังไม่ได้ทดสอบ"
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none"
-              />
-            </div>
-
-            {/* Confidence Selection */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 block">
-                ระดับความมั่นใจในเนื้อหานี้
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {(['Low', 'Medium', 'High'] as ConfidenceLevel[]).map((level) => {
-                  const isSelected = confidenceInput === level;
-                  const labels = { Low: 'น้อย', Medium: 'ปานกลาง', High: 'มั่นใจมาก' };
-                  return (
-                    <button
-                      key={level}
-                      type="button"
-                      onClick={() => setConfidenceInput(level)}
-                      className={`py-2 px-3 rounded-xl text-xs font-bold border-2 transition-all ${
-                        isSelected
-                          ? 'border-blue-600 bg-blue-50 text-blue-700'
-                          : 'border-slate-200 text-slate-600 hover:border-slate-300'
-                      }`}
-                    >
-                      {labels[level]}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setIsFinishModalOpen(false)}
-                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
-              >
-                เรียนต่อ
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmFinish}
-                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/25 transition-all flex items-center gap-1.5"
-              >
-                <Check className="w-4 h-4" />
-                <span>บันทึกความก้าวหน้า</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ═══════════ PHASE 33: POST-LEARNING FLOW (Learn -> Test -> Master) ═══════════ */}
+      <PostLearningFlowModal
+        isOpen={isFinishModalOpen}
+        onClose={() => setIsFinishModalOpen(false)}
+        lesson={lesson}
+        elapsedSeconds={elapsedSeconds}
+        resourcesUsed={
+          activeLearningSession?.resourcesUsed && activeLearningSession.resourcesUsed.length > 0
+            ? activeLearningSession.resourcesUsed
+            : (selectedResource ? [selectedResource] : [])
+        }
+        initialLearnedNotes={learnedNotes}
+        initialUnclearNotes={stillUnclearNotes}
+        initialReviewNotes={reviewNotes}
+        initialConfidence={lesson.confidence || 'Medium'}
+        onConfirm={handleModalConfirm}
+      />
 
       {/* Create / Add Resource Modal */}
       <CreateResourceModal
