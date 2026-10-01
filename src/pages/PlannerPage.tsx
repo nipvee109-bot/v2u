@@ -142,6 +142,39 @@ export function PlannerPage() {
     return processedSessions.filter((s) => s.date >= startStr && s.date <= endStr);
   }, [processedSessions, weekStart, weekEnd]);
 
+  // Pre-index processed sessions by date for O(1) day cell lookups
+  const sessionsByDate = useMemo(() => {
+    const map = new Map<string, StudySession[]>();
+    for (let i = 0; i < processedSessions.length; i++) {
+      const s = processedSessions[i];
+      let list = map.get(s.date);
+      if (!list) {
+        list = [];
+        map.set(s.date, list);
+      }
+      list.push(s);
+    }
+    return map;
+  }, [processedSessions]);
+
+  // Pre-index active review queue by nextReviewAt date (YYYY-MM-DD) for O(1) lookup
+  const reviewsByDate = useMemo(() => {
+    const map = new Map<string, ReviewItem[]>();
+    for (let i = 0; i < (reviewQueue || []).length; i++) {
+      const r = reviewQueue[i];
+      if (r.status !== 'completed') {
+        const d = r.nextReviewAt.split('T')[0];
+        let list = map.get(d);
+        if (!list) {
+          list = [];
+          map.set(d, list);
+        }
+        list.push(r);
+      }
+    }
+    return map;
+  }, [reviewQueue]);
+
   // Weekly Summary Stats
   const weeklyPlannedMinutes = weekSessions.reduce((acc, s) => acc + s.plannedMinutes, 0);
   const weeklyCompletedMinutes = weekSessions
@@ -1002,7 +1035,7 @@ export function PlannerPage() {
               const dStr = format(day, 'yyyy-MM-dd');
               const isSelected = selectedDayOnMobile === dStr;
               const isCurr = isToday(day);
-              const daySess = weekSessions.filter((s) => s.date === dStr);
+              const daySess = sessionsByDate.get(dStr) || [];
               return (
                 <button
                   key={dStr}
@@ -1029,7 +1062,7 @@ export function PlannerPage() {
           <div className="grid grid-cols-1 lg:grid-cols-7 gap-3.5">
             {weekDays.map((day) => {
               const dStr = format(day, 'yyyy-MM-dd');
-              const daySessions = weekSessions.filter((s) => s.date === dStr).sort((a, b) => a.startTime.localeCompare(b.startTime));
+              const daySessions = (sessionsByDate.get(dStr) || []).slice().sort((a, b) => a.startTime.localeCompare(b.startTime));
               const dayMinutes = daySessions.reduce((acc, s) => acc + s.plannedMinutes, 0);
               const workload = getDayWorkload(dayMinutes);
               const isCurrentDay = isToday(day);
@@ -1063,9 +1096,7 @@ export function PlannerPage() {
                     </div>
 
                     {(() => {
-                      const dayReviews = reviewQueue.filter(
-                        (r) => r.status !== 'completed' && r.nextReviewAt.split('T')[0] === dStr
-                      );
+                      const dayReviews = reviewsByDate.get(dStr) || [];
                       return (
                         <>
                           <div className="flex justify-between items-center text-[11px] text-slate-500 py-2">
@@ -1241,10 +1272,8 @@ export function PlannerPage() {
                 const dStr = format(day, 'yyyy-MM-dd');
                 const isCurrMonth = isSameMonth(day, mStart);
                 const isCurDay = isToday(day);
-                const daySess = processedSessions.filter((s) => s.date === dStr);
-                const dayReviews = reviewQueue.filter(
-                  (r) => r.status !== 'completed' && r.nextReviewAt.split('T')[0] === dStr
-                );
+                const daySess = sessionsByDate.get(dStr) || [];
+                const dayReviews = reviewsByDate.get(dStr) || [];
 
                 return (
                   <div

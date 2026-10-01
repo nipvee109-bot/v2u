@@ -75,6 +75,8 @@ export function Dashboard() {
     createReviewItemForLesson,
     startLearningSession,
     reviewQueue = [],
+    goals = [],
+    unclearTopics = [],
   } = useStore();
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -147,7 +149,10 @@ export function Dashboard() {
   }, [lessons, sessions, learningSessionsHistory]);
 
   // ── 6. Study Goals (Section 5: Next Goal) ────────────────────────
-  const allCalculatedGoals = getCalculatedGoals();
+  const allCalculatedGoals = useMemo(() => {
+    return getCalculatedGoals();
+  }, [goals, lessons, sessions, learningSessionsHistory, reviewQueue, getCalculatedGoals]);
+
   const goalTotalCount = allCalculatedGoals.length;
   const goalCompletedCount = allCalculatedGoals.filter((g) => g.status === 'completed').length;
   // Immediate active goal
@@ -172,8 +177,11 @@ export function Dashboard() {
   }, [sessions, todayStr]);
 
   // ── 9. Review Engine Queue (Section 2) ───────────────────────────
-  const { overdue: reviewOverdue, dueToday: reviewDueToday, upcoming: reviewUpcoming } =
-    getDueReviewItems();
+  const dueReviewItems = useMemo(() => {
+    return getDueReviewItems();
+  }, [reviewQueue, getDueReviewItems]);
+
+  const { overdue: reviewOverdue, dueToday: reviewDueToday, upcoming: reviewUpcoming } = dueReviewItems;
   const totalReviewDueCount = reviewOverdue.length + reviewDueToday.length;
   const [activeReviewItem, setActiveReviewItem] = useState<ReviewItem | null>(null);
 
@@ -201,7 +209,9 @@ export function Dashboard() {
 
   // ── 10. Knowledge Gap Analysis (Section 4) ───────────────────────
   const [selectedGap, setSelectedGap] = useState<KnowledgeGap | null>(null);
-  const knowledgeGaps = getKnowledgeGaps();
+  const knowledgeGaps = useMemo(() => {
+    return getKnowledgeGaps();
+  }, [lessons, learningSessionsHistory, sessions, reviewQueue, unclearTopics, getKnowledgeGaps]);
 
   const handleGapStartReview = (lessonId: string) => {
     const existing = (reviewQueue || []).find(

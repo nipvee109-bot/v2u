@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { 
@@ -17,7 +18,90 @@ import { th } from 'date-fns/locale';
 export function SearchPage() {
   const [searchParams] = useSearchParams();
   const q = searchParams.get('q')?.toLowerCase().trim() || '';
-  const { lessons, unclearTopics, learningSessionsHistory, getAllResources, recordResourceOpened } = useStore();
+  const { lessons, unclearTopics, learningSessionsHistory, resources, getAllResources, recordResourceOpened } = useStore();
+
+  // Fast O(1) lesson lookup map
+  const lessonMap = useMemo(() => new Map(lessons.map((l) => [l.id, l])), [lessons]);
+
+  // Memoized unified resources
+  const allResources = useMemo(() => getAllResources(), [getAllResources, resources, lessons]);
+
+  // 1. Search in Lessons & Memory
+  const matchedLessons = useMemo(() => {
+    if (!q) return [];
+    return lessons
+      .map((l) => {
+        const matchReasons: string[] = [];
+        if (l.title.toLowerCase().includes(q)) matchReasons.push('ชื่อบทเรียน');
+        if (l.description && l.description.toLowerCase().includes(q)) matchReasons.push('คำอธิบาย');
+        if (l.learnedNotes && l.learnedNotes.toLowerCase().includes(q)) matchReasons.push('สิ่งที่ฉันเรียนรู้');
+        if (l.stillUnclearNotes && l.stillUnclearNotes.toLowerCase().includes(q)) matchReasons.push('สิ่งที่ยังไม่เข้าใจ');
+        if (l.reviewNotes && l.reviewNotes.toLowerCase().includes(q)) matchReasons.push('บันทึกการทบทวน');
+        if (l.quizScore !== undefined && (l.quizScore.toString() === q || q === 'quiz' || q === 'คะแนน')) {
+          matchReasons.push(`Quiz (${l.quizScore}%)`);
+        }
+        if (l.quizAttempts && l.quizAttempts.some((qa) => qa.score.toString() === q || (qa.notes && qa.notes.toLowerCase().includes(q)))) {
+          matchReasons.push('ประวัติ Quiz');
+        }
+        if (l.mastery && l.mastery.toLowerCase().includes(q)) {
+          matchReasons.push(`Mastery (${l.mastery})`);
+        }
+        if (l.confidence && l.confidence.toLowerCase().includes(q)) {
+          matchReasons.push(`Confidence (${l.confidence})`);
+        }
+
+        return {
+          lesson: l,
+          matchReasons,
+          isMatch: matchReasons.length > 0,
+        };
+      })
+      .filter((item) => item.isMatch);
+  }, [lessons, q]);
+
+  // 2. Search in Learning Sessions History with O(1) lesson lookup
+  const matchedSessions = useMemo(() => {
+    if (!q) return [];
+    const isSessionKeyword = q === 'session' || q === 'เซสชัน';
+    return learningSessionsHistory.filter((s) => {
+      const parentLesson = lessonMap.get(s.lessonId);
+      const lessonTitleMatch = parentLesson?.title.toLowerCase().includes(q);
+      const sourceMatch = s.source?.title.toLowerCase().includes(q);
+      const learnedDraft = s.notesDraft?.learnedNotes?.toLowerCase().includes(q);
+      const unclearDraft = s.notesDraft?.stillUnclearNotes?.toLowerCase().includes(q);
+      const reviewDraft = s.notesDraft?.reviewNotes?.toLowerCase().includes(q);
+
+      return lessonTitleMatch || sourceMatch || learnedDraft || unclearDraft || reviewDraft || isSessionKeyword;
+    });
+  }, [learningSessionsHistory, lessonMap, q]);
+
+  // 3. Search in Resources with O(1) lesson lookup
+  const matchedResources = useMemo(() => {
+    if (!q) return [];
+    return allResources.filter((r) => {
+      const titleMatch = r.title.toLowerCase().includes(q);
+      const urlMatch = r.url.toLowerCase().includes(q);
+      const descMatch = r.description ? r.description.toLowerCase().includes(q) : false;
+      let lessonMatch = false;
+      if (r.lessonId) {
+        const parentLesson = lessonMap.get(r.lessonId);
+        if (parentLesson && parentLesson.title.toLowerCase().includes(q)) {
+          lessonMatch = true;
+        }
+      }
+      return titleMatch || urlMatch || descMatch || lessonMatch;
+    });
+  }, [allResources, lessonMap, q]);
+
+  // 4. Search in Unclear Topics
+  const matchedUnclear = useMemo(() => {
+    if (!q) return [];
+    return unclearTopics.filter(
+      (t) => t.topic.toLowerCase().includes(q) || (t.details && t.details.toLowerCase().includes(q))
+    );
+  }, [unclearTopics, q]);
+
+  const totalResults = matchedLessons.length + matchedSessions.length + matchedResources.length + matchedUnclear.length;
 
   if (!q) {
     return (
@@ -34,70 +118,6 @@ export function SearchPage() {
       </div>
     );
   }
-
-  // 1. Search in Lessons & Memory
-  const matchedLessons = lessons.map(l => {
-    const matchReasons: string[] = [];
-    if (l.title.toLowerCase().includes(q)) matchReasons.push('ชื่อบทเรียน');
-    if (l.description && l.description.toLowerCase().includes(q)) matchReasons.push('คำอธิบาย');
-    if (l.learnedNotes && l.learnedNotes.toLowerCase().includes(q)) matchReasons.push('สิ่งที่ฉันเรียนรู้');
-    if (l.stillUnclearNotes && l.stillUnclearNotes.toLowerCase().includes(q)) matchReasons.push('สิ่งที่ยังไม่เข้าใจ');
-    if (l.reviewNotes && l.reviewNotes.toLowerCase().includes(q)) matchReasons.push('บันทึกการทบทวน');
-    if (l.quizScore !== undefined && (l.quizScore.toString() === q || q === 'quiz' || q === 'คะแนน')) {
-      matchReasons.push(`Quiz (${l.quizScore}%)`);
-    }
-    if (l.quizAttempts && l.quizAttempts.some(qa => qa.score.toString() === q || (qa.notes && qa.notes.toLowerCase().includes(q)))) {
-      matchReasons.push('ประวัติ Quiz');
-    }
-    if (l.mastery && l.mastery.toLowerCase().includes(q)) {
-      matchReasons.push(`Mastery (${l.mastery})`);
-    }
-    if (l.confidence && l.confidence.toLowerCase().includes(q)) {
-      matchReasons.push(`Confidence (${l.confidence})`);
-    }
-
-    return {
-      lesson: l,
-      matchReasons,
-      isMatch: matchReasons.length > 0,
-    };
-  }).filter(item => item.isMatch);
-
-  // 2. Search in Learning Sessions History
-  const matchedSessions = learningSessionsHistory.filter(s => {
-    const parentLesson = lessons.find(l => l.id === s.lessonId);
-    const lessonTitleMatch = parentLesson?.title.toLowerCase().includes(q);
-    const sourceMatch = s.source?.title.toLowerCase().includes(q);
-    const learnedDraft = s.notesDraft?.learnedNotes?.toLowerCase().includes(q);
-    const unclearDraft = s.notesDraft?.stillUnclearNotes?.toLowerCase().includes(q);
-    const reviewDraft = s.notesDraft?.reviewNotes?.toLowerCase().includes(q);
-    const isSessionKeyword = q === 'session' || q === 'เซสชัน';
-
-    return lessonTitleMatch || sourceMatch || learnedDraft || unclearDraft || reviewDraft || isSessionKeyword;
-  });
-
-  // 3. Search in Resources
-  const allResources = getAllResources();
-  const matchedResources = allResources.filter(r => {
-    const titleMatch = r.title.toLowerCase().includes(q);
-    const urlMatch = r.url.toLowerCase().includes(q);
-    const descMatch = r.description ? r.description.toLowerCase().includes(q) : false;
-    let lessonMatch = false;
-    if (r.lessonId) {
-      const parentLesson = lessons.find(l => l.id === r.lessonId);
-      if (parentLesson && parentLesson.title.toLowerCase().includes(q)) {
-        lessonMatch = true;
-      }
-    }
-    return titleMatch || urlMatch || descMatch || lessonMatch;
-  });
-
-  // 4. Search in Unclear Topics
-  const matchedUnclear = unclearTopics.filter(t => 
-    t.topic.toLowerCase().includes(q) || (t.details && t.details.toLowerCase().includes(q))
-  );
-
-  const totalResults = matchedLessons.length + matchedSessions.length + matchedResources.length + matchedUnclear.length;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20">

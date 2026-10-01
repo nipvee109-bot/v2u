@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import type { 
   Lesson, 
@@ -218,6 +218,94 @@ export function calculateDeterministicMasteryScore(params: {
   // Started studying, in progress, or completed with low quiz / low confidence / no notes
   return 1;
 }
+
+/* ==================================================
+   Phase 21: High-Performance Indexed Lookups & Debounced Persistence
+   ================================================== */
+
+export function buildSessionsIndex(
+  learningSessionsHistory: LearningSession[] = [],
+  studyPlannerSessions: StudySession[] = []
+) {
+  const learningMap = new Map<string, LearningSession[]>();
+  for (let i = 0; i < learningSessionsHistory.length; i++) {
+    const s = learningSessionsHistory[i];
+    if (s.lessonId && s.status === 'completed') {
+      let list = learningMap.get(s.lessonId);
+      if (!list) {
+        list = [];
+        learningMap.set(s.lessonId, list);
+      }
+      list.push(s);
+    }
+  }
+
+  const plannerMap = new Map<string, StudySession[]>();
+  for (let i = 0; i < studyPlannerSessions.length; i++) {
+    const s = studyPlannerSessions[i];
+    if (s.lessonId && s.status === 'completed') {
+      let list = plannerMap.get(s.lessonId);
+      if (!list) {
+        list = [];
+        plannerMap.set(s.lessonId, list);
+      }
+      list.push(s);
+    }
+  }
+
+  return { learningMap, plannerMap };
+}
+
+export const createDebouncedStorageEngine = (delay = 200) => {
+  let pendingValue: string | null = null;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const flush = (key: string) => {
+    if (pendingValue !== null && typeof window !== 'undefined' && window.localStorage) {
+      try {
+        window.localStorage.setItem(key, pendingValue);
+      } catch (e) {
+        console.error('Failed to write to localStorage:', e);
+      }
+      pendingValue = null;
+    }
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', () => flush('engineering-study-hub-storage'));
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flush('engineering-study-hub-storage');
+    });
+  }
+
+  return {
+    getItem: (name: string): string | null => {
+      if (pendingValue !== null && name === 'engineering-study-hub-storage') {
+        return pendingValue;
+      }
+      if (typeof window === 'undefined' || !window.localStorage) return null;
+      return window.localStorage.getItem(name);
+    },
+    setItem: (name: string, value: string): void => {
+      pendingValue = value;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        flush(name);
+      }, delay);
+    },
+    removeItem: (name: string): void => {
+      pendingValue = null;
+      if (timer) clearTimeout(timer);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem(name);
+      }
+    },
+  };
+};
 
 export function computeLessonLearningRecord(
   lesson: Lesson,
@@ -660,43 +748,40 @@ export const useStore = create<StoreState>()(
 
       getSubjectMasterySummaries: () => {
         const state = get();
+        const { learningMap, plannerMap } = buildSessionsIndex(state.learningSessionsHistory, state.sessions);
         const subjects = Object.keys(SUBJECTS) as SubjectId[];
+
         return subjects.map((subId) => {
           const subLessons = state.lessons.filter((l) => l.subjectId === subId);
           const totalLessons = subLessons.length;
           const completedLessons = subLessons.filter((l) => l.status === 'COMPLETED').length;
           const completionRate = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
-          // Study hours
-          const actualStudyMinutes = subLessons.reduce((acc, l) => {
-            const record = computeLessonLearningRecord(l, state.learningSessionsHistory, state.sessions);
-            return acc + record.totalStudyMinutes;
-          }, 0);
-          const actualStudyHours = Math.round((actualStudyMinutes / 60) * 10) / 10;
-
-          // Quiz scores
-          const quizScores = subLessons
-            .map((l) => {
-              const record = computeLessonLearningRecord(l, state.learningSessionsHistory, state.sessions);
-              return record.quizBestScore;
-            })
-            .filter((s): s is number => s !== undefined);
-
-          const averageQuizScore = quizScores.length > 0
-            ? Math.round(quizScores.reduce((a, b) => a + b, 0) / quizScores.length)
-            : undefined;
-
-          // Mastery scores & distribution
+          let actualStudyMinutes = 0;
+          const quizScores: number[] = [];
           const distribution: Record<MasteryScore, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
           let sumMastery = 0;
 
-          subLessons.forEach((l) => {
-            const record = computeLessonLearningRecord(l, state.learningSessionsHistory, state.sessions);
+          for (let i = 0; i < subLessons.length; i++) {
+            const l = subLessons[i];
+            const record = computeLessonLearningRecord(
+              l,
+              learningMap.get(l.id) || [],
+              plannerMap.get(l.id) || []
+            );
+            actualStudyMinutes += record.totalStudyMinutes;
+            if (record.quizBestScore !== undefined) {
+              quizScores.push(record.quizBestScore);
+            }
             const score = record.masteryScore ?? 0;
             distribution[score] = (distribution[score] || 0) + 1;
             sumMastery += score;
-          });
+          }
 
+          const actualStudyHours = Math.round((actualStudyMinutes / 60) * 10) / 10;
+          const averageQuizScore = quizScores.length > 0
+            ? Math.round(quizScores.reduce((a, b) => a + b, 0) / quizScores.length)
+            : undefined;
           const averageMasteryScore = totalLessons > 0
             ? Math.round((sumMastery / totalLessons) * 10) / 10
             : 0;
@@ -716,11 +801,35 @@ export const useStore = create<StoreState>()(
 
       getTopicsNeedingAttention: () => {
         const state = get();
+        const { learningMap, plannerMap } = buildSessionsIndex(state.learningSessionsHistory, state.sessions);
         const todayStr = new Date().toISOString().split('T')[0];
         const items: TopicAttentionItem[] = [];
 
+        // Pre-index overdue reviews by lessonId
+        const overdueLessonsSet = new Set<string>();
+        (state.reviewQueue || []).forEach((r) => {
+          if (r.status !== 'completed' && r.nextReviewAt.split('T')[0] < todayStr) {
+            overdueLessonsSet.add(r.lessonId);
+          }
+        });
+
+        // Pre-index unclear topics by subjectId
+        const unclearBySubject = new Map<SubjectId, UnclearTopic[]>();
+        (state.unclearTopics || []).forEach((u) => {
+          let list = unclearBySubject.get(u.subjectId);
+          if (!list) {
+            list = [];
+            unclearBySubject.set(u.subjectId, list);
+          }
+          list.push(u);
+        });
+
         state.lessons.forEach((lesson) => {
-          const record = computeLessonLearningRecord(lesson, state.learningSessionsHistory, state.sessions);
+          const record = computeLessonLearningRecord(
+            lesson,
+            learningMap.get(lesson.id) || [],
+            plannerMap.get(lesson.id) || []
+          );
           const score = record.masteryScore ?? 0;
           const reasons: string[] = [];
 
@@ -737,8 +846,10 @@ export const useStore = create<StoreState>()(
           }
 
           // Signal 3: Unclear topics or repeated unclear notes
-          const unclearForLesson = (state.unclearTopics || []).filter(
-            (u) => (u.subjectId === lesson.subjectId && u.topic.toLowerCase().includes(lesson.title.toLowerCase())) ||
+          const subjectUnclears = unclearBySubject.get(lesson.subjectId) || [];
+          const lessonTitleLower = lesson.title.toLowerCase();
+          const unclearForLesson = subjectUnclears.filter(
+            (u) => (u.topic.toLowerCase().includes(lessonTitleLower) || lessonTitleLower.includes(u.topic.toLowerCase())) ||
                    (u.status !== 'Understood' && lesson.stillUnclearNotes && lesson.stillUnclearNotes.length > 5)
           );
           const hasUnclearNotes = Boolean(lesson.stillUnclearNotes && lesson.stillUnclearNotes.trim().length > 5);
@@ -749,10 +860,7 @@ export const useStore = create<StoreState>()(
           }
 
           // Signal 4: Overdue review in reviewQueue
-          const overdueReviews = (state.reviewQueue || []).filter(
-            (r) => r.lessonId === lesson.id && r.status !== 'completed' && r.nextReviewAt.split('T')[0] < todayStr
-          );
-          const isOverdueReview = overdueReviews.length > 0;
+          const isOverdueReview = overdueLessonsSet.has(lesson.id);
 
           if (isOverdueReview) {
             reasons.push('มีรอบทบทวนที่เลยกำหนดเวลา (Overdue Review)');
@@ -791,17 +899,45 @@ export const useStore = create<StoreState>()(
         const todayStr = new Date().toISOString().split('T')[0];
         const gaps: KnowledgeGap[] = [];
         const processedLessonIds = new Set<string>();
+        const { learningMap, plannerMap } = buildSessionsIndex(state.learningSessionsHistory, state.sessions);
+
+        // Pre-index reviewQueue by lessonId
+        const reviewsByLesson = new Map<string, ReviewItem[]>();
+        (state.reviewQueue || []).forEach((r) => {
+          let list = reviewsByLesson.get(r.lessonId);
+          if (!list) {
+            list = [];
+            reviewsByLesson.set(r.lessonId, list);
+          }
+          list.push(r);
+        });
+
+        // Pre-index unclearTopics by subjectId
+        const unclearBySubject = new Map<SubjectId, UnclearTopic[]>();
+        (state.unclearTopics || []).forEach((u) => {
+          let list = unclearBySubject.get(u.subjectId);
+          if (!list) {
+            list = [];
+            unclearBySubject.set(u.subjectId, list);
+          }
+          list.push(u);
+        });
 
         // 1. Scan lessons
         state.lessons.forEach((lesson) => {
-          const record = computeLessonLearningRecord(lesson, state.learningSessionsHistory, state.sessions);
+          const record = computeLessonLearningRecord(
+            lesson,
+            learningMap.get(lesson.id) || [],
+            plannerMap.get(lesson.id) || []
+          );
           const mastery = record.masteryScore ?? 0;
           const quizScore = record.quizBestScore;
           const lastStudied = record.lastStudiedAt || lesson.lastStudiedAt || lesson.completedAt;
 
           // Check overdue Spaced Reviews for this lesson
-          const overdueReviews = (state.reviewQueue || []).filter(
-            (r) => r.lessonId === lesson.id && r.status !== 'completed' && r.nextReviewAt.split('T')[0] < todayStr
+          const lessonReviews = reviewsByLesson.get(lesson.id) || [];
+          const overdueReviews = lessonReviews.filter(
+            (r) => r.status !== 'completed' && r.nextReviewAt.split('T')[0] < todayStr
           );
           const isOverdueReview = overdueReviews.length > 0;
           let overdueDays = 0;
@@ -812,16 +948,17 @@ export const useStore = create<StoreState>()(
           }
 
           // Check last reviewed timestamp from reviewQueue or lesson reviewNotes
-          const lessonReviews = (state.reviewQueue || []).filter((r) => r.lessonId === lesson.id && r.lastReviewedAt);
-          const lastReviewed = lessonReviews.length > 0
-            ? lessonReviews.sort((a, b) => new Date(b.lastReviewedAt!).getTime() - new Date(a.lastReviewedAt!).getTime())[0].lastReviewedAt
+          const reviewedWithDate = lessonReviews.filter((r) => r.lastReviewedAt);
+          const lastReviewed = reviewedWithDate.length > 0
+            ? reviewedWithDate.sort((a, b) => new Date(b.lastReviewedAt!).getTime() - new Date(a.lastReviewedAt!).getTime())[0].lastReviewedAt
             : undefined;
 
           // Find unclear topics correlated with this lesson
-          const matchingUnclear = (state.unclearTopics || []).filter(
+          const subjectUnclears = unclearBySubject.get(lesson.subjectId) || [];
+          const lessonTitleLower = lesson.title.toLowerCase();
+          const matchingUnclear = subjectUnclears.filter(
             (u) => u.status !== 'Understood' && 
-                   u.subjectId === lesson.subjectId && 
-                   (u.topic.toLowerCase().includes(lesson.title.toLowerCase()) || lesson.title.toLowerCase().includes(u.topic.toLowerCase()))
+                   (u.topic.toLowerCase().includes(lessonTitleLower) || lessonTitleLower.includes(u.topic.toLowerCase()))
           );
           const hasStillUnclearNotes = Boolean(lesson.stillUnclearNotes && lesson.stillUnclearNotes.trim().length > 0);
           const unclearCount = matchingUnclear.length + (hasStillUnclearNotes ? 1 : 0);
@@ -1864,6 +2001,7 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: 'engineering-study-hub-storage',
+      storage: createJSONStorage(() => createDebouncedStorageEngine(200)),
     }
   )
 );

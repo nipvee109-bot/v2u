@@ -1,14 +1,35 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, isSameDay, addDays, parseISO } from 'date-fns';
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, addDays } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { SUBJECTS } from '../types';
+import type { Lesson } from '../types';
 import { Link } from 'react-router-dom';
 
 export function CalendarPage() {
   const { lessons } = useStore();
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  const todayStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
+
+  // Pre-index lessons by date string (YYYY-MM-DD) for O(1) cell lookup
+  const lessonsByDate = useMemo(() => {
+    const map = new Map<string, Lesson[]>();
+    for (let i = 0; i < lessons.length; i++) {
+      const l = lessons[i];
+      if (l.date) {
+        const key = l.date.split('T')[0];
+        let list = map.get(key);
+        if (!list) {
+          list = [];
+          map.set(key, list);
+        }
+        list.push(l);
+      }
+    }
+    return map;
+  }, [lessons]);
 
   const renderHeader = () => {
     return (
@@ -63,11 +84,9 @@ export function CalendarPage() {
     while (day <= endDate) {
       for (let i = 0; i < 7; i++) {
         formattedDate = format(day, 'd');
-        const cloneDay = day;
-        
-        // Find lessons for this day. Assuming lesson.date is ISO string or not set.
-        // For mock purpose, let's map week/month to some pseudo dates or just rely on actual `lesson.date`.
-        const dayLessons = lessons.filter(l => l.date && isSameDay(parseISO(l.date), cloneDay));
+        const dayKey = format(day, 'yyyy-MM-dd');
+        const dayLessons = lessonsByDate.get(dayKey) || [];
+        const isCurrentDay = dayKey === todayStr;
 
         days.push(
           <div
@@ -75,7 +94,7 @@ export function CalendarPage() {
             key={day.toString()}
           >
             <div className="flex justify-between items-start">
-               <span className={`text-sm font-medium ${isSameDay(day, new Date()) ? 'bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center' : ''}`}>
+               <span className={`text-sm font-medium ${isCurrentDay ? 'bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center' : ''}`}>
                  {formattedDate}
                </span>
                <button 

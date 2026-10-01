@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useDeferredValue } from 'react';
 import { 
   Plus, 
   Search, 
@@ -7,9 +7,9 @@ import {
   PlayCircle, 
   Globe, 
   FileText, 
-  Sparkles,
-  Layers,
-  Filter
+  Sparkles, 
+  Layers, 
+  Filter 
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import type { Resource, ResourceType, SubjectId } from '../types';
@@ -18,9 +18,11 @@ import { ResourceCard } from '../components/ResourceCard';
 import { CreateResourceModal } from '../components/CreateResourceModal';
 
 export const ResourcesPage: React.FC = () => {
-  const { getAllResources, deleteResource, toggleFavoriteResource, lessons } = useStore();
+  const { getAllResources, deleteResource, toggleFavoriteResource, lessons, resources } = useStore();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+
   const [selectedSubject, setSelectedSubject] = useState<SubjectId | 'ALL'>('ALL');
   const [selectedType, setSelectedType] = useState<ResourceType | 'ALL'>('ALL');
   const [onlyFavorites, setOnlyFavorites] = useState(false);
@@ -29,24 +31,32 @@ export const ResourcesPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
 
-  // Get all unified resources
-  const allResources = getAllResources();
+  // Memoized unified resources
+  const allResources = useMemo(() => getAllResources(), [getAllResources, resources, lessons]);
+
+  // Fast O(1) lesson lookup map
+  const lessonMap = useMemo(() => new Map(lessons.map((l) => [l.id, l])), [lessons]);
 
   // Statistics
   const stats = useMemo(() => {
     const total = allResources.length;
-    const youtubeCount = allResources.filter((r) => r.type === 'youtube').length;
-    const docAndWebCount = allResources.filter(
-      (r) => r.type === 'document' || r.type === 'website'
-    ).length;
-    const favoriteCount = allResources.filter((r) => r.favorite).length;
+    let youtubeCount = 0;
+    let docAndWebCount = 0;
+    let favoriteCount = 0;
+
+    for (let i = 0; i < allResources.length; i++) {
+      const r = allResources[i];
+      if (r.type === 'youtube') youtubeCount++;
+      if (r.type === 'document' || r.type === 'website') docAndWebCount++;
+      if (r.favorite) favoriteCount++;
+    }
 
     return { total, youtubeCount, docAndWebCount, favoriteCount };
   }, [allResources]);
 
-  // Filtered resources
+  // Filtered resources with deferred search for 60fps input responsiveness
   const filteredResources = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
+    const q = deferredSearchQuery.toLowerCase().trim();
 
     return allResources.filter((r) => {
       // Favorites filter
@@ -72,7 +82,7 @@ export const ResourcesPage: React.FC = () => {
         
         let lessonMatch = false;
         if (r.lessonId) {
-          const lesson = lessons.find((l) => l.id === r.lessonId);
+          const lesson = lessonMap.get(r.lessonId);
           if (lesson && lesson.title.toLowerCase().includes(q)) {
             lessonMatch = true;
           }
@@ -85,7 +95,7 @@ export const ResourcesPage: React.FC = () => {
 
       return true;
     });
-  }, [allResources, searchQuery, selectedSubject, selectedType, onlyFavorites, lessons]);
+  }, [allResources, deferredSearchQuery, selectedSubject, selectedType, onlyFavorites, lessonMap]);
 
   const handleEdit = (resource: Resource) => {
     setEditingResource(resource);
