@@ -26,7 +26,8 @@ import type {
   CalculatedGoalProgress,
   GoalStatus,
   WeeklyReviewReport,
-  OnboardingPreferences
+  OnboardingPreferences,
+  TimestampedNote
 } from '../types';
 import { 
   SUBJECTS,
@@ -461,6 +462,9 @@ interface StoreState {
   abandonLearningSession: () => void;
   recoverLearningSession: (confirmedMinutes?: number) => void;
   heartbeatLearningSession: () => void;
+  switchSessionResource: (resource: Resource) => void;
+  addTimestampedNote: (lessonId: string, note: { timestampSeconds: number; timestampDisplay: string; content: string }) => TimestampedNote;
+  deleteTimestampedNote: (lessonId: string, noteId: string) => void;
 
   // Review Engine State
   reviewQueue: ReviewItem[];
@@ -1926,6 +1930,80 @@ export const useStore = create<StoreState>()(
             lastHeartbeatAt: new Date().toISOString(),
           },
         });
+      },
+
+      switchSessionResource: (resource) => {
+        const current = get().activeLearningSession;
+        if (!current) return;
+        const used = current.resourcesUsed || [];
+        const isAlreadyInUsed = used.some((r) => r.id === resource.id);
+        const updatedUsed = isAlreadyInUsed ? used : [...used, resource];
+
+        set({
+          activeLearningSession: {
+            ...current,
+            source: resource,
+            resourcesUsed: updatedUsed,
+            lastHeartbeatAt: new Date().toISOString(),
+          },
+        });
+      },
+
+      addTimestampedNote: (lessonId, noteData) => {
+        const currentSession = get().activeLearningSession;
+        const note: TimestampedNote = {
+          id: uuidv4(),
+          lessonId,
+          sessionId: currentSession?.sessionId,
+          timestampSeconds: noteData.timestampSeconds,
+          timestampDisplay: noteData.timestampDisplay,
+          content: noteData.content.trim(),
+          createdAt: new Date().toISOString(),
+        };
+
+        set((state) => ({
+          lessons: state.lessons.map((l) =>
+            l.id === lessonId
+              ? { ...l, timestampedNotes: [...(l.timestampedNotes || []), note] }
+              : l
+          ),
+          activeLearningSession:
+            state.activeLearningSession && state.activeLearningSession.lessonId === lessonId
+              ? {
+                  ...state.activeLearningSession,
+                  timestampedNotes: [
+                    ...(state.activeLearningSession.timestampedNotes || []),
+                    note,
+                  ],
+                }
+              : state.activeLearningSession,
+        }));
+
+        return note;
+      },
+
+      deleteTimestampedNote: (lessonId, noteId) => {
+        set((state) => ({
+          lessons: state.lessons.map((l) =>
+            l.id === lessonId
+              ? {
+                  ...l,
+                  timestampedNotes: (l.timestampedNotes || []).filter(
+                    (n) => n.id !== noteId
+                  ),
+                }
+              : l
+          ),
+          activeLearningSession:
+            state.activeLearningSession && state.activeLearningSession.lessonId === lessonId
+              ? {
+                  ...state.activeLearningSession,
+                  timestampedNotes: (state.activeLearningSession.timestampedNotes || []).filter(
+                    (n) => n.id !== noteId
+                  ),
+                }
+              : state.activeLearningSession,
+        }));
       },
 
       // Phase 18: Study Onboarding Actions

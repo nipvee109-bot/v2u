@@ -148,6 +148,17 @@ export interface Lesson {
   studyCount?: number;
   reviewCount?: number;
   nextReviewAt?: string;
+  timestampedNotes?: TimestampedNote[];
+}
+
+export interface TimestampedNote {
+  id: string;
+  lessonId: string;
+  sessionId?: string;
+  timestampSeconds: number; // e.g. 822 for 00:13:42
+  timestampDisplay: string; // e.g. "00:13:42"
+  content: string;
+  createdAt: string;
 }
 
 export interface UnclearTopic {
@@ -246,6 +257,8 @@ export interface LearningSession {
   accumulatedSeconds: number;
   actualSeconds: number;
   source?: Resource;
+  resourcesUsed?: Resource[];
+  timestampedNotes?: TimestampedNote[];
   notesDraft?: {
     learnedNotes?: string;
     stillUnclearNotes?: string;
