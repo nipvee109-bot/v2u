@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import {
   Flame,
@@ -11,12 +11,14 @@ import {
   Target,
   AlertTriangle,
   Compass,
+  Sparkles,
 } from 'lucide-react';
 import { SUBJECTS } from '../types';
 import type { SubjectId, ReviewItem, KnowledgeGap } from '../types';
 import { ReviewSessionModal } from '../components/ReviewSessionModal';
 import { KnowledgeGapSection } from '../components/KnowledgeGapSection';
 import { KnowledgeGapDetailModal } from '../components/KnowledgeGapDetailModal';
+import { StudyOnboardingModal } from '../components/onboarding/StudyOnboardingModal';
 import { Link, useNavigate } from 'react-router-dom';
 import { computeLessonLearningRecord } from '../store/useStore';
 import {
@@ -26,7 +28,7 @@ import {
   parseISO,
 } from 'date-fns';
 
-// Phase 17 Smart Dashboard Components & Utils
+// Phase 17 & 18 Smart Dashboard & Onboarding Components & Utils
 import {
   getSmartDashboardRecommendation,
   getDashboardRoadmapStatus,
@@ -34,6 +36,7 @@ import {
   getRecentLearningMemory,
   checkIsNewUserOnboarding,
 } from '../utils/dashboardUtils';
+import { shouldShowOnboarding } from '../utils/onboardingUtils';
 import { OnboardingBanner } from '../components/dashboard/OnboardingBanner';
 import { TodayPlanSection } from '../components/dashboard/TodayPlanSection';
 import { ReviewTodaySection } from '../components/dashboard/ReviewTodaySection';
@@ -65,6 +68,7 @@ export function Dashboard() {
     lessons,
     sessions = [],
     learningSessionsHistory = [],
+    hasCompletedOnboarding,
     getDueReviewItems,
     getKnowledgeGaps,
     getCalculatedGoals,
@@ -74,6 +78,22 @@ export function Dashboard() {
   } = useStore();
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+  // ── Onboarding State (Auto-prompt only for fresh users, never force existing users) ──
+  const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (
+      shouldShowOnboarding({
+        hasCompletedOnboarding,
+        lessons,
+        sessions,
+        learningSessionsHistory,
+      })
+    ) {
+      setIsOnboardingModalOpen(true);
+    }
+  }, [hasCompletedOnboarding, lessons, sessions, learningSessionsHistory]);
 
   // ── 1. Smart Recommendation (Section 3: Continue Learning) ───────
   const recommendation = useMemo(() => {
@@ -322,6 +342,16 @@ export function Dashboard() {
                 </span>
                 <ArrowRight className="w-3 h-3 text-blue-400 ml-1" />
               </Link>
+
+              <button
+                type="button"
+                onClick={() => setIsOnboardingModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600/30 hover:bg-blue-600/50 text-xs text-blue-200 border border-blue-400/30 transition-colors"
+                title="เปิดตัวช่วยตั้งเป้าหมายและจัดตารางเรียน 6 ขั้นตอน"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-blue-300" />
+                <span>ตัวช่วยสร้างแผน (Onboarding)</span>
+              </button>
             </div>
           </div>
 
@@ -403,6 +433,7 @@ export function Dashboard() {
             startLearningSession({ lessonId: id });
             navigate(`/lessons/${id}?action=study`);
           }}
+          onOpenWizard={() => setIsOnboardingModalOpen(true)}
         />
       )}
 
@@ -732,6 +763,13 @@ export function Dashboard() {
         onReStudy={(lessonId) => handleGapReStudy(lessonId)}
         onTakeQuiz={(lessonId) => handleGapTakeQuiz(lessonId)}
         onViewNotes={(lessonId) => handleGapViewNotes(lessonId)}
+      />
+
+      {/* Phase 18: Study Onboarding Wizard Modal */}
+      <StudyOnboardingModal
+        isOpen={isOnboardingModalOpen}
+        onClose={() => setIsOnboardingModalOpen(false)}
+        lessons={lessons}
       />
     </div>
   );

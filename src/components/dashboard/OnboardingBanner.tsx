@@ -6,11 +6,13 @@ import type { Lesson } from '../../types';
 interface OnboardingBannerProps {
   firstLesson?: Lesson;
   onStartFirstLesson?: (lessonId: string) => void;
+  onOpenWizard?: () => void;
 }
 
 export const OnboardingBanner: React.FC<OnboardingBannerProps> = ({
   firstLesson,
   onStartFirstLesson,
+  onOpenWizard,
 }) => {
   return (
     <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900 via-slate-900 to-blue-950 p-6 md:p-8 text-white shadow-xl border border-indigo-500/20">
@@ -30,9 +32,20 @@ export const OnboardingBanner: React.FC<OnboardingBannerProps> = ({
             </h2>
             <p className="mt-1 text-sm text-slate-300 max-w-2xl leading-relaxed">
               ระบบวางแผนและบันทึกความรู้ส่วนตัว พร้อมระบบ Spaced Repetition และ Roadmap อัจฉริยะ 
-              เริ่มต้น 3 ขั้นตอนง่ายๆ ด้านล่างนี้เพื่อสร้างแผนแรกของคุณ
+              เริ่มต้น 3 ขั้นตอนง่ายๆ ด้านล่างนี้ หรือเปิดตัวช่วยสร้างแผน 6 ขั้นตอน
             </p>
           </div>
+
+          {onOpenWizard && (
+            <button
+              onClick={onOpenWizard}
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-blue-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all shrink-0 self-start md:self-auto"
+            >
+              <Sparkles className="w-4 h-4 text-blue-200" />
+              <span>เปิดตัวช่วยสร้างแผน 6 ขั้นตอน</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         {/* 3 Action Steps */}

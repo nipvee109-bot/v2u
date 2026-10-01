@@ -554,5 +554,30 @@ export interface LearningAnalyticsReport {
   plannedVsActualPoints: PlannedVsActualPoint[];
 }
 
+/* ==================================================
+   Phase 18: Study Onboarding Models
+   ================================================== */
 
+export type PreferredTimeSlot = 'morning' | 'afternoon' | 'evening';
 
+export interface OnboardingPreferences {
+  mainGoalTitle: string;
+  targetFaculty?: string;
+  selectedSubjects: SubjectId[];
+  weeklyTargetHours: number;
+  preferredDays: number[]; // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  preferredTimeSlot: PreferredTimeSlot;
+}
+
+export interface GeneratedPlanSessionPreview {
+  id: string;
+  date: string; // YYYY-MM-DD
+  dayOfWeek: number; // 0-6
+  dayLabel: string;
+  startTime: string;
+  endTime: string;
+  plannedMinutes: number;
+  subjectId: SubjectId;
+  lessonId: string;
+  lessonTitle: string;
+}

@@ -25,7 +25,8 @@ import type {
   StudyGoal,
   CalculatedGoalProgress,
   GoalStatus,
-  WeeklyReviewReport
+  WeeklyReviewReport,
+  OnboardingPreferences
 } from '../types';
 import { 
   SUBJECTS,
@@ -49,6 +50,7 @@ import {
   getAutoThumbnail 
 } from '../utils/resourceUtils';
 import { computeWeeklyReview } from '../utils/weeklyReviewUtils';
+import { generateFirstWeekPlan, buildOnboardingMainGoal } from '../utils/onboardingUtils';
 
 export const REVIEW_INTERVALS = [1, 3, 7, 14, 30] as const;
 
@@ -411,6 +413,12 @@ interface StoreState {
   // Phase 15: Weekly Learning Review
   getWeeklyReviewReport: (targetDate?: Date | string) => WeeklyReviewReport;
 
+  // Phase 18: Study Onboarding State & Actions
+  hasCompletedOnboarding: boolean;
+  completeOnboarding: (prefs: OnboardingPreferences) => { firstLessonId?: string };
+  skipOnboarding: () => void;
+  resetOnboarding: () => void;
+
   // Import / Export / Reset
   importData: (data: {
     lessons: Lesson[];
@@ -421,6 +429,7 @@ interface StoreState {
     reviewQueue?: ReviewItem[];
     goals?: StudyGoal[];
     resources?: Resource[];
+    hasCompletedOnboarding?: boolean;
   }) => void;
   resetToInitial: () => void;
 }
@@ -430,6 +439,7 @@ export const useStore = create<StoreState>()(
     (set, get) => ({
       theme: 'system',
       setTheme: (theme) => set({ theme }),
+      hasCompletedOnboarding: false,
       lessons: initialLessons,
       unclearTopics: [],
       sessions: initialSessions,
@@ -1781,6 +1791,50 @@ export const useStore = create<StoreState>()(
         });
       },
 
+      // Phase 18: Study Onboarding Actions
+      completeOnboarding: (prefs: OnboardingPreferences) => {
+        const { lessons } = get();
+        const firstWeekSessions = generateFirstWeekPlan({ preferences: prefs, lessons });
+
+        const newSessions: StudySession[] = firstWeekSessions.map((fws) => ({
+          id: uuidv4(),
+          date: fws.date,
+          startTime: fws.startTime,
+          endTime: fws.endTime,
+          plannedMinutes: fws.plannedMinutes,
+          lessonId: fws.lessonId,
+          subjectId: fws.subjectId,
+          title: `เรียน ${fws.lessonTitle}`,
+          status: 'planned' as const,
+          priority: 'High' as const,
+          type: 'learn' as const,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }));
+
+        const mainGoal = buildOnboardingMainGoal(prefs);
+
+        const updatedWeeklyGoal: WeeklyGoal = {
+          targetHours: prefs.weeklyTargetHours,
+          targetLessons: prefs.preferredDays.length,
+          targetReviews: Math.max(3, Math.round(prefs.preferredDays.length * 0.75)),
+        };
+
+        set((state) => ({
+          hasCompletedOnboarding: true,
+          sessions: [...state.sessions, ...newSessions],
+          goals: [...state.goals, mainGoal],
+          weeklyGoal: updatedWeeklyGoal,
+        }));
+
+        const firstLessonId = firstWeekSessions[0]?.lessonId || lessons[0]?.id;
+        return { firstLessonId };
+      },
+      skipOnboarding: () =>
+        set({ hasCompletedOnboarding: true }),
+      resetOnboarding: () =>
+        set({ hasCompletedOnboarding: false }),
+
       // Backward compatible import
       importData: (data) =>
         set({
@@ -1792,9 +1846,11 @@ export const useStore = create<StoreState>()(
           reviewQueue: data.reviewQueue || createInitialReviewQueue(data.lessons || []),
           goals: data.goals || initialGoals,
           resources: data.resources || initialResources,
+          hasCompletedOnboarding: data.hasCompletedOnboarding ?? true,
         }),
       resetToInitial: () =>
         set({
+          hasCompletedOnboarding: false,
           lessons: initialLessons,
           unclearTopics: [],
           sessions: createInitialSessions(),
