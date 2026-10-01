@@ -1,7 +1,18 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import type { Lesson, UnclearTopic, StudySession, WeeklyGoal, LearningSession, Resource } from '../types';
+import type { 
+  Lesson, 
+  UnclearTopic, 
+  StudySession, 
+  WeeklyGoal, 
+  LearningSession, 
+  Resource,
+  ConfidenceLevel,
+  MasteryLevel,
+  QuizAttempt,
+  LearningRecord
+} from '../types';
 import { initialLessons, initialSessions, initialWeeklyGoal, createInitialSessions } from '../data/initialData';
 
 export function computeSessionElapsedSeconds(session: LearningSession): number {
@@ -16,6 +27,102 @@ export function computeSessionElapsedSeconds(session: LearningSession): number {
   const now = Date.now();
   const deltaSeconds = Math.max(0, Math.floor((now - activeStart) / 1000));
   return session.accumulatedSeconds + deltaSeconds;
+}
+
+export function computeLessonLearningRecord(
+  lesson: Lesson,
+  learningSessionsHistory: LearningSession[] = [],
+  studyPlannerSessions: StudySession[] = []
+): LearningRecord {
+  const lessonLearningSessions = learningSessionsHistory.filter(
+    (s) => s.lessonId === lesson.id && s.status === 'completed'
+  );
+  const lessonPlannerSessions = studyPlannerSessions.filter(
+    (s) => s.lessonId === lesson.id && s.status === 'completed'
+  );
+
+  const sessionMinutes = lessonLearningSessions.reduce(
+    (acc, s) => acc + Math.round(s.actualSeconds / 60),
+    0
+  );
+  const totalStudyMinutes = Math.max(
+    lesson.totalStudyMinutes || 0,
+    lesson.actualStudyMinutes || 0,
+    sessionMinutes
+  );
+
+  const studyCount = Math.max(
+    lesson.studyCount || 0,
+    lessonLearningSessions.length,
+    (lesson.status === 'COMPLETED' ? 1 : 0)
+  );
+
+  const allCompletedDates: string[] = [
+    ...(lesson.completedAt ? [lesson.completedAt] : []),
+    ...(lesson.firstStudiedAt ? [lesson.firstStudiedAt] : []),
+    ...(lesson.lastStudiedAt ? [lesson.lastStudiedAt] : []),
+    ...lessonLearningSessions.map((s) => s.completedAt).filter((d): d is string => Boolean(d)),
+    ...lessonPlannerSessions.map((s) => s.completedAt).filter((d): d is string => Boolean(d)),
+  ].sort();
+
+  const firstStudiedAt = lesson.firstStudiedAt || allCompletedDates[0] || (lesson.status !== 'NOT STARTED' ? lesson.completedAt : undefined);
+  const lastStudiedAt = allCompletedDates[allCompletedDates.length - 1] || lesson.lastStudiedAt || lesson.completedAt;
+
+  const attempts = lesson.quizAttempts || [];
+  const quizScores = [
+    ...(lesson.quizScore !== undefined ? [lesson.quizScore] : []),
+    ...attempts.map((a) => a.score),
+  ];
+  const quizBestScore = quizScores.length > 0 ? Math.max(...quizScores) : undefined;
+  const quizLatestScore = attempts.length > 0 ? attempts[attempts.length - 1].score : lesson.quizScore;
+
+  const confidence: ConfidenceLevel = lesson.confidence || (lesson.status === 'COMPLETED' ? 'Medium' : 'Low');
+  const reviewCount = lesson.reviewCount || 0;
+
+  // Next review date calculation via spaced repetition
+  let nextReviewAt = lesson.nextReviewAt;
+  if (!nextReviewAt && lastStudiedAt) {
+    const daysToAdd = reviewCount === 0 ? 3 : reviewCount === 1 ? 7 : 14;
+    const reviewDate = new Date(new Date(lastStudiedAt).getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+    nextReviewAt = reviewDate.toISOString();
+  }
+
+  // Deterministic Mastery calculation
+  let calculatedMastery: MasteryLevel = 'Novice';
+  const hasLearnedNotes = Boolean(lesson.learnedNotes && lesson.learnedNotes.trim().length > 10);
+  const bestScore = quizBestScore ?? 0;
+
+  if (lesson.status === 'COMPLETED') {
+    if (bestScore >= 90 && reviewCount >= 1 && hasLearnedNotes) {
+      calculatedMastery = 'Mastered';
+    } else if (bestScore >= 70 && totalStudyMinutes > 0) {
+      calculatedMastery = 'Proficient';
+    } else {
+      calculatedMastery = 'Familiar';
+    }
+  } else if (lesson.status === 'IN PROGRESS' || studyCount > 0 || bestScore >= 40) {
+    calculatedMastery = 'Familiar';
+  } else {
+    calculatedMastery = 'Novice';
+  }
+
+  const mastery = lesson.mastery || calculatedMastery;
+
+  return {
+    lessonId: lesson.id,
+    subjectId: lesson.subjectId,
+    firstStudiedAt,
+    lastStudiedAt,
+    totalStudyMinutes,
+    studyCount,
+    completionStatus: lesson.status,
+    quizBestScore,
+    quizLatestScore,
+    confidence,
+    mastery,
+    reviewCount,
+    nextReviewAt,
+  };
 }
 
 interface StoreState {
@@ -34,6 +141,10 @@ interface StoreState {
   addLesson: (lesson: Lesson) => void;
   updateLesson: (id: string, lesson: Partial<Lesson>) => void;
   deleteLesson: (id: string) => void;
+  setLessonConfidence: (lessonId: string, confidence: ConfidenceLevel) => void;
+  recordLessonReview: (lessonId: string, notes?: string) => void;
+  recordQuizAttempt: (lessonId: string, score: number, notes?: string) => void;
+  getLearningRecord: (lessonId: string) => LearningRecord | null;
   
   // Unclear Topic actions
   addUnclearTopic: (topic: UnclearTopic) => void;
@@ -94,11 +205,15 @@ export const useStore = create<StoreState>()(
         set((state) => ({
           lessons: state.lessons.map((lesson) => {
             if (lesson.id === id) {
-              const merged = { ...lesson, ...updatedLesson };
+              const merged: Lesson = { ...lesson, ...updatedLesson };
               if (updatedLesson.status === 'COMPLETED' && lesson.status !== 'COMPLETED' && !merged.completedAt) {
                 merged.completedAt = new Date().toISOString();
               }
-              return merged;
+              const record = computeLessonLearningRecord(merged, state.learningSessionsHistory, state.sessions);
+              return {
+                ...merged,
+                mastery: merged.mastery || record.mastery,
+              };
             }
             return lesson;
           }),
@@ -107,6 +222,75 @@ export const useStore = create<StoreState>()(
         set((state) => ({
           lessons: state.lessons.filter((lesson) => lesson.id !== id),
         })),
+
+      setLessonConfidence: (lessonId, confidence) =>
+        set((state) => ({
+          lessons: state.lessons.map((l) => (l.id === lessonId ? { ...l, confidence } : l)),
+        })),
+
+      recordLessonReview: (lessonId, notes) => {
+        const now = new Date().toISOString();
+        set((state) => ({
+          lessons: state.lessons.map((l) => {
+            if (l.id !== lessonId) return l;
+            const currentReviewCount = l.reviewCount || 0;
+            const nextCount = currentReviewCount + 1;
+            const daysToAdd = nextCount === 1 ? 3 : nextCount === 2 ? 7 : 14;
+            const nextReviewDate = new Date(Date.now() + daysToAdd * 24 * 60 * 60 * 1000).toISOString();
+            const noteEntry = notes ? `[${new Date().toLocaleDateString('th-TH')}] ${notes}` : '';
+            const updatedReviewNotes = noteEntry 
+              ? (l.reviewNotes ? `${l.reviewNotes}\n• ${noteEntry}` : `• ${noteEntry}`)
+              : l.reviewNotes;
+
+            const updatedLesson: Lesson = {
+              ...l,
+              lastStudiedAt: now,
+              reviewCount: nextCount,
+              nextReviewAt: nextReviewDate,
+              reviewNotes: updatedReviewNotes,
+            };
+
+            const record = computeLessonLearningRecord(updatedLesson, state.learningSessionsHistory, state.sessions);
+            return {
+              ...updatedLesson,
+              mastery: record.mastery,
+            };
+          }),
+        }));
+      },
+
+      recordQuizAttempt: (lessonId, score, notes) => {
+        const now = new Date().toISOString();
+        const attempt: QuizAttempt = {
+          id: uuidv4(),
+          timestamp: now,
+          score,
+          notes,
+        };
+        set((state) => ({
+          lessons: state.lessons.map((l) => {
+            if (l.id !== lessonId) return l;
+            const attempts = [...(l.quizAttempts || []), attempt];
+            const updatedLesson: Lesson = {
+              ...l,
+              quizScore: score,
+              quizAttempts: attempts,
+              lastStudiedAt: now,
+            };
+            const record = computeLessonLearningRecord(updatedLesson, state.learningSessionsHistory, state.sessions);
+            return {
+              ...updatedLesson,
+              mastery: record.mastery,
+            };
+          }),
+        }));
+      },
+
+      getLearningRecord: (lessonId) => {
+        const lesson = get().lessons.find((l) => l.id === lessonId);
+        if (!lesson) return null;
+        return computeLessonLearningRecord(lesson, get().learningSessionsHistory, get().sessions);
+      },
 
       // Unclear Topic Actions
       addUnclearTopic: (topic) => 
@@ -308,39 +492,68 @@ export const useStore = create<StoreState>()(
           lastHeartbeatAt: now,
         };
 
+        const quizAttempt: QuizAttempt | null = quizScore !== undefined ? {
+          id: uuidv4(),
+          timestamp: now,
+          score: quizScore,
+        } : null;
+
         // Update the lesson
-        set((state) => ({
-          activeLearningSession: null,
-          learningSessionsHistory: [completedSession, ...(state.learningSessionsHistory || [])],
-          lessons: state.lessons.map((l) => {
+        set((state) => {
+          const updatedHistory = [completedSession, ...(state.learningSessionsHistory || [])];
+          const updatedLessons = state.lessons.map((l) => {
             if (l.id === current.lessonId) {
-              return {
+              const prevAttempts = l.quizAttempts || [];
+              const newAttempts = quizAttempt ? [...prevAttempts, quizAttempt] : prevAttempts;
+              const newStudyCount = (l.studyCount || 0) + 1;
+              const newTotalMinutes = (l.totalStudyMinutes || l.actualStudyMinutes || 0) + calculatedMinutes;
+              const daysToAdd = (l.reviewCount || 0) === 0 ? 3 : (l.reviewCount || 0) === 1 ? 7 : 14;
+              const nextReviewDate = new Date(Date.now() + daysToAdd * 24 * 60 * 60 * 1000).toISOString();
+
+              const merged: Lesson = {
                 ...l,
                 status: 'COMPLETED',
                 completedAt: now,
+                firstStudiedAt: l.firstStudiedAt || current.startedAt || now,
+                lastStudiedAt: now,
                 actualStudyMinutes: calculatedMinutes,
+                totalStudyMinutes: newTotalMinutes,
+                studyCount: newStudyCount,
+                nextReviewAt: nextReviewDate,
                 quizScore: quizScore ?? l.quizScore,
+                quizAttempts: newAttempts,
                 learnedNotes: current.notesDraft?.learnedNotes ?? l.learnedNotes,
                 stillUnclearNotes: current.notesDraft?.stillUnclearNotes ?? l.stillUnclearNotes,
                 reviewNotes: current.notesDraft?.reviewNotes ?? l.reviewNotes,
               };
+
+              const record = computeLessonLearningRecord(merged, updatedHistory, state.sessions);
+              return {
+                ...merged,
+                mastery: record.mastery,
+              };
             }
             return l;
-          }),
-          // Also complete planner session if linked
-          sessions: current.plannedSessionId
-            ? (state.sessions || []).map((s) =>
-                s.id === current.plannedSessionId
-                  ? {
-                      ...s,
-                      status: 'completed',
-                      actualMinutes: calculatedMinutes,
-                      completedAt: now,
-                    }
-                  : s
-              )
-            : state.sessions,
-        }));
+          });
+
+          return {
+            activeLearningSession: null,
+            learningSessionsHistory: updatedHistory,
+            lessons: updatedLessons,
+            sessions: current.plannedSessionId
+              ? (state.sessions || []).map((s) =>
+                  s.id === current.plannedSessionId
+                    ? {
+                        ...s,
+                        status: 'completed',
+                        actualMinutes: calculatedMinutes,
+                        completedAt: now,
+                      }
+                    : s
+                )
+              : state.sessions,
+          };
+        });
       },
 
       abandonLearningSession: () => {

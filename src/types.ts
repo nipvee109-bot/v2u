@@ -9,6 +9,32 @@ export interface Resource {
   description?: string;
 }
 
+export type ConfidenceLevel = 'Low' | 'Medium' | 'High';
+export type MasteryLevel = 'Novice' | 'Familiar' | 'Proficient' | 'Mastered';
+
+export interface QuizAttempt {
+  id: string;
+  timestamp: string; // ISO string
+  score: number; // percentage 0-100
+  notes?: string;
+}
+
+export interface LearningRecord {
+  lessonId: string;
+  subjectId: SubjectId;
+  firstStudiedAt?: string;
+  lastStudiedAt?: string;
+  totalStudyMinutes: number;
+  studyCount: number;
+  completionStatus: 'NOT STARTED' | 'IN PROGRESS' | 'COMPLETED';
+  quizBestScore?: number;
+  quizLatestScore?: number;
+  confidence: ConfidenceLevel;
+  mastery: MasteryLevel;
+  reviewCount: number;
+  nextReviewAt?: string;
+}
+
 export interface Lesson {
   id: string;
   title: string;
@@ -29,6 +55,17 @@ export interface Lesson {
   quizScore?: number;
   resources: Resource[];
   images: string[];
+
+  // Phase 9: Per Lesson Memory Fields
+  quizAttempts?: QuizAttempt[];
+  confidence?: ConfidenceLevel;
+  mastery?: MasteryLevel;
+  firstStudiedAt?: string;
+  lastStudiedAt?: string;
+  totalStudyMinutes?: number;
+  studyCount?: number;
+  reviewCount?: number;
+  nextReviewAt?: string;
 }
 
 export interface UnclearTopic {
