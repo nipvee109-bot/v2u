@@ -126,12 +126,38 @@ export function CalendarPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-lg">
-        <h1 className="text-2xl font-bold">ปฏิทินการเรียน</h1>
-        <p className="text-slate-300 text-sm mt-1">วางแผนและติดตามการเรียนในแต่ละวัน</p>
+    <div className="max-w-7xl mx-auto space-y-6 pb-20 font-sans">
+      {/* ═══════════ Premium Hero Banner ═══════════ */}
+      <div className="bg-gradient-to-br from-[#0B1120] via-[#131C31] to-[#0B1120] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 rounded-full bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-300 border border-blue-400/20">
+              <ChevronRight className="w-3.5 h-3.5 text-blue-400" />
+              <span>Learning Calendar & Timeline</span>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+              ปฏิทินการเรียนรู้
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
+              ภาพรวมกำหนดการอ่านหนังสือ ทบทวน Spaced Repetition และเซสชันการเรียนรู้ตลอดทั้งเดือน
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 self-start md:self-auto">
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl px-4 py-3 border border-white/10 flex items-center gap-3">
+              <div className="text-right">
+                <div className="text-[11px] text-slate-300">เดือนปัจจุบัน</div>
+                <div className="text-sm font-bold text-white">
+                  {format(currentMonth, 'MMMM yyyy', { locale: th })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100">
+
+      <div className="bg-white p-5 sm:p-7 rounded-3xl shadow-sm border border-slate-200/70">
         {renderHeader()}
         <div className="overflow-x-auto responsive-scroll-x -mx-2 sm:mx-0 px-2 sm:px-0">
           <div className="min-w-[580px]">

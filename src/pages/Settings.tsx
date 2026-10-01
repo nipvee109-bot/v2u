@@ -287,18 +287,36 @@ export function Settings() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">ตั้งค่าและความปลอดภัยของข้อมูล</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            จัดการธีมหน้าจอ, สำรองข้อมูลทุกโมดูล, ตรวจสอบความถูกต้องก่อนนำเข้า และกู้คืนข้อมูล
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <ShieldCheck className="w-3.5 h-3.5" /> Schema v4 Active
-          </span>
+      {/* ═══════════ Premium Hero Banner ═══════════ */}
+      <div className="bg-gradient-to-br from-[#0B1120] via-[#131C31] to-[#0B1120] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 rounded-full bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-300 border border-blue-400/20">
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+              <span>System & Data Integrity Hub</span>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+              ตั้งค่าและความปลอดภัยของข้อมูล
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
+              จัดการธีมหน้าจอ, สำรองข้อมูลทุกโมดูล, ตรวจสอบความถูกต้องก่อนนำเข้า และกู้คืนข้อมูลด้วยจุดสำรองอัตโนมัติ
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 self-start md:self-auto">
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl px-4 py-3 border border-white/10 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
+                v4
+              </div>
+              <div>
+                <div className="text-[11px] text-slate-300">Data Schema</div>
+                <div className="text-xs font-bold text-emerald-300 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" /> Active & Verified
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

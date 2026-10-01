@@ -122,36 +122,46 @@ export function GoalsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 pb-20 font-sans">
       
-      {/* ═══════════ HEADER ═══════════ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5 mb-1">
-            <div className="w-10 h-10 rounded-2xl bg-blue-600 shadow-md shadow-blue-600/25 flex items-center justify-center text-white shrink-0">
-              <Target className="w-5 h-5" />
+      {/* ═══════════ Premium Hero Banner ═══════════ */}
+      <div className="bg-gradient-to-br from-[#0B1120] via-[#131C31] to-[#0B1120] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 rounded-full bg-blue-500/20 px-3 py-1 text-xs font-semibold text-blue-300 border border-blue-400/20">
+              <Target className="w-3.5 h-3.5 text-blue-400" />
+              <span>Multi-Tier Goal System & Tracking</span>
             </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-                เป้าหมายการเรียน (Study Goals)
-              </h1>
-              <p className="text-xs text-slate-500">
-                ระบบเป้าหมาย 4 ระดับ (รายวัน, รายสัปดาห์, รายเดือน, แผน 6 เดือน) คำนวณความคืบหน้าจากบันทึกจริง
-              </p>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+              เป้าหมายการเรียน
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
+              ระบบเป้าหมาย 4 ระดับ (รายวัน, รายสัปดาห์, รายเดือน, แผน 6 เดือน) คำนวณความคืบหน้าอัตโนมัติจากบันทึกจริง
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl px-4 py-3 border border-white/10 flex items-center gap-3">
+              <div className="text-right">
+                <div className="text-[11px] text-slate-300">อัตราสำเร็จ</div>
+                <div className="text-sm font-bold text-white flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  {completionRate}% ({completedGoals}/{totalGoals})
+                </div>
+              </div>
             </div>
+            <button
+              onClick={() => {
+                setEditingGoal(null);
+                setIsModalOpen(true);
+              }}
+              className="min-h-[44px] flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-blue-600/30 transition-all active:scale-[0.98]"
+            >
+              <Plus className="w-4 h-4" /> สร้างเป้าหมายใหม่
+            </button>
           </div>
         </div>
-
-        <button
-          onClick={() => {
-            setEditingGoal(null);
-            setIsModalOpen(true);
-          }}
-          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all flex items-center gap-2 shrink-0 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>สร้างเป้าหมายใหม่</span>
-        </button>
       </div>
 
       {/* ═══════════ METRICS SUMMARY ROW ═══════════ */}
