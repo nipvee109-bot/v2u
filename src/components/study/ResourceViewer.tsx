@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { ExternalLink, FileText, Globe, AlertCircle } from 'lucide-react';
+import { ExternalLink, FileText, Globe, AlertCircle, WifiOff, BookOpen } from 'lucide-react';
 import type { Resource } from '../../types';
 import { YouTubePlayer } from './YouTubePlayer';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 
 interface ResourceViewerProps {
   resource: Resource | null;
@@ -15,6 +16,7 @@ export const ResourceViewer: React.FC<ResourceViewerProps> = ({
   seekToSeconds,
 }) => {
   const [iframeError, setIframeError] = useState(false);
+  const { isOnline } = useNetworkStatus();
 
   if (!resource) {
     return (
@@ -24,6 +26,31 @@ export const ResourceViewer: React.FC<ResourceViewerProps> = ({
         <p className="text-xs text-slate-500 mt-1 max-w-sm">
           เลือกสื่อจากรายการด้านบน หรือกดเพิ่มแหล่งเรียนรู้ใหม่เพื่อเริ่มศึกษา
         </p>
+      </div>
+    );
+  }
+
+  // Phase 39: Offline Fallback for Online Media (YouTube)
+  if (!isOnline && resource.type === 'youtube') {
+    return (
+      <div className="w-full aspect-video rounded-2xl bg-slate-900 border border-amber-900/40 flex flex-col items-center justify-center p-8 text-white text-center shadow-xl relative overflow-hidden">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400 mb-3">
+          <WifiOff className="w-6 h-6 animate-pulse" />
+        </div>
+        <h4 className="text-base font-bold text-slate-200">
+          ไม่สามารถสตรีมวิดีโอ YouTube ขณะออฟไลน์
+        </h4>
+        <p className="text-xs text-slate-400 mt-1.5 max-w-md">
+          คุณกำลังศึกษา: <span className="text-amber-300 font-semibold">{resource.title}</span>
+          <br />
+          คุณสามารถอ่านหนังสือ ตำรา หรือชีทสรุปแบบออฟไลน์ พร้อมจับเวลาและจดบันทึกในห้องเรียนได้ตามปกติ ข้อมูลจะถูกบันทึกไว้อย่างปลอดภัย
+        </p>
+        <div className="flex items-center gap-2 mt-5">
+          <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300">
+            <BookOpen className="w-4 h-4 text-indigo-400" />
+            โหมดเรียนออฟไลน์ (Offline Study Active)
+          </span>
+        </div>
       </div>
     );
   }

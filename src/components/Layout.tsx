@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { Sidebar } from './Sidebar';
 import { useStore } from '../store/useStore';
+import { OfflineIndicator } from './OfflineIndicator';
 
 interface LayoutProps {
   children: ReactNode;
@@ -83,6 +84,7 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Main content area */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+        <OfflineIndicator />
         {/* Header */}
         <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between border-b border-slate-200/60 bg-white/90 px-3.5 sm:px-4 lg:px-6 backdrop-blur-xl">
           {/* Left section */}
