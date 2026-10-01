@@ -449,4 +449,110 @@ export interface WeeklyReviewReport {
   nextWeekPlan: WeeklyNextWeekPlan;
 }
 
+/* ==================================================
+   Phase 16: Learning Analytics Models
+   ================================================== */
+
+export type AnalyticsDateRange = '7d' | '30d' | '90d' | 'all';
+
+export interface DailyStudyPoint {
+  date: string; // YYYY-MM-DD
+  label: string; // e.g. "จ. 28 ก.ย."
+  dayOfWeek: string;
+  hours: number;
+  minutes: number;
+  sessionsCount: number;
+  lessonsCompletedCount: number;
+  isWeekend: boolean;
+  isToday: boolean;
+  subjectsStudied: SubjectId[];
+  details: {
+    id: string;
+    title: string;
+    subjectId: SubjectId;
+    minutes: number;
+    type: 'session' | 'lesson';
+  }[];
+}
+
+export interface QuizTrendPoint {
+  id: string;
+  date: string;
+  label: string;
+  score: number;
+  lessonId: string;
+  lessonTitle: string;
+  subjectId: SubjectId;
+  notes?: string;
+}
+
+export interface SubjectAllocationItem {
+  subjectId: SubjectId;
+  name: string;
+  color: string;
+  hours: number;
+  minutes: number;
+  percentage: number;
+  lessonsCount: number;
+  sessionsCount: number;
+  avgQuizScore?: number;
+}
+
+export interface PlannedVsActualPoint {
+  date: string;
+  label: string;
+  plannedMinutes: number;
+  actualMinutes: number;
+  plannedHours: number;
+  actualHours: number;
+  adherencePercent: number;
+}
+
+export interface MasteryDistributionStats {
+  score: MasteryScore;
+  level: MasteryLevel;
+  title: string;
+  count: number;
+  percentage: number;
+  badgeClass: string;
+  barColor: string;
+}
+
+export interface LearningAnalyticsReport {
+  dateRange: AnalyticsDateRange;
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+  activeStudyDaysCount: number;
+  
+  // 10 Core Metrics
+  totalStudyHours: number;
+  totalStudyMinutes: number;
+  averageDailyStudyHours: number;
+  averageDailyActiveHours: number;
+  weeklyStudyHours: number;
+  weeklyHoursChangePercent?: number;
+  monthlyStudyHours: number;
+  monthlyHoursChangePercent?: number;
+  lessonsCompletedCount: number;
+  quizScoreAverage?: number;
+  quizScoreChangePercent?: number;
+  reviewCompletionRate: number;
+  reviewsCompletedCount: number;
+  reviewsTotalDueCount: number;
+  masteryDistribution: MasteryDistributionStats[];
+  subjectAllocation: SubjectAllocationItem[];
+  plannedVsActual: {
+    totalPlannedHours: number;
+    totalActualHours: number;
+    adherencePercent: number;
+  };
+
+  // Chart series data
+  dailyStudyPoints: DailyStudyPoint[];
+  quizTrendPoints: QuizTrendPoint[];
+  plannedVsActualPoints: PlannedVsActualPoint[];
+}
+
+
 

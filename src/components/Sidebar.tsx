@@ -14,6 +14,7 @@ import {
   Target,
   BookMarked,
   CalendarCheck,
+  BarChart3,
   Settings,
   X,
 } from 'lucide-react';
@@ -46,6 +47,7 @@ const subjectNav: NavItemConfig[] = [
 ];
 
 const learningNav: NavItemConfig[] = [
+  { to: '/analytics', icon: BarChart3, label: 'สถิติการเรียนรู้' },
   { to: '/goals', icon: Target, label: 'เป้าหมายการเรียน' },
   { to: '/resources', icon: BookMarked, label: 'คลังแหล่งเรียนรู้' },
   { to: '/not-understood', icon: HelpCircle, label: 'สิ่งที่ยังไม่เข้าใจ' },
