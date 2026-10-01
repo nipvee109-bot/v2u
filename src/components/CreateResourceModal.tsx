@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Link2, Image as ImageIcon, Sparkles, AlertCircle } from 'lucide-react';
-import type { Resource, ResourceType, SubjectId } from '../types';
+import type { Resource, ResourceType, ResourceRole, SubjectId } from '../types';
 import { SUBJECTS } from '../types';
 import { useStore } from '../store/useStore';
 import { isValidUrl, isDuplicateResource, getAutoThumbnail } from '../utils/resourceUtils';
@@ -16,9 +16,17 @@ interface CreateResourceModalProps {
 const RESOURCE_TYPES: { id: ResourceType; label: string }[] = [
   { id: 'youtube', label: 'YouTube' },
   { id: 'website', label: 'เว็บไซต์ (Website)' },
-  { id: 'document', label: 'เอกสาร (PDF/Document)' },
+  { id: 'pdf', label: 'เอกสาร PDF' },
+  { id: 'document', label: 'เอกสาร / บทความ (Document)' },
   { id: 'image', label: 'รูปภาพ / ชาร์ต (Image)' },
   { id: 'other', label: 'อื่นๆ (Other)' },
+];
+
+const RESOURCE_ROLES: { id: ResourceRole; label: string }[] = [
+  { id: 'primary', label: 'แหล่งเรียนหลัก (Primary)' },
+  { id: 'alternative', label: 'แหล่งเรียนทางเลือก (Alternative)' },
+  { id: 'practice', label: 'ฝึกฝน / โจทย์ปัญหา (Practice)' },
+  { id: 'reference', label: 'อ้างอิง / สรุปย่อ (Reference)' },
 ];
 
 export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
@@ -33,6 +41,8 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [type, setType] = useState<ResourceType>('youtube');
+  const [role, setRole] = useState<ResourceRole>('primary');
+  const [provider, setProvider] = useState<string>('');
   const [subject, setSubject] = useState<SubjectId>(defaultSubject);
   const [lessonId, setLessonId] = useState<string>(defaultLessonId || '');
   const [thumbnail, setThumbnail] = useState('');
@@ -40,16 +50,27 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
   const [favorite, setFavorite] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Auto-detect type if URL looks like youtube
+  // Auto-detect type if URL looks like youtube or pdf
   const handleUrlChange = (val: string) => {
     setUrl(val);
     setError(null);
-    if (val.includes('youtube.com') || val.includes('youtu.be')) {
+    const lower = val.toLowerCase();
+    if (lower.includes('youtube.com') || lower.includes('youtu.be')) {
       setType('youtube');
+      if (!provider) setProvider('YouTube');
       const autoThumb = getAutoThumbnail(val, 'youtube');
       if (autoThumb && !thumbnail) {
         setThumbnail(autoThumb);
       }
+    } else if (lower.endsWith('.pdf') || lower.includes('/pdf')) {
+      setType('pdf');
+      if (!provider) setProvider('PDF Document');
+    } else if (lower.includes('github.com')) {
+      if (!provider) setProvider('GitHub');
+    } else if (lower.includes('coursera.org')) {
+      if (!provider) setProvider('Coursera');
+    } else if (lower.includes('ocw.mit.edu')) {
+      if (!provider) setProvider('MIT OpenCourseWare');
     }
   };
 
@@ -67,7 +88,9 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
       setTitle(initialResource.title);
       setUrl(initialResource.url);
       setType(initialResource.type || 'youtube');
-      setSubject(initialResource.subject || defaultSubject);
+      setRole(initialResource.role || 'primary');
+      setProvider(initialResource.provider || '');
+      setSubject(initialResource.subject || initialResource.subjectId || defaultSubject);
       setLessonId(initialResource.lessonId || '');
       setThumbnail(initialResource.thumbnail || '');
       setDescription(initialResource.description || '');
@@ -77,6 +100,8 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
       setTitle('');
       setUrl('');
       setType('youtube');
+      setRole('primary');
+      setProvider('');
       setSubject(defaultSubject);
       setLessonId(defaultLessonId || '');
       setThumbnail('');
@@ -133,11 +158,15 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
         title: trimmedTitle,
         url: trimmedUrl,
         type,
+        role,
+        provider: provider.trim() || undefined,
         subject,
+        subjectId: subject,
         lessonId: lessonId || undefined,
         thumbnail: finalThumbnail,
         description: description.trim() || undefined,
         favorite,
+        updatedAt: new Date().toISOString(),
       });
 
       if (!res.success) {
@@ -150,11 +179,16 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
         title: trimmedTitle,
         url: trimmedUrl,
         type,
+        role,
+        provider: provider.trim() || undefined,
         subject,
+        subjectId: subject,
         lessonId: lessonId || undefined,
         thumbnail: finalThumbnail,
         description: description.trim() || undefined,
         favorite,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       });
 
       if (!res.success) {
@@ -279,6 +313,41 @@ export const CreateResourceModal: React.FC<CreateResourceModalProps> = ({
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+
+          {/* Grid: Role & Provider */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="resource-role-select" className="mb-1 block text-xs font-semibold text-slate-700">
+                บทบาทในบทเรียน
+              </label>
+              <select
+                id="resource-role-select"
+                value={role}
+                onChange={(e) => setRole(e.target.value as ResourceRole)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-blue-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20"
+              >
+                {RESOURCE_ROLES.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="resource-provider-input" className="mb-1 block text-xs font-semibold text-slate-700">
+                ผู้ให้บริการ / แพลตฟอร์ม
+              </label>
+              <input
+                id="resource-provider-input"
+                type="text"
+                value={provider}
+                onChange={(e) => setProvider(e.target.value)}
+                placeholder="เช่น YouTube, MIT OCW, GitHub"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20"
+              />
             </div>
           </div>
 

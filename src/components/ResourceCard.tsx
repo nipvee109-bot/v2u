@@ -13,7 +13,7 @@ import {
   BookOpen,
   Clock
 } from 'lucide-react';
-import type { Resource, ResourceType } from '../types';
+import type { Resource, ResourceType, ResourceRole } from '../types';
 import { SUBJECTS } from '../types';
 import { useStore } from '../store/useStore';
 import { formatDistanceToNow, parseISO } from 'date-fns';
@@ -24,6 +24,7 @@ interface ResourceCardProps {
   onEdit?: (resource: Resource) => void;
   onDelete?: (resource: Resource) => void;
   onToggleFavorite?: (resource: Resource) => void;
+  onAssignLesson?: (resource: Resource) => void;
 }
 
 const TYPE_CONFIG: Record<
@@ -43,6 +44,13 @@ const TYPE_CONFIG: Record<
     bg: 'bg-blue-50 text-blue-600 border-blue-200',
     text: 'text-blue-600',
     gradient: 'from-blue-500 to-cyan-600',
+  },
+  pdf: {
+    label: 'PDF',
+    icon: FileText,
+    bg: 'bg-red-50 text-red-700 border-red-200',
+    text: 'text-red-700',
+    gradient: 'from-red-500 to-rose-600',
   },
   document: {
     label: 'เอกสาร / ชีท',
@@ -65,6 +73,13 @@ const TYPE_CONFIG: Record<
     text: 'text-slate-600',
     gradient: 'from-slate-600 to-slate-800',
   },
+};
+
+const ROLE_CONFIG: Record<ResourceRole, { label: string; badgeClass: string }> = {
+  primary: { label: 'แหล่งเรียนหลัก', badgeClass: 'bg-blue-100 text-blue-800 border-blue-200' },
+  alternative: { label: 'ทางเลือก', badgeClass: 'bg-slate-100 text-slate-700 border-slate-200' },
+  practice: { label: 'แบบฝึกหัด', badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  reference: { label: 'อ้างอิง', badgeClass: 'bg-amber-100 text-amber-800 border-amber-200' },
 };
 
 export const ResourceCard: React.FC<ResourceCardProps> = ({
@@ -153,6 +168,12 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
             <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
               <span className={`h-1.5 w-1.5 rounded-full ${subjectInfo.color}`} />
               {subjectInfo.name}
+            </span>
+          )}
+
+          {resource.role && ROLE_CONFIG[resource.role] && (
+            <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold border ${ROLE_CONFIG[resource.role].badgeClass}`}>
+              {ROLE_CONFIG[resource.role].label}
             </span>
           )}
 

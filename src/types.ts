@@ -1,17 +1,25 @@
 export type SubjectId = 'math' | 'programming' | 'physics' | 'tgat3' | 'ai';
 
-export type ResourceType = 'youtube' | 'website' | 'image' | 'document' | 'other';
+export type ResourceType = 'youtube' | 'website' | 'pdf' | 'document' | 'image' | 'other';
+
+export type ResourceRole = 'primary' | 'alternative' | 'practice' | 'reference';
 
 export interface Resource {
   id: string;
   type: ResourceType;
   title: string;
   url: string;
+  role?: ResourceRole;
+  provider?: string;
   subject?: SubjectId;
+  subjectId?: SubjectId;
   lessonId?: string;
+  topicId?: string;
   thumbnail?: string;
   description?: string;
+  duration?: number | string;
   createdAt?: string;
+  updatedAt?: string;
   favorite?: boolean;
   lastOpened?: string;
 }

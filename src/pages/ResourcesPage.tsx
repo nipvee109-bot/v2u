@@ -12,10 +12,11 @@ import {
   Filter 
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import type { Resource, ResourceType, SubjectId } from '../types';
+import type { Resource, ResourceType, ResourceRole, SubjectId } from '../types';
 import { SUBJECTS } from '../types';
 import { ResourceCard } from '../components/ResourceCard';
 import { CreateResourceModal } from '../components/CreateResourceModal';
+import { AssignLessonModal } from '../components/AssignLessonModal';
 
 export const ResourcesPage: React.FC = () => {
   const { getAllResources, deleteResource, toggleFavoriteResource, lessons, resources } = useStore();
@@ -25,11 +26,13 @@ export const ResourcesPage: React.FC = () => {
 
   const [selectedSubject, setSelectedSubject] = useState<SubjectId | 'ALL'>('ALL');
   const [selectedType, setSelectedType] = useState<ResourceType | 'ALL'>('ALL');
+  const [selectedRole, setSelectedRole] = useState<ResourceRole | 'ALL'>('ALL');
   const [onlyFavorites, setOnlyFavorites] = useState(false);
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
+  const [assigningResource, setAssigningResource] = useState<Resource | null>(null);
 
   // Memoized unified resources
   const allResources = useMemo(() => getAllResources(), [getAllResources, resources, lessons]);
@@ -74,6 +77,11 @@ export const ResourcesPage: React.FC = () => {
         return false;
       }
 
+      // Role filter
+      if (selectedRole !== 'ALL' && r.role !== selectedRole) {
+        return false;
+      }
+
       // Search query filter (title, url, description, or linked lesson name)
       if (q) {
         const titleMatch = r.title.toLowerCase().includes(q);
@@ -95,7 +103,7 @@ export const ResourcesPage: React.FC = () => {
 
       return true;
     });
-  }, [allResources, deferredSearchQuery, selectedSubject, selectedType, onlyFavorites, lessonMap]);
+  }, [allResources, deferredSearchQuery, selectedSubject, selectedType, selectedRole, onlyFavorites, lessonMap]);
 
   const handleEdit = (resource: Resource) => {
     setEditingResource(resource);
@@ -290,6 +298,17 @@ export const ResourcesPage: React.FC = () => {
               <span>เว็บไซต์</span>
             </button>
             <button
+              onClick={() => setSelectedType('pdf')}
+              className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 font-medium transition-colors ${
+                selectedType === 'pdf'
+                  ? 'bg-red-600 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
+              }`}
+            >
+              <FileText className="h-3 w-3" />
+              <span>PDF</span>
+            </button>
+            <button
               onClick={() => setSelectedType('document')}
               className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 font-medium transition-colors ${
                 selectedType === 'document'
@@ -301,6 +320,63 @@ export const ResourcesPage: React.FC = () => {
               <span>เอกสาร</span>
             </button>
           </div>
+        </div>
+
+        {/* Role Filter Pills */}
+        <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-100 text-xs">
+          <span className="text-slate-400 font-medium mr-1 flex items-center gap-1">
+            <Layers className="h-3.5 w-3.5" /> บทบาทในบทเรียน:
+          </span>
+          <button
+            onClick={() => setSelectedRole('ALL')}
+            className={`rounded-lg px-2.5 py-1 font-medium transition-colors ${
+              selectedRole === 'ALL'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
+            }`}
+          >
+            ทุกบทบาท
+          </button>
+          <button
+            onClick={() => setSelectedRole('primary')}
+            className={`rounded-lg px-2.5 py-1 font-medium transition-colors ${
+              selectedRole === 'primary'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
+            }`}
+          >
+            แหล่งเรียนหลัก (Primary)
+          </button>
+          <button
+            onClick={() => setSelectedRole('alternative')}
+            className={`rounded-lg px-2.5 py-1 font-medium transition-colors ${
+              selectedRole === 'alternative'
+                ? 'bg-slate-800 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
+            }`}
+          >
+            ทางเลือก (Alternative)
+          </button>
+          <button
+            onClick={() => setSelectedRole('practice')}
+            className={`rounded-lg px-2.5 py-1 font-medium transition-colors ${
+              selectedRole === 'practice'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
+            }`}
+          >
+            แบบฝึกหัด (Practice)
+          </button>
+          <button
+            onClick={() => setSelectedRole('reference')}
+            className={`rounded-lg px-2.5 py-1 font-medium transition-colors ${
+              selectedRole === 'reference'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
+            }`}
+          >
+            อ้างอิง (Reference)
+          </button>
         </div>
       </div>
 
@@ -322,6 +398,7 @@ export const ResourcesPage: React.FC = () => {
                 setSearchQuery('');
                 setSelectedSubject('ALL');
                 setSelectedType('ALL');
+                setSelectedRole('ALL');
                 setOnlyFavorites(false);
               }}
               className="rounded-xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
@@ -339,6 +416,7 @@ export const ResourcesPage: React.FC = () => {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onToggleFavorite={() => toggleFavoriteResource(resource.id)}
+              onAssignLesson={(r) => setAssigningResource(r)}
             />
           ))}
         </div>
@@ -352,6 +430,13 @@ export const ResourcesPage: React.FC = () => {
           setEditingResource(null);
         }}
         initialResource={editingResource}
+      />
+
+      {/* Assign to Lesson Modal */}
+      <AssignLessonModal
+        isOpen={Boolean(assigningResource)}
+        resource={assigningResource}
+        onClose={() => setAssigningResource(null)}
       />
     </div>
   );
