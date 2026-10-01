@@ -54,3 +54,36 @@ export const SUBJECTS: Record<SubjectId, SubjectInfo> = {
   tgat3: { id: 'tgat3', name: 'TGAT 3', color: 'bg-tgat' },
   ai: { id: 'ai', name: 'AI / Machine Learning', color: 'bg-ai' },
 };
+
+/* ==================================================
+   Study Planner & Smart Weekly Planner Models
+   ================================================== */
+
+export type StudySessionStatus = 'planned' | 'in_progress' | 'completed' | 'skipped' | 'overdue';
+
+export type StudySessionType = 'learn' | 'review' | 'quiz' | 'practice' | 'exam';
+
+export interface StudySession {
+  id: string;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+  plannedMinutes: number;
+  actualMinutes?: number;
+  lessonId?: string;
+  subjectId: SubjectId;
+  title: string;
+  status: StudySessionStatus;
+  priority: 'Low' | 'Medium' | 'High';
+  type: StudySessionType;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+}
+
+export interface WeeklyGoal {
+  targetHours: number;
+  targetLessons: number;
+  targetReviews: number;
+}

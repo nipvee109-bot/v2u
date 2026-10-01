@@ -4,7 +4,7 @@ import { Dashboard } from './pages/Dashboard';
 import { SubjectPage } from './pages/SubjectPage';
 import { LessonDetail } from './pages/LessonDetail';
 import { Settings } from './pages/Settings';
-import { CalendarPage } from './pages/CalendarPage';
+import { PlannerPage } from './pages/PlannerPage';
 import { NotUnderstoodPage } from './pages/NotUnderstoodPage';
 import { ProgressPage } from './pages/ProgressPage';
 import { SearchPage } from './pages/SearchPage';
@@ -23,7 +23,8 @@ function App() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/search" element={<SearchPage />} />
-        <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/planner" element={<PlannerPage />} />
+        <Route path="/calendar" element={<PlannerPage />} />
         <Route path="/roadmap" element={<Placeholder title="แผน 6 เดือน" />} />
         <Route path="/subjects/:id" element={<SubjectPage />} />
         <Route path="/lessons/:id" element={<LessonDetail />} />

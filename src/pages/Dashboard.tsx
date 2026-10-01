@@ -71,10 +71,24 @@ const monthLabels = [
 ];
 
 export function Dashboard() {
-  const { lessons, unclearTopics } = useStore();
+  const { lessons, unclearTopics, sessions = [] } = useStore();
   const [calendarDate] = useState(new Date());
 
   // ── Derived data ────────────────────────────────────────────────
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const todayPlannedSessions = sessions.filter((s) => s.date === todayStr);
+  const todayPlannedHours = Math.round((todayPlannedSessions.reduce((acc, s) => acc + s.plannedMinutes, 0) / 60) * 10) / 10;
+  const todayCompletedHours = Math.round(
+    (todayPlannedSessions
+      .filter((s) => s.status === 'completed')
+      .reduce((acc, s) => acc + (s.actualMinutes || s.plannedMinutes), 0) /
+      60) *
+      10
+  ) / 10;
+  const overdueSessionsCount = sessions.filter(
+    (s) => s.status === 'overdue' || (s.status === 'planned' && s.date < todayStr)
+  ).length;
+
   const completedLessons = lessons.filter((l) => l.status === 'COMPLETED');
   const todayLessons = lessons
     .filter(
@@ -173,8 +187,13 @@ export function Dashboard() {
       (l) => l.completedAt && isSameDay(parseISO(l.completedAt), day)
     );
 
-  const hasLessonOnDay = (day: Date) =>
-    lessons.some((l) => l.date && isSameDay(parseISO(l.date), day));
+  const hasLessonOnDay = (day: Date) => {
+    const dStr = format(day, 'yyyy-MM-dd');
+    return (
+      lessons.some((l) => l.date && isSameDay(parseISO(l.date), day)) ||
+      sessions.some((s) => s.date === dStr)
+    );
+  };
 
   // ── Difficulty color helpers ────────────────────────────────────
   const difficultyStyle = (d: string) => {
@@ -310,52 +329,142 @@ export function Dashboard() {
         </div>
       </div>
 
+      {/* Overdue Alert Banner */}
+      {overdueSessionsCount > 0 && (
+        <div className="bg-amber-50/90 border border-amber-200/80 rounded-2xl p-4 flex items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 text-amber-700">
+              <AlertCircle className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-amber-900">
+                มี {overdueSessionsCount} รายการในตารางที่เลยกำหนดหรือค้างทบทวน
+              </p>
+              <p className="text-[11px] text-amber-700 mt-0.5">
+                ย้ายไปเรียนวันนี้ หรือจัดสัดส่วนใหม่ในระบบวางแผนการเรียน
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/planner"
+            className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shrink-0 shadow-xs transition-colors"
+          >
+            เปิดตาราง &rarr;
+          </Link>
+        </div>
+      )}
+
       {/* ═══════════ ROW 2: Today's Study + Subject Progress ═══════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
         {/* Today's Study */}
         <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-200 p-6">
-          <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
                 <CalendarIcon className="w-4.5 h-4.5 text-blue-600" />
               </div>
-              <h2 className="text-lg font-semibold text-slate-900">
-                วันนี้ต้องเรียนอะไร?
-              </h2>
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  วันนี้ต้องเรียนอะไร?
+                </h2>
+                {todayPlannedSessions.length > 0 && (
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {todayPlannedSessions.length} เซสชัน &middot; แผน {todayPlannedHours} ชม. &middot; เสร็จแล้ว {todayCompletedHours} ชม.
+                  </p>
+                )}
+              </div>
             </div>
             <Link
-              to="/calendar"
+              to="/planner"
               className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 transition-colors"
             >
-              ดูทั้งหมด <ArrowRight className="w-3.5 h-3.5" />
+              ตารางเรียนเต็ม <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
-          {todayLessons.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
-                <CheckCircle2 className="w-8 h-8 text-slate-300" />
-              </div>
-              <p className="text-slate-500 font-medium">
-                ไม่มีบทเรียนที่ต้องเรียนวันนี้
-              </p>
-              <p className="text-slate-400 text-sm mt-1">
-                เยี่ยมมาก! พักผ่อนหรือทบทวนได้เลย
-              </p>
-            </div>
-          ) : (
+          {todayPlannedSessions.length > 0 ? (
             <div className="space-y-3">
-              {todayLessons.map((lesson) => {
-                const SubjectIcon =
-                  subjectIconMap[lesson.subjectId] || BookOpen;
+              {todayPlannedSessions.map((session) => {
+                const SubjectIcon = subjectIconMap[session.subjectId] || BookOpen;
+                const isCompleted = session.status === 'completed';
                 return (
                   <div
-                    key={lesson.id}
-                    className="flex items-center gap-4 p-3 rounded-xl hover:bg-slate-50/80 transition-all duration-200 group"
+                    key={session.id}
+                    className={`flex items-center gap-4 p-3.5 rounded-xl border transition-all duration-200 group ${
+                      isCompleted
+                        ? 'bg-slate-50/60 border-slate-100 opacity-75'
+                        : 'bg-white border-slate-200/70 hover:border-blue-300 hover:bg-slate-50/50'
+                    }`}
                   >
                     {/* Subject icon square */}
                     <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                      className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{
+                        backgroundColor: `${subjectRawColor[session.subjectId]}18`,
+                      }}
+                    >
+                      <SubjectIcon
+                        className="w-5 h-5"
+                        style={{
+                          color: subjectRawColor[session.subjectId],
+                        }}
+                      />
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className={`font-semibold text-sm truncate ${isCompleted ? 'line-through text-slate-500' : 'text-slate-900'}`}>
+                        {session.title}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          {session.startTime} - {session.endTime} ({session.plannedMinutes} นาที)
+                        </span>
+                        <span className={`text-[10px] px-2 py-0.2 rounded-full font-semibold ${priorityStyle(session.priority)}`}>
+                          {session.priority === 'High' ? 'สำคัญสูง' : session.priority === 'Medium' ? 'ปานกลาง' : 'ทั่วไป'}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {SUBJECTS[session.subjectId].name.split('/')[0]}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action button */}
+                    {isCompleted ? (
+                      <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold flex items-center gap-1 shrink-0">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> เสร็จแล้ว
+                      </span>
+                    ) : session.lessonId ? (
+                      <Link
+                        to={`/lessons/${session.lessonId}`}
+                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-1.5 text-xs font-bold transition-all duration-200 shadow-xs flex-shrink-0"
+                      >
+                        เริ่มเรียน
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/planner"
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all duration-200 flex-shrink-0"
+                      >
+                        ดูแผน
+                      </Link>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : todayLessons.length > 0 ? (
+            <div className="space-y-3">
+              {todayLessons.map((lesson) => {
+                const SubjectIcon = subjectIconMap[lesson.subjectId] || BookOpen;
+                return (
+                  <div
+                    key={lesson.id}
+                    className="flex items-center gap-4 p-3.5 rounded-xl border border-slate-200/70 hover:bg-slate-50/80 transition-all duration-200 group"
+                  >
+                    <div
+                      className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
                       style={{
                         backgroundColor: `${subjectRawColor[lesson.subjectId]}18`,
                       }}
@@ -367,8 +476,6 @@ export function Dashboard() {
                         }}
                       />
                     </div>
-
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-slate-900 text-sm truncate">
                         {lesson.title}
@@ -390,17 +497,30 @@ export function Dashboard() {
                         </span>
                       </div>
                     </div>
-
-                    {/* Action button */}
                     <Link
                       to={`/lessons/${lesson.id}`}
-                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-1.5 text-sm font-medium transition-all duration-200 opacity-80 group-hover:opacity-100 flex-shrink-0"
+                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-1.5 text-xs font-bold transition-all duration-200 opacity-80 group-hover:opacity-100 flex-shrink-0"
                     >
                       เริ่มเรียน
                     </Link>
                   </div>
                 );
               })}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
+                <CheckCircle2 className="w-8 h-8 text-slate-300" />
+              </div>
+              <p className="text-slate-500 font-medium">
+                ไม่มีบทเรียนที่ต้องเรียนวันนี้
+              </p>
+              <Link
+                to="/planner"
+                className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all"
+              >
+                + วางแผนการเรียนวันนี้
+              </Link>
             </div>
           )}
         </div>

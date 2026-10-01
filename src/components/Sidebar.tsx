@@ -29,7 +29,7 @@ interface NavItemConfig {
 
 const mainNav: NavItemConfig[] = [
   { to: '/', icon: LayoutDashboard, label: 'หน้าหลัก', end: true },
-  { to: '/calendar', icon: Calendar, label: 'ตารางเรียน' },
+  { to: '/planner', icon: Calendar, label: 'ตารางเรียน & แผน' },
   { to: '/roadmap', icon: Map, label: 'แผน 6 เดือน' },
 ];
 

@@ -1,0 +1,1426 @@
+import { useState, useMemo } from 'react';
+import { useStore } from '../store/useStore';
+import { 
+  Calendar as CalendarIcon, 
+  Clock, 
+  CheckCircle2, 
+  AlertCircle, 
+  Plus, 
+  ChevronLeft, 
+  ChevronRight, 
+  CalendarDays,
+  Target,
+  Edit2,
+  Trash2,
+  Scissors,
+  RotateCcw,
+  BarChart3,
+  BookOpen,
+  X,
+  Play,
+  Check,
+  FastForward
+} from 'lucide-react';
+import { 
+  format, 
+  addDays, 
+  startOfWeek, 
+  endOfWeek, 
+  eachDayOfInterval, 
+  isToday,
+  addWeeks,
+  subWeeks,
+  startOfMonth,
+  endOfMonth,
+  isSameMonth
+} from 'date-fns';
+import { th } from 'date-fns/locale';
+import { SUBJECTS } from '../types';
+import type { SubjectId, StudySession, StudySessionType, StudySessionStatus } from '../types';
+import { Link } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
+
+type TabView = 'today' | 'week' | 'month';
+
+export function PlannerPage() {
+  const { 
+    sessions = [], 
+    lessons, 
+    weeklyGoal, 
+    addSession, 
+    updateSession, 
+    deleteSession, 
+    rescheduleSession, 
+    completeSession, 
+    skipSession,
+    splitSession,
+    setWeeklyGoal 
+  } = useStore();
+
+  const [activeTab, setActiveTab] = useState<TabView>('today');
+  const [currentWeekDate, setCurrentWeekDate] = useState<Date>(new Date());
+  const [currentMonthDate, setCurrentMonthDate] = useState<Date>(new Date());
+  const [selectedDayOnMobile, setSelectedDayOnMobile] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+
+  // Modals state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<StudySession | null>(null);
+  const [reschedulingSession, setReschedulingSession] = useState<StudySession | null>(null);
+  const [completingSession, setCompletingSession] = useState<StudySession | null>(null);
+  const [actualMinutesInput, setActualMinutesInput] = useState<number>(60);
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
+
+  // Form state for Add/Edit
+  const [formSubjectId, setFormSubjectId] = useState<SubjectId>('math');
+  const [formLessonId, setFormLessonId] = useState<string>('custom');
+  const [formTitle, setFormTitle] = useState<string>('');
+  const [formType, setFormType] = useState<StudySessionType>('learn');
+  const [formDate, setFormDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [formStartTime, setFormStartTime] = useState<string>('09:00');
+  const [formEndTime, setFormEndTime] = useState<string>('10:30');
+  const [formPlannedMinutes, setFormPlannedMinutes] = useState<number>(90);
+  const [formPriority, setFormPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
+  const [formNotes, setFormNotes] = useState<string>('');
+  const [formError, setFormError] = useState<string>('');
+
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+  // Compute dynamic status: if date < today and status === 'planned', it's overdue
+  const processedSessions = useMemo(() => {
+    return sessions.map((s) => {
+      if (s.status === 'planned' && s.date < todayStr) {
+        return { ...s, status: 'overdue' as StudySessionStatus };
+      }
+      return s;
+    });
+  }, [sessions, todayStr]);
+
+  // Today sessions
+  const todaySessions = useMemo(() => {
+    return processedSessions
+      .filter((s) => s.date === todayStr)
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  }, [processedSessions, todayStr]);
+
+  // Overdue / Unfinished sessions queue
+  const unfinishedQueue = useMemo(() => {
+    return processedSessions.filter((s) => s.status === 'overdue' || (s.date === todayStr && s.status === 'in_progress'));
+  }, [processedSessions, todayStr]);
+
+  // Week calculation
+  const weekStart = startOfWeek(currentWeekDate, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(currentWeekDate, { weekStartsOn: 1 });
+  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+
+  const weekSessions = useMemo(() => {
+    const startStr = format(weekStart, 'yyyy-MM-dd');
+    const endStr = format(weekEnd, 'yyyy-MM-dd');
+    return processedSessions.filter((s) => s.date >= startStr && s.date <= endStr);
+  }, [processedSessions, weekStart, weekEnd]);
+
+  // Weekly Summary Stats
+  const weeklyPlannedMinutes = weekSessions.reduce((acc, s) => acc + s.plannedMinutes, 0);
+  const weeklyCompletedMinutes = weekSessions
+    .filter((s) => s.status === 'completed')
+    .reduce((acc, s) => acc + (s.actualMinutes || s.plannedMinutes), 0);
+  const weeklyRemainingMinutes = Math.max(0, weeklyPlannedMinutes - weeklyCompletedMinutes);
+  const weeklyPlannedHours = Math.round((weeklyPlannedMinutes / 60) * 10) / 10;
+  const weeklyCompletedHours = Math.round((weeklyCompletedMinutes / 60) * 10) / 10;
+  const weeklyRemainingHours = Math.round((weeklyRemainingMinutes / 60) * 10) / 10;
+  const weeklyCompletionRate = weeklyPlannedMinutes > 0 ? Math.round((weeklyCompletedMinutes / weeklyPlannedMinutes) * 100) : 0;
+
+  // Completed lessons and reviews in this week
+  const completedLessonsInWeek = weekSessions.filter((s) => s.status === 'completed' && s.type === 'learn').length;
+  const completedReviewsInWeek = weekSessions.filter((s) => s.status === 'completed' && (s.type === 'review' || s.type === 'quiz')).length;
+
+  // Weekly Subject distribution
+  const subjectDistribution = useMemo(() => {
+    const dist: Record<SubjectId, { plannedMin: number; completedMin: number }> = {
+      math: { plannedMin: 0, completedMin: 0 },
+      programming: { plannedMin: 0, completedMin: 0 },
+      physics: { plannedMin: 0, completedMin: 0 },
+      tgat3: { plannedMin: 0, completedMin: 0 },
+      ai: { plannedMin: 0, completedMin: 0 },
+    };
+
+    weekSessions.forEach((s) => {
+      if (dist[s.subjectId]) {
+        dist[s.subjectId].plannedMin += s.plannedMinutes;
+        if (s.status === 'completed') {
+          dist[s.subjectId].completedMin += s.actualMinutes || s.plannedMinutes;
+        }
+      }
+    });
+
+    return dist;
+  }, [weekSessions]);
+
+  // Daily Workload threshold helper
+  const getDayWorkload = (minutes: number) => {
+    const hours = minutes / 60;
+    if (hours === 0) return { label: 'วันพัก', color: 'bg-slate-100 text-slate-500 border-slate-200' };
+    if (hours <= 2) return { label: 'เบา (Light)', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    if (hours <= 4) return { label: 'ปกติ (Normal)', color: 'bg-blue-50 text-blue-700 border-blue-200' };
+    return { label: 'หนัก (Heavy)', color: 'bg-rose-50 text-rose-700 border-rose-200' };
+  };
+
+  // Open Add Modal
+  const handleOpenAddModal = (presetDate?: string) => {
+    setEditingSession(null);
+    setFormSubjectId('math');
+    setFormLessonId('custom');
+    setFormTitle('');
+    setFormType('learn');
+    setFormDate(presetDate || todayStr);
+    setFormStartTime('09:00');
+    setFormEndTime('10:30');
+    setFormPlannedMinutes(90);
+    setFormPriority('Medium');
+    setFormNotes('');
+    setFormError('');
+    setIsAddModalOpen(true);
+  };
+
+  // Open Edit Modal
+  const handleOpenEditModal = (session: StudySession) => {
+    setEditingSession(session);
+    setFormSubjectId(session.subjectId);
+    setFormLessonId(session.lessonId || 'custom');
+    setFormTitle(session.title);
+    setFormType(session.type);
+    setFormDate(session.date);
+    setFormStartTime(session.startTime);
+    setFormEndTime(session.endTime);
+    setFormPlannedMinutes(session.plannedMinutes);
+    setFormPriority(session.priority);
+    setFormNotes(session.notes || '');
+    setFormError('');
+    setIsAddModalOpen(true);
+  };
+
+  // Time change calculator
+  const handleTimeChange = (start: string, end: string) => {
+    setFormStartTime(start);
+    setFormEndTime(end);
+    const [sh, sm] = start.split(':').map(Number);
+    const [eh, em] = end.split(':').map(Number);
+    const totalStart = (sh || 0) * 60 + (sm || 0);
+    const totalEnd = (eh || 0) * 60 + (em || 0);
+    if (totalEnd > totalStart) {
+      setFormPlannedMinutes(totalEnd - totalStart);
+    }
+  };
+
+  // Save Session (Add / Edit)
+  const handleSaveSession = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError('');
+
+    if (!formTitle.trim()) {
+      setFormError('กรุณาระบุชื่อบทเรียนหรือหัวข้อ');
+      return;
+    }
+
+    const [sh, sm] = formStartTime.split(':').map(Number);
+    const [eh, em] = formEndTime.split(':').map(Number);
+    const totalStart = (sh || 0) * 60 + (sm || 0);
+    const totalEnd = (eh || 0) * 60 + (em || 0);
+
+    if (totalEnd <= totalStart) {
+      setFormError('เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่มต้น');
+      return;
+    }
+
+    if (formPlannedMinutes <= 0) {
+      setFormError('ระยะเวลาการเรียนต้องมากกว่า 0 นาที');
+      return;
+    }
+
+    // Check collision warning
+    const hasCollision = sessions.some((s) => {
+      if (editingSession && s.id === editingSession.id) return false;
+      if (s.date !== formDate) return false;
+      const [sSh, sSm] = s.startTime.split(':').map(Number);
+      const [sEh, sEm] = s.endTime.split(':').map(Number);
+      const sStart = (sSh || 0) * 60 + (sSm || 0);
+      const sEnd = (sEh || 0) * 60 + (sEm || 0);
+      return totalStart < sEnd && totalEnd > sStart;
+    });
+
+    if (hasCollision && !confirm('มีเวลาเรียนซ้อนทับกับรายการอื่นในวันนี้ ต้องการบันทึกต่อไปหรือไม่?')) {
+      return;
+    }
+
+    if (editingSession) {
+      updateSession(editingSession.id, {
+        subjectId: formSubjectId,
+        lessonId: formLessonId === 'custom' ? undefined : formLessonId,
+        title: formTitle.trim(),
+        type: formType,
+        date: formDate,
+        startTime: formStartTime,
+        endTime: formEndTime,
+        plannedMinutes: formPlannedMinutes,
+        priority: formPriority,
+        notes: formNotes.trim(),
+      });
+    } else {
+      const newSession: StudySession = {
+        id: uuidv4(),
+        subjectId: formSubjectId,
+        lessonId: formLessonId === 'custom' ? undefined : formLessonId,
+        title: formTitle.trim(),
+        type: formType,
+        date: formDate,
+        startTime: formStartTime,
+        endTime: formEndTime,
+        plannedMinutes: formPlannedMinutes,
+        priority: formPriority,
+        notes: formNotes.trim(),
+        status: 'planned',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      addSession(newSession);
+    }
+
+    setIsAddModalOpen(false);
+  };
+
+  // Delete session handler
+  const handleDeleteSession = (id: string, title: string) => {
+    if (confirm(`คุณแน่ใจหรือไม่ที่จะลบแผนการเรียน "${title}"?`)) {
+      deleteSession(id);
+    }
+  };
+
+  // Complete session handler
+  const handleOpenCompleteModal = (session: StudySession) => {
+    setCompletingSession(session);
+    setActualMinutesInput(session.actualMinutes || session.plannedMinutes);
+  };
+
+  const handleConfirmComplete = () => {
+    if (completingSession) {
+      completeSession(completingSession.id, actualMinutesInput);
+      setCompletingSession(null);
+    }
+  };
+
+  // Reschedule handler
+  const handleConfirmReschedule = (newDate: string) => {
+    if (reschedulingSession) {
+      rescheduleSession(reschedulingSession.id, newDate);
+      setReschedulingSession(null);
+    }
+  };
+
+  // Type badge helper
+  const renderTypeBadge = (type: StudySessionType) => {
+    const config = {
+      learn: { label: 'เรียนเนื้อหา', bg: 'bg-blue-50 text-blue-700 border-blue-200' },
+      review: { label: 'ทบทวน', bg: 'bg-amber-50 text-amber-700 border-amber-200' },
+      quiz: { label: 'ทำแบบทดสอบ', bg: 'bg-purple-50 text-purple-700 border-purple-200' },
+      practice: { label: 'ฝึกโจทย์', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+      exam: { label: 'จำลองสอบ', bg: 'bg-rose-50 text-rose-700 border-rose-200' },
+    }[type] || { label: type, bg: 'bg-slate-50 text-slate-700 border-slate-200' };
+
+    return (
+      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${config.bg}`}>
+        {config.label}
+      </span>
+    );
+  };
+
+  // Priority badge helper
+  const renderPriorityBadge = (priority: 'Low' | 'Medium' | 'High') => {
+    const config = {
+      High: 'bg-rose-50 text-rose-700 border-rose-200',
+      Medium: 'bg-amber-50 text-amber-700 border-amber-200',
+      Low: 'bg-slate-100 text-slate-600 border-slate-200',
+    }[priority];
+    return (
+      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${config}`}>
+        {priority === 'High' ? 'สูง' : priority === 'Medium' ? 'กลาง' : 'ต่ำ'}
+      </span>
+    );
+  };
+
+  // Status badge helper
+  const renderStatusBadge = (status: StudySessionStatus) => {
+    switch (status) {
+      case 'completed':
+        return <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> เสร็จแล้ว</span>;
+      case 'overdue':
+        return <span className="text-xs font-semibold text-rose-600 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> ค้างทบทวน</span>;
+      case 'in_progress':
+        return <span className="text-xs font-semibold text-blue-600 flex items-center gap-1"><Clock className="w-3.5 h-3.5 animate-spin" /> กำลังเรียน</span>;
+      case 'skipped':
+        return <span className="text-xs font-semibold text-slate-400">ข้ามแล้ว</span>;
+      default:
+        return <span className="text-xs font-semibold text-slate-600">รอดำเนินการ</span>;
+    }
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-6 pb-20 font-sans">
+      
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">
+            <CalendarIcon className="w-4 h-4" /> Study Planner & Workload Organizer
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900">ตารางและแผนการเรียน</h1>
+          <p className="text-xs text-slate-500 mt-1">วางแผน จัดสรรเวลา และติดตามความสมดุลของการอ่านหนังสือ</p>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setIsGoalModalOpen(true)}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200/80 bg-slate-50 hover:bg-slate-100 text-slate-700 transition-colors"
+          >
+            <Target className="w-4 h-4 text-purple-600" /> เป้าหมายสัปดาห์
+          </button>
+          <button
+            onClick={() => handleOpenAddModal()}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 transition-all"
+          >
+            <Plus className="w-4 h-4" /> เพิ่มแผนการเรียน
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs navigation */}
+      <div className="flex items-center gap-2 border-b border-slate-200">
+        <button
+          onClick={() => setActiveTab('today')}
+          className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all ${
+            activeTab === 'today'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Clock className="w-4 h-4" /> วันนี้ ({todaySessions.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('week')}
+          className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all ${
+            activeTab === 'week'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" /> สัปดาห์นี้ (Smart Planner)
+        </button>
+        <button
+          onClick={() => setActiveTab('month')}
+          className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all ${
+            activeTab === 'month'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <CalendarDays className="w-4 h-4" /> ปฏิทินเดือน
+        </button>
+      </div>
+
+      {/* Unfinished / Overdue Queue Alert */}
+      {unfinishedQueue.length > 0 && activeTab !== 'month' && (
+        <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-amber-100 rounded-xl text-amber-700 mt-0.5">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-amber-900">
+                มี {unfinishedQueue.length} รายการที่ค้างทบทวน / เลยกำหนด
+              </h3>
+              <p className="text-xs text-amber-700 mt-0.5">
+                คุณสามารถเลือกเลื่อนไปเรียนวันนี้ ย้ายวัน หรือแบ่งเซสชันให้เล็กลงได้
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {unfinishedQueue.slice(0, 3).map((s) => (
+              <div key={s.id} className="bg-white/90 border border-amber-200 rounded-xl px-3 py-1.5 flex items-center gap-2 shadow-xs">
+                <span className="text-xs font-semibold text-slate-800 max-w-[150px] truncate">{s.title}</span>
+                <button
+                  onClick={() => rescheduleSession(s.id, todayStr)}
+                  className="text-[11px] font-bold text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  เรียนวันนี้
+                </button>
+                <button
+                  onClick={() => setReschedulingSession(s)}
+                  className="text-[11px] font-medium text-slate-600 hover:text-slate-800"
+                >
+                  ย้ายวัน
+                </button>
+                <button
+                  onClick={() => skipSession(s.id)}
+                  className="text-[11px] font-medium text-slate-400 hover:text-rose-600"
+                >
+                  ข้าม
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================
+          TAB 1: TODAY VIEW
+          ================================================== */}
+      {activeTab === 'today' && (
+        <div className="space-y-6">
+          {/* Today KPI Summary Card */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-xs">
+              <span className="text-xs font-medium text-slate-400">บทเรียนวันนี้</span>
+              <p className="text-2xl font-bold text-slate-900 mt-1">{todaySessions.length} บท</p>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-xs">
+              <span className="text-xs font-medium text-slate-400">เวลาที่วางแผน</span>
+              <p className="text-2xl font-bold text-blue-600 mt-1">
+                {Math.round((todaySessions.reduce((acc, s) => acc + s.plannedMinutes, 0) / 60) * 10) / 10} ชม.
+              </p>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-xs">
+              <span className="text-xs font-medium text-slate-400">เรียนเสร็จแล้ว</span>
+              <p className="text-2xl font-bold text-emerald-600 mt-1">
+                {Math.round((todaySessions.filter((s) => s.status === 'completed').reduce((acc, s) => acc + (s.actualMinutes || s.plannedMinutes), 0) / 60) * 10) / 10} ชม.
+              </p>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-xs">
+              <span className="text-xs font-medium text-slate-400">คงเหลือ</span>
+              <p className="text-2xl font-bold text-amber-600 mt-1">
+                {todaySessions.filter((s) => s.status !== 'completed' && s.status !== 'skipped').length} รายการ
+              </p>
+            </div>
+          </div>
+
+          {/* Today Timeline List */}
+          <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <CalendarIcon className="w-5 h-5 text-blue-600" />
+                  แผนการเรียนวันนี้ ({format(new Date(), 'EEEEที่ d MMMM yyyy', { locale: th })})
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">จัดลำดับตามเวลาเริ่มเรียน</p>
+              </div>
+              <button
+                onClick={() => handleOpenAddModal(todayStr)}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" /> เพิ่มเซสชันสำหรับวันนี้
+              </button>
+            </div>
+
+            {todaySessions.length === 0 ? (
+              <div className="text-center py-16 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                <CalendarIcon className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <p className="text-sm font-medium text-slate-600">ยังไม่มีแผนการเรียนในวันนี้</p>
+                <p className="text-xs text-slate-400 mt-1">สร้างแผนเพื่อควบคุมเวลาและโฟกัสกับสิ่งที่สำคัญ</p>
+                <button
+                  onClick={() => handleOpenAddModal(todayStr)}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-sm hover:bg-blue-700 transition-all"
+                >
+                  + เพิ่มแผนวันนี้
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3.5">
+                {todaySessions.map((session) => {
+                  const subject = SUBJECTS[session.subjectId];
+                  const isCompleted = session.status === 'completed';
+                  return (
+                    <div
+                      key={session.id}
+                      className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                        isCompleted
+                          ? 'bg-slate-50/60 border-slate-200/70 opacity-80'
+                          : 'bg-white border-slate-200/80 hover:border-blue-300 hover:shadow-sm'
+                      }`}
+                    >
+                      {/* Left: Time & Subject badge */}
+                      <div className="flex items-start gap-4">
+                        <div className="text-center shrink-0 w-24 bg-slate-100/80 p-2.5 rounded-xl border border-slate-200/60">
+                          <p className="text-xs font-bold text-slate-900">{session.startTime} - {session.endTime}</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">{session.plannedMinutes} นาที</p>
+                        </div>
+
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-white ${subject.color}`}>
+                              {subject.name}
+                            </span>
+                            {renderTypeBadge(session.type)}
+                            {renderPriorityBadge(session.priority)}
+                            {renderStatusBadge(session.status)}
+                          </div>
+                          <h3 className={`text-base font-bold text-slate-900 ${isCompleted ? 'line-through text-slate-500' : ''}`}>
+                            {session.title}
+                          </h3>
+                          {session.notes && (
+                            <p className="text-xs text-slate-500 mt-1 line-clamp-1 italic">
+                              โน้ต: {session.notes}
+                            </p>
+                          )}
+                          {isCompleted && session.actualMinutes && (
+                            <p className="text-xs text-emerald-600 mt-1 font-medium">
+                              เรียนจริงไป {session.actualMinutes} นาที
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right: Actions */}
+                      <div className="flex items-center gap-2 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                        {!isCompleted ? (
+                          <>
+                            {session.lessonId ? (
+                              <Link
+                                to={`/lessons/${session.lessonId}`}
+                                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all"
+                              >
+                                <Play className="w-3.5 h-3.5" /> เริ่มเรียน
+                              </Link>
+                            ) : null}
+                            <button
+                              onClick={() => handleOpenCompleteModal(session)}
+                              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all"
+                            >
+                              <Check className="w-3.5 h-3.5" /> ทำเสร็จ
+                            </button>
+                            <button
+                              onClick={() => setReschedulingSession(session)}
+                              className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition-colors"
+                              title="เลื่อนเวลา"
+                            >
+                              <FastForward className="w-3.5 h-3.5" />
+                            </button>
+                            {session.plannedMinutes >= 60 && (
+                              <button
+                                onClick={() => splitSession(session.id)}
+                                className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition-colors"
+                                title="แบ่ง session (Split 2 ส่วน)"
+                              >
+                                <Scissors className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => updateSession(session.id, { status: 'planned', actualMinutes: undefined })}
+                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-medium flex items-center gap-1 transition-colors"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" /> ทำใหม่
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleOpenEditModal(session)}
+                          className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg transition-colors"
+                          title="แก้ไข"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSession(session.id, session.title)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition-colors"
+                          title="ลบ"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================
+          TAB 2: SMART WEEKLY PLANNER (Phase 6)
+          ================================================== */}
+      {activeTab === 'week' && (
+        <div className="space-y-6">
+          {/* Week Navigation Header */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/60 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setCurrentWeekDate(subWeeks(currentWeekDate, 1))}
+                className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4 text-slate-600" />
+              </button>
+              <div>
+                <h2 className="text-base font-bold text-slate-900">
+                  สัปดาห์: {format(weekStart, 'd MMM', { locale: th })} – {format(weekEnd, 'd MMM yyyy', { locale: th })}
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">วางแผน Workload ให้สมดุล ไม่หนักหรือเบาเกินไป</p>
+              </div>
+              <button
+                onClick={() => setCurrentWeekDate(addWeeks(currentWeekDate, 1))}
+                className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors"
+              >
+                <ChevronRight className="w-4 h-4 text-slate-600" />
+              </button>
+            </div>
+            <button
+              onClick={() => setCurrentWeekDate(new Date())}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors self-start sm:self-auto"
+            >
+              สัปดาห์ปัจจุบัน
+            </button>
+          </div>
+
+          {/* Weekly Summary & Goal Progress */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            {/* Summary KPI */}
+            <div className="bg-gradient-to-br from-[#0B1120] to-[#1E293B] text-white p-6 rounded-2xl shadow-md space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-blue-400">Weekly Summary</span>
+                <span className="text-xs bg-white/10 px-2 py-0.5 rounded-full">{weeklyCompletionRate}% เสร็จสิ้น</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center pt-2">
+                <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                  <span className="text-[10px] text-slate-400">วางแผน</span>
+                  <p className="text-lg font-bold text-white mt-0.5">{weeklyPlannedHours}h</p>
+                </div>
+                <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                  <span className="text-[10px] text-slate-400">เรียนจบแล้ว</span>
+                  <p className="text-lg font-bold text-emerald-400 mt-0.5">{weeklyCompletedHours}h</p>
+                </div>
+                <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                  <span className="text-[10px] text-slate-400">คงเหลือ</span>
+                  <p className="text-lg font-bold text-amber-400 mt-0.5">{weeklyRemainingHours}h</p>
+                </div>
+              </div>
+              <div className="pt-2">
+                <div className="flex justify-between text-xs text-slate-300 mb-1">
+                  <span>ความก้าวหน้าทั้งสัปดาห์</span>
+                  <span>{weeklyCompletedHours} / {weeklyPlannedHours} ชม.</span>
+                </div>
+                <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${weeklyCompletionRate}%` }} />
+                </div>
+              </div>
+            </div>
+
+            {/* Weekly Goals Card */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                  <Target className="w-4 h-4 text-purple-600" /> เป้าหมายสัปดาห์นี้
+                </h3>
+                <button
+                  onClick={() => setIsGoalModalOpen(true)}
+                  className="text-xs font-semibold text-blue-600 hover:underline"
+                >
+                  ปรับเป้าหมาย
+                </button>
+              </div>
+
+              {/* Hours Goal */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs font-medium">
+                  <span className="text-slate-600">เวลาเรียนรวม</span>
+                  <span className="font-bold text-slate-900">{weeklyCompletedHours} / {weeklyGoal?.targetHours || 18} ชม.</span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-purple-500 rounded-full"
+                    style={{ width: `${Math.min(100, Math.round((weeklyCompletedHours / (weeklyGoal?.targetHours || 18)) * 100))}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Lessons Goal */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs font-medium">
+                  <span className="text-slate-600">บทเรียนใหม่ที่จบ</span>
+                  <span className="font-bold text-slate-900">{completedLessonsInWeek} / {weeklyGoal?.targetLessons || 6} บท</span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-500 rounded-full"
+                    style={{ width: `${Math.min(100, Math.round((completedLessonsInWeek / (weeklyGoal?.targetLessons || 6)) * 100))}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Reviews Goal */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs font-medium">
+                  <span className="text-slate-600">การทบทวน / ทำโจทย์</span>
+                  <span className="font-bold text-slate-900">{completedReviewsInWeek} / {weeklyGoal?.targetReviews || 4} ครั้ง</span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full"
+                    style={{ width: `${Math.min(100, Math.round((completedReviewsInWeek / (weeklyGoal?.targetReviews || 4)) * 100))}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Subject Distribution */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-xs space-y-3">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                <BookOpen className="w-4 h-4 text-blue-600" /> สัดส่วนวิชาในสัปดาห์นี้
+              </h3>
+              <div className="space-y-2">
+                {Object.entries(SUBJECTS).map(([id, info]) => {
+                  const dist = subjectDistribution[id as SubjectId];
+                  const plannedH = Math.round((dist.plannedMin / 60) * 10) / 10;
+                  const completedH = Math.round((dist.completedMin / 60) * 10) / 10;
+                  const percent = weeklyPlannedMinutes > 0 ? Math.round((dist.plannedMin / weeklyPlannedMinutes) * 100) : 0;
+                  return (
+                    <div key={id} className="text-xs">
+                      <div className="flex justify-between font-medium mb-1">
+                        <span className="flex items-center gap-1.5 text-slate-700">
+                          <span className={`w-2 h-2 rounded-full ${info.color}`} /> {info.name}
+                        </span>
+                        <span className="text-slate-500">{completedH}h / {plannedH}h ({percent}%)</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div className={`h-full ${info.color}`} style={{ width: `${percent}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile Day Selector (Horizontal Scroller) */}
+          <div className="lg:hidden flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+            {weekDays.map((day) => {
+              const dStr = format(day, 'yyyy-MM-dd');
+              const isSelected = selectedDayOnMobile === dStr;
+              const isCurr = isToday(day);
+              const daySess = weekSessions.filter((s) => s.date === dStr);
+              return (
+                <button
+                  key={dStr}
+                  onClick={() => setSelectedDayOnMobile(dStr)}
+                  className={`px-3 py-2 rounded-xl text-center shrink-0 border transition-all ${
+                    isSelected
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                      : isCurr
+                      ? 'bg-white text-blue-700 border-blue-400 font-bold'
+                      : 'bg-white text-slate-700 border-slate-200'
+                  }`}
+                >
+                  <p className="text-[10px] font-medium opacity-80">{format(day, 'EEE', { locale: th })}</p>
+                  <p className="text-sm font-bold mt-0.5">{format(day, 'd')}</p>
+                  <span className={`text-[9px] mt-1 block px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-white/20' : 'bg-slate-100 text-slate-600'}`}>
+                    {daySess.length} เซสชัน
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 7 Days Workload Grid (Desktop full grid, Mobile filtered) */}
+          <div className="grid grid-cols-1 lg:grid-cols-7 gap-3.5">
+            {weekDays.map((day) => {
+              const dStr = format(day, 'yyyy-MM-dd');
+              const daySessions = weekSessions.filter((s) => s.date === dStr).sort((a, b) => a.startTime.localeCompare(b.startTime));
+              const dayMinutes = daySessions.reduce((acc, s) => acc + s.plannedMinutes, 0);
+              const workload = getDayWorkload(dayMinutes);
+              const isCurrentDay = isToday(day);
+
+              return (
+                <div
+                  key={dStr}
+                  className={`bg-white rounded-2xl border p-4 shadow-xs flex flex-col justify-between transition-all ${
+                    isCurrentDay
+                      ? 'border-blue-400 ring-2 ring-blue-500/10'
+                      : 'border-slate-200/70 hover:border-slate-300'
+                  } ${
+                    // On mobile, hide other days if not selected
+                    selectedDayOnMobile !== dStr ? 'hidden lg:flex' : 'flex'
+                  }`}
+                >
+                  {/* Day Header */}
+                  <div>
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <div>
+                        <span className={`text-xs font-bold uppercase ${isCurrentDay ? 'text-blue-600' : 'text-slate-600'}`}>
+                          {format(day, 'EEEE', { locale: th })}
+                        </span>
+                        <p className="text-lg font-extrabold text-slate-900 leading-tight">
+                          {format(day, 'd MMM', { locale: th })}
+                        </p>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${workload.color}`}>
+                        {workload.label}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-[11px] text-slate-500 py-2">
+                      <span>{daySessions.length} เซสชัน</span>
+                      <span className="font-semibold text-slate-700">{Math.round((dayMinutes / 60) * 10) / 10} ชม.</span>
+                    </div>
+
+                    {/* Sessions list */}
+                    <div className="space-y-2 mt-1 min-h-[140px]">
+                      {daySessions.length === 0 ? (
+                        <p className="text-[11px] text-slate-300 text-center py-8 italic">วันพัก ไม่มีแผน</p>
+                      ) : (
+                        daySessions.map((session) => {
+                          const subject = SUBJECTS[session.subjectId];
+                          const isDone = session.status === 'completed';
+                          return (
+                            <div
+                              key={session.id}
+                              className={`p-2.5 rounded-xl border text-xs transition-all ${
+                                isDone
+                                  ? 'bg-slate-50/80 border-slate-200 text-slate-400'
+                                  : 'bg-white border-slate-200 hover:border-blue-300 shadow-xs'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-1 mb-1">
+                                <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded text-white ${subject.color}`}>
+                                  {subject.name.split('/')[0]}
+                                </span>
+                                <span className="text-[10px] font-medium text-slate-500">{session.startTime}</span>
+                              </div>
+                              <p className={`font-bold line-clamp-1 ${isDone ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+                                {session.title}
+                              </p>
+                              <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-slate-100 text-[10px]">
+                                <span className="text-slate-400">{session.plannedMinutes}m</span>
+                                <div className="flex items-center gap-1">
+                                  {!isDone && (
+                                    <button
+                                      onClick={() => handleOpenCompleteModal(session)}
+                                      className="text-emerald-600 hover:text-emerald-700 font-bold"
+                                      title="ทำเสร็จ"
+                                    >
+                                      ✓
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleOpenEditModal(session)}
+                                    className="text-slate-400 hover:text-slate-600"
+                                    title="แก้ไข"
+                                  >
+                                    ✎
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Add button for this day */}
+                  <button
+                    onClick={() => handleOpenAddModal(dStr)}
+                    className="w-full mt-3 py-1.5 rounded-xl border border-dashed border-slate-200 hover:border-blue-400 text-slate-400 hover:text-blue-600 text-xs font-semibold flex items-center justify-center gap-1 transition-all"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> เพิ่ม
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================
+          TAB 3: MONTHLY CALENDAR VIEW
+          ================================================== */}
+      {activeTab === 'month' && (
+        <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setCurrentMonthDate(addMonths(currentMonthDate, -1))}
+                className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4 text-slate-600" />
+              </button>
+              <h2 className="text-xl font-bold text-slate-900">
+                {format(currentMonthDate, 'MMMM yyyy', { locale: th })}
+              </h2>
+              <button
+                onClick={() => setCurrentMonthDate(addMonths(currentMonthDate, 1))}
+                className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors"
+              >
+                <ChevronRight className="w-4 h-4 text-slate-600" />
+              </button>
+            </div>
+            <button
+              onClick={() => setCurrentMonthDate(new Date())}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors"
+            >
+              เดือนนี้
+            </button>
+          </div>
+
+          {/* Month grid */}
+          <div className="grid grid-cols-7 gap-px bg-slate-200 rounded-xl overflow-hidden border border-slate-200">
+            {['จันทร์', 'อังคาร', 'พุธ', 'พฤหัส', 'ศุกร์', 'เสาร์', 'อาทิตย์'].map((dayName) => (
+              <div key={dayName} className="bg-slate-50 py-2.5 text-center text-xs font-bold text-slate-600">
+                {dayName}
+              </div>
+            ))}
+
+            {(() => {
+              const mStart = startOfMonth(currentMonthDate);
+              const mEnd = endOfMonth(mStart);
+              const cStart = startOfWeek(mStart, { weekStartsOn: 1 });
+              const cEnd = endOfWeek(mEnd, { weekStartsOn: 1 });
+              const cDays = eachDayOfInterval({ start: cStart, end: cEnd });
+
+              return cDays.map((day) => {
+                const dStr = format(day, 'yyyy-MM-dd');
+                const isCurrMonth = isSameMonth(day, mStart);
+                const isCurDay = isToday(day);
+                const daySess = processedSessions.filter((s) => s.date === dStr);
+
+                return (
+                  <div
+                    key={dStr}
+                    onClick={() => handleOpenAddModal(dStr)}
+                    className={`min-h-[110px] p-2 bg-white flex flex-col justify-between cursor-pointer hover:bg-blue-50/30 transition-colors ${
+                      !isCurrMonth ? 'bg-slate-50/50 text-slate-300' : 'text-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={`text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center ${
+                          isCurDay ? 'bg-blue-600 text-white' : ''
+                        }`}
+                      >
+                        {format(day, 'd')}
+                      </span>
+                      {daySess.length > 0 && (
+                        <span className="text-[10px] text-slate-400 font-medium">{daySess.length}</span>
+                      )}
+                    </div>
+
+                    <div className="space-y-1 mt-1">
+                      {daySess.slice(0, 2).map((s) => (
+                        <div
+                          key={s.id}
+                          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded truncate text-white ${
+                            SUBJECTS[s.subjectId]?.color || 'bg-slate-500'
+                          }`}
+                        >
+                          {s.startTime} {s.title}
+                        </div>
+                      ))}
+                      {daySess.length > 2 && (
+                        <p className="text-[9px] text-slate-400 font-medium pl-1">
+                          +{daySess.length - 2} รายการเพิ่มเติม
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================
+          MODAL: ADD / EDIT SESSION
+          ================================================== */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h3 className="text-base font-bold text-slate-900">
+                {editingSession ? 'แก้ไขแผนการเรียน' : 'เพิ่มแผนการเรียนใหม่'}
+              </h3>
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSession} className="p-6 space-y-4">
+              {formError && (
+                <div className="p-3 rounded-xl bg-rose-50 text-rose-700 text-xs font-medium border border-rose-200">
+                  {formError}
+                </div>
+              )}
+
+              {/* Subject selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">วิชา</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {Object.entries(SUBJECTS).map(([id, info]) => (
+                    <button
+                      type="button"
+                      key={id}
+                      onClick={() => {
+                        setFormSubjectId(id as SubjectId);
+                        setFormLessonId('custom');
+                      }}
+                      className={`px-2.5 py-2 rounded-xl text-xs font-bold border text-center transition-all ${
+                        formSubjectId === id
+                          ? `${info.color} text-white border-transparent shadow-xs`
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {info.name.split('/')[0]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Lesson Dropdown */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">เลือกบทเรียนจากระบบ หรือ กำหนดเอง</label>
+                <select
+                  value={formLessonId}
+                  onChange={(e) => {
+                    const lId = e.target.value;
+                    setFormLessonId(lId);
+                    if (lId !== 'custom') {
+                      const sel = lessons.find((l) => l.id === lId);
+                      if (sel) setFormTitle(sel.title);
+                    }
+                  }}
+                  className="w-full text-xs font-medium border border-slate-200 rounded-xl p-2.5 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="custom">✏️ กำหนดหัวข้ออิสระ (Custom Task)</option>
+                  {lessons
+                    .filter((l) => l.subjectId === formSubjectId)
+                    .map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.title} (เดือน {l.month})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Title */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">ชื่อหัวข้อ / สิ่งที่จะทำ</label>
+                <input
+                  type="text"
+                  value={formTitle}
+                  onChange={(e) => setFormTitle(e.target.value)}
+                  placeholder="เช่น ทำโจทย์สมการเชิงเส้น 20 ข้อ"
+                  className="w-full text-xs font-medium border border-slate-200 rounded-xl p-2.5 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              {/* Type & Priority */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">ประเภทกิจกรรม</label>
+                  <select
+                    value={formType}
+                    onChange={(e) => setFormType(e.target.value as StudySessionType)}
+                    className="w-full text-xs font-medium border border-slate-200 rounded-xl p-2.5 outline-none focus:border-blue-500"
+                  >
+                    <option value="learn">เรียนเนื้อหาใหม่</option>
+                    <option value="review">ทบทวนบทเรียน</option>
+                    <option value="practice">ฝึกทำโจทย์</option>
+                    <option value="quiz">ทำแบบทดสอบ</option>
+                    <option value="exam">จำลองสอบเสมือนจริง</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">ความสำคัญ (Priority)</label>
+                  <select
+                    value={formPriority}
+                    onChange={(e) => setFormPriority(e.target.value as 'Low' | 'Medium' | 'High')}
+                    className="w-full text-xs font-medium border border-slate-200 rounded-xl p-2.5 outline-none focus:border-blue-500"
+                  >
+                    <option value="High">สูง (สำคัญมาก)</option>
+                    <option value="Medium">ปานกลาง</option>
+                    <option value="Low">ต่ำ</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Date & Time Range */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">วันที่</label>
+                  <input
+                    type="date"
+                    value={formDate}
+                    onChange={(e) => setFormDate(e.target.value)}
+                    className="w-full text-xs font-medium border border-slate-200 rounded-xl p-2.5 outline-none focus:border-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">เวลาเริ่ม</label>
+                  <input
+                    type="time"
+                    value={formStartTime}
+                    onChange={(e) => handleTimeChange(e.target.value, formEndTime)}
+                    className="w-full text-xs font-medium border border-slate-200 rounded-xl p-2.5 outline-none focus:border-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">เวลาเสร็จ</label>
+                  <input
+                    type="time"
+                    value={formEndTime}
+                    onChange={(e) => handleTimeChange(formStartTime, e.target.value)}
+                    className="w-full text-xs font-medium border border-slate-200 rounded-xl p-2.5 outline-none focus:border-blue-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Duration info */}
+              <div className="p-3 bg-slate-50 rounded-xl flex items-center justify-between text-xs text-slate-600">
+                <span>ระยะเวลาที่วางแผน:</span>
+                <span className="font-bold text-blue-600">{formPlannedMinutes} นาที ({Math.round((formPlannedMinutes / 60) * 10) / 10} ชม.)</span>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">บันทึกเพิ่มเติม</label>
+                <textarea
+                  value={formNotes}
+                  onChange={(e) => setFormNotes(e.target.value)}
+                  placeholder="เช่น ทำแบบฝึกหัดท้ายบทที่ 3 ข้อ 1-10"
+                  className="w-full text-xs font-medium border border-slate-200 rounded-xl p-2.5 outline-none focus:border-blue-500 resize-none h-16"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm transition-all"
+                >
+                  {editingSession ? 'บันทึกการแก้ไข' : 'เพิ่มลงตาราง'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================
+          MODAL: COMPLETE SESSION
+          ================================================== */}
+      {completingSession && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-200 space-y-4">
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600" /> บันทึกการเรียนเสร็จสิ้น
+            </h3>
+            <p className="text-xs text-slate-600">
+              บทเรียน: <span className="font-bold text-slate-900">{completingSession.title}</span>
+            </p>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                เวลาที่ใช้เรียนจริง (นาที)
+              </label>
+              <input
+                type="number"
+                value={actualMinutesInput}
+                onChange={(e) => setActualMinutesInput(Math.max(1, Number(e.target.value)))}
+                className="w-full text-sm font-bold border border-slate-200 rounded-xl p-3 outline-none focus:border-emerald-500"
+                min={1}
+              />
+              <p className="text-[11px] text-slate-400 mt-1">
+                เวลาที่วางแผนไว้เดิม: {completingSession.plannedMinutes} นาที
+              </p>
+            </div>
+            <div className="flex justify-end gap-2.5 pt-2">
+              <button
+                onClick={() => setCompletingSession(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={handleConfirmComplete}
+                className="px-5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm transition-all"
+              >
+                ยืนยันเรียนจบแล้ว
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================
+          MODAL: RESCHEDULE SESSION
+          ================================================== */}
+      {reschedulingSession && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-200 space-y-4">
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <FastForward className="w-5 h-5 text-blue-600" /> เลื่อนเวลาเรียน
+            </h3>
+            <p className="text-xs text-slate-600">
+              บทเรียน: <span className="font-bold text-slate-900">{reschedulingSession.title}</span>
+            </p>
+
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-slate-700">เลือกวันที่ต้องการย้ายไป:</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => handleConfirmReschedule(todayStr)}
+                  className="p-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 text-center transition-all"
+                >
+                  เรียนวันนี้ ({format(new Date(), 'd MMM')})
+                </button>
+                <button
+                  onClick={() => handleConfirmReschedule(format(addDays(new Date(), 1), 'yyyy-MM-dd'))}
+                  className="p-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 text-center transition-all"
+                >
+                  พรุ่งนี้ ({format(addDays(new Date(), 1), 'd MMM')})
+                </button>
+                <button
+                  onClick={() => handleConfirmReschedule(format(addDays(weekEnd, -1), 'yyyy-MM-dd'))}
+                  className="p-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 text-center transition-all"
+                >
+                  วันเสาร์นี้
+                </button>
+                <button
+                  onClick={() => handleConfirmReschedule(format(weekEnd, 'yyyy-MM-dd'))}
+                  className="p-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 text-center transition-all"
+                >
+                  วันอาทิตย์นี้
+                </button>
+              </div>
+
+              <div className="pt-2">
+                <label className="block text-xs font-bold text-slate-700 mb-1">หรือเลือกวันที่กำหนดเอง:</label>
+                <input
+                  type="date"
+                  defaultValue={todayStr}
+                  onChange={(e) => {
+                    if (e.target.value) handleConfirmReschedule(e.target.value);
+                  }}
+                  className="w-full text-xs font-medium border border-slate-200 rounded-xl p-2.5 outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setReschedulingSession(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                ยกเลิก
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================
+          MODAL: WEEKLY GOAL SETTINGS
+          ================================================== */}
+      {isGoalModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-200 space-y-4">
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <Target className="w-5 h-5 text-purple-600" /> ตั้งเป้าหมายสัปดาห์ (Weekly Goals)
+            </h3>
+            <p className="text-xs text-slate-500">
+              กำหนดเป้าหมายเพื่อเป็นเกณฑ์วัดความก้าวหน้าและการรักษาวินัยในแต่ละสัปดาห์
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  เป้าหมายชั่วโมงเรียนรวม (ชม./สัปดาห์)
+                </label>
+                <input
+                  type="number"
+                  defaultValue={weeklyGoal?.targetHours || 18}
+                  id="targetHoursInput"
+                  className="w-full text-xs font-bold border border-slate-200 rounded-xl p-2.5 outline-none focus:border-purple-500"
+                  min={1}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  เป้าหมายจำนวนบทเรียนใหม่ที่จบ (บท/สัปดาห์)
+                </label>
+                <input
+                  type="number"
+                  defaultValue={weeklyGoal?.targetLessons || 6}
+                  id="targetLessonsInput"
+                  className="w-full text-xs font-bold border border-slate-200 rounded-xl p-2.5 outline-none focus:border-purple-500"
+                  min={1}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  เป้าหมายจำนวนครั้งทบทวน / ทำโจทย์ (ครั้ง/สัปดาห์)
+                </label>
+                <input
+                  type="number"
+                  defaultValue={weeklyGoal?.targetReviews || 4}
+                  id="targetReviewsInput"
+                  className="w-full text-xs font-bold border border-slate-200 rounded-xl p-2.5 outline-none focus:border-purple-500"
+                  min={1}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <button
+                onClick={() => setIsGoalModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={() => {
+                  const thEl = document.getElementById('targetHoursInput') as HTMLInputElement;
+                  const tlEl = document.getElementById('targetLessonsInput') as HTMLInputElement;
+                  const trEl = document.getElementById('targetReviewsInput') as HTMLInputElement;
+                  setWeeklyGoal({
+                    targetHours: Number(thEl?.value || 18),
+                    targetLessons: Number(tlEl?.value || 6),
+                    targetReviews: Number(trEl?.value || 4),
+                  });
+                  setIsGoalModalOpen(false);
+                }}
+                className="px-5 py-2 text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-sm transition-all"
+              >
+                บันทึกเป้าหมาย
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+// Helper for adding months
+function addMonths(date: Date, count: number) {
+  const d = new Date(date);
+  d.setMonth(d.getMonth() + count);
+  return d;
+}

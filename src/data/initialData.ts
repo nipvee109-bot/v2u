@@ -367,3 +367,179 @@ export const initialLessons: Lesson[] = [
     images: []
   },
 ];
+
+import { format, addDays, subDays } from 'date-fns';
+import type { StudySession, WeeklyGoal } from '../types';
+
+export const initialWeeklyGoal: WeeklyGoal = {
+  targetHours: 18,
+  targetLessons: 6,
+  targetReviews: 4,
+};
+
+export const createInitialSessions = (): StudySession[] => {
+  const today = new Date();
+  const todayStr = format(today, 'yyyy-MM-dd');
+  const yesterdayStr = format(subDays(today, 1), 'yyyy-MM-dd');
+  const tomorrowStr = format(addDays(today, 1), 'yyyy-MM-dd');
+  const dayAfterTomorrowStr = format(addDays(today, 2), 'yyyy-MM-dd');
+  const twoDaysAgoStr = format(subDays(today, 2), 'yyyy-MM-dd');
+
+  return [
+    // Overdue from 2 days ago
+    {
+      id: uuidv4(),
+      date: twoDaysAgoStr,
+      startTime: '16:00',
+      endTime: '17:30',
+      plannedMinutes: 90,
+      lessonId: initialLessons[0]?.id,
+      subjectId: 'tgat3',
+      title: 'ทบทวน: สมรรถนะการทำงานในอนาคต',
+      status: 'overdue',
+      priority: 'Medium',
+      type: 'review',
+      notes: 'อ่านสรุปและฝึกทำโจทย์สถานการณ์จำลอง',
+      createdAt: subDays(today, 3).toISOString(),
+      updatedAt: subDays(today, 2).toISOString(),
+    },
+    // Yesterday Completed
+    {
+      id: uuidv4(),
+      date: yesterdayStr,
+      startTime: '10:00',
+      endTime: '12:00',
+      plannedMinutes: 120,
+      actualMinutes: 115,
+      lessonId: initialLessons[0]?.id,
+      subjectId: 'physics',
+      title: 'การเคลื่อนที่แนวตรงและสมการการเคลื่อนที่',
+      status: 'completed',
+      priority: 'High',
+      type: 'learn',
+      notes: 'ทำความเข้าใจ 5 สูตรการเคลื่อนที่',
+      createdAt: subDays(today, 2).toISOString(),
+      updatedAt: yesterdayStr,
+      completedAt: yesterdayStr + 'T12:00:00.000Z',
+    },
+    {
+      id: uuidv4(),
+      date: yesterdayStr,
+      startTime: '15:00',
+      endTime: '16:30',
+      plannedMinutes: 90,
+      actualMinutes: 90,
+      lessonId: initialLessons[1]?.id,
+      subjectId: 'math',
+      title: 'เลขยกกำลัง และการถอดราก',
+      status: 'completed',
+      priority: 'Medium',
+      type: 'review',
+      notes: 'ทบทวนสูตรกำลังสองสมบูรณ์',
+      createdAt: subDays(today, 2).toISOString(),
+      updatedAt: yesterdayStr,
+      completedAt: yesterdayStr + 'T16:30:00.000Z',
+    },
+    // Today
+    {
+      id: uuidv4(),
+      date: todayStr,
+      startTime: '09:00',
+      endTime: '11:00',
+      plannedMinutes: 120,
+      lessonId: initialLessons[0]?.id,
+      subjectId: 'math',
+      title: 'สมการและอสมการเชิงเส้น',
+      status: 'planned',
+      priority: 'High',
+      type: 'learn',
+      notes: 'ฝึกทำโจทย์ 20 ข้อ และจดเทคนิคการย้ายข้าง',
+      createdAt: todayStr,
+      updatedAt: todayStr,
+    },
+    {
+      id: uuidv4(),
+      date: todayStr,
+      startTime: '14:00',
+      endTime: '15:30',
+      plannedMinutes: 90,
+      lessonId: initialLessons[2]?.id,
+      subjectId: 'programming',
+      title: 'Python พื้นฐาน: Data Types & Control Flow',
+      status: 'planned',
+      priority: 'Medium',
+      type: 'practice',
+      notes: 'เขียนโปรแกรมคำนวณค่าไฟและแปลงหน่วย',
+      createdAt: todayStr,
+      updatedAt: todayStr,
+    },
+    {
+      id: uuidv4(),
+      date: todayStr,
+      startTime: '19:00',
+      endTime: '20:30',
+      plannedMinutes: 90,
+      lessonId: initialLessons[0]?.id,
+      subjectId: 'tgat3',
+      title: 'TGAT 3: แบบทดสอบการคิดอย่างมีเหตุผล',
+      status: 'planned',
+      priority: 'Medium',
+      type: 'quiz',
+      notes: 'จับเวลาทำชุดทดสอบ 30 นาที',
+      createdAt: todayStr,
+      updatedAt: todayStr,
+    },
+    // Tomorrow
+    {
+      id: uuidv4(),
+      date: tomorrowStr,
+      startTime: '09:30',
+      endTime: '11:30',
+      plannedMinutes: 120,
+      lessonId: initialLessons[3]?.id,
+      subjectId: 'ai',
+      title: 'Machine Learning Basics: Supervised Learning',
+      status: 'planned',
+      priority: 'High',
+      type: 'learn',
+      notes: 'เรียนรู้ Concept Regression vs Classification',
+      createdAt: todayStr,
+      updatedAt: todayStr,
+    },
+    {
+      id: uuidv4(),
+      date: tomorrowStr,
+      startTime: '14:00',
+      endTime: '15:30',
+      plannedMinutes: 90,
+      lessonId: initialLessons[0]?.id,
+      subjectId: 'physics',
+      title: 'แรงและกฎการเคลื่อนที่ของนิวตัน',
+      status: 'planned',
+      priority: 'Medium',
+      type: 'practice',
+      notes: 'วาด Free Body Diagram ให้แม่นยำ',
+      createdAt: todayStr,
+      updatedAt: todayStr,
+    },
+    // Day After Tomorrow
+    {
+      id: uuidv4(),
+      date: dayAfterTomorrowStr,
+      startTime: '10:00',
+      endTime: '12:00',
+      plannedMinutes: 120,
+      lessonId: initialLessons[2]?.id,
+      subjectId: 'programming',
+      title: 'Python Functions & Modular Coding',
+      status: 'planned',
+      priority: 'High',
+      type: 'learn',
+      notes: 'เขียนฟังก์ชันแบบ return ค่าและรับ default parameters',
+      createdAt: todayStr,
+      updatedAt: todayStr,
+    },
+  ];
+};
+
+export const initialSessions = createInitialSessions();
