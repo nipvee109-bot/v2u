@@ -24,7 +24,8 @@ import type {
   KnowledgeGap,
   StudyGoal,
   CalculatedGoalProgress,
-  GoalStatus
+  GoalStatus,
+  WeeklyReviewReport
 } from '../types';
 import { 
   SUBJECTS,
@@ -47,6 +48,7 @@ import {
   isDuplicateResource, 
   getAutoThumbnail 
 } from '../utils/resourceUtils';
+import { computeWeeklyReview } from '../utils/weeklyReviewUtils';
 
 export const REVIEW_INTERVALS = [1, 3, 7, 14, 30] as const;
 
@@ -405,6 +407,9 @@ interface StoreState {
   toggleFavoriteResource: (id: string) => void;
   recordResourceOpened: (id: string) => void;
   getAllResources: () => Resource[];
+
+  // Phase 15: Weekly Learning Review
+  getWeeklyReviewReport: (targetDate?: Date | string) => WeeklyReviewReport;
 
   // Import / Export / Reset
   importData: (data: {
@@ -1406,6 +1411,21 @@ export const useStore = create<StoreState>()(
             })),
           };
         }),
+
+      // Phase 15: Weekly Learning Review
+      getWeeklyReviewReport: (targetDate) => {
+        const state = get();
+        return computeWeeklyReview({
+          targetDate,
+          lessons: state.lessons,
+          sessions: state.sessions,
+          learningSessionsHistory: state.learningSessionsHistory,
+          reviewQueue: state.reviewQueue,
+          unclearTopics: state.unclearTopics,
+          goals: state.goals,
+          weeklyGoal: state.weeklyGoal,
+        });
+      },
 
       // Unclear Topic Actions
       addUnclearTopic: (topic) => 

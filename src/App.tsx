@@ -10,6 +10,7 @@ import { NotUnderstoodPage } from './pages/NotUnderstoodPage';
 import { ProgressPage } from './pages/ProgressPage';
 import { GoalsPage } from './pages/GoalsPage';
 import { ResourcesPage } from './pages/ResourcesPage';
+import { WeeklyReviewPage } from './pages/WeeklyReviewPage';
 import { SearchPage } from './pages/SearchPage';
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
         <Route path="/search" element={<SearchPage />} />
         <Route path="/planner" element={<PlannerPage />} />
         <Route path="/calendar" element={<PlannerPage />} />
+        <Route path="/weekly-review" element={<WeeklyReviewPage />} />
         <Route path="/roadmap" element={<RoadmapPage />} />
         <Route path="/goals" element={<GoalsPage />} />
         <Route path="/resources" element={<ResourcesPage />} />

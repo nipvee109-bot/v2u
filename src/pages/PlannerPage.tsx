@@ -20,7 +20,8 @@ import {
   Play,
   Check,
   FastForward,
-  Brain
+  Brain,
+  CalendarCheck
 } from 'lucide-react';
 import { 
   format, 
@@ -384,6 +385,12 @@ export function PlannerPage() {
           <p className="text-xs text-slate-500 mt-1">วางแผน จัดสรรเวลา และติดตามความสมดุลของการอ่านหนังสือ</p>
         </div>
         <div className="flex items-center gap-2.5">
+          <Link
+            to="/weekly-review"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-colors"
+          >
+            <CalendarCheck className="w-4 h-4 text-indigo-600" /> สรุปรายสัปดาห์
+          </Link>
           <button
             onClick={() => setIsGoalModalOpen(true)}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200/80 bg-slate-50 hover:bg-slate-100 text-slate-700 transition-colors"

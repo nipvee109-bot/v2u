@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Target,
   BookMarked,
+  CalendarCheck,
   Settings,
   X,
 } from 'lucide-react';
@@ -32,6 +33,7 @@ interface NavItemConfig {
 const mainNav: NavItemConfig[] = [
   { to: '/', icon: LayoutDashboard, label: 'หน้าหลัก', end: true },
   { to: '/planner', icon: Calendar, label: 'ตารางเรียน & แผน' },
+  { to: '/weekly-review', icon: CalendarCheck, label: 'สรุปรายสัปดาห์' },
   { to: '/roadmap', icon: Map, label: 'แผน 6 เดือน' },
 ];
 

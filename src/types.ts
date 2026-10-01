@@ -379,3 +379,74 @@ export interface CalculatedGoalProgress {
   recentActivityText?: string;
 }
 
+/* ==================================================
+   Phase 15: Weekly Learning Review Models
+   ================================================== */
+
+export interface WeeklySubjectSummary {
+  subjectId: SubjectId;
+  studyMinutes: number;
+  studyHours: number;
+  sessionsCount: number;
+  completedLessonsCount: number;
+  quizAttemptsCount: number;
+  averageQuizScore?: number;
+}
+
+export interface WeeklyReviewSummary {
+  weekStartDate: string; // YYYY-MM-DD (Monday)
+  weekEndDate: string; // YYYY-MM-DD (Sunday)
+  weekNumber: number;
+  totalStudyMinutes: number;
+  totalStudyHours: number;
+  sessionsCount: number;
+  completedLessonsCount: number;
+  completedLessons: Lesson[];
+  quizAttemptsCount: number;
+  averageQuizScore?: number;
+  reviewsCompletedCount: number;
+  reviewsOverdueCount: number;
+  studyTimeVsTargetPercent?: number;
+}
+
+export interface WeeklyMemoryItem {
+  id: string;
+  lessonId: string;
+  lessonTitle: string;
+  subjectId: SubjectId;
+  learnedNotes: string;
+  date: string;
+}
+
+export interface WeeklyStudiedItem {
+  id: string;
+  title: string;
+  subjectId: SubjectId;
+  date: string;
+  durationMinutes: number;
+  type: 'lesson' | 'session';
+  status: string;
+  quizScore?: number;
+}
+
+export interface WeeklyNextWeekPlan {
+  unfinishedLessons: Lesson[];
+  upcomingLessons: Lesson[];
+  reviewDueItems: ReviewItem[];
+  milestones: Milestone[];
+  goalsDueSoon: StudyGoal[];
+}
+
+export interface WeeklyReviewReport {
+  weekStartDate: string;
+  weekEndDate: string;
+  weekNumber: number;
+  summary: WeeklyReviewSummary;
+  subjectBreakdown: Record<SubjectId, WeeklySubjectSummary>;
+  studiedItems: WeeklyStudiedItem[];
+  learnedNotesList: WeeklyMemoryItem[];
+  unclearTopicsList: UnclearTopic[];
+  nextWeekPlan: WeeklyNextWeekPlan;
+}
+
+
