@@ -413,9 +413,20 @@ export function LessonDetail() {
             <div className="w-px bg-slate-200" />
             <div className="text-center"><p className="text-2xl font-bold text-slate-900">{lesson.resources.length}</p><p className="text-xs text-slate-500 mt-1">แหล่งเรียน</p></div>
           </div>
-          <button onClick={handleStartFlow} className="w-full max-w-xs mx-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-blue-600/25 transition-all duration-200 text-base flex items-center justify-center gap-2">
-            <Play className="w-5 h-5" /> เริ่มเรียน
-          </button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              onClick={() => navigate(`/study/${lesson.id}`)}
+              className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-blue-600/25 transition-all duration-200 text-base flex items-center justify-center gap-2"
+            >
+              <Sparkles className="w-5 h-5 text-blue-200" /> เข้าห้องเรียน (Study Room)
+            </button>
+            <button
+              onClick={handleStartFlow}
+              className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3.5 rounded-xl font-bold transition-colors text-sm flex items-center justify-center gap-1.5"
+            >
+              <Play className="w-4 h-4" /> เริ่มเรียนแบบทีละขั้น
+            </button>
+          </div>
           <button onClick={() => setStep('notebook')} className="text-slate-500 hover:text-slate-900 text-xs font-semibold transition-colors block mx-auto">
             เปิดสมุดโน้ต &rarr;
           </button>

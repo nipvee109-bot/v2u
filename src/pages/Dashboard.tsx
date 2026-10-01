@@ -228,7 +228,7 @@ export function Dashboard() {
 
   const handleGapReStudy = (lessonId: string) => {
     startLearningSession({ lessonId });
-    navigate(`/lessons/${lessonId}?action=study`);
+    navigate(`/study/${lessonId}`);
   };
 
   const handleGapTakeQuiz = (lessonId: string) => {
@@ -443,7 +443,7 @@ export function Dashboard() {
           firstLesson={lessons[0]}
           onStartFirstLesson={(id) => {
             startLearningSession({ lessonId: id });
-            navigate(`/lessons/${id}?action=study`);
+            navigate(`/study/${id}`);
           }}
           onOpenWizard={() => setIsOnboardingModalOpen(true)}
         />
@@ -495,7 +495,7 @@ export function Dashboard() {
         reviewQueue={reviewQueue}
         onStartLesson={(lessonId, resource) => {
           startLearningSession({ lessonId, source: resource });
-          navigate(`/lessons/${lessonId}?action=study`);
+          navigate(`/study/${lessonId}`);
         }}
       />
 
@@ -505,7 +505,7 @@ export function Dashboard() {
         onStartSession={(session) => {
           if (session.lessonId) {
             startLearningSession({ lessonId: session.lessonId, plannedSessionId: session.id });
-            navigate(`/lessons/${session.lessonId}?action=study`);
+            navigate(`/study/${session.lessonId}`);
           } else {
             navigate('/planner');
           }
@@ -528,7 +528,7 @@ export function Dashboard() {
         secondaryLessons={secondaryLessons}
         onStartLesson={(id) => {
           startLearningSession({ lessonId: id });
-          navigate(`/lessons/${id}?action=study`);
+          navigate(`/study/${id}`);
         }}
       />
 
