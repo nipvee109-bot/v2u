@@ -18,7 +18,10 @@ import type {
   LearningRecord,
   ReviewItem,
   ReviewReason,
-  ReviewOutcome
+  ReviewOutcome,
+  KnowledgeGapReasonItem,
+  KnowledgeGapSeverity,
+  KnowledgeGap
 } from '../types';
 import { 
   SUBJECTS,
@@ -370,6 +373,9 @@ interface StoreState {
   setLessonMasteryScore: (lessonId: string, score: MasteryScore) => void;
   getSubjectMasterySummaries: () => SubjectMasterySummary[];
   getTopicsNeedingAttention: () => TopicAttentionItem[];
+
+  // Phase 12: Knowledge Gap Analysis Actions & Getters
+  getKnowledgeGaps: () => KnowledgeGap[];
 
   // Import / Export / Reset
   importData: (data: {
@@ -728,6 +734,196 @@ export const useStore = create<StoreState>()(
             return b.reasons.length - a.reasons.length;
           }
           return a.masteryScore - b.masteryScore;
+        });
+      },
+
+      // Phase 12: Knowledge Gap Analysis Actions & Getters
+      getKnowledgeGaps: () => {
+        const state = get();
+        const todayStr = new Date().toISOString().split('T')[0];
+        const gaps: KnowledgeGap[] = [];
+        const processedLessonIds = new Set<string>();
+
+        // 1. Scan lessons
+        state.lessons.forEach((lesson) => {
+          const record = computeLessonLearningRecord(lesson, state.learningSessionsHistory, state.sessions);
+          const mastery = record.masteryScore ?? 0;
+          const quizScore = record.quizBestScore;
+          const lastStudied = record.lastStudiedAt || lesson.lastStudiedAt || lesson.completedAt;
+
+          // Check overdue Spaced Reviews for this lesson
+          const overdueReviews = (state.reviewQueue || []).filter(
+            (r) => r.lessonId === lesson.id && r.status !== 'completed' && r.nextReviewAt.split('T')[0] < todayStr
+          );
+          const isOverdueReview = overdueReviews.length > 0;
+          let overdueDays = 0;
+          if (isOverdueReview) {
+            const todayTime = new Date(todayStr).getTime();
+            const oldestDueTime = Math.min(...overdueReviews.map((r) => new Date(r.nextReviewAt.split('T')[0]).getTime()));
+            overdueDays = Math.max(1, Math.round((todayTime - oldestDueTime) / (1000 * 60 * 60 * 24)));
+          }
+
+          // Check last reviewed timestamp from reviewQueue or lesson reviewNotes
+          const lessonReviews = (state.reviewQueue || []).filter((r) => r.lessonId === lesson.id && r.lastReviewedAt);
+          const lastReviewed = lessonReviews.length > 0
+            ? lessonReviews.sort((a, b) => new Date(b.lastReviewedAt!).getTime() - new Date(a.lastReviewedAt!).getTime())[0].lastReviewedAt
+            : undefined;
+
+          // Find unclear topics correlated with this lesson
+          const matchingUnclear = (state.unclearTopics || []).filter(
+            (u) => u.status !== 'Understood' && 
+                   u.subjectId === lesson.subjectId && 
+                   (u.topic.toLowerCase().includes(lesson.title.toLowerCase()) || lesson.title.toLowerCase().includes(u.topic.toLowerCase()))
+          );
+          const hasStillUnclearNotes = Boolean(lesson.stillUnclearNotes && lesson.stillUnclearNotes.trim().length > 0);
+          const unclearCount = matchingUnclear.length + (hasStillUnclearNotes ? 1 : 0);
+
+          const reasons: KnowledgeGapReasonItem[] = [];
+
+          // Reason 1: Low quiz score (< 60%)
+          if (quizScore !== undefined && quizScore < 60) {
+            reasons.push({
+              code: 'low_quiz',
+              label: `คะแนนแบบทดสอบต่ำกว่าเกณฑ์ (${quizScore}%)`,
+              description: `ผลการทดสอบได้ ${quizScore}% ซึ่งต่ำกว่าเกณฑ์ 60% ควรทำความเข้าใจเนื้อหาใหม่และฝึกทำโจทย์`,
+              severity: quizScore < 50 ? 'critical' : 'moderate',
+            });
+          }
+
+          // Reason 2: Repeated unclear / unresolved questions
+          if (unclearCount > 0) {
+            reasons.push({
+              code: 'repeated_unclear',
+              label: `มีประเด็นที่ยังไม่เข้าใจ (${unclearCount} รายการ)`,
+              description: `มีบันทึกประเด็นที่ยังไม่เข้าใจค้างอยู่ ${unclearCount} รายการ ควรกลับไปอ่านหรือขอคำแนะนำเพิ่มเติม`,
+              severity: unclearCount >= 2 ? 'critical' : 'moderate',
+            });
+          }
+
+          // Reason 3: Low mastery
+          if (lesson.status === 'COMPLETED' && mastery <= 2) {
+            reasons.push({
+              code: 'low_mastery',
+              label: `ระดับความเข้าใจต่ำกว่าเกณฑ์ (${mastery}/4 - ${MASTERY_SCALE[mastery].title})`,
+              description: `เรียนจบแล้วแต่ระดับความเข้าใจยังอยู่ระดับ ${mastery}/4 ควรทบทวนเพื่อพัฒนาสู่ระดับประยุกต์ใช้งานได้`,
+              severity: mastery <= 1 ? 'critical' : 'moderate',
+            });
+          } else if (lesson.status === 'IN PROGRESS' && (record.totalStudyMinutes >= 45 || (lesson.actualStudyMinutes || 0) >= 45) && mastery <= 1) {
+            reasons.push({
+              code: 'low_mastery',
+              label: `ระดับความเข้าใจพัฒนาช้า (${mastery}/4 - ${MASTERY_SCALE[mastery].title})`,
+              description: `กำลังเรียนและใช้เวลาไปแล้ว ${Math.round(record.totalStudyMinutes / 60)} ชม. แต่ความเข้าใจยังอยู่ระดับ ${mastery}/4`,
+              severity: 'moderate',
+            });
+          }
+
+          // Reason 4: Review overdue
+          if (isOverdueReview) {
+            reasons.push({
+              code: 'review_overdue',
+              label: `เลยกำหนดทบทวน Spaced Review (${overdueDays} วัน)`,
+              description: `เลยกำหนดทบทวนมาแล้ว ${overdueDays} วัน อาจทำให้ข้อมูลลืมเลือนตามเส้นโค้งการลืม (Forgetting Curve)`,
+              severity: overdueDays >= 3 ? 'critical' : 'moderate',
+            });
+          }
+
+          // Reason 5: Never reviewed
+          if (lesson.status === 'COMPLETED' && (record.reviewCount === 0 || (lesson.reviewCount || 0) === 0)) {
+            reasons.push({
+              code: 'never_reviewed',
+              label: 'เรียนจบแล้วแต่ยังไม่เคยทบทวน (0 รอบ)',
+              description: 'ยังไม่มีประวัติการทบทวนแบบ Active Recall เพื่อฝังความจำระยะยาว',
+              severity: 'minor',
+            });
+          }
+
+          if (reasons.length > 0) {
+            processedLessonIds.add(lesson.id);
+
+            // Compute overall severity
+            const hasCritical = reasons.some((r) => r.severity === 'critical');
+            const hasModerate = reasons.some((r) => r.severity === 'moderate');
+            const severity: KnowledgeGapSeverity = (hasCritical || reasons.length >= 3)
+              ? 'critical'
+              : (hasModerate || reasons.length >= 2)
+              ? 'moderate'
+              : 'minor';
+
+            // Compute deterministic scoreWeight
+            let scoreWeight = 0;
+            if (isOverdueReview) scoreWeight += 45 + Math.min(30, overdueDays * 5);
+            if (quizScore !== undefined && quizScore < 60) scoreWeight += 40 + Math.max(0, 60 - quizScore);
+            if (unclearCount > 0) scoreWeight += 35 + unclearCount * 5;
+            scoreWeight += (4 - mastery) * 10;
+            if (reasons.some((r) => r.code === 'never_reviewed')) scoreWeight += 20;
+            if (severity === 'critical') scoreWeight += 30;
+            else if (severity === 'moderate') scoreWeight += 15;
+
+            gaps.push({
+              id: `gap-${lesson.id}`,
+              topic: lesson.title,
+              subject: lesson.subjectId,
+              relatedLessonIds: [lesson.id],
+              reasons,
+              mastery,
+              lastStudied,
+              lastReviewed,
+              quizScore,
+              severity,
+              scoreWeight,
+              unclearCount,
+              unclearNotes: lesson.stillUnclearNotes,
+              learnedNotes: lesson.learnedNotes || lesson.notes,
+              reviewNotes: lesson.reviewNotes,
+            });
+          }
+        });
+
+        // 2. Scan orphaned unclearTopics that didn't match any processed lesson
+        (state.unclearTopics || []).forEach((u) => {
+          if (u.status !== 'Understood') {
+            const alreadyLinked = gaps.some((g) =>
+              g.subject === u.subjectId && (g.topic.toLowerCase().includes(u.topic.toLowerCase()) || u.topic.toLowerCase().includes(g.topic.toLowerCase()))
+            );
+
+            if (!alreadyLinked) {
+              const severity: KnowledgeGapSeverity = u.priority === 'High' ? 'critical' : u.priority === 'Medium' ? 'moderate' : 'minor';
+              gaps.push({
+                id: `gap-unclear-${u.id}`,
+                topic: u.topic,
+                subject: u.subjectId,
+                relatedLessonIds: [],
+                reasons: [
+                  {
+                    code: 'repeated_unclear',
+                    label: `มีข้อสงสัยติดค้าง: ${u.topic}`,
+                    description: u.details || 'บันทึกไว้ในหัวข้อที่ยังไม่เข้าใจ',
+                    severity,
+                  },
+                ],
+                mastery: 0,
+                lastStudied: u.createdAt,
+                lastReviewed: undefined,
+                quizScore: undefined,
+                severity,
+                scoreWeight: u.priority === 'High' ? 65 : u.priority === 'Medium' ? 45 : 30,
+                unclearCount: 1,
+                unclearNotes: u.details,
+                learnedNotes: undefined,
+                reviewNotes: undefined,
+              });
+            }
+          }
+        });
+
+        // Sort descending by scoreWeight, then most recent lastStudied
+        return gaps.sort((a, b) => {
+          if (b.scoreWeight !== a.scoreWeight) {
+            return b.scoreWeight - a.scoreWeight;
+          }
+          const timeA = a.lastStudied ? new Date(a.lastStudied).getTime() : 0;
+          const timeB = b.lastStudied ? new Date(b.lastStudied).getTime() : 0;
+          return timeB - timeA;
         });
       },
 

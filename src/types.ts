@@ -290,3 +290,41 @@ export interface TopicAttentionItem {
   reasons: string[];
 }
 
+/* ==================================================
+   Phase 12: Knowledge Gap Analysis Models
+   ================================================== */
+
+export type KnowledgeGapReasonCode =
+  | 'low_quiz'
+  | 'repeated_unclear'
+  | 'low_mastery'
+  | 'review_overdue'
+  | 'never_reviewed';
+
+export interface KnowledgeGapReasonItem {
+  code: KnowledgeGapReasonCode;
+  label: string;
+  description: string;
+  severity: 'critical' | 'moderate' | 'minor';
+}
+
+export type KnowledgeGapSeverity = 'critical' | 'moderate' | 'minor';
+
+export interface KnowledgeGap {
+  id: string;
+  topic: string;
+  subject: SubjectId;
+  relatedLessonIds: string[];
+  reasons: KnowledgeGapReasonItem[];
+  mastery: MasteryScore;
+  lastStudied?: string;
+  lastReviewed?: string;
+  quizScore?: number;
+  severity: KnowledgeGapSeverity;
+  scoreWeight: number;
+  unclearCount: number;
+  unclearNotes?: string;
+  learnedNotes?: string;
+  reviewNotes?: string;
+}
+

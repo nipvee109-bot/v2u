@@ -19,9 +19,11 @@ import {
   Award,
 } from 'lucide-react';
 import { SUBJECTS } from '../types';
-import type { SubjectId, ReviewItem } from '../types';
+import type { SubjectId, ReviewItem, KnowledgeGap } from '../types';
 import { ReviewSessionModal } from '../components/ReviewSessionModal';
-import { Link } from 'react-router-dom';
+import { KnowledgeGapSection } from '../components/KnowledgeGapSection';
+import { KnowledgeGapDetailModal } from '../components/KnowledgeGapDetailModal';
+import { Link, useNavigate } from 'react-router-dom';
 import { computeLessonLearningRecord } from '../store/useStore';
 import {
   format,
@@ -75,8 +77,46 @@ const monthLabels = [
 ];
 
 export function Dashboard() {
-  const { lessons, unclearTopics, sessions = [], learningSessionsHistory = [], getDueReviewItems } = useStore();
+  const navigate = useNavigate();
+  const { 
+    lessons, 
+    unclearTopics, 
+    sessions = [], 
+    learningSessionsHistory = [], 
+    getDueReviewItems,
+    getKnowledgeGaps,
+    createReviewItemForLesson,
+    startLearningSession,
+    reviewQueue = []
+  } = useStore();
   const [calendarDate] = useState(new Date());
+
+  // ── Knowledge Gap Analysis ──────────────────────────────────────
+  const [selectedGap, setSelectedGap] = useState<KnowledgeGap | null>(null);
+  const knowledgeGaps = getKnowledgeGaps();
+
+  const handleGapStartReview = (lessonId: string) => {
+    const existing = (reviewQueue || []).find((r) => r.lessonId === lessonId && r.status !== 'completed');
+    if (existing) {
+      setActiveReviewItem(existing);
+    } else {
+      const newItem = createReviewItemForLesson(lessonId, 'low_quiz_score', 'High');
+      setActiveReviewItem(newItem);
+    }
+  };
+
+  const handleGapReStudy = (lessonId: string) => {
+    startLearningSession({ lessonId });
+    navigate(`/lessons/${lessonId}?action=study`);
+  };
+
+  const handleGapTakeQuiz = (lessonId: string) => {
+    navigate(`/lessons/${lessonId}?tab=quiz`);
+  };
+
+  const handleGapViewNotes = (lessonId: string) => {
+    navigate(`/lessons/${lessonId}?tab=notebook`);
+  };
 
   // ── Review Engine Queue ─────────────────────────────────────────
   const { overdue: reviewOverdue, dueToday: reviewDueToday, upcoming: reviewUpcoming } = getDueReviewItems();
@@ -575,6 +615,14 @@ export function Dashboard() {
         </div>
       </div>
 
+      {/* ═══════════ KNOWLEDGE GAP ANALYSIS: ควรกลับไปดู ═══════════ */}
+      <KnowledgeGapSection
+        gaps={knowledgeGaps}
+        onSelectGap={(gap) => setSelectedGap(gap)}
+        onStartReview={(lessonId) => handleGapStartReview(lessonId)}
+        onReStudy={(lessonId) => handleGapReStudy(lessonId)}
+      />
+
       {/* ═══════════ ROW 2: Today's Study + Subject Progress ═══════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
         {/* Today's Study */}
@@ -1052,6 +1100,16 @@ export function Dashboard() {
         onClose={() => setActiveReviewItem(null)}
         onNext={handleNextReview}
         hasMoreDue={totalReviewDueCount > 1}
+      />
+
+      {/* Knowledge Gap Detail Modal */}
+      <KnowledgeGapDetailModal
+        gap={selectedGap}
+        onClose={() => setSelectedGap(null)}
+        onStartReview={(lessonId) => handleGapStartReview(lessonId)}
+        onReStudy={(lessonId) => handleGapReStudy(lessonId)}
+        onTakeQuiz={(lessonId) => handleGapTakeQuiz(lessonId)}
+        onViewNotes={(lessonId) => handleGapViewNotes(lessonId)}
       />
     </div>
   );

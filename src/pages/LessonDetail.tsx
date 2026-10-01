@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useStore, computeSessionElapsedSeconds, computeLessonLearningRecord } from '../store/useStore';
 import { 
   ArrowLeft, 
@@ -59,6 +59,10 @@ export function LessonDetail() {
     recordQuizAttempt,
   } = useStore();
   
+  const [searchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab');
+  const urlAction = searchParams.get('action');
+
   const existingLesson = lessons.find(l => l.id === id);
   const [lesson, setLesson] = useState<Lesson | null>(existingLesson || null);
   const [activeReviewItem, setActiveReviewItem] = useState<ReviewItem | null>(null);
@@ -66,6 +70,8 @@ export function LessonDetail() {
     if (activeLearningSession && activeLearningSession.lessonId === id && activeLearningSession.status !== 'completed') {
       return 'studying';
     }
+    if (urlTab === 'quiz') return 'quiz';
+    if (urlTab === 'notebook' || urlTab === 'timeline') return 'notebook';
     return existingLesson?.status === 'COMPLETED' ? 'notebook' : 'idle';
   });
 
@@ -90,7 +96,28 @@ export function LessonDetail() {
   // Phase 9: Memory state
   const [showReviewModal, setShowReviewModal] = useState<boolean>(false);
   const [reviewNoteInput, setReviewNoteInput] = useState<string>('');
-  const [activeNotebookTab, setActiveNotebookTab] = useState<'notebook' | 'timeline'>('notebook');
+  const [activeNotebookTab, setActiveNotebookTab] = useState<'notebook' | 'timeline'>(() => {
+    return urlTab === 'timeline' ? 'timeline' : 'notebook';
+  });
+
+  useEffect(() => {
+    if (urlTab === 'quiz') {
+      setStep('quiz');
+    } else if (urlTab === 'notebook') {
+      setStep('notebook');
+      setActiveNotebookTab('notebook');
+    } else if (urlTab === 'timeline') {
+      setStep('notebook');
+      setActiveNotebookTab('timeline');
+    }
+  }, [urlTab]);
+
+  useEffect(() => {
+    if (urlAction === 'study' && existingLesson && (!activeLearningSession || activeLearningSession.status === 'completed')) {
+      startLearningSession({ lessonId: existingLesson.id });
+      setStep('studying');
+    }
+  }, [urlAction, existingLesson, activeLearningSession, startLearningSession]);
 
   const learningRecord = useMemo(() => {
     if (!lesson) return null;
