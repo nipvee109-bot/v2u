@@ -14,6 +14,7 @@ const ResourcesPage = lazy(() => import('./pages/ResourcesPage').then((m) => ({ 
 const SubjectPage = lazy(() => import('./pages/SubjectPage').then((m) => ({ default: m.SubjectPage })));
 const LessonDetail = lazy(() => import('./pages/LessonDetail').then((m) => ({ default: m.LessonDetail })));
 const StudyRoom = lazy(() => import('./pages/StudyRoom').then((m) => ({ default: m.StudyRoom })));
+const ReviewRoom = lazy(() => import('./pages/ReviewRoom').then((m) => ({ default: m.ReviewRoom })));
 const NotUnderstoodPage = lazy(() => import('./pages/NotUnderstoodPage').then((m) => ({ default: m.NotUnderstoodPage })));
 const ProgressPage = lazy(() => import('./pages/ProgressPage').then((m) => ({ default: m.ProgressPage })));
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
@@ -47,6 +48,8 @@ function App() {
           <Route path="/lessons/:id" element={<LessonDetail />} />
           <Route path="/study/:id" element={<StudyRoom />} />
           <Route path="/study-room/:id" element={<StudyRoom />} />
+          <Route path="/review/:id" element={<ReviewRoom />} />
+          <Route path="/review-room/:id" element={<ReviewRoom />} />
           <Route path="/not-understood" element={<NotUnderstoodPage />} />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/settings" element={<Settings />} />

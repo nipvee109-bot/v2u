@@ -702,9 +702,14 @@ export const useStore = create<StoreState>()(
             reviewCount: nextReviewCount,
             nextReviewAt,
             reviewNotes: updatedReviewNotes,
+            masteryScore: outcome === 'forgot' ? undefined : targetLesson.masteryScore,
           };
           const record = computeLessonLearningRecord(updatedLesson, state.learningSessionsHistory, state.sessions);
-          updatedLessons = state.lessons.map((l) => (l.id === currentItem.lessonId ? { ...updatedLesson, mastery: record.mastery } : l));
+          updatedLessons = state.lessons.map((l) => (l.id === currentItem.lessonId ? { 
+            ...updatedLesson, 
+            mastery: record.mastery,
+            masteryScore: record.masteryScore,
+          } : l));
         }
 
         set({
