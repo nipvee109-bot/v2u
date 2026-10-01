@@ -392,7 +392,7 @@ export function computeLessonLearningRecord(
 
   const masteryScore = lesson.masteryScore !== undefined ? lesson.masteryScore : calculatedMasteryScore;
   const calculatedMastery: MasteryLevel = scoreToMasteryLevel(masteryScore);
-  const mastery = lesson.mastery || calculatedMastery;
+  const mastery: MasteryLevel = calculatedMastery;
 
   return {
     lessonId: lesson.id,
