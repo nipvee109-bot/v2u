@@ -11,12 +11,17 @@
    No React, no store access: callers pass plain data in, so the same function
    can be reused by a future mobile app.
 
-   Priority order (deterministic):
-     1. Active / paused learning session    → continue it
-     2. Overdue review items                → review first (memory is fading)
-     3. Smart lesson recommendation          → study next lesson
-        (incomplete lesson → today's plan → roadmap → fallback)
-     4. Everything completed                 → review due today / general review
+   Priority order (deterministic, explainable — see NextStep.rule):
+     1. Unfinished study session              → continue it
+     2. Overdue review items                  → review first (memory is fading)
+     3. Weak skill (adaptive mode)            → strengthen it before moving on
+     4. Route next lesson (adaptive mode)     → current requirement, prerequisite
+                                                gaps first, plan fits available time
+     5. General lesson recommendation          → incomplete → today's plan → roadmap
+     6. Everything completed                   → review due today / general review
+
+   Adaptive mode is enabled by passing `route` (profile + learning records);
+   without it the Phase 41 behaviour is unchanged.
    ========================================================================= */
 
 import type {
@@ -25,12 +30,38 @@ import type {
   LearningSession,
   ReviewItem,
   KnowledgeGap,
+  LearningRecord,
 } from '../types';
 import { getSmartDashboardRecommendation, getDashboardRoadmapStatus } from './dashboardUtils';
-import { resolveCurriculumStep } from '../curriculum/engine';
+import { resolveCurriculumStep, getCurriculumLesson, getMissingPrerequisites } from '../curriculum/engine';
+import type { CurriculumLesson } from '../curriculum/types';
+import { CURRICULUM } from '../curriculum/data';
 import { getResourcesForLesson } from '../resources/engine';
+import type { LearningPlan, TimeBudgetMinutes } from '../resources/types';
+import { buildStudentRoute, getRouteNextStep } from '../route/engine';
+import type { StudentProfile } from '../route/types';
+import { createSkillReadinessProvider, getWeakestSkill } from '../skills/engine';
 
-export type NextStepKind = 'continue' | 'review' | 'study' | 'empty';
+export type NextStepKind = 'continue' | 'review' | 'strengthen' | 'study' | 'empty';
+
+/** Which deterministic priority rule produced the step (for explainability). */
+export type NextStepRule =
+  | 'unfinished-study'
+  | 'overdue-review'
+  | 'weak-skill'
+  | 'route'
+  | 'recommendation'
+  | 'due-today-review'
+  | 'nothing-pending';
+
+/** Phase 45: passing this switches getNextStep() to the route-aware adaptive mode. */
+export interface NextStepRouteContext {
+  profile?: Partial<StudentProfile> | null;
+  /** Per-lesson learning records (store computeLessonLearningRecord). */
+  records: LearningRecord[];
+  /** Overrides profile.availableMinutes. */
+  budget?: TimeBudgetMinutes;
+}
 
 export interface NextStepGoalInput {
   title: string;
@@ -48,10 +79,18 @@ export interface NextStepParams {
   knowledgeGaps?: KnowledgeGap[];
   goals?: NextStepGoalInput[];
   referenceDate?: Date;
+  route?: NextStepRouteContext;
 }
 
 export interface NextStep {
   kind: NextStepKind;
+  rule: NextStepRule;
+  /** TIME — minutes the step should take (adaptive mode). */
+  minutes?: number;
+  /** OUTCOME — what the student gains (adaptive mode). */
+  outcome?: string;
+  /** Time-based plan for study steps (adaptive mode). */
+  plan?: LearningPlan;
   /** Primary CTA label — always the same single button on Home. */
   ctaLabel: 'เริ่มขั้นต่อไป';
   /** Route the CTA leads to. */
@@ -93,6 +132,26 @@ export interface NextStepCurriculumInfo {
 }
 
 export const NEXT_STEP_CTA_LABEL = 'เริ่มขั้นต่อไป' as const;
+
+/** `preferredResourceId`: the resource the time plan actually starts with, so the
+ *  recommendation shown on Home matches the plan. */
+function curriculumInfoFor(cLesson: CurriculumLesson, lessons: Lesson[], preferredResourceId?: string): NextStepCurriculumInfo {
+  const topic = CURRICULUM.topics.find((t) => t.id === cLesson.topicId);
+  const subject = CURRICULUM.subjects.find((x) => x.id === cLesson.subjectId);
+  const ranked = getResourcesForLesson(cLesson.id);
+  const r = ranked.find((x) => x.id === preferredResourceId) ?? ranked[0];
+  return {
+    lessonId: cLesson.id,
+    title: cLesson.title,
+    path: [CURRICULUM.pathway.title, subject?.title, topic?.title, cLesson.title].filter(Boolean).join(' → '),
+    estimatedMinutes: cLesson.estimatedMinutes,
+    learningOutcomes: cLesson.learningOutcomes,
+    missingPrerequisiteTitles: getMissingPrerequisites(cLesson, lessons).map((l) => l.title),
+    recommendedResource: r
+      ? { id: r.id, title: r.title, provider: r.provider, estimatedMinutes: r.estimatedMinutes, whyV2USelected: r.whyV2USelected }
+      : undefined,
+  };
+}
 
 export function getNextStep(params: NextStepParams): NextStep {
   const {
@@ -143,7 +202,51 @@ export function getNextStep(params: NextStepParams): NextStep {
     missing.push(`${weakSpots.length} เรื่องที่ยังไม่แม่น`);
   }
 
-  const base = { ctaLabel: NEXT_STEP_CTA_LABEL, current, goal, missing };
+  // ── Adaptive mode: answer the Home questions from the student's route ──
+  const routeCtx = params.route;
+  const route = routeCtx
+    ? buildStudentRoute({
+        profile: routeCtx.profile,
+        storeLessons: lessons,
+        readiness: createSkillReadinessProvider(routeCtx.records, referenceDate),
+      })
+    : null;
+  const budget = routeCtx?.budget ?? route?.profile.availableMinutes;
+  const weakSkill = routeCtx ? getWeakestSkill({ storeLessons: lessons, records: routeCtx.records, referenceDate }) : undefined;
+
+  let base = { ctaLabel: NEXT_STEP_CTA_LABEL, current, goal, missing };
+  if (route) {
+    const idx = route.steps.findIndex((x) => x.requirement.id === route.currentRequirementId);
+    const at = idx >= 0 ? route.steps[idx] : undefined;
+    const subjectSteps = route.steps.filter((x) => x.readinessPercent !== undefined);
+    const overall = subjectSteps.length
+      ? Math.round(subjectSteps.reduce((sum, x) => sum + Math.min(100, ((x.readinessPercent ?? 0) / (x.targetPercent || 100)) * 100), 0) / subjectSteps.length)
+      : 0;
+    const routeMissing: string[] = [];
+    route.steps
+      .filter((x) => x.readinessPercent !== undefined && x.status !== 'done')
+      .forEach((x) => routeMissing.push(`${x.requirement.title} ยังขาดอีก ${Math.max(0, (x.targetPercent ?? 0) - (x.readinessPercent ?? 0))}%`));
+    if (overdueReviews.length > 0) routeMissing.push(`${overdueReviews.length} เรื่องที่เลยเวลาทบทวน`);
+    if (weakSkill) routeMissing.push(`ทักษะที่ต้องทบทวน: ${weakSkill.skill.title}`);
+    const remainingStages = route.steps.filter((x) => x.requirement.kind !== 'subject' && x.status !== 'done').length;
+    if (remainingStages > 0) routeMissing.push(`อีก ${remainingStages} ขั้น: สอบ · Portfolio · สมัคร`);
+    base = {
+      ...base,
+      current: {
+        label: at ? `ขั้นที่ ${idx + 1}/${route.steps.length}: ${at.requirement.title}` : `ผ่านแล้ว ${route.completedCount}/${route.steps.length} ขั้น`,
+        detail:
+          at?.readinessPercent !== undefined
+            ? `ความพร้อม ${at.readinessPercent}% จากเป้าหมาย ${at.targetPercent}% · ${route.program.title}`
+            : `${route.profile.educationLevel} · ${route.program.title}`,
+        progressPercent: overall,
+      },
+      goal: {
+        label: `${route.target.faculty} · ${route.target.title}`,
+        detail: `${route.horizon} · ผ่านแล้ว ${route.completedCount}/${route.steps.length} ขั้น`,
+      },
+      missing: routeMissing,
+    };
+  }
 
   // 1. Continue an unfinished live session
   if (
@@ -156,6 +259,8 @@ export function getNextStep(params: NextStepParams): NextStep {
       return {
         ...base,
         kind: 'continue',
+        rule: 'unfinished-study',
+        outcome: route ? 'เรียนบทนี้จบและพร้อมทำแบบทดสอบ' : undefined,
         href: `/study/${lesson.id}`,
         requiresResourceConfirmation: false,
         lessonId: lesson.id,
@@ -171,6 +276,9 @@ export function getNextStep(params: NextStepParams): NextStep {
     return {
       ...base,
       kind: 'review',
+      rule: 'overdue-review',
+      minutes: route ? 15 : undefined,
+      outcome: route ? 'จำเรื่องนี้ได้แม่นขึ้น และพร้อมเรียนเรื่องถัดไป' : undefined,
       href: `/review/${item.id}`,
       requiresResourceConfirmation: false,
       lessonId: item.lessonId,
@@ -180,30 +288,64 @@ export function getNextStep(params: NextStepParams): NextStep {
     };
   }
 
-  // 3. Next lesson to study
+  // 3. Weak skill (studied but not solid) before moving on
+  if (route && weakSkill && weakSkill.studyLessonIds[0]) {
+    const studyId = weakSkill.studyLessonIds[0];
+    const cLesson = weakSkill.lessonIds.map((id) => getCurriculumLesson(id)).find((l): l is CurriculumLesson => !!l);
+    const why =
+      weakSkill.reason === 'low-quiz'
+        ? 'คะแนนแบบทดสอบเรื่องนี้ยังไม่ผ่าน'
+        : weakSkill.reason === 'overdue-review'
+          ? 'ถึงเวลาทบทวนเรื่องนี้แล้ว'
+          : 'เรื่องนี้ยังไม่แม่น';
+    return {
+      ...base,
+      kind: 'strengthen',
+      rule: 'weak-skill',
+      minutes: Math.min(budget ?? 30, 30),
+      outcome: `${weakSkill.skill.title}ได้มั่นใจขึ้น`,
+      href: `/lessons/${studyId}`,
+      requiresResourceConfirmation: false,
+      lessonId: studyId,
+      todayAction: `ทบทวนจุดที่ยังไม่แม่น: ${weakSkill.skill.title}`,
+      reason: `${why} และเป็นทักษะที่ต้องใช้ต่อในเส้นทางไป${route.target.title}`,
+      curriculum: cLesson ? curriculumInfoFor(cLesson, lessons) : undefined,
+    };
+  }
+
+  // 4. Next lesson on the route (prerequisite-gap aware, time-budgeted)
+  if (route) {
+    const rs = getRouteNextStep(route, lessons, budget);
+    const cLesson = rs ? getCurriculumLesson(rs.curriculumLessonId) : undefined;
+    if (rs && rs.studyLessonId && cLesson) {
+      return {
+        ...base,
+        kind: 'study',
+        rule: 'route',
+        minutes: rs.budgetMinutes,
+        outcome: rs.outcomes.join(' · '),
+        plan: rs.plan ?? undefined,
+        href: `/lessons/${rs.studyLessonId}`,
+        requiresResourceConfirmation: true,
+        lessonId: rs.studyLessonId,
+        todayAction: `เรียน: ${rs.curriculumLessonTitle}`,
+        reason: rs.reason,
+        curriculum: curriculumInfoFor(cLesson, lessons, rs.plan?.steps.find((x) => x.resourceId)?.resourceId),
+      };
+    }
+  }
+
+  // 5. Next lesson to study (general recommendation)
   const rec = getSmartDashboardRecommendation({ lessons, sessions, learningSessionsHistory, referenceDate });
   const allCompleted = lessons.length > 0 && lessons.every((l) => l.status === 'COMPLETED');
   if (rec && !allCompleted) {
     const ctx = resolveCurriculumStep(rec.lesson, lessons);
-    const curriculum: NextStepCurriculumInfo | undefined = ctx
-      ? {
-          lessonId: ctx.lesson.id,
-          title: ctx.lesson.title,
-          path: ctx.path,
-          estimatedMinutes: ctx.lesson.estimatedMinutes,
-          learningOutcomes: ctx.lesson.learningOutcomes,
-          missingPrerequisiteTitles: ctx.missingPrerequisites.map((l) => l.title),
-          recommendedResource: (() => {
-            const r = getResourcesForLesson(ctx.lesson.id)[0];
-            return r
-              ? { id: r.id, title: r.title, provider: r.provider, estimatedMinutes: r.estimatedMinutes, whyV2USelected: r.whyV2USelected }
-              : undefined;
-          })(),
-        }
-      : undefined;
+    const curriculum: NextStepCurriculumInfo | undefined = ctx ? curriculumInfoFor(ctx.lesson, lessons) : undefined;
     return {
       ...base,
       kind: 'study',
+      rule: 'recommendation',
+      minutes: budget,
       // Study flow still runs on the trackable store lesson
       href: `/lessons/${rec.lesson.id}`,
       requiresResourceConfirmation: true,
@@ -216,7 +358,7 @@ export function getNextStep(params: NextStepParams): NextStep {
     };
   }
 
-  // 4. Everything completed → keep knowledge fresh
+  // 6. Everything completed → keep knowledge fresh
   if (dueTodayReviews.length > 0) {
     const item = dueTodayReviews[0];
     return {
@@ -228,12 +370,14 @@ export function getNextStep(params: NextStepParams): NextStep {
       reviewItemId: item.id,
       todayAction: `ทบทวน: ${item.topic}`,
       reason: 'คุณเรียนครบแล้ว ทบทวนเรื่องที่ถึงรอบวันนี้เพื่อรักษาความพร้อม',
+      rule: 'due-today-review',
     };
   }
 
   return {
     ...base,
     kind: 'empty',
+    rule: 'nothing-pending',
     href: lessons.length > 0 ? '/review' : '/learn',
     requiresResourceConfirmation: false,
     todayAction: lessons.length > 0 ? 'ทบทวนเรื่องที่ยังไม่แม่น' : 'เลือกวิชาที่จะเริ่มเรียน',

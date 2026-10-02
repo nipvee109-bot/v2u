@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Flag, ListChecks, Sparkles, Lightbulb, ArrowRight } from 'lucide-react';
+import { MapPin, Flag, ListChecks, Sparkles, Lightbulb, ArrowRight, Clock, Trophy } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { getNextStep } from '../utils/nextStep';
 import { shouldShowOnboarding } from '../utils/onboardingUtils';
 import { StudyOnboardingModal } from '../components/onboarding/StudyOnboardingModal';
 import { ResourceConfirmationModal } from '../components/study/ResourceConfirmationModal';
 import type { Resource } from '../types';
+import { useLearningRecords } from '../hooks/useLearningRecords';
+import { TimeBudgetPicker } from '../components/TimeBudgetPicker';
+import { normalizeStudentProfile } from '../route/engine';
 
 /**
  * V2U Home — "ก้าวต่อไปของคุณ".
@@ -24,7 +27,11 @@ export function HomePage() {
     getKnowledgeGaps,
     getCalculatedGoals,
     startLearningSession,
+    studentProfile,
+    setStudentProfile,
   } = useStore();
+  const records = useLearningRecords();
+  const budget = normalizeStudentProfile(studentProfile).availableMinutes;
 
   // Auto-prompt onboarding only for fresh users (state is hydrated synchronously from storage)
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(() =>
@@ -42,6 +49,8 @@ export function HomePage() {
     dueTodayReviews: dueToday,
     knowledgeGaps: getKnowledgeGaps(),
     goals: getCalculatedGoals(),
+    // Adaptive, route-aware mode (Phase 45)
+    route: { profile: studentProfile, records, budget },
   });
 
   const confirmingLesson = confirmingLessonId ? lessons.find((l) => l.id === confirmingLessonId) : undefined;
@@ -79,11 +88,14 @@ export function HomePage() {
         <h2 id="next-step-today" className="mt-2 text-lg sm:text-xl font-extrabold leading-snug">
           {step.todayAction}
         </h2>
-        {step.curriculum && (
-          <p className="mt-1.5 text-xs font-medium text-blue-100">
-            {step.curriculum.path} · ประมาณ {step.curriculum.estimatedMinutes} นาที
-          </p>
-        )}
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-medium text-blue-100">
+          {step.minutes !== undefined && (
+            <span className="flex items-center gap-1 font-bold text-white">
+              <Clock className="h-3.5 w-3.5" /> {step.minutes} นาที
+            </span>
+          )}
+          {step.curriculum && <span>{step.curriculum.path}</span>}
+        </p>
         <div className="mt-3 flex items-start gap-2 rounded-2xl bg-white/10 p-3 text-sm text-blue-50">
           <Lightbulb className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
@@ -94,7 +106,7 @@ export function HomePage() {
                 แนะนำ: {step.curriculum.recommendedResource.title} — {step.curriculum.recommendedResource.whyV2USelected}
               </span>
             )}
-            {step.curriculum && step.curriculum.learningOutcomes.length > 0 && (
+            {!step.outcome && step.curriculum && step.curriculum.learningOutcomes.length > 0 && (
               <span className="mt-1 block text-xs text-blue-100">
                 เรียนจบแล้วจะทำได้: {step.curriculum.learningOutcomes.join(' · ')}
               </span>
@@ -106,6 +118,24 @@ export function HomePage() {
             )}
           </p>
         </div>
+        {step.outcome && (
+          <p className="mt-2 flex items-start gap-2 text-sm text-blue-50">
+            <Trophy className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              <span className="font-bold">ได้อะไร: </span>
+              {step.outcome}
+            </span>
+          </p>
+        )}
+        {step.plan && (
+          <ol className="mt-2 space-y-0.5 text-xs text-blue-100" aria-label="แผนที่ V2U จัดให้">
+            {step.plan.steps.map((ps, i) => (
+              <li key={`${ps.kind}-${i}`}>
+                {i + 1}. {ps.label} — {ps.minutes} นาที
+              </li>
+            ))}
+          </ol>
+        )}
         <button
           type="button"
           onClick={handleStart}
@@ -114,6 +144,14 @@ export function HomePage() {
           {step.ctaLabel}
           <ArrowRight className="h-5 w-5" />
         </button>
+      </section>
+
+      <section aria-label="เวลาที่มีวันนี้" className="mt-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xs">
+        <TimeBudgetPicker
+          label="วันนี้มีเวลาเท่าไหร่?"
+          value={budget}
+          onChange={(m) => setStudentProfile({ availableMinutes: m })}
+        />
       </section>
 
       {/* Where am I / target / what's missing */}
