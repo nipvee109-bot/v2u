@@ -36,6 +36,7 @@ export function useStartNextStep(): { start: (step: NextStep) => void; confirmMo
       lesson={confirmingLesson}
       suggestion={confirming?.curriculum?.recommendedResource}
       plannedMinutes={confirming?.minutes}
+      plan={confirming?.plan}
       onConfirm={(selectedResource) => {
         handleConfirmedStart(confirmingLesson.id, selectedResource, confirming?.minutes, confirming?.curriculum?.lessonId);
         setConfirming(null);

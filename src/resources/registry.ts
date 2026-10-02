@@ -556,4 +556,652 @@ export const RESOURCE_REGISTRY: CuratedResource[] = [
     status: 'deprecated',
     supersededBy: ['cr-ipst-physics-m4-v1'],
   },
+
+  // ── Phase 51: Thai resources found via web search (NOT opened: egress blocked) ──
+  // candidateUrl + urlProvenance record exactly where each link came from.
+  {
+    "id": "th-p14-m1-linear-eq-solve-2",
+    "title": "การแก้สมการเชิงเส้นตัวแปรเดียว ตอนที่ 2 (คณิตศาสตร์ ม.1 เล่ม 2)",
+    "provider": "Project 14 · สสวท.",
+    "type": "video",
+    "role": "explanation",
+    "locator": "ค้นจากชื่อ \"การแก้สมการเชิงเส้นตัวแปรเดียว ตอนที่ 2​ - โครงการสอนออนไลน์ - Project 14\" บน Project 14 · สสวท.",
+    "estimatedMinutes": 12,
+    "level": "beginner",
+    "description": "คลิปสอนการแก้สมการเชิงเส้นตัวแปรเดียวตามหนังสือเรียน สสวท.",
+    "curriculumLessonIds": [
+      "math-alg-linear-eq"
+    ],
+    "coveredOutcomes": [
+      "math-alg-linear-eq#o1",
+      "math-alg-linear-eq#o2"
+    ],
+    "whyV2USelected": "คลิปภาษาไทยของ สสวท. ตรงตามหนังสือเรียน ความยาวพอดีกับการเรียน 30 นาที",
+    "lastChecked": "2026-10-02",
+    "language": "th",
+    "isFree": true,
+    "status": "unverified",
+    "candidateUrl": "https://proj14.ipst.ac.th/m1/m1-math-book2/math-m1b2-024/",
+    "urlProvenance": {
+      "kind": "search-result",
+      "query": "proj14.ipst.ac.th คณิตศาสตร์ สมการเชิงเส้นตัวแปรเดียว วิดีโอ",
+      "foundAt": "2026-10-02",
+      "resultTitle": "การแก้สมการเชิงเส้นตัวแปรเดียว ตอนที่ 2​ - โครงการสอนออนไลน์ - Project 14"
+    },
+    "durationKnown": true,
+    "suitedFor": "คนที่เพิ่งเริ่มหรือลืมเรื่องสมการ",
+    "needsFirst": "บวก ลบ คูณ หาร จำนวนเต็มและเศษส่วน",
+    "doNext": "อ่านสรุป V2U แล้วลองทำแบบฝึก"
+  },
+    {
+    "id": "th-p14-m3-linear-system-solve-1",
+    "title": "การแก้ระบบสมการเชิงเส้นสองตัวแปร ตอนที่ 1 (คณิตศาสตร์ ม.3 เล่ม 2)",
+    "provider": "Project 14 · สสวท.",
+    "type": "video",
+    "role": "explanation",
+    "locator": "ค้นจากชื่อ \"การแก้ระบบสมการเชิงเส้นสองตัวแปร ตอนที่ 1 - โครงการสอนออนไลน์ - Project 14\" บน Project 14 · สสวท.",
+    "estimatedMinutes": 15,
+    "level": "beginner",
+    "description": "คลิปสอนการแก้ระบบสมการเชิงเส้นสองตัวแปร",
+    "curriculumLessonIds": [
+      "math-alg-linear-system"
+    ],
+    "coveredOutcomes": [
+      "math-alg-linear-system#o1",
+      "math-alg-linear-system#o2"
+    ],
+    "whyV2USelected": "คลิปภาษาไทยของ สสวท. ตรงหัวข้อ วิธีแทนค่าและวิธีกำจัดตัวแปร",
+    "lastChecked": "2026-10-02",
+    "language": "th",
+    "isFree": true,
+    "status": "unverified",
+    "candidateUrl": "https://proj14.ipst.ac.th/m3/m3-math-book2/math-m3b2-002/",
+    "urlProvenance": {
+      "kind": "search-result",
+      "query": "proj14.ipst.ac.th ระบบสมการเชิงเส้นสองตัวแปร คณิตศาสตร์ ม.3",
+      "foundAt": "2026-10-02",
+      "resultTitle": "การแก้ระบบสมการเชิงเส้นสองตัวแปร ตอนที่ 1 - โครงการสอนออนไลน์ - Project 14"
+    },
+    "durationKnown": true,
+    "suitedFor": "คนที่แก้สมการตัวแปรเดียวได้แล้ว",
+    "needsFirst": "สมการเชิงเส้นตัวแปรเดียว",
+    "doNext": "ดูตอนโจทย์ปัญหาต่อ แล้วทำแบบฝึก"
+  },
+  {
+    "id": "th-p14-m3-linear-system-word-1",
+    "title": "โจทย์ปัญหาเกี่ยวกับระบบสมการเชิงเส้นสองตัวแปร ตอนที่ 1",
+    "provider": "Project 14 · สสวท.",
+    "type": "video",
+    "role": "worked-example",
+    "locator": "ค้นจากชื่อ \"โจทย์ปัญหาเกี่ยวกับระบบสมการเชิงเส้นสองตัวแปร ตอนที่ 1 - โครงการสอนออนไลน์ - Project 14\" บน Project 14 · สสวท.",
+    "estimatedMinutes": 15,
+    "level": "intermediate",
+    "description": "ตัวอย่างการแปลงโจทย์ปัญหาเป็นระบบสมการ",
+    "curriculumLessonIds": [
+      "math-alg-linear-system"
+    ],
+    "coveredOutcomes": [
+      "math-alg-linear-system#o3"
+    ],
+    "whyV2USelected": "ตัวอย่างโจทย์ปัญหาจริงจากหนังสือเรียน ช่วยฝึกตั้งสมการ",
+    "lastChecked": "2026-10-02",
+    "language": "th",
+    "isFree": true,
+    "status": "unverified",
+    "candidateUrl": "https://proj14.ipst.ac.th/m3/m3-math-book2/math-m3b2-004/",
+    "urlProvenance": {
+      "kind": "search-result",
+      "query": "proj14.ipst.ac.th ระบบสมการเชิงเส้นสองตัวแปร คณิตศาสตร์ ม.3",
+      "foundAt": "2026-10-02",
+      "resultTitle": "โจทย์ปัญหาเกี่ยวกับระบบสมการเชิงเส้นสองตัวแปร ตอนที่ 1 - โครงการสอนออนไลน์ - Project 14"
+    },
+    "durationKnown": false,
+    "suitedFor": "คนที่แก้ระบบสมการได้แล้วแต่ยังตั้งสมการจากโจทย์ไม่ได้",
+    "needsFirst": "วิธีแทนค่า/กำจัดตัวแปร",
+    "doNext": "ลองทำโจทย์ปัญหาในแบบฝึก V2U"
+  },
+  {
+    "id": "th-p14-m3-ineq-intro-1",
+    "title": "แนะนำอสมการเชิงเส้นตัวแปรเดียว ตอนที่ 1 (คณิตศาสตร์ ม.3 เล่ม 1)",
+    "provider": "Project 14 · สสวท.",
+    "type": "video",
+    "role": "explanation",
+    "locator": "ค้นจากชื่อ \"แนะนำอสมการเชิงเส้นตัวแปรเดียว ตอนที่ 1 - โครงการสอนออนไลน์ - Project 14\" บน Project 14 · สสวท.",
+    "estimatedMinutes": 15,
+    "level": "beginner",
+    "description": "แนะนำความหมายของอสมการและเครื่องหมาย",
+    "curriculumLessonIds": [
+      "math-alg-linear-ineq"
+    ],
+    "coveredOutcomes": [
+      "math-alg-linear-ineq#o1"
+    ],
+    "whyV2USelected": "เริ่มจากความหมายก่อนเข้าสู่การแก้อสมการ ภาษาไทยตามหนังสือเรียน",
+    "lastChecked": "2026-10-02",
+    "language": "th",
+    "isFree": true,
+    "status": "unverified",
+    "candidateUrl": "https://proj14.ipst.ac.th/m3/m3-math-book1/math-m3b1-001/",
+    "urlProvenance": {
+      "kind": "search-result",
+      "query": "proj14.ipst.ac.th คณิตศาสตร์ สมการเชิงเส้นตัวแปรเดียว วิดีโอ",
+      "foundAt": "2026-10-02",
+      "resultTitle": "แนะนำอสมการเชิงเส้นตัวแปรเดียว ตอนที่ 1 - โครงการสอนออนไลน์ - Project 14"
+    },
+    "durationKnown": false,
+    "suitedFor": "คนที่แก้สมการได้แล้ว",
+    "needsFirst": "สมการเชิงเส้นตัวแปรเดียว",
+    "doNext": "ดูตอนการแก้อสมการต่อ"
+  },
+  {
+    "id": "th-p14-m3-ineq-solve-5",
+    "title": "การแก้อสมการเชิงเส้นตัวแปรเดียว ตอนที่ 5",
+    "provider": "Project 14 · สสวท.",
+    "type": "video",
+    "role": "worked-example",
+    "locator": "ค้นจากชื่อ \"การแก้อสมการเชิงเส้นตัวแปรเดียว ตอนที่ 5 - โครงการสอนออนไลน์ - Project 14\" บน Project 14 · สสวท.",
+    "estimatedMinutes": 15,
+    "level": "intermediate",
+    "description": "ตัวอย่างการแก้อสมการ (ตอนที่ 5 ของชุด)",
+    "curriculumLessonIds": [
+      "math-alg-linear-ineq"
+    ],
+    "coveredOutcomes": [
+      "math-alg-linear-ineq#o2",
+      "math-alg-linear-ineq#o3"
+    ],
+    "whyV2USelected": "ตัวอย่างเพิ่มจากชุดเดียวกัน — ดูตอนก่อนหน้าในหน้าบทเรียนได้ถ้าต้องการ",
+    "lastChecked": "2026-10-02",
+    "language": "th",
+    "isFree": true,
+    "status": "unverified",
+    "candidateUrl": "https://proj14.ipst.ac.th/m3/m3-math-book1/math-m3b1-009/",
+    "urlProvenance": {
+      "kind": "search-result",
+      "query": "proj14.ipst.ac.th คณิตศาสตร์ สมการเชิงเส้นตัวแปรเดียว วิดีโอ",
+      "foundAt": "2026-10-02",
+      "resultTitle": "การแก้อสมการเชิงเส้นตัวแปรเดียว ตอนที่ 5 - โครงการสอนออนไลน์ - Project 14"
+    },
+    "durationKnown": false,
+    "suitedFor": "คนที่เข้าใจความหมายของอสมการแล้ว",
+    "needsFirst": "แนะนำอสมการ ตอนที่ 1",
+    "doNext": "ทำแบบฝึกเรื่องการกลับเครื่องหมาย"
+  },
+  {
+    "id": "th-p14-m1-exponent-divide-1",
+    "title": "การหารเลขยกกำลัง ตอนที่ 1 (คณิตศาสตร์ ม.1 เล่ม 1)",
+    "provider": "Project 14 · สสวท.",
+    "type": "video",
+    "role": "explanation",
+    "locator": "ค้นจากชื่อ \"การหารเลขยกกำลัง ตอนที่ 1 - โครงการสอนออนไลน์ - Project 14\" บน Project 14 · สสวท.",
+    "estimatedMinutes": 15,
+    "level": "beginner",
+    "description": "สมบัติการหารเลขยกกำลังที่ฐานเท่ากัน",
+    "curriculumLessonIds": [
+      "math-alg-exponents"
+    ],
+    "coveredOutcomes": [
+      "math-alg-exponents#o1"
+    ],
+    "whyV2USelected": "คลิปภาษาไทยตรงสมบัติเลขยกกำลังที่ใช้บ่อย",
+    "lastChecked": "2026-10-02",
+    "language": "th",
+    "isFree": true,
+    "status": "unverified",
+    "candidateUrl": "https://proj14.ipst.ac.th/m1/m1-math-book1/math-m1b1-056/",
+    "urlProvenance": {
+      "kind": "search-result",
+      "query": "proj14.ipst.ac.th เลขยกกำลัง คณิตศาสตร์ ม.1 เล่ม 1",
+      "foundAt": "2026-10-02",
+      "resultTitle": "การหารเลขยกกำลัง ตอนที่ 1 - โครงการสอนออนไลน์ - Project 14"
+    },
+    "durationKnown": false,
+    "suitedFor": "คนที่รู้ความหมายของเลขยกกำลังแล้ว",
+    "needsFirst": "ความหมายของเลขยกกำลัง",
+    "doNext": "ดูเรื่องรากต่อ แล้วทำแบบฝึก"
+  },
+  {
+    "id": "th-p14-m5-exponent-1",
+    "title": "เลขยกกำลัง ตอน 1 (คณิตศาสตร์พื้นฐาน ม.5)",
+    "provider": "Project 14 · สสวท.",
+    "type": "video",
+    "role": "worked-example",
+    "locator": "ค้นจากชื่อ \"เลขยกกำลัง ตอน 1 - โครงการสอนออนไลน์ - Project 14\" บน Project 14 · สสวท.",
+    "estimatedMinutes": 15,
+    "level": "intermediate",
+    "description": "เลขยกกำลังระดับ ม.ปลาย ต่อยอดไปสู่รากและเลขชี้กำลังเศษส่วน",
+    "curriculumLessonIds": [
+      "math-alg-exponents"
+    ],
+    "coveredOutcomes": [
+      "math-alg-exponents#o2"
+    ],
+    "whyV2USelected": "ต่อยอดจาก ม.1 ไปสู่ราก ซึ่งต้องใช้ในข้อสอบ",
+    "lastChecked": "2026-10-02",
+    "language": "th",
+    "isFree": true,
+    "status": "unverified",
+    "candidateUrl": "https://proj14.ipst.ac.th/m4-6-math-basic/m5-math-basic/math-m5-001/",
+    "urlProvenance": {
+      "kind": "search-result",
+      "query": "proj14.ipst.ac.th เลขยกกำลัง คณิตศาสตร์ ม.1 เล่ม 1",
+      "foundAt": "2026-10-02",
+      "resultTitle": "เลขยกกำลัง ตอน 1 - โครงการสอนออนไลน์ - Project 14"
+    },
+    "durationKnown": false,
+    "suitedFor": "คนที่ทำสมบัติเลขยกกำลังพื้นฐานได้แล้ว",
+    "needsFirst": "สมบัติการคูณ/หารเลขยกกำลัง",
+    "doNext": "ทำแบบฝึกเรื่องราก"
+  },
+  {
+    "id": "th-p14-m3-trig-meaning-1",
+    "title": "ความหมายของอัตราส่วนตรีโกณมิติ ตอนที่ 1 (คณิตศาสตร์ ม.3 เล่ม 2)",
+    "provider": "Project 14 · สสวท.",
+    "type": "video",
+    "role": "explanation",
+    "locator": "ค้นจากชื่อ \"ความหมายของอัตราส่วนตรีโกณมิติ ตอนที่ 1 - โครงการสอนออนไลน์ - Project 14\" บน Project 14 · สสวท.",
+    "estimatedMinutes": 18,
+    "level": "beginner",
+    "description": "ความหมายของ sin cos tan จากสามเหลี่ยมมุมฉาก",
+    "curriculumLessonIds": [
+      "math-trig-ratios"
+    ],
+    "coveredOutcomes": [
+      "math-trig-ratios#o1"
+    ],
+    "whyV2USelected": "คลิปภาษาไทยของ สสวท. เริ่มจากความหมายก่อนสูตร",
+    "lastChecked": "2026-10-02",
+    "language": "th",
+    "isFree": true,
+    "status": "unverified",
+    "candidateUrl": "https://proj14.ipst.ac.th/m3/m3-math-book2/math-m3b2-027/",
+    "urlProvenance": {
+      "kind": "search-result",
+      "query": "proj14.ipst.ac.th อัตราส่วนตรีโกณมิติ ม.3",
+      "foundAt": "2026-10-02",
+      "resultTitle": "ความหมายของอัตราส่วนตรีโกณมิติ ตอนที่ 1 - โครงการสอนออนไลน์ - Project 14"
+    },
+    "durationKnown": false,
+    "suitedFor": "คนที่รู้จักสามเหลี่ยมมุมฉากและทฤษฎีบทพีทาโกรัส",
+    "needsFirst": "สามเหลี่ยมมุมฉาก",
+    "doNext": "ดูตอนมุมแหลมต่อ"
+  },
+  {
+    "id": "th-p14-m3-trig-acute-1",
+    "title": "อัตราส่วนตรีโกณมิติของมุมแหลม ตอนที่ 1",
+    "provider": "Project 14 · สสวท.",
+    "type": "video",
+    "role": "worked-example",
+    "locator": "ค้นจากชื่อ \"อัตราส่วนตรีโกณมิติของมุมแหลม ตอนที่ 1 - โครงการสอนออนไลน์ - Project 14\" บน Project 14 · สสวท.",
+    "estimatedMinutes": 18,
+    "level": "beginner",
+    "description": "ค่าตรีโกณมิติของมุมแหลมและมุมพิเศษ",
+    "curriculumLessonIds": [
+      "math-trig-ratios"
+    ],
+    "coveredOutcomes": [
+      "math-trig-ratios#o2",
+      "math-trig-ratios#o3"
+    ],
+    "whyV2USelected": "ตัวอย่างหาค่าและหาความยาวด้าน ซึ่งต้องใช้ต่อในเรื่องเวกเตอร์",
+    "lastChecked": "2026-10-02",
+    "language": "th",
+    "isFree": true,
+    "status": "unverified",
+    "candidateUrl": "https://proj14.ipst.ac.th/m3/m3-math-book2/math-m3b2-029/",
+    "urlProvenance": {
+      "kind": "search-result",
+      "query": "proj14.ipst.ac.th อัตราส่วนตรีโกณมิติ ม.3",
+      "foundAt": "2026-10-02",
+      "resultTitle": "อัตราส่วนตรีโกณมิติของมุมแหลม ตอนที่ 1 - โครงการสอนออนไลน์ - Project 14"
+    },
+    "durationKnown": false,
+    "suitedFor": "คนที่เข้าใจความหมายของ sin cos tan แล้ว",
+    "needsFirst": "ความหมายของอัตราส่วนตรีโกณมิติ",
+    "doNext": "ทำแบบฝึกเรื่องมุมพิเศษ"
+  },
+  {
+    "id": "th-p14-m4-phys-freefall",
+    "title": "การตกแบบเสรี (ฟิสิกส์ ม.4 เล่ม 1)",
+    "provider": "Project 14 · สสวท.",
+    "type": "video",
+    "role": "worked-example",
+    "locator": "ค้นจากชื่อ \"การตกแบบเสรี - โครงการสอนออนไลน์ - Project 14\" บน Project 14 · สสวท.",
+    "estimatedMinutes": 15,
+    "level": "intermediate",
+    "description": "ใช้สมการการเคลื่อนที่กับวัตถุตกแบบเสรี (ส่วนหนึ่งของบทการเคลื่อนที่แนวตรง)",
+    "curriculumLessonIds": [
+      "phy-kin-1d"
+    ],
+    "coveredOutcomes": [
+      "phy-kin-1d#o1",
+      "phy-kin-1d#o2"
+    ],
+    "whyV2USelected": "ตัวอย่างใช้สมการความเร่งคงตัวในสถานการณ์จริง — ครอบคลุมเฉพาะส่วนการตกแบบเสรี",
+    "lastChecked": "2026-10-02",
+    "language": "th",
+    "isFree": true,
+    "status": "unverified",
+    "candidateUrl": "https://proj14.ipst.ac.th/m4-6-physics/m4-phys-book1/phys-m4b1-024/",
+    "urlProvenance": {
+      "kind": "search-result",
+      "query": "proj14.ipst.ac.th ฟิสิกส์ ม.4 การเคลื่อนที่แนวตรง",
+      "foundAt": "2026-10-02",
+      "resultTitle": "การตกแบบเสรี - โครงการสอนออนไลน์ - Project 14"
+    },
+    "durationKnown": false,
+    "suitedFor": "คนที่รู้สมการ v = u + at แล้ว",
+    "needsFirst": "ความเร็ว ความเร่ง",
+    "doNext": "ทำแบบฝึกสมการการเคลื่อนที่"
+  },
+  {
+    "id": "th-p14-m4-phys-inertia",
+    "title": "มวลและความเฉื่อย (ฟิสิกส์ ม.4 เล่ม 1)",
+    "provider": "Project 14 · สสวท.",
+    "type": "video",
+    "role": "explanation",
+    "locator": "ค้นจากชื่อ \"มวลและความเฉื่อย - โครงการสอนออนไลน์ - Project 14\" บน Project 14 · สสวท.",
+    "estimatedMinutes": 15,
+    "level": "beginner",
+    "description": "มวลและความเฉื่อย ซึ่งเป็นพื้นฐานของกฎข้อที่ 1 ของนิวตัน (ส่วนหนึ่งของบท)",
+    "curriculumLessonIds": [
+      "phy-dyn-newton"
+    ],
+    "coveredOutcomes": [
+      "phy-dyn-newton#o3"
+    ],
+    "whyV2USelected": "คลิปภาษาไทยของ สสวท. ตรงหลักสูตรฟิสิกส์ ม.4 — ครอบคลุมเฉพาะเรื่องมวลและความเฉื่อย",
+    "lastChecked": "2026-10-02",
+    "language": "th",
+    "isFree": true,
+    "status": "unverified",
+    "candidateUrl": "https://proj14.ipst.ac.th/m4-6-physics/m4-phys-book1/phys-m4b1-034/",
+    "urlProvenance": {
+      "kind": "search-result",
+      "query": "proj14.ipst.ac.th ฟิสิกส์ ม.4 แรงและกฎการเคลื่อนที่ ของนิวตัน",
+      "foundAt": "2026-10-02",
+      "resultTitle": "มวลและความเฉื่อย - โครงการสอนออนไลน์ - Project 14"
+    },
+    "durationKnown": false,
+    "suitedFor": "คนที่เริ่มเรื่องแรง",
+    "needsFirst": "การเคลื่อนที่แนวตรง",
+    "doNext": "อ่านสรุป V2U เรื่อง ΣF = ma"
+  },
+  {
+    "id": "th-p14-book-m1-math-2",
+    "title": "หนังสือเรียนคณิตศาสตร์ ม.1 เล่ม 2 — บทสมการเชิงเส้นตัวแปรเดียว (หน้ารวมบทเรียน)",
+    "provider": "Project 14 · สสวท.",
+    "type": "book",
+    "role": "reference",
+    "locator": "Project 14 → ม.1 → คณิตศาสตร์ เล่ม 2 → บทสมการเชิงเส้นตัวแปรเดียว",
+    "estimatedMinutes": 20,
+    "level": "beginner",
+    "description": "หน้ารวมคลิปและเนื้อหาของหนังสือเรียนเล่มนี้ ใช้เลือกดูตอนอื่น ๆ ของบท",
+    "curriculumLessonIds": [
+      "math-alg-linear-eq"
+    ],
+    "coveredOutcomes": [
+      "math-alg-linear-eq#o1"
+    ],
+    "whyV2USelected": "รวมทุกตอนของบทไว้ที่เดียว ตามหนังสือเรียนทางการ",
+    "lastChecked": "2026-10-02",
+    "language": "th",
+    "isFree": true,
+    "status": "unverified",
+    "candidateUrl": "https://proj14.ipst.ac.th/m1/m1-math-book2/",
+    "urlProvenance": {
+      "kind": "search-result",
+      "query": "proj14.ipst.ac.th m1-math-book2 การแก้สมการเชิงเส้นตัวแปรเดียว ตอนที่ 1",
+      "foundAt": "2026-10-02",
+      "resultTitle": "โครงการสอนออนไลน์ - Project 14"
+    },
+    "durationKnown": false,
+    "suitedFor": "คนที่อยากเรียนครบทั้งบท",
+    "needsFirst": "—",
+    "doNext": "กลับมาทำแบบฝึกของ V2U"
+  },
+  {
+    "id": "th-p14-book-m3-math-1",
+    "title": "หนังสือเรียนคณิตศาสตร์ ม.3 เล่ม 1 — บทอสมการเชิงเส้นตัวแปรเดียว (หน้ารวมบทเรียน)",
+    "provider": "Project 14 · สสวท.",
+    "type": "book",
+    "role": "reference",
+    "locator": "Project 14 → ม.3 → คณิตศาสตร์ เล่ม 1 → บทอสมการ",
+    "estimatedMinutes": 20,
+    "level": "beginner",
+    "description": "หน้ารวมตอนทั้งหมดของบทอสมการ",
+    "curriculumLessonIds": [
+      "math-alg-linear-ineq"
+    ],
+    "coveredOutcomes": [
+      "math-alg-linear-ineq#o3"
+    ],
+    "whyV2USelected": "เลือกดูตอนที่ยังไม่เข้าใจได้จากหน้านี้",
+    "lastChecked": "2026-10-02",
+    "language": "th",
+    "isFree": true,
+    "status": "unverified",
+    "candidateUrl": "https://proj14.ipst.ac.th/m3/m3-math-book1/",
+    "urlProvenance": {
+      "kind": "search-result",
+      "query": "proj14.ipst.ac.th คณิตศาสตร์ สมการเชิงเส้นตัวแปรเดียว วิดีโอ",
+      "foundAt": "2026-10-02",
+      "resultTitle": "หนังสือเรียนคณิตศาสตร์ ม.3 เล่ม 1 - โครงการสอนออนไลน์ - Project 14"
+    },
+    "durationKnown": false,
+    "suitedFor": "คนที่อยากเรียนครบทั้งบท",
+    "needsFirst": "—",
+    "doNext": "กลับมาทำแบบฝึกของ V2U"
+  },
+  {
+    "id": "th-p14-book-m3-math-2",
+    "title": "หนังสือเรียนคณิตศาสตร์ ม.3 เล่ม 2 — ระบบสมการ และอัตราส่วนตรีโกณมิติ (หน้ารวมบทเรียน)",
+    "provider": "Project 14 · สสวท.",
+    "type": "book",
+    "role": "reference",
+    "locator": "Project 14 → ม.3 → คณิตศาสตร์ เล่ม 2",
+    "estimatedMinutes": 20,
+    "level": "beginner",
+    "description": "หน้ารวมตอนของบทระบบสมการ (บทที่ 1) และอัตราส่วนตรีโกณมิติ (บทที่ 5)",
+    "curriculumLessonIds": [
+      "math-alg-linear-system",
+      "math-trig-ratios"
+    ],
+    "coveredOutcomes": [
+      "math-alg-linear-system#o3",
+      "math-trig-ratios#o3"
+    ],
+    "whyV2USelected": "รวมทุกตอนของสองบทที่ V2U ใช้ไว้ในเล่มเดียว",
+    "lastChecked": "2026-10-02",
+    "language": "th",
+    "isFree": true,
+    "status": "unverified",
+    "candidateUrl": "https://proj14.ipst.ac.th/m3/m3-math-book2/",
+    "urlProvenance": {
+      "kind": "search-result",
+      "query": "proj14.ipst.ac.th ระบบสมการเชิงเส้นสองตัวแปร คณิตศาสตร์ ม.3",
+      "foundAt": "2026-10-02",
+      "resultTitle": "หนังสือเรียนคณิตศาสตร์ ม.3 เล่ม 2 - โครงการสอนออนไลน์ - Project 14"
+    },
+    "durationKnown": false,
+    "suitedFor": "คนที่อยากเรียนครบทั้งบท",
+    "needsFirst": "—",
+    "doNext": "กลับมาทำแบบฝึกของ V2U"
+  },
+  {
+    "id": "th-p14-book-m1-math-1",
+    "title": "หนังสือเรียนคณิตศาสตร์ ม.1 เล่ม 1 — บทเลขยกกำลัง (หน้ารวมบทเรียน)",
+    "provider": "Project 14 · สสวท.",
+    "type": "book",
+    "role": "reference",
+    "locator": "Project 14 → ม.1 → คณิตศาสตร์ เล่ม 1 → บทเลขยกกำลัง",
+    "estimatedMinutes": 20,
+    "level": "beginner",
+    "description": "หน้ารวมตอนของบทเลขยกกำลัง",
+    "curriculumLessonIds": [
+      "math-alg-exponents"
+    ],
+    "coveredOutcomes": [
+      "math-alg-exponents#o1"
+    ],
+    "whyV2USelected": "เริ่มจากความหมายของเลขยกกำลังได้ที่หน้านี้",
+    "lastChecked": "2026-10-02",
+    "language": "th",
+    "isFree": true,
+    "status": "unverified",
+    "candidateUrl": "https://proj14.ipst.ac.th/m1/m1-math-book1/",
+    "urlProvenance": {
+      "kind": "search-result",
+      "query": "proj14.ipst.ac.th เลขยกกำลัง คณิตศาสตร์ ม.1 เล่ม 1",
+      "foundAt": "2026-10-02",
+      "resultTitle": "หนังสือเรียนคณิตศาสตร์ ม.1 เล่ม 1 - โครงการสอนออนไลน์ - Project 14"
+    },
+    "durationKnown": false,
+    "suitedFor": "คนที่ต้องการปูพื้นตั้งแต่ต้น",
+    "needsFirst": "—",
+    "doNext": "กลับมาทำแบบฝึกของ V2U"
+  },
+  {
+    "id": "th-p14-book-m2-math-2",
+    "title": "หนังสือเรียนคณิตศาสตร์ ม.2 เล่ม 2 — กราฟและความสัมพันธ์เชิงเส้น (หน้ารวมบทเรียน)",
+    "provider": "Project 14 · สสวท.",
+    "type": "book",
+    "role": "reference",
+    "locator": "Project 14 → ม.2 → คณิตศาสตร์ เล่ม 2",
+    "estimatedMinutes": 20,
+    "level": "beginner",
+    "description": "หน้ารวมตอนของหนังสือเล่มที่มีบทกราฟและความสัมพันธ์เชิงเส้น",
+    "curriculumLessonIds": [
+      "math-fn-linear"
+    ],
+    "coveredOutcomes": [
+      "math-fn-linear#o1",
+      "math-fn-linear#o3"
+    ],
+    "whyV2USelected": "แหล่งภาษาไทยที่ตรงหลักสูตรสำหรับเรื่องกราฟเส้นตรง (ยังไม่พบคลิปตอนที่ตรงหัวข้อแบบเจาะจง)",
+    "lastChecked": "2026-10-02",
+    "language": "th",
+    "isFree": true,
+    "status": "unverified",
+    "candidateUrl": "https://proj14.ipst.ac.th/m2/m2-math-book2/",
+    "urlProvenance": {
+      "kind": "search-result",
+      "query": "proj14.ipst.ac.th ความสัมพันธ์เชิงเส้น กราฟ คณิตศาสตร์ ม.2",
+      "foundAt": "2026-10-02",
+      "resultTitle": "หนังสือเรียนคณิตศาสตร์ ม.2 เล่ม 2 - โครงการสอนออนไลน์ - Project 14"
+    },
+    "durationKnown": false,
+    "suitedFor": "คนที่อยากเรียนจากหนังสือเรียน",
+    "needsFirst": "ระบบพิกัดฉาก",
+    "doNext": "กลับมาทำแบบฝึกของ V2U"
+  },
+  {
+    "id": "th-p14-book-m4-phys-1",
+    "title": "หนังสือเรียนฟิสิกส์ ม.4 เล่ม 1 (หน้ารวมบทเรียน)",
+    "provider": "Project 14 · สสวท.",
+    "type": "book",
+    "role": "reference",
+    "locator": "Project 14 → ม.4–6 ฟิสิกส์ → เล่ม 1",
+    "estimatedMinutes": 20,
+    "level": "intermediate",
+    "description": "หน้ารวมคลิปฟิสิกส์ ม.4 เล่ม 1 (การวัด การเคลื่อนที่แนวตรง แรงและกฎการเคลื่อนที่)",
+    "curriculumLessonIds": [
+      "phy-vec-units",
+      "phy-vec-vectors",
+      "phy-kin-1d",
+      "phy-dyn-newton"
+    ],
+    "coveredOutcomes": [
+      "phy-vec-units#o1",
+      "phy-vec-vectors#o1",
+      "phy-kin-1d#o3",
+      "phy-dyn-newton#o1"
+    ],
+    "whyV2USelected": "แหล่งภาษาไทยทางการที่ครอบคลุมฟิสิกส์ทั้ง 4 บทของ V2U",
+    "lastChecked": "2026-10-02",
+    "language": "th",
+    "isFree": true,
+    "status": "unverified",
+    "candidateUrl": "https://proj14.ipst.ac.th/m4-6-physics/m4-phys-book1/",
+    "urlProvenance": {
+      "kind": "search-result",
+      "query": "proj14.ipst.ac.th ฟิสิกส์ ม.4 การเคลื่อนที่แนวตรง",
+      "foundAt": "2026-10-02",
+      "resultTitle": "หนังสือเรียนฟิสิกส์ ม.4 เล่ม 1 - โครงการสอนออนไลน์ - Project 14"
+    },
+    "durationKnown": false,
+    "suitedFor": "คนที่อยากเรียนครบทั้งบท",
+    "needsFirst": "—",
+    "doNext": "กลับมาทำแบบฝึกของ V2U"
+  },
+  {
+    "id": "th-scimath-ebooks",
+    "title": "คลัง E-Book ของ SciMath (สสวท.) — หนังสือเรียนและคู่มือครู",
+    "provider": "SciMath · สสวท.",
+    "type": "book",
+    "role": "reference",
+    "locator": "scimath.org → E-Book → เลือกวิชาและระดับชั้น",
+    "estimatedMinutes": 30,
+    "level": "beginner",
+    "description": "คลังหนังสือเรียนและคู่มือครูของ สสวท. ที่เปิดให้อ่านออนไลน์ (ตรวจเงื่อนไขการใช้ของแต่ละเล่มก่อนดาวน์โหลด)",
+    "curriculumLessonIds": [
+      "math-alg-linear-eq",
+      "math-trig-ratios",
+      "phy-kin-1d"
+    ],
+    "coveredOutcomes": [
+      "math-alg-linear-eq#o3",
+      "math-trig-ratios#o1",
+      "phy-kin-1d#o1"
+    ],
+    "whyV2USelected": "แหล่งหนังสือเรียนทางการที่เปิดให้อ่าน ใช้แทนการดาวน์โหลดไฟล์จากที่อื่น",
+    "lastChecked": "2026-10-02",
+    "language": "th",
+    "isFree": true,
+    "status": "unverified",
+    "candidateUrl": "https://www.scimath.org/ebooks",
+    "urlProvenance": {
+      "kind": "search-result",
+      "query": "scimath.org หนังสือเรียน คณิตศาสตร์ e-book สสวท ดาวน์โหลด",
+      "foundAt": "2026-10-02",
+      "resultTitle": "คลังความรู้ SciMath"
+    },
+    "durationKnown": false,
+    "suitedFor": "คนที่ชอบเรียนจากการอ่าน",
+    "needsFirst": "—",
+    "doNext": "อ่านจบแล้วเช็กความเข้าใจใน V2U"
+  },
+  {
+    "id": "th-scimath-newton-article",
+    "title": "กฎการเคลื่อนที่ไม่ใช่แค่เรื่องของคนเรียนสายวิทย์ (บทความ SciMath)",
+    "provider": "SciMath · สสวท.",
+    "type": "article",
+    "role": "reference",
+    "locator": "ค้นจากชื่อ \"กฎการเคลื่อนที่ไม่ใช่แค่เรื่องของคนเรียนสายวิทย์\" บน SciMath · สสวท.",
+    "estimatedMinutes": 10,
+    "level": "beginner",
+    "description": "บทความอธิบายกฎการเคลื่อนที่ของนิวตันกับชีวิตจริง",
+    "curriculumLessonIds": [
+      "phy-dyn-newton"
+    ],
+    "coveredOutcomes": [
+      "phy-dyn-newton#o3"
+    ],
+    "whyV2USelected": "อ่านสั้น ๆ เชื่อมกฎของนิวตันกับเรื่องใกล้ตัว",
+    "lastChecked": "2026-10-02",
+    "language": "th",
+    "isFree": true,
+    "status": "unverified",
+    "candidateUrl": "https://www.scimath.org/article-physics/item/10614-2019-09-02-01-28-26",
+    "urlProvenance": {
+      "kind": "search-result",
+      "query": "proj14.ipst.ac.th ฟิสิกส์ ม.4 แรงและกฎการเคลื่อนที่ ของนิวตัน",
+      "foundAt": "2026-10-02",
+      "resultTitle": "กฎการเคลื่อนที่ไม่ใช่แค่เรื่องของคนเรียนสายวิทย์"
+    },
+    "durationKnown": false,
+    "suitedFor": "คนที่ชอบอ่านบทความ",
+    "needsFirst": "—",
+    "doNext": "กลับมาทำแบบฝึก ΣF = ma"
+  },
 ];

@@ -289,6 +289,11 @@ export function migrateToLatestSchema(raw: unknown): {
       status: (typeof item.status === 'string' ? item.status : 'completed') as any,
       lastHeartbeatAt: typeof item.lastHeartbeatAt === 'string' ? item.lastHeartbeatAt : new Date().toISOString(),
       notesDraft: (item.notesDraft && typeof item.notesDraft === 'object' ? item.notesDraft : {}) as any,
+      // Phase 51: keep what the student learned with (resource refs + plan link)
+      ...(item.source && typeof item.source === 'object' ? { source: item.source as any } : {}),
+      ...(Array.isArray(item.resourcesUsed) ? { resourcesUsed: item.resourcesUsed as any } : {}),
+      ...(typeof item.plannedMinutes === 'number' ? { plannedMinutes: item.plannedMinutes } : {}),
+      ...(typeof item.curriculumLessonId === 'string' ? { curriculumLessonId: item.curriculumLessonId } : {}),
     };
   });
 

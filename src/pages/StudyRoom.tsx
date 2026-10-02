@@ -26,6 +26,7 @@ import { ResourceConfirmationModal } from '../components/study/ResourceConfirmat
 import { formatVideoTime } from '../components/study/YouTubePlayer';
 import { VoiceSummaryInput } from '../components/study/VoiceSummaryInput';
 import { resolveCurriculumStep } from '../curriculum/engine';
+import { LearningPathPanel } from '../components/learn/LearningPathPanel';
 import { getResourcesForLesson } from '../resources/engine';
 
 type ActiveTab = 'notes' | 'timestamps' | 'resources' | 'info';
@@ -458,6 +459,9 @@ export const StudyRoom: React.FC = () => {
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
+          )}
+          {(activeLearningSession?.curriculumLessonId ?? curriculumStep?.lesson.id) && (
+            <LearningPathPanel lessonId={(activeLearningSession?.curriculumLessonId ?? curriculumStep?.lesson.id)!} />
           )}
         </div>
 

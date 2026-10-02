@@ -111,8 +111,10 @@ console.log('\n3. Selection');
 await test('getResourcesForLesson ranks by outcome coverage', () => {
   const list = E.getResourcesForLesson('math-alg-linear-eq');
   const lesson = C.lessons.find((l) => l.id === 'math-alg-linear-eq');
-  const scores = list.map((r) => E.scoreResourceForLesson(r, lesson));
-  assert.deepStrictEqual(scores, [...scores].sort((a, b) => b - a));
+  // Phase 51: within one trust tier Thai comes first, then outcome coverage
+  const groups = new Map();
+  for (const r of list) { const k = `${r.status}|${r.language}`; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(E.scoreResourceForLesson(r, lesson)); }
+  for (const scores of groups.values()) assert.deepStrictEqual(scores, [...scores].sort((a, b) => b - a));
 });
 await test('getResourcesForOutcome returns only resources covering it', () => {
   const list = E.getResourcesForOutcome('phy-vec-vectors#o2');

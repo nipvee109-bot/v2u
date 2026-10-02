@@ -187,6 +187,12 @@ export function CurriculumPage() {
                                 </>
                               );
                             })()}
+                            <Link
+                              to={`/learn/curriculum/${lesson.id}`}
+                              className="mr-2 inline-flex items-center rounded-xl border border-blue-300 bg-white px-3.5 py-2 min-h-[44px] text-xs font-bold text-blue-700 hover:bg-blue-50"
+                            >
+                              เปิดบทเรียน (คลิป · อ่าน · V2U)
+                            </Link>
                             {studyLesson && (
                               <Link
                                 to={`/lessons/${studyLesson.id}`}

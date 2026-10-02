@@ -42,7 +42,7 @@ export function LearnHub() {
       : []),
     { to: '/learn/curriculum', title: 'หลักสูตรวิศวกรรมคอมพิวเตอร์', description: 'วิชา → หัวข้อ → บทเรียน ที่ต้องใช้สอบเข้า', icon: RouteIcon },
     { to: '/resources', title: 'คลังแหล่งเรียนรู้', description: 'วิดีโอ เอกสาร และเว็บไซต์ที่บันทึกไว้', icon: BookMarked },
-    { to: '/search', title: 'ค้นหา', description: 'ค้นหาบทเรียนและเนื้อหา', icon: Search },
+    { to: '/search', title: 'ค้นหา', description: 'ค้นหาบทเรียน คลิป เอกสาร และโจทย์ที่ V2U คัดไว้', icon: Search },
     { to: '/dashboard', title: 'ภาพรวมการเรียนแบบเต็ม', description: 'แผนวันนี้ บทที่ค้าง และสรุปทั้งหมด', icon: LayoutGrid },
   ];
 

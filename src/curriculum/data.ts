@@ -147,7 +147,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-math-solve-linear', 'skill-math-check-solution'],
       exerciseIds: ['ex-math-linear-eq'],
       quizIds: ['quiz-math-linear-eq'],
-      resourceIds: ['cr-khan-alg1-equations', 'cr-ipst-math-m1-linear-eq', 'cr-openstax-college-algebra-ch2', 'res-math-textbook-m4'],
+      resourceIds: ['cr-khan-alg1-equations', 'cr-ipst-math-m1-linear-eq', 'cr-openstax-college-algebra-ch2', 'res-math-textbook-m4', 'th-p14-m1-linear-eq-solve-2', 'th-p14-book-m1-math-2', 'th-scimath-ebooks'],
       studyLessonTitle: 'สมการและอสมการเชิงเส้น',
     },
     {
@@ -163,7 +163,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-math-linear-system', 'skill-math-word-problem'],
       exerciseIds: ['ex-math-linear-system'],
       quizIds: ['quiz-math-linear-system'],
-      resourceIds: ['cr-khan-alg1-systems', 'cr-openstax-college-algebra-systems', 'res-math-textbook-m4'],
+      resourceIds: ['cr-khan-alg1-systems', 'cr-openstax-college-algebra-systems', 'res-math-textbook-m4', 'th-p14-m3-linear-system-solve-1', 'th-p14-m3-linear-system-word-1', 'th-p14-book-m3-math-2'],
       studyLessonTitle: 'สมการและอสมการเชิงเส้น',
     },
     {
@@ -179,7 +179,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-math-solve-inequality'],
       exerciseIds: ['ex-math-linear-ineq'],
       quizIds: ['quiz-math-linear-ineq'],
-      resourceIds: ['cr-khan-alg1-equations', 'cr-openstax-college-algebra-ch2', 'res-math-textbook-m4'],
+      resourceIds: ['cr-khan-alg1-equations', 'cr-openstax-college-algebra-ch2', 'res-math-textbook-m4', 'th-p14-m3-ineq-intro-1', 'th-p14-m3-ineq-solve-5', 'th-p14-book-m3-math-1'],
       studyLessonTitle: 'สมการและอสมการเชิงเส้น',
     },
     {
@@ -195,7 +195,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-math-exponent-laws'],
       exerciseIds: ['ex-math-exponents'],
       quizIds: ['quiz-math-exponents'],
-      resourceIds: ['cr-khan-alg1-exponents', 'cr-ipst-math-m1-exponents', 'res-math-textbook-m4'],
+      resourceIds: ['cr-khan-alg1-exponents', 'cr-ipst-math-m1-exponents', 'res-math-textbook-m4', 'th-p14-m1-exponent-divide-1', 'th-p14-m5-exponent-1', 'th-p14-book-m1-math-1'],
       studyLessonTitle: 'เลขยกกำลัง และราก',
     },
     {
@@ -211,7 +211,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-math-slope', 'skill-math-graph-reading'],
       exerciseIds: ['ex-math-fn-linear'],
       quizIds: ['quiz-math-fn-linear'],
-      resourceIds: ['cr-khan-alg1-linear-graphs', 'cr-openstax-college-algebra-linear-fn', 'res-math-textbook-m4'],
+      resourceIds: ['cr-khan-alg1-linear-graphs', 'cr-openstax-college-algebra-linear-fn', 'res-math-textbook-m4', 'th-p14-book-m2-math-2'],
       studyLessonTitle: 'ฟังก์ชันและกราฟ',
     },
     {
@@ -227,7 +227,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-math-trig-ratio', 'skill-math-special-angles'],
       exerciseIds: ['ex-math-trig'],
       quizIds: ['quiz-math-trig'],
-      resourceIds: ['cr-khan-geometry-trig', 'cr-ipst-math-m3-trig', 'res-math-textbook-m5'],
+      resourceIds: ['cr-khan-geometry-trig', 'cr-ipst-math-m3-trig', 'res-math-textbook-m5', 'th-p14-m3-trig-meaning-1', 'th-p14-m3-trig-acute-1', 'th-p14-book-m3-math-2', 'th-scimath-ebooks'],
       studyLessonTitle: 'ตรีโกณมิติ',
     },
 
@@ -327,7 +327,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-phy-units'],
       exerciseIds: ['ex-phy-units'],
       quizIds: ['quiz-phy-units'],
-      resourceIds: ['cr-openstax-physics-units', 'cr-ipst-physics-m4-v1', 'res-physics-textbook-m4'],
+      resourceIds: ['cr-openstax-physics-units', 'cr-ipst-physics-m4-v1', 'res-physics-textbook-m4', 'th-p14-book-m4-phys-1'],
       studyLessonTitle: 'หน่วย และ เวกเตอร์',
     },
     {
@@ -343,7 +343,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-phy-vector-components'],
       exerciseIds: ['ex-phy-vectors'],
       quizIds: ['quiz-phy-vectors'],
-      resourceIds: ['cr-khan-physics-2d-vectors', 'cr-openstax-physics-vectors', 'res-physics-textbook-m4'],
+      resourceIds: ['cr-khan-physics-2d-vectors', 'cr-openstax-physics-vectors', 'res-physics-textbook-m4', 'th-p14-book-m4-phys-1'],
       studyLessonTitle: 'หน่วย และ เวกเตอร์',
     },
     {
@@ -359,7 +359,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-phy-kinematics-equations', 'skill-math-graph-reading'],
       exerciseIds: ['ex-phy-kin-1d'],
       quizIds: ['quiz-phy-kin-1d'],
-      resourceIds: ['cr-ipst-physics-m4-v1', 'cr-khan-physics-1d', 'cr-openstax-physics-kinematics', 'res-physics-textbook-m4'],
+      resourceIds: ['cr-ipst-physics-m4-v1', 'cr-khan-physics-1d', 'cr-openstax-physics-kinematics', 'res-physics-textbook-m4', 'th-p14-m4-phys-freefall', 'th-p14-book-m4-phys-1', 'th-scimath-ebooks'],
       studyLessonTitle: 'การเคลื่อนที่แนวตรง',
     },
     {
@@ -375,7 +375,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-phy-free-body', 'skill-phy-newton-second'],
       exerciseIds: ['ex-phy-newton'],
       quizIds: ['quiz-phy-newton'],
-      resourceIds: ['cr-ipst-physics-m4-v1', 'cr-khan-physics-newton', 'res-physics-textbook-m4'],
+      resourceIds: ['cr-ipst-physics-m4-v1', 'cr-khan-physics-newton', 'res-physics-textbook-m4', 'th-p14-m4-phys-inertia', 'th-p14-book-m4-phys-1', 'th-scimath-newton-article'],
       studyLessonTitle: 'แรง และ กฎของนิวตัน',
     },
   ],

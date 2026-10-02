@@ -3,6 +3,7 @@
    Pure functions: no React / store. Reusable by tests and a future mobile app.
    ========================================================================= */
 
+import { getOriginalLesson } from '../content/originals';
 import type { Curriculum, CurriculumLesson } from '../curriculum/types';
 import { CURRICULUM } from '../curriculum/data';
 import { RESOURCE_REGISTRY } from './registry';
@@ -68,6 +69,11 @@ const STATUS_TIER: Record<CuratedResource['status'], number> = {
   deprecated: 0,
 };
 
+/** Every recommendable registry entry (Phase 51: used by search). */
+export function getRecommendableResources(resources: CuratedResource[] = RESOURCE_REGISTRY): CuratedResource[] {
+  return resources.filter(isRecommendable);
+}
+
 /** Look up any registry entry by id, including deprecated ones (for old references). */
 export function getResourceById(id: string, resources: CuratedResource[] = RESOURCE_REGISTRY): CuratedResource | undefined {
   return resources.find((r) => r.id === id);
@@ -109,6 +115,8 @@ export function getResourcesForLesson(
     .sort(
       (a, b) =>
         STATUS_TIER[b.status] - STATUS_TIER[a.status] ||
+        // Phase 51: Thai first within the same trust tier
+        (b.language === 'th' ? 1 : 0) - (a.language === 'th' ? 1 : 0) ||
         scoreResourceForLesson(b, lesson) - scoreResourceForLesson(a, lesson) ||
         a.estimatedMinutes - b.estimatedMinutes
     );
@@ -226,7 +234,16 @@ export function buildLearningPlan(
           : slot.kind === 'example'
             ? [...byRole('worked-example'), ...byRole('explanation'), ...byRole('reference')]
             : [...byRole('reference'), ...byRole('worked-example'), ...byRole('explanation')];
-      const r = take(preferred);
+      // Phase 51: the worked-example slot is V2U's own summary + examples (always available)
+      const original = slot.kind === 'example' ? getOriginalLesson(lessonId) : undefined;
+      if (original) {
+        steps.push({ kind: 'example', label: 'อ่านสรุปและตัวอย่างของ V2U', minutes: slot.minutes, contentId: original.contentId, detail: `V2U: ${lesson.title} — สรุป ตัวอย่าง จุดที่มักพลาด` });
+        continue;
+      }
+      // Phase 51: the first explanation is a clip when one exists
+      const videoFirst = (xs: CuratedResource[]) => [...xs.filter((x) => x.type === 'video'), ...xs.filter((x) => x.type !== 'video')];
+      const ordered = slot.kind === 'learn' ? [...videoFirst(byRole('explanation')), ...byRole('worked-example'), ...byRole('reference')] : preferred;
+      const r = take(ordered);
       if (r) {
         const minutes = Math.min(r.estimatedMinutes, slot.minutes);
         slack += slot.minutes - minutes;
@@ -243,7 +260,8 @@ export function buildLearningPlan(
         // No curated example left → walk through V2U's own exercise answers
         steps.push({ kind: 'example', label, minutes: slot.minutes, exerciseId, detail: 'ดูวิธีทำจากแบบฝึกของ V2U' });
       } else if (slot.kind === 'learn') {
-        steps.push({ kind: 'learn', label, minutes: slot.minutes, detail: `อ่านสรุปบทเรียน: ${lesson.description}` });
+        const fallback = getOriginalLesson(lessonId);
+        steps.push({ kind: 'learn', label: fallback ? 'เรียนจาก V2U' : label, minutes: slot.minutes, contentId: fallback?.contentId, detail: fallback ? `บทเรียน V2U: ${lesson.title}` : `อ่านสรุปบทเรียน: ${lesson.description}` });
       } else {
         slack += slot.minutes; // nothing to deepen with → give time to practice
       }
@@ -262,6 +280,7 @@ export function buildLearningPlan(
   if (slack > 0) {
     const target =
       steps.find((s) => s.kind === 'practice') ??
+      steps.find((s) => s.kind === 'example' && s.contentId) ??
       steps.find((s) => s.kind === 'check') ??
       steps.find((s) => s.kind === 'example' && !s.resourceId) ??
       steps[steps.length - 1];
@@ -324,6 +343,16 @@ export function validateResources(
     if (r.status === 'unverified' && (r.url !== undefined || r.videoId !== undefined)) {
       errors.push(`${where}: unverified resources must not carry a url`);
     }
+    // Phase 51: search-found links are allowed only as a labelled candidate with provenance
+    if (r.candidateUrl !== undefined) {
+      if (!isValidHttpUrl(r.candidateUrl)) errors.push(`${where}: invalid candidateUrl`);
+      const pv = r.urlProvenance;
+      if (!pv || pv.kind !== 'search-result' || !pv.query?.trim() || !ISO_DATE.test(pv.foundAt) || !pv.resultTitle?.trim()) {
+        errors.push(`${where}: candidateUrl needs search provenance (query, foundAt, resultTitle)`);
+      }
+      if (/example\.(com|org)|sample|placeholder|localhost/i.test(r.candidateUrl)) errors.push(`${where}: placeholder candidateUrl`);
+    }
+    if (r.urlProvenance && r.candidateUrl === undefined) errors.push(`${where}: provenance without candidateUrl`);
     if (checked) {
       if (!r.url) errors.push(`${where}: ${r.status} resources need a verified url`);
       const v = r.verification;

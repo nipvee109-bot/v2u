@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { CuratedSearchResults } from '../components/search/CuratedSearchResults';
 import { useStore } from '../store/useStore';
 import { 
   BookOpen, 
@@ -17,7 +18,9 @@ import { th } from 'date-fns/locale';
 
 export function SearchPage() {
   const [searchParams] = useSearchParams();
-  const q = searchParams.get('q')?.toLowerCase().trim() || '';
+  const navigate = useNavigate();
+  const rawQ = searchParams.get('q') || '';
+  const q = rawQ.toLowerCase().trim();
   const { lessons, unclearTopics, learningSessionsHistory, resources, getAllResources, recordResourceOpened } = useStore();
 
   // Fast O(1) lesson lookup map
@@ -130,12 +133,28 @@ export function SearchPage() {
           <div>
             <h1 className="text-2xl font-bold">ผลการค้นหาสำหรับ "{q}"</h1>
             <p className="text-slate-300 text-xs mt-1">
-              ค้นหาในความจำทั้งหมด (Memory Record): พบ {totalResults} รายการ
+              ในเนื้อหา V2U และบันทึกของคุณ (บันทึก {totalResults} รายการ)
             </p>
           </div>
         </div>
       </div>
 
+      <form
+        role="search"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const v = (new FormData(e.currentTarget).get('q') as string | null)?.trim() ?? '';
+          if (v) navigate(`/search?q=${encodeURIComponent(v)}`);
+        }}
+        className="flex gap-2"
+      >
+        <input name="q" defaultValue={rawQ} key={rawQ} aria-label="ค้นหา" placeholder="ค้นหาบทเรียน คลิป โจทย์" className="min-h-[44px] min-w-0 flex-1 rounded-xl border border-slate-300 px-3 text-sm" />
+        <button type="submit" className="min-h-[44px] rounded-xl bg-blue-600 px-4 text-sm font-bold text-white">ค้นหา</button>
+      </form>
+
+      <CuratedSearchResults query={rawQ} />
+
+      <h2 className="text-sm font-bold text-slate-700">จากบันทึกการเรียนของคุณ</h2>
       {totalResults === 0 ? (
         <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-slate-200/70 p-8 space-y-3">
           <Sparkles className="w-10 h-10 text-slate-300 mx-auto" />

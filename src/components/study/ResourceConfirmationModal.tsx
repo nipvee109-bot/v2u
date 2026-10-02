@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import type { Lesson, Resource } from '../../types';
 import { SUBJECTS } from '../../types';
+import type { LearningPlan } from '../../resources/types';
+import { describePlan } from '../../content/engine';
 
 interface ResourceConfirmationModalProps {
   isOpen: boolean;
@@ -24,6 +26,8 @@ interface ResourceConfirmationModalProps {
   suggestion?: { title: string; provider: string; whyV2USelected: string; locator: string; url?: string };
   /** Phase 49: minutes planned for today (from the student's daily time). */
   plannedMinutes?: number;
+  /** Phase 51: the actual plan for today (same object Home/Route/Roadmap use). */
+  plan?: LearningPlan;
 }
 
 const RESOURCE_TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -43,6 +47,7 @@ export const ResourceConfirmationModal: React.FC<ResourceConfirmationModalProps>
   onAddResource,
   suggestion,
   plannedMinutes,
+  plan,
 }) => {
   const [selectedResourceId, setSelectedResourceId] = useState<string | null>(
     lesson.resources.find((r) => r.role === 'primary')?.id || lesson.resources[0]?.id || null
@@ -124,6 +129,18 @@ export const ResourceConfirmationModal: React.FC<ResourceConfirmationModalProps>
           </div>
         )}
 
+        {plan && (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3" data-testid="confirm-plan">
+            <p className="text-[11px] font-bold text-emerald-800">แผนวันนี้</p>
+            <p className="mt-0.5 text-xs font-semibold text-slate-900 break-words">{describePlan(plan)}</p>
+            <ol className="mt-1 ml-4 list-decimal text-[11px] text-slate-600">
+              {plan.steps.map((s, i) => (
+                <li key={`${s.kind}-${i}`} className="break-words">{s.label} {s.minutes} นาที{s.partial ? ' (ดูเฉพาะช่วงที่ตรงกับบทนี้)' : ''}</li>
+              ))}
+            </ol>
+          </div>
+        )}
+
         {/* Resource Selection */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -201,7 +218,7 @@ export const ResourceConfirmationModal: React.FC<ResourceConfirmationModalProps>
           <div className="flex items-center gap-4 text-xs text-slate-600">
             <span className="flex items-center gap-1.5">
               <BookOpen className="w-3.5 h-3.5 text-blue-500" />
-              {plannedMinutes !== undefined ? `วันนี้ ${plannedMinutes} นาที` : `${lesson.durationHours} ชม. (เป้าหมาย)`}
+              {plan ? `วันนี้ ${plan.totalMinutes} นาที` : plannedMinutes !== undefined ? `วันนี้ ${plannedMinutes} นาที` : `${lesson.durationHours} ชม. (เป้าหมาย)`}
             </span>
             <span className="flex items-center gap-1.5 text-slate-400">
               ความยาก: {lesson.difficulty === 'Easy' ? 'ง่าย' : lesson.difficulty === 'Medium' ? 'ปานกลาง' : 'ยาก'}

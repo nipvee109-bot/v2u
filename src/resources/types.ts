@@ -70,6 +70,21 @@ export interface CuratedResource {
   verification?: ResourceVerification;
   /** Deprecated entries point at their replacements. */
   supersededBy?: string[];
+  /**
+   * Phase 51: a real URL found in a web-search index but NOT opened/checked.
+   * Kept apart from `url` (verified only) and always shown as "ยังไม่ได้ตรวจลิงก์".
+   */
+  candidateUrl?: string;
+  /** Where candidateUrl came from — never invented. */
+  urlProvenance?: { kind: 'search-result'; query: string; foundAt: string; resultTitle: string };
+  /** true only when the length was confirmed (e.g. stated on the source page / search snippet). */
+  durationKnown?: boolean;
+  /** Plain-Thai: who this suits */
+  suitedFor?: string;
+  /** Plain-Thai: what to know first */
+  needsFirst?: string;
+  /** Plain-Thai: what to do after */
+  doNext?: string;
 }
 
 export type TimeBudgetMinutes = 15 | 30 | 60 | 120;
@@ -93,6 +108,8 @@ export interface LearningPlanStep {
   /** V2U curriculum activity used by this step (practice / check). */
   exerciseId?: string;
   quizId?: string;
+  /** Phase 51: V2U original lesson used by this step (src/content). */
+  contentId?: string;
   /** True when only part of a longer resource fits the budget. */
   partial?: boolean;
   detail: string;
