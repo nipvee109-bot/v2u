@@ -25,6 +25,10 @@ import type {
   VocationalProgram,
 } from './types';
 import { EDUCATION_LEVELS } from './types';
+import { checklistKey } from './keys';
+import { ADMISSION_REGISTRY } from '../admission/registry';
+import { getPathsForRouteTarget, toRouteRequirements } from '../admission/engine';
+import type { AdmissionRegistry } from '../admission/types';
 
 /* ── Lookups ──────────────────────────────────────────────────────────── */
 
@@ -79,9 +83,7 @@ export const completionReadiness: ReadinessProvider = (subjectId, storeLessons) 
 
 /* ── Route ────────────────────────────────────────────────────────────── */
 
-export function checklistKey(requirementId: string, item: string): string {
-  return `${requirementId}::${item}`;
-}
+export { checklistKey } from './keys';
 
 export interface BuildRouteParams {
   profile?: Partial<StudentProfile> | null;
@@ -90,6 +92,10 @@ export interface BuildRouteParams {
   checklist?: Record<string, 'met' | 'gap'>;
   readiness?: ReadinessProvider;
   curriculum?: Curriculum;
+  /** Admission data; only VERIFIED paths can replace the generic route. */
+  admissionRegistry?: AdmissionRegistry;
+  /** Preferred verified path; defaults to the earliest-round verified path. */
+  admissionPathId?: string;
 }
 
 export function buildStudentRoute(params: BuildRouteParams): StudentRoute {
@@ -98,17 +104,24 @@ export function buildStudentRoute(params: BuildRouteParams): StudentRoute {
   const target = getRouteTarget(profile.targetId) ?? ROUTE_TARGETS[0];
   const program = getVocationalProgram(profile.programId);
 
+  // Verified admission path (if any) refines the route; otherwise generic route.
+  const verifiedPaths = getPathsForRouteTarget(target.id, params.admissionRegistry ?? ADMISSION_REGISTRY);
+  const path = verifiedPaths.find((p) => p.id === params.admissionPathId) ?? verifiedPaths[0];
+  const requirements: RouteRequirement[] = path
+    ? toRouteRequirements(path, params.admissionRegistry ?? ADMISSION_REGISTRY, curriculum)
+    : target.requirementIds.map((id) => getRouteRequirement(id)).filter((r): r is RouteRequirement => !!r);
+
   const statusById = new Map<string, RequirementProgress['status']>();
   const steps: RequirementProgress[] = [];
 
-  for (const reqId of target.requirementIds) {
-    const requirement = getRouteRequirement(reqId);
-    if (!requirement) continue;
+  for (const requirement of requirements) {
+    const reqId = requirement.id;
     const depsDone = requirement.dependsOn.every((d) => statusById.get(d) === 'done');
 
     if (requirement.kind === 'subject' && requirement.subjectId) {
       const subjectId = requirement.subjectId;
-      const targetPercent = curriculum.pathway.requirements.find((r) => r.subjectId === subjectId)?.targetReadinessPercent ?? 70;
+      const targetPercent =
+        requirement.targetPercent ?? curriculum.pathway.requirements.find((r) => r.subjectId === subjectId)?.targetReadinessPercent ?? 70;
       const readinessPercent = readiness(subjectId, storeLessons);
       const subjectLessons = curriculum.lessons.filter((l) => l.subjectId === subjectId);
       const remaining = subjectLessons.filter((l) => !isCurriculumLessonCompleted(l, storeLessons));
@@ -160,6 +173,7 @@ export function buildStudentRoute(params: BuildRouteParams): StudentRoute {
     currentRequirementId: current?.requirement.id,
     completedCount: steps.filter((s) => s.status === 'done').length,
     horizon: getHorizonText(profile.educationLevel),
+    basis: path ? { kind: 'admission-path', pathId: path.id, pathName: path.name } : { kind: 'generic' },
   };
 }
 

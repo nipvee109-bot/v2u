@@ -1,14 +1,17 @@
-import { Link } from 'react-router-dom';
-import { Map, Target, CalendarDays, CheckCircle2, CircleDot, Circle, Lock, ArrowRight, Clock, Lightbulb } from 'lucide-react';
+import { Map, Target, CalendarDays, CheckCircle2, CircleDot, Circle, Lock, ArrowRight, Clock, Lightbulb, Trophy } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import { buildStudentRoute, getRouteNextStep } from '../../route/engine';
+import { buildNextStepRoute } from '../../utils/nextStep';
+import { buildRoadmap } from '../../roadmap/engine';
+import type { RoadmapAction } from '../../roadmap/types';
+import { useNextStepParams } from '../../hooks/useNextStep';
+import { useStartNextStep } from '../../hooks/useStartNextStep';
 import { EDUCATION_LEVELS } from '../../route/types';
 import type { EducationLevel, RequirementStatus } from '../../route/types';
 import { VOCATIONAL_PROGRAMS } from '../../route/data';
 import { TimeBudgetPicker } from '../../components/TimeBudgetPicker';
 import { ChecklistAnswerControl } from '../../components/ChecklistAnswerControl';
 import { useLearningRecords } from '../../hooks/useLearningRecords';
-import { createSkillReadinessProvider, getSubjectSkillGaps, SKILL_STATUS_LABEL } from '../../skills/engine';
+import { getSubjectSkillGaps, SKILL_STATUS_LABEL } from '../../skills/engine';
 import type { SkillStatus } from '../../skills/engine';
 import { HubHeader, HubLinkList } from '../../components/navigation/HubLinkList';
 
@@ -29,25 +32,28 @@ const STATUS_UI: Record<RequirementStatus, { label: string; icon: typeof Circle;
 
 /** เส้นทาง — starting point → target → requirements → today's step. */
 export function RouteHub() {
-  const { lessons, studentProfile, setStudentProfile, admissionInputs, setChecklistAnswer } = useStore();
+  const { lessons, setStudentProfile, setChecklistAnswer } = useStore();
   const records = useLearningRecords();
-  const route = buildStudentRoute({
-    profile: studentProfile,
-    storeLessons: lessons,
-    readiness: createSkillReadinessProvider(records),
-    checklist: admissionInputs?.checklist,
-  });
+  // Same inputs as Home → the same next action (single source of truth)
+  const params = useNextStepParams();
+  const route = buildNextStepRoute(params)!;
+  const roadmap = buildRoadmap(params);
+  const today = roadmap.today;
+  const { start, confirmModal } = useStartNextStep();
   const subjectGaps = getSubjectSkillGaps({ storeLessons: lessons, records });
-  const next = getRouteNextStep(route, lessons);
   const { profile } = route;
+  const currentPhase = roadmap.phases.find((p) => p.requirementId === roadmap.currentPhaseId);
+  const currentStep = route.steps.find((s) => s.requirement.id === route.currentRequirementId);
 
   return (
     <div className="mx-auto max-w-3xl">
+      {confirmModal}
       <HubHeader title="เส้นทาง" subtitle="จากจุดที่คุณอยู่ → สู่มหาวิทยาลัยที่คุณต้องการ" />
 
       {/* Starting point → target */}
       <section aria-labelledby="route-start" className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-        <h2 id="route-start" className="text-sm font-bold text-slate-900">จุดเริ่มต้นของคุณ</h2>
+        <h2 id="route-start" className="text-sm font-bold text-slate-900">ฉันอยู่ตรงไหน</h2>
+        <p className="text-xs text-slate-500">จุดเริ่มต้นของคุณ</p>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           <label className="text-xs font-semibold text-slate-600">
             ระดับชั้น
@@ -79,9 +85,60 @@ export function RouteHub() {
           </label>
         </div>
         <p className="mt-3 text-sm text-slate-800">
-          <span className="font-bold">เป้าหมาย:</span> {route.target.faculty} · {route.target.title}
+          <span className="font-bold">ตอนนี้อยู่ที่:</span> {currentStep ? currentStep.requirement.title : `ผ่านแล้ว ${route.completedCount}/${route.steps.length} ขั้น`}
+          {currentStep?.readinessPercent !== undefined && ` · ความพร้อม ${currentStep.readinessPercent}% จากเป้าหมาย ${currentStep.targetPercent}%`}
         </p>
-        <p className="mt-0.5 text-xs text-slate-500">{route.horizon}</p>
+      </section>
+
+      {/* Where am I going */}
+      <section aria-labelledby="route-target" className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+        <h2 id="route-target" className="text-sm font-bold text-slate-900">กำลังไปไหน</h2>
+        <p className="mt-1 text-sm text-slate-800">
+          {route.target.faculty} · {route.target.title}
+        </p>
+        <p className="mt-0.5 text-xs text-slate-500">
+          {route.horizon} ·{' '}
+          {roadmap.basis.kind === 'admission-path'
+            ? `ตามเกณฑ์ที่ยืนยันแล้ว: ${roadmap.basis.pathName}`
+            : 'ใช้เส้นทางทั่วไป (ยังไม่มีเกณฑ์รับสมัครที่ยืนยันจากแหล่งทางการ)'}
+        </p>
+      </section>
+
+      {/* This period */}
+      <section aria-labelledby="route-period" className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+        <h2 id="route-period" className="text-sm font-bold text-slate-900">ช่วงนี้ต้องทำอะไร</h2>
+        <p className="mt-1 text-sm text-slate-800">
+          เดือนนี้: {roadmap.currentMonth.focus}
+        </p>
+        {currentPhase?.remainingMinutes ? (
+          <p className="mt-0.5 text-xs text-slate-500">
+            {currentPhase.title} เหลืองานประมาณ {Math.ceil(currentPhase.remainingMinutes / 60)} ชั่วโมง · ถ้าเรียนวันละ {profile.availableMinutes} นาที ใช้เวลาราว{' '}
+            {(currentPhase.endWeek ?? 1) - (currentPhase.startWeek ?? 1) + 1} สัปดาห์
+          </p>
+        ) : null}
+        {!roadmap.fitsInHorizon && (
+          <p className="mt-1 text-xs text-amber-700">
+            ด้วยเวลาวันละ {profile.availableMinutes} นาที วิชาพื้นฐานต้องใช้ราว {roadmap.subjectWeeksNeeded} สัปดาห์ ซึ่งเกิน 6 เดือน — ลองเพิ่มเวลาต่อวัน
+          </p>
+        )}
+      </section>
+
+      {/* This week */}
+      <section aria-labelledby="route-week" className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+        <h2 id="route-week" className="text-sm font-bold text-slate-900">
+          สัปดาห์นี้ · ประมาณ {roadmap.thisWeek.plannedMinutes} จาก {roadmap.thisWeek.budgetMinutes} นาที
+        </h2>
+        <ol className="mt-2 space-y-1 text-xs text-slate-700">
+          {roadmap.thisWeek.actions.map((a: RoadmapAction, i) => (
+            <li key={`${a.kind}-${a.curriculumLessonId ?? a.skillId ?? a.title}-${i}`} className="flex justify-between gap-2">
+              <span className={i === 0 ? 'font-bold text-slate-900' : ''}>
+                {i + 1}. {a.title}
+                {i === 0 && ' (วันนี้)'}
+              </span>
+              {a.minutes !== undefined && <span className="shrink-0 text-slate-500">{a.minutes} นาที</span>}
+            </li>
+          ))}
+        </ol>
       </section>
 
       {/* Today's step on the route */}
@@ -90,46 +147,59 @@ export function RouteHub() {
         <div className="mt-2">
           <TimeBudgetPicker value={profile.availableMinutes} onChange={(m) => setStudentProfile({ availableMinutes: m })} />
         </div>
-        {next ? (
-          <div className="mt-3">
-            <p className="text-base font-extrabold text-slate-900">เรียน: {next.curriculumLessonTitle}</p>
+        <div className="mt-3">
+          <p className="text-base font-extrabold text-slate-900">{today.todayAction}</p>
+          {today.minutes !== undefined && (
             <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-600">
-              <Clock className="h-3.5 w-3.5" /> {next.budgetMinutes} นาที
+              <Clock className="h-3.5 w-3.5" /> {today.minutes} นาที
             </p>
-            <p className="mt-2 flex items-start gap-1.5 text-sm text-slate-700">
-              <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+          )}
+          <p className="mt-2 flex items-start gap-1.5 text-sm text-slate-700">
+            <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+            <span>
+              <span className="font-bold">เหตุผล: </span>
+              {today.reason}
+            </span>
+          </p>
+          {today.outcome && (
+            <p className="mt-1.5 flex items-start gap-1.5 text-xs text-slate-600">
+              <Trophy className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
               <span>
-                <span className="font-bold">เหตุผล: </span>
-                {next.reason}
+                <span className="font-bold">ได้อะไร: </span>
+                {today.outcome}
               </span>
             </p>
-            <p className="mt-1.5 text-xs text-slate-600">
-              <span className="font-bold">เรียนจบแล้วจะทำได้: </span>
-              {next.outcomes.join(' · ')}
-            </p>
-            {next.plan && (
-              <ol className="mt-2 space-y-0.5 text-xs text-slate-700">
-                {next.plan.steps.map((s, i) => (
-                  <li key={`${s.kind}-${i}`}>
-                    {i + 1}. {s.label} — {s.minutes} นาที
-                  </li>
-                ))}
-              </ol>
-            )}
-            {next.studyLessonId && (
-              <Link
-                to={`/lessons/${next.studyLessonId}`}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 min-h-[44px] text-sm font-bold text-white hover:bg-blue-700"
-              >
-                เริ่มขั้นต่อไป <ArrowRight className="h-4 w-4" />
-              </Link>
-            )}
-          </div>
-        ) : (
-          <p className="mt-3 text-sm text-slate-700">
-            วิชาพื้นฐานผ่านเป้าหมายแล้ว — ขั้นต่อไปคือ {route.steps.find((s) => s.requirement.id === route.currentRequirementId)?.requirement.title ?? 'ทบทวนให้พร้อมสอบ'}
-          </p>
-        )}
+          )}
+          {today.plan && (
+            <ol className="mt-2 space-y-0.5 text-xs text-slate-700">
+              {today.plan.steps.map((ps, i) => (
+                <li key={`${ps.kind}-${i}`}>
+                  {i + 1}. {ps.label} — {ps.minutes} นาที
+                </li>
+              ))}
+            </ol>
+          )}
+          <button
+            type="button"
+            onClick={() => start(today)}
+            className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 min-h-[44px] text-sm font-bold text-white hover:bg-blue-700"
+          >
+            {today.ctaLabel} <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </section>
+
+      {/* 6-month overview */}
+      <section aria-labelledby="route-months" className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+        <h2 id="route-months" className="text-sm font-bold text-slate-900">ภาพรวม 6 เดือน (ประมาณ)</h2>
+        <ol className="mt-2 space-y-1 text-xs">
+          {roadmap.months.map((m) => (
+            <li key={m.index} className={`flex gap-2 ${m.isCurrent ? 'font-bold text-blue-800' : 'text-slate-700'}`}>
+              <span className="w-16 shrink-0">เดือนที่ {m.index}</span>
+              <span className="min-w-0">{m.focus}</span>
+            </li>
+          ))}
+        </ol>
       </section>
 
       {/* Route stages */}

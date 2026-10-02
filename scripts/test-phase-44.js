@@ -111,7 +111,9 @@ await test('getWeakestSkill returns a needs-review skill (optionally per subject
 console.log('\n3. Wiring & language');
 await test('Route hub uses skill readiness and shows the four statuses', () => {
   const hub = read('src/pages/hubs/RouteHub.tsx');
-  assert(hub.includes('createSkillReadinessProvider(records)') && hub.includes('SKILL_STATUS_LABEL'));
+  // Phase 47: the hub builds its route via buildNextStepRoute, which applies skill readiness
+  assert(hub.includes('buildNextStepRoute(params)') && hub.includes('SKILL_STATUS_LABEL'));
+  assert(read('src/utils/nextStep.ts').includes('readiness: createSkillReadinessProvider(ctx.records'));
 });
 await test('Review hub lists skills that need review', () => {
   assert(read('src/pages/hubs/ReviewHub.tsx').includes("g.status === 'needs-review'"));

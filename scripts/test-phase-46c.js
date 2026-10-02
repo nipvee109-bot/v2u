@@ -133,7 +133,8 @@ await test('ฉัน shows "ข้อมูลของฉันตอนนี
 });
 await test('เส้นทาง lets the student answer each checklist item', () => {
   const hub = read('src/pages/hubs/RouteHub.tsx');
-  assert(hub.includes('<ChecklistAnswerControl') && hub.includes('setChecklistAnswer(c.key, answer)') && hub.includes('checklist: admissionInputs?.checklist'));
+  assert(hub.includes('<ChecklistAnswerControl') && hub.includes('setChecklistAnswer(c.key, answer)'));
+  assert(read('src/hooks/useNextStep.ts').includes('checklist: admissionInputs?.checklist'), 'answers reach the shared route inputs');
 });
 await test('Primary navigation still exactly 5 items', () => {
   assert.strictEqual([...read('src/components/navigation/primaryNav.ts').matchAll(/\{\s*to: '/g)].length, 5);

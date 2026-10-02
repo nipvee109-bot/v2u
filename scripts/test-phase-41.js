@@ -127,8 +127,11 @@ await test('Home has exactly one primary CTA button driven by getNextStep()', ()
   assert(home.includes('{step.ctaLabel}'));
 });
 await test('Home keeps resource confirmation and onboarding', () => {
-  assert(home.includes('ResourceConfirmationModal'));
-  assert(home.includes('startLearningSession({ lessonId, source: resource })'));
+  // Phase 47: start behaviour moved to the shared useStartNextStep hook (also used by เส้นทาง)
+  assert(home.includes('useStartNextStep()') && home.includes('{confirmModal}'));
+  const startHook = read('src/hooks/useStartNextStep.tsx');
+  assert(startHook.includes('ResourceConfirmationModal'));
+  assert(startHook.includes('startLearningSession({ lessonId, source: resource })'));
   assert(home.includes('StudyOnboardingModal'));
 });
 

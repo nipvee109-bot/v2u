@@ -144,7 +144,8 @@ await test('Store persists studentProfile under the unchanged storage key', () =
 });
 await test('Route hub renders start, target, today step, time picker and stages', () => {
   const hub = read('src/pages/hubs/RouteHub.tsx');
-  for (const s of ['buildStudentRoute(', 'getRouteNextStep(', 'จุดเริ่มต้นของคุณ', 'วันนี้ควรทำอะไร', '<TimeBudgetPicker', 'เริ่มขั้นต่อไป', 'เหตุผล']) {
+  // Phase 47: route + today come from the shared next-step inputs and the roadmap
+  for (const s of ['buildNextStepRoute(params)', 'buildRoadmap(params)', 'จุดเริ่มต้นของคุณ', 'วันนี้ควรทำอะไร', '<TimeBudgetPicker', '{today.ctaLabel}', 'เหตุผล']) {
     assert(hub.includes(s), s);
   }
 });

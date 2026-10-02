@@ -1,13 +1,11 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { MapPin, Flag, ListChecks, Sparkles, Lightbulb, ArrowRight, Clock, Trophy } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { getNextStep } from '../utils/nextStep';
 import { shouldShowOnboarding } from '../utils/onboardingUtils';
 import { StudyOnboardingModal } from '../components/onboarding/StudyOnboardingModal';
-import { ResourceConfirmationModal } from '../components/study/ResourceConfirmationModal';
-import type { Resource } from '../types';
-import { useLearningRecords } from '../hooks/useLearningRecords';
+import { useNextStepParams } from '../hooks/useNextStep';
+import { useStartNextStep } from '../hooks/useStartNextStep';
 import { TimeBudgetPicker } from '../components/TimeBudgetPicker';
 import { normalizeStudentProfile } from '../route/engine';
 
@@ -16,58 +14,25 @@ import { normalizeStudentProfile } from '../route/engine';
  * All decision logic lives in getNextStep(); this component only renders it.
  */
 export function HomePage() {
-  const navigate = useNavigate();
   const {
     lessons,
     sessions = [],
     learningSessionsHistory = [],
-    activeLearningSession,
     hasCompletedOnboarding,
-    getDueReviewItems,
-    getKnowledgeGaps,
-    getCalculatedGoals,
-    startLearningSession,
     studentProfile,
     setStudentProfile,
-    admissionInputs,
   } = useStore();
-  const records = useLearningRecords();
   const budget = normalizeStudentProfile(studentProfile).availableMinutes;
 
   // Auto-prompt onboarding only for fresh users (state is hydrated synchronously from storage)
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(() =>
     shouldShowOnboarding({ hasCompletedOnboarding, lessons, sessions, learningSessionsHistory })
   );
-  const [confirmingLessonId, setConfirmingLessonId] = useState<string | null>(null);
 
-  const { overdue, dueToday } = getDueReviewItems();
-  const step = getNextStep({
-    lessons,
-    sessions,
-    learningSessionsHistory,
-    activeLearningSession,
-    overdueReviews: overdue,
-    dueTodayReviews: dueToday,
-    knowledgeGaps: getKnowledgeGaps(),
-    goals: getCalculatedGoals(),
-    // Adaptive, route-aware mode (Phase 45)
-    route: { profile: studentProfile, records, budget, checklist: admissionInputs?.checklist },
-  });
-
-  const confirmingLesson = confirmingLessonId ? lessons.find((l) => l.id === confirmingLessonId) : undefined;
-
-  const handleStart = () => {
-    if (step.requiresResourceConfirmation && step.lessonId) {
-      setConfirmingLessonId(step.lessonId);
-      return;
-    }
-    navigate(step.href);
-  };
-
-  const handleConfirmedStart = (lessonId: string, resource?: Resource) => {
-    startLearningSession({ lessonId, source: resource });
-    navigate(`/study/${lessonId}`);
-  };
+  // Single source of truth shared with เส้นทาง and the Roadmap
+  const step = getNextStep(useNextStepParams());
+  const { start, confirmModal } = useStartNextStep();
+  const handleStart = () => start(step);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -200,17 +165,7 @@ export function HomePage() {
 
       <StudyOnboardingModal isOpen={isOnboardingOpen} onClose={() => setIsOnboardingOpen(false)} lessons={lessons} />
 
-      {confirmingLesson && (
-        <ResourceConfirmationModal
-          isOpen={true}
-          onClose={() => setConfirmingLessonId(null)}
-          lesson={confirmingLesson}
-          onConfirm={(selectedResource) => {
-            handleConfirmedStart(confirmingLesson.id, selectedResource);
-            setConfirmingLessonId(null);
-          }}
-        />
-      )}
+      {confirmModal}
     </div>
   );
 }

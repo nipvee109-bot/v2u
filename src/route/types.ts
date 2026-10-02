@@ -56,6 +56,8 @@ export interface RouteRequirement {
   dependsOn: string[];
   /** For non-subject requirements: what has to be prepared. */
   checklist?: string[];
+  /** Subject readiness target (0–100); defaults to the curriculum pathway target. */
+  targetPercent?: number;
 }
 
 export type RequirementStatus = 'done' | 'in-progress' | 'not-started' | 'locked';
@@ -85,6 +87,8 @@ export interface StudentRoute {
   completedCount: number;
   /** Student-facing summary of the time horizon. */
   horizon: string;
+  /** Where the requirements came from: generic route, or a VERIFIED admission path. */
+  basis: { kind: 'generic' } | { kind: 'admission-path'; pathId: string; pathName: string };
 }
 
 export interface RouteNextStep {

@@ -39,7 +39,8 @@ import { CURRICULUM } from '../curriculum/data';
 import { getResourcesForLesson } from '../resources/engine';
 import type { LearningPlan, TimeBudgetMinutes } from '../resources/types';
 import { buildStudentRoute, getRouteNextStep } from '../route/engine';
-import type { StudentProfile } from '../route/types';
+import type { StudentProfile, StudentRoute } from '../route/types';
+import type { AdmissionRegistry } from '../admission/types';
 import { createSkillReadinessProvider, getWeakestSkill } from '../skills/engine';
 
 export type NextStepKind = 'continue' | 'review' | 'strengthen' | 'study' | 'empty';
@@ -63,6 +64,8 @@ export interface NextStepRouteContext {
   budget?: TimeBudgetMinutes;
   /** Student answers for exam / portfolio / application checklists. */
   checklist?: Record<string, 'met' | 'gap'>;
+  /** Admission data (defaults to the shipped registry); only verified paths are used. */
+  admissionRegistry?: AdmissionRegistry;
 }
 
 export interface NextStepGoalInput {
@@ -155,6 +158,22 @@ function curriculumInfoFor(cLesson: CurriculumLesson, lessons: Lesson[], preferr
   };
 }
 
+/**
+ * The route used by adaptive mode. Exported so the Roadmap builds on the
+ * exact same route instead of re-deriving it.
+ */
+export function buildNextStepRoute(params: NextStepParams): StudentRoute | null {
+  const ctx = params.route;
+  if (!ctx) return null;
+  return buildStudentRoute({
+    profile: ctx.profile,
+    storeLessons: params.lessons ?? [],
+    readiness: createSkillReadinessProvider(ctx.records, params.referenceDate ?? new Date()),
+    checklist: ctx.checklist,
+    admissionRegistry: ctx.admissionRegistry,
+  });
+}
+
 export function getNextStep(params: NextStepParams): NextStep {
   const {
     lessons = [],
@@ -206,14 +225,7 @@ export function getNextStep(params: NextStepParams): NextStep {
 
   // ── Adaptive mode: answer the Home questions from the student's route ──
   const routeCtx = params.route;
-  const route = routeCtx
-    ? buildStudentRoute({
-        profile: routeCtx.profile,
-        storeLessons: lessons,
-        readiness: createSkillReadinessProvider(routeCtx.records, referenceDate),
-        checklist: routeCtx.checklist,
-      })
-    : null;
+  const route = buildNextStepRoute({ ...params, lessons, referenceDate });
   const budget = routeCtx?.budget ?? route?.profile.availableMinutes;
   const weakSkill = routeCtx ? getWeakestSkill({ storeLessons: lessons, records: routeCtx.records, referenceDate }) : undefined;
 

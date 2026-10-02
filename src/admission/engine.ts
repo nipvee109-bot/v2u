@@ -183,7 +183,7 @@ export const CHECK_LABEL: Record<RequirementCheck, string> = {
 };
 
 /** Checklist keys are owned by the Route Engine (route stages hold the checklists). */
-export { checklistKey } from '../route/engine';
+export { checklistKey } from '../route/keys';
 
 export function isValidGpax(value: number): boolean {
   return Number.isFinite(value) && value >= 0 && value <= 4;
@@ -343,7 +343,7 @@ export function toRouteRequirements(
     if (r.kind === 'subject') {
       const id = `${path.id}:subject:${r.subjectId}`;
       subjectIds.push(id);
-      out.push({ id, kind: 'subject', title: curriculum.subjects.find((x) => x.id === r.subjectId)?.title ?? r.subjectId, description: `ต้องการความพร้อม ${r.minReadinessPercent}%`, subjectId: r.subjectId, dependsOn: [] });
+      out.push({ id, kind: 'subject', targetPercent: r.minReadinessPercent, title: curriculum.subjects.find((x) => x.id === r.subjectId)?.title ?? r.subjectId, description: `ต้องการความพร้อม ${r.minReadinessPercent}%`, subjectId: r.subjectId, dependsOn: [] });
     }
   }
   const exams = path.requirements.filter((r): r is Extract<AdmissionRequirement, { kind: 'exam' }> => r.kind === 'exam');
