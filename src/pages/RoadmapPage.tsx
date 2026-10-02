@@ -158,10 +158,10 @@ export function RoadmapPage() {
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-xs font-semibold text-blue-400 uppercase tracking-wider">
-              <Map className="w-4 h-4" /> 6-Month Learning Roadmap Engine
+              <Map className="w-4 h-4" /> ลำดับเนื้อหาตามหลักสูตร
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              แผนการเรียน 6 เดือนสู่วิศวกรรมคอมพิวเตอร์ & AI
+              ลำดับเนื้อหาสู่วิศวกรรมคอมพิวเตอร์ & AI
             </h1>
             <p className="text-xs md:text-sm text-slate-300 max-w-2xl leading-relaxed">
               เชื่อมโยงการอ่านหนังสือในแต่ละวันเข้ากับเป้าหมายระดับเดือนและไมล์สโตนสำคัญ เพื่อให้มั่นใจว่าครอบคลุมเนื้อหาครบถ้วนก่อนสอบ
@@ -171,7 +171,7 @@ export function RoadmapPage() {
           {/* Macro Progress Pill */}
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 min-w-[220px] shrink-0 space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-300 font-medium">ความก้าวหน้า 6 เดือน</span>
+              <span className="text-slate-300 font-medium">ความก้าวหน้าตามลำดับเนื้อหา</span>
               <span className="text-white font-bold">{overallProgressPercent}%</span>
             </div>
             <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
@@ -363,7 +363,7 @@ export function RoadmapPage() {
               โครงสร้างเนื้อหาแต่ละสัปดาห์ (Weekly Curriculum Breakdown)
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              เจาะลึก 6 เดือน &rarr; เดือน &rarr; สัปดาห์ &rarr; วิชา &rarr; บทเรียนจริง
+              เจาะลึกช่วงเนื้อหา &rarr; สัปดาห์ &rarr; วิชา &rarr; บทเรียนจริง
             </p>
           </div>
 

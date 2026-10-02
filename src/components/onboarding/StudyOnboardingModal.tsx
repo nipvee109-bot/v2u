@@ -17,6 +17,8 @@ import type { SubjectId, OnboardingPreferences, Lesson } from '../../types';
 import { SUBJECTS } from '../../types';
 import { generateFirstWeekPlan } from '../../utils/onboardingUtils';
 import { useStore } from '../../store/useStore';
+import { HorizonPicker } from '../HorizonPicker';
+import type { PlanningHorizon } from '../../route/types';
 
 interface StudyOnboardingModalProps {
   isOpen: boolean;
@@ -55,7 +57,12 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
   onStartFirstLesson,
 }) => {
   const navigate = useNavigate();
-  const { completeOnboarding, skipOnboarding, startLearningSession } = useStore();
+  const { completeOnboarding, skipOnboarding, startLearningSession, setStudentProfile } = useStore();
+  const [planningHorizon, setPlanningHorizon] = useState<PlanningHorizon | undefined>(undefined);
+  /** Save the horizon only if the student actually picked one (no silent default). */
+  const saveHorizon = () => {
+    if (planningHorizon) setStudentProfile({ planningHorizon });
+  };
 
   const [currentStep, setCurrentStep] = useState<number>(1);
 
@@ -122,6 +129,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
 
   const handleSaveAndStartLesson = () => {
     const { firstLessonId } = completeOnboarding(activePreferences);
+    saveHorizon();
     onClose();
     if (onStartFirstLesson) {
       onStartFirstLesson();
@@ -135,6 +143,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
 
   const handleSaveAndGoHome = () => {
     completeOnboarding(activePreferences);
+    saveHorizon();
     onClose();
     navigate('/');
   };
@@ -172,7 +181,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
                 เริ่มต้นใช้งาน V2U &middot; ขั้นตอนที่ {currentStep}
               </p>
               <h2 id="onboarding-modal-title" className="text-sm font-bold text-slate-800">
-                {currentStep === 1 && 'เป้าหมายหลัก 6 เดือน'}
+                {currentStep === 1 && 'เป้าหมายหลัก'}
                 {currentStep === 2 && 'วิชาที่ต้องการโฟกัส'}
                 {currentStep === 3 && 'เวลาเรียนต่อสัปดาห์'}
                 {currentStep === 4 && 'วันที่สะดวกเรียน'}
@@ -220,7 +229,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
                   <span>ขั้นที่ 1: กำหนดเป้าหมาย</span>
                 </span>
                 <h3 className="text-lg md:text-xl font-bold text-slate-900">
-                  อะไรคือเป้าหมายหลักของคุณใน 6 เดือนนี้?
+                  เป้าหมายหลักของคุณคืออะไร?
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
                   ระบบจะใช้เป้าหมายนี้เป็นทิศทางหลักในการจัดสรร Roadmap และระบบติดตามความก้าวหน้า
@@ -275,6 +284,12 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
                   className="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
+
+              {/* Phase 50: personal planning horizon (optional; can change later in เส้นทาง) */}
+              <div className="pt-2">
+                <HorizonPicker value={planningHorizon} onChange={setPlanningHorizon} />
+                <p className="mt-1 text-[11px] text-slate-500">ไม่แน่ใจข้ามได้ — เปลี่ยนภายหลังได้ที่หน้าเส้นทาง</p>
+              </div>
             </div>
           )}
 
@@ -287,7 +302,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
                   <span>ขั้นที่ 2: เลือกวิชาที่ต้องเรียน</span>
                 </span>
                 <h3 className="text-lg md:text-xl font-bold text-slate-900">
-                  เลือกวิชาที่คุณต้องการเน้นในหลักสูตร 6 เดือน
+                  เลือกวิชาที่คุณต้องการเน้น
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
                   สามารถเลือกได้มากกว่า 1 วิชา (ระบบจะเกลี่ยบทเรียนตามสัดส่วนที่เหมาะสม)
@@ -598,7 +613,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
                   <span>ขั้นที่ 6: พร้อมเริ่มเรียนคาบแรก</span>
                 </span>
                 <h3 className="text-lg md:text-xl font-bold text-slate-900">
-                  ยินดีด้วยครับ! แผนการเรียน 6 เดือนของคุณพร้อมแล้ว
+                  ยินดีด้วยครับ! แผนการเรียนของคุณพร้อมแล้ว
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
                   นี่คือบทเรียนแรกของคุณ เริ่มต้นก้าวแรกเพื่อสร้างความต่อเนื่องและเริ่มสะสม Streak วันนี้!
@@ -627,7 +642,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
                     <span>&middot;</span>
                     <span>ระยะเวลา: {firstSession.plannedMinutes} นาที</span>
                     <span>&middot;</span>
-                    <span>เป้าหมาย 6 เดือน: {activePreferences.mainGoalTitle}</span>
+                    <span>เป้าหมาย: {activePreferences.mainGoalTitle}</span>
                   </div>
                 </div>
               ) : null}
@@ -635,7 +650,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
               <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 flex items-center gap-3 text-xs text-emerald-800">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                 <span>
-                  เมื่อกดเริ่มเรียน ระบบจะบันทึกเป้าหมาย 6 เดือน ตารางเรียน Planner และเปิดโหมดเรียนรู้จริงทันที
+                  เมื่อกดเริ่มเรียน ระบบจะบันทึกเป้าหมาย ตารางเรียน และเปิดโหมดเรียนรู้ทันที
                 </span>
               </div>
             </div>

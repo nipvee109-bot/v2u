@@ -9,6 +9,7 @@ import { EDUCATION_LEVELS } from '../../route/types';
 import type { EducationLevel, RequirementStatus } from '../../route/types';
 import { VOCATIONAL_PROGRAMS } from '../../route/data';
 import { TimeBudgetPicker } from '../../components/TimeBudgetPicker';
+import { HorizonPicker } from '../../components/HorizonPicker';
 import { ChecklistAnswerControl } from '../../components/ChecklistAnswerControl';
 import { useLearningRecords } from '../../hooks/useLearningRecords';
 import { getSubjectSkillGaps, SKILL_STATUS_LABEL } from '../../skills/engine';
@@ -104,22 +105,85 @@ export function RouteHub() {
         </p>
       </section>
 
-      {/* This period */}
-      <section aria-labelledby="route-period" className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-        <h2 id="route-period" className="text-sm font-bold text-slate-900">ช่วงนี้ต้องทำอะไร</h2>
-        <p className="mt-1 text-sm text-slate-800">
-          เดือนนี้: {roadmap.currentMonth.focus}
+      {/* What is missing (same list Home uses) */}
+      <section aria-labelledby="route-gaps" className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+        <h2 id="route-gaps" className="text-sm font-bold text-slate-900">ยังขาดอะไร</h2>
+        {today.missing.length > 0 ? (
+          <ul className="mt-1 space-y-0.5 text-sm text-slate-800">
+            {today.missing.map((m) => (
+              <li key={m}>• {m}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-1 text-sm text-slate-700">ไม่มีอะไรค้าง</p>
+        )}
+      </section>
+
+      {/* How much time */}
+      <section aria-labelledby="route-time" className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+        <h2 id="route-time" className="sr-only">มีเวลาเท่าไร</h2>
+        <HorizonPicker value={profile.planningHorizon} onChange={(h) => setStudentProfile({ planningHorizon: h })} />
+        <p className="mt-1.5 text-xs text-slate-500">
+          {roadmap.horizon.isDefault
+            ? `ยังไม่ได้ตั้งระยะเวลา — ตอนนี้ V2U วางแผนคร่าว ๆ ไว้ ${roadmap.horizon.months} เดือน`
+            : `คุณตั้งเป้าหมายไว้ใน ${roadmap.horizon.months} เดือน`}
         </p>
+        <div className="mt-3">
+          <TimeBudgetPicker label="เรียนได้วันละเท่าไหร่?" value={profile.availableMinutes} onChange={(m) => setStudentProfile({ availableMinutes: m })} />
+        </div>
+      </section>
+
+      {/* V2U arranges the route */}
+      <section aria-labelledby="route-period" className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+        <h2 id="route-period" className="text-sm font-bold text-slate-900">V2U จัดเส้นทางให้</h2>
+        <p
+          className={`mt-1 text-sm ${
+            roadmap.fit.status === 'over' ? 'text-amber-800' : roadmap.fit.status === 'tight' ? 'text-amber-700' : 'text-emerald-800'
+          }`}
+        >
+          {roadmap.fit.status === 'over'
+            ? `จากเวลาที่คุณมี แผน ${roadmap.horizon.months} เดือนอาจไม่พอสำหรับสิ่งที่ยังต้องเตรียม — V2U จัดลำดับเรื่องสำคัญก่อน`
+            : roadmap.fit.status === 'tight'
+              ? `เวลาค่อนข้างพอดี — V2U จัดเรื่องสำคัญก่อน และจะเหลือเวลาเตรียมสอบไม่มาก`
+              : 'แผนนี้สามารถเดินตามเวลาที่คุณตั้งไว้ได้'}
+        </p>
+        {roadmap.fit.estimatedWeeks > 0 && (
+          <p className="mt-0.5 text-xs text-slate-500">
+            จากเวลาวันละ {roadmap.dailyMinutes} นาที เนื้อหาที่ต้องเรียนใช้ประมาณ{' '}
+            {roadmap.fit.estimatedMonths.min === roadmap.fit.estimatedMonths.max || roadmap.fit.estimatedMonths.min === 0
+              ? `${roadmap.fit.estimatedMonths.max} เดือน`
+              : `${roadmap.fit.estimatedMonths.min}–${roadmap.fit.estimatedMonths.max} เดือน`}{' '}
+            (ยังไม่รวมการเตรียมสอบและ Portfolio)
+          </p>
+        )}
+        {(roadmap.fit.status === 'over' || roadmap.fit.status === 'tight') && (roadmap.fit.suggestedDailyMinutes || roadmap.fit.suggestedMonths) && (
+          <p className="mt-1 text-xs text-slate-700">
+            แนะนำ:{' '}
+            {[
+              roadmap.fit.suggestedDailyMinutes ? `เพิ่มเวลาเป็นวันละ ${roadmap.fit.suggestedDailyMinutes} นาที` : null,
+              roadmap.fit.suggestedMonths && roadmap.fit.suggestedMonths > roadmap.horizon.months ? `หรือขยายเป็นประมาณ ${roadmap.fit.suggestedMonths} เดือน` : null,
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          </p>
+        )}
+        <p className="mt-2 text-sm text-slate-800">ช่วงนี้: {roadmap.currentMonth.focus}</p>
         {currentPhase?.remainingMinutes ? (
           <p className="mt-0.5 text-xs text-slate-500">
-            {currentPhase.title} เหลืองานประมาณ {Math.ceil(currentPhase.remainingMinutes / 60)} ชั่วโมง · ถ้าเรียนวันละ {profile.availableMinutes} นาที ใช้เวลาราว{' '}
-            {(currentPhase.endWeek ?? 1) - (currentPhase.startWeek ?? 1) + 1} สัปดาห์
+            {currentPhase.title} เหลืองานประมาณ {Math.ceil(currentPhase.remainingMinutes / 60)} ชั่วโมง
           </p>
         ) : null}
-        {!roadmap.fitsInHorizon && (
-          <p className="mt-1 text-xs text-amber-700">
-            ด้วยเวลาวันละ {profile.availableMinutes} นาที วิชาพื้นฐานต้องใช้ราว {roadmap.subjectWeeksNeeded} สัปดาห์ ซึ่งเกิน 6 เดือน — ลองเพิ่มเวลาต่อวัน
-          </p>
+        {roadmap.beyondHorizon.length > 0 && (
+          <details className="mt-2">
+            <summary className="cursor-pointer text-xs font-semibold text-blue-700 min-h-[32px] flex items-center">
+              ถ้ามีเวลา ({roadmap.beyondHorizon.length} เรื่องที่อาจไม่ทันในเวลาที่ตั้งไว้)
+            </summary>
+            <ul className="mt-1 space-y-0.5 text-xs text-slate-600">
+              {roadmap.beyondHorizon.map((a, i) => (
+                <li key={`${a.curriculumLessonId ?? a.skillId ?? a.title}-${i}`}>• {a.title}</li>
+              ))}
+            </ul>
+          </details>
         )}
       </section>
 
@@ -144,9 +208,6 @@ export function RouteHub() {
       {/* Today's step on the route */}
       <section aria-labelledby="route-today" className="mb-4 rounded-2xl border border-blue-200 bg-blue-50/50 p-4">
         <h2 id="route-today" className="text-sm font-bold text-blue-900">วันนี้ควรทำอะไร</h2>
-        <div className="mt-2">
-          <TimeBudgetPicker value={profile.availableMinutes} onChange={(m) => setStudentProfile({ availableMinutes: m })} />
-        </div>
         <div className="mt-3">
           <p className="text-base font-extrabold text-slate-900">{today.todayAction}</p>
           {today.minutes !== undefined && (
@@ -191,7 +252,7 @@ export function RouteHub() {
 
       {/* 6-month overview */}
       <section aria-labelledby="route-months" className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-        <h2 id="route-months" className="text-sm font-bold text-slate-900">ภาพรวม 6 เดือน (ประมาณ)</h2>
+        <h2 id="route-months" className="text-sm font-bold text-slate-900">ภาพรวมเส้นทางของคุณ · {roadmap.horizon.months} เดือน (ประมาณ)</h2>
         <ol className="mt-2 space-y-1 text-xs">
           {roadmap.months.map((m) => (
             <li key={m.index} className={`flex gap-2 ${m.isCurrent ? 'font-bold text-blue-800' : 'text-slate-700'}`}>
@@ -289,7 +350,7 @@ export function RouteHub() {
       <HubLinkList
         heading="เครื่องมือวางแผน"
         links={[
-          { to: '/roadmap', title: 'แผน 6 เดือน', description: 'ภาพรวมเส้นทางทั้งหมดและหมุดหมายแต่ละเดือน', icon: Map },
+          { to: '/roadmap', title: 'ลำดับเนื้อหาตามหลักสูตร', description: 'เนื้อหาทั้งหมดเรียงเป็นช่วง ๆ — ระยะเวลาจริงดูได้ในแผนของคุณด้านบน', icon: Map },
           { to: '/goals', title: 'เป้าหมาย', description: 'ตั้งและติดตามเป้าหมายของคุณ', icon: Target },
           { to: '/planner', title: 'ตารางเรียน & แผน', description: 'วางแผนเวลาเรียนแต่ละวัน', icon: CalendarDays },
         ]}

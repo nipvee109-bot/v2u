@@ -61,7 +61,35 @@ export function getCurriculumLessonsForStudyLesson(
  * (Progress lives on store lessons; the curriculum itself holds no user state.)
  */
 export function isCurriculumLessonCompleted(cLesson: CurriculumLesson, storeLessons: Lesson[]): boolean {
-  return findStudyLesson(cLesson, storeLessons)?.status === 'COMPLETED';
+  const study = findStudyLesson(cLesson, storeLessons);
+  if (!study) return false;
+  // Phase 50: per-curriculum-lesson progress when tracked; legacy data keeps
+  // the old meaning (a COMPLETED study lesson counts for all its curriculum lessons).
+  if (Array.isArray(study.completedCurriculumLessonIds)) return study.completedCurriculumLessonIds.includes(cLesson.id);
+  return study.status === 'COMPLETED';
+}
+
+/**
+ * Which curriculum lesson a finished sitting should be credited to:
+ * the one it was started for, else the first not-yet-done one in this study lesson.
+ */
+export function creditCurriculumLesson(
+  storeLesson: Lesson,
+  storeLessons: Lesson[],
+  requestedId?: string,
+  curriculum: Curriculum = CURRICULUM
+): string[] | undefined {
+  const inLesson = getCurriculumLessonsForStudyLesson(storeLesson, curriculum);
+  if (inLesson.length === 0) return storeLesson.completedCurriculumLessonIds;
+  // Legacy lesson already completed under the old rule: keep its meaning, do not rewrite.
+  if (storeLesson.completedCurriculumLessonIds === undefined && storeLesson.status === 'COMPLETED') return undefined;
+  const done = storeLesson.completedCurriculumLessonIds ?? [];
+  const target =
+    inLesson.find((l) => l.id === requestedId) ??
+    inLesson.find((l) => !done.includes(l.id) && getMissingPrerequisites(l, storeLessons, curriculum).length === 0) ??
+    inLesson.find((l) => !done.includes(l.id));
+  if (!target) return done;
+  return done.includes(target.id) ? done : [...done, target.id];
 }
 
 export function getMissingPrerequisites(

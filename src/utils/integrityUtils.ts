@@ -98,6 +98,9 @@ export function computePayloadChecksum(payload: Partial<FullBackupPayload>): str
   if ((payload.schemaVersion || 0) >= 5) {
     const p = payload.studentProfile;
     str += p ? `_${p.educationLevel}|${p.programId}|${p.targetId}|${p.availableMinutes}` : '_noprofile';
+    // Phase 50: planning horizon is covered only when present, so v5 files
+    // written before it existed keep verifying.
+    if (p?.planningHorizon) str += `|h${p.planningHorizon.months}${p.planningHorizon.preset ? 'p' : 'c'}`;
     // Optional admission inputs: only part of the checksum when present, so
     // v5 files written before Phase 46C keep verifying.
     const a = payload.admissionInputs;
@@ -208,6 +211,10 @@ export function sanitizeLesson(raw: unknown, index: number): Lesson {
     resources: Array.isArray(l.resources) ? l.resources : [],
     images: Array.isArray(l.images) ? l.images : [],
     quizAttempts: Array.isArray(l.quizAttempts) ? l.quizAttempts : [],
+    // Phase 50: per-curriculum-lesson progress (absent in older backups = legacy meaning)
+    ...(Array.isArray(l.completedCurriculumLessonIds)
+      ? { completedCurriculumLessonIds: (l.completedCurriculumLessonIds as unknown[]).filter((x): x is string => typeof x === 'string') }
+      : {}),
     confidence: typeof l.confidence === 'string' ? (l.confidence as any) : undefined,
     masteryScore: typeof l.masteryScore === 'number' ? (l.masteryScore as any) : undefined,
     firstStudiedAt: typeof l.firstStudiedAt === 'string' ? l.firstStudiedAt : undefined,

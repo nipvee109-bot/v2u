@@ -149,6 +149,11 @@ export interface Lesson {
   reviewCount?: number;
   nextReviewAt?: string;
   timestampedNotes?: TimestampedNote[];
+  /**
+   * Phase 50: which curriculum lessons inside this study lesson are actually
+   * done. Undefined = legacy data (status COMPLETED counts for all of them).
+   */
+  completedCurriculumLessonIds?: string[];
 }
 
 export interface TimestampedNote {
@@ -251,6 +256,8 @@ export interface LearningSession {
   plannedSessionId?: string;
   /** Phase 49: minutes planned for this sitting (student's daily time). */
   plannedMinutes?: number;
+  /** Phase 50: the curriculum lesson this sitting was for (from the next step). */
+  curriculumLessonId?: string;
   lessonId: string;
   startedAt: string; // ISO timestamp
   pausedAt?: string; // ISO timestamp

@@ -35,6 +35,7 @@ import type {
 import type { StudentProfile } from '../route/types';
 import { DEFAULT_STUDENT_PROFILE } from '../route/data';
 import { budgetFromWeeklyHours } from '../route/engine';
+import { creditCurriculumLesson } from '../curriculum/engine';
 import type { StudentAdmissionInputs } from '../admission/types';
 import { EMPTY_ADMISSION_INPUTS, normalizeAdmissionInputs } from '../admission/engine';
 import { 
@@ -452,6 +453,7 @@ interface StoreState {
     lessonId: string;
     plannedSessionId?: string;
     plannedMinutes?: number;
+    curriculumLessonId?: string;
     source?: Resource;
   }) => LearningSession;
   pauseLearningSession: () => void;
@@ -1738,12 +1740,13 @@ export const useStore = create<StoreState>()(
         })),
 
       // Learning Session Engine Actions
-      startLearningSession: ({ lessonId, plannedSessionId, plannedMinutes, source }) => {
+      startLearningSession: ({ lessonId, plannedSessionId, plannedMinutes, curriculumLessonId, source }) => {
         const now = new Date().toISOString();
         const newSession: LearningSession = {
           sessionId: uuidv4(),
           plannedSessionId,
           ...(plannedMinutes ? { plannedMinutes } : {}),
+          ...(curriculumLessonId ? { curriculumLessonId } : {}),
           lessonId,
           startedAt: now,
           accumulatedSeconds: 0,
@@ -1855,8 +1858,11 @@ export const useStore = create<StoreState>()(
               const daysToAdd = (l.reviewCount || 0) === 0 ? 3 : (l.reviewCount || 0) === 1 ? 7 : 14;
               const nextReviewDate = new Date(Date.now() + daysToAdd * 24 * 60 * 60 * 1000).toISOString();
 
+              // Phase 50: credit only the curriculum lesson actually studied
+              const credited = creditCurriculumLesson(l, state.lessons, current.curriculumLessonId);
               const merged: Lesson = {
                 ...l,
+                ...(credited ? { completedCurriculumLessonIds: credited } : {}),
                 status: 'COMPLETED',
                 completedAt: now,
                 firstStudiedAt: l.firstStudiedAt || current.startedAt || now,

@@ -100,7 +100,17 @@ export function getSkillGaps(params: SkillGapParams): SkillGap[] {
     const studyLessonIds = [
       ...new Set(cLessons.map((l) => findStudyLesson(l, storeLessons)?.id).filter((x): x is string => !!x)),
     ];
-    const classified = studyLessonIds.map((id) => classifyRecord(recordByLesson.get(id), referenceDate));
+    // Evidence counts per (curriculum lesson → study lesson) pair. Phase 50: when a study
+    // lesson tracks which curriculum lessons are done, a sibling's study is not evidence.
+    const classified = cLessons
+      .map((cl) => findStudyLesson(cl, storeLessons))
+      .map((study, i) => {
+        if (!study) return null;
+        const tracked = study.completedCurriculumLessonIds;
+        if (Array.isArray(tracked) && !tracked.includes(cLessons[i].id)) return { status: 'not-learned' as SkillStatus, reason: 'not-started' as SkillReason };
+        return classifyRecord(recordByLesson.get(study.id), referenceDate);
+      })
+      .filter((c): c is { status: SkillStatus; reason: SkillReason } => c !== null);
     const learned = classified.filter((c) => c.status !== 'not-learned');
     // A skill is as strong as its weakest studied lesson; unstudied if none studied.
     const pick = learned.length > 0 ? [...learned].sort((a, b) => URGENCY[a.status] - URGENCY[b.status])[0] : classified[0];

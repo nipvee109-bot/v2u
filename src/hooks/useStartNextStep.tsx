@@ -24,8 +24,8 @@ export function useStartNextStep(): { start: (step: NextStep) => void; confirmMo
     navigate(step.href);
   };
 
-  const handleConfirmedStart = (lessonId: string, resource?: Resource, plannedMinutes?: number) => {
-    startLearningSession({ lessonId, source: resource, plannedMinutes });
+  const handleConfirmedStart = (lessonId: string, resource?: Resource, plannedMinutes?: number, curriculumLessonId?: string) => {
+    startLearningSession({ lessonId, source: resource, plannedMinutes, curriculumLessonId });
     navigate(`/study/${lessonId}`);
   };
 
@@ -37,7 +37,7 @@ export function useStartNextStep(): { start: (step: NextStep) => void; confirmMo
       suggestion={confirming?.curriculum?.recommendedResource}
       plannedMinutes={confirming?.minutes}
       onConfirm={(selectedResource) => {
-        handleConfirmedStart(confirmingLesson.id, selectedResource, confirming?.minutes);
+        handleConfirmedStart(confirmingLesson.id, selectedResource, confirming?.minutes, confirming?.curriculum?.lessonId);
         setConfirming(null);
       }}
     />

@@ -1,56 +1,42 @@
 /* =========================================================================
-   V2U Roadmap Engine (Phase 47) — deterministic 6 months → month → week → today
+   V2U Roadmap Engine (Phase 47 → Phase 50: personal time horizon)
    -------------------------------------------------------------------------
-   Consumes Route + Skill Gap + Curriculum + Next Step; owns only scheduling.
-
-   Estimates are deliberately coarse and labelled "ประมาณ":
-     remaining work  = minutes of curriculum lessons not yet completed
-                       (+ missing prerequisites from other subjects, scheduled first)
-                       + a fixed strengthening block per skill that is not solid
-     weekly capacity = daily minutes × STUDY_DAYS_PER_WEEK
+   Horizon is the student's own choice (preset 3/6/9/12 or custom 1–24
+   months); 6 months is only the planning default until they choose.
+   Workload, time fit and priority order come from ./plan (shared with
+   getNextStep, so today's step and the week list follow the same plan).
    Exams / portfolio / application have no honest duration → open-ended.
    ========================================================================= */
 
-import { CURRICULUM } from '../curriculum/data';
-import {
-  findStudyLesson,
-  getCurriculumLesson,
-  getMissingPrerequisites,
-  getOrderedCurriculumLessons,
-  isCurriculumLessonCompleted,
-} from '../curriculum/engine';
-import type { CurriculumLesson } from '../curriculum/types';
-import { getSkillGaps } from '../skills/engine';
 import type { NextStep, NextStepParams } from '../utils/nextStep';
 import { buildNextStepRoute, getNextStep } from '../utils/nextStep';
-import { normalizeStudentProfile } from '../route/engine';
+import { normalizeStudentProfile, resolvePlanningHorizon } from '../route/engine';
+import type { PlanningHorizon } from '../route/types';
 import type { Roadmap, RoadmapAction, RoadmapMonth, RoadmapPhase, RoadmapWeek } from './types';
+import { computePlan, monthsToWeeks, STRENGTHEN_MINUTES, STUDY_DAYS_PER_WEEK } from './plan';
+import type { PlanItem } from './plan';
 
-export const HORIZON_WEEKS = 26;
-export const HORIZON_MONTHS = 6;
-/** Assumed study days per week for weekly capacity (documented, coarse). */
-export const STUDY_DAYS_PER_WEEK = 5;
-/** Block reserved to strengthen one skill that is not yet solid. */
-export const STRENGTHEN_MINUTES = 30;
+export { STUDY_DAYS_PER_WEEK, STRENGTHEN_MINUTES };
 
 export interface BuildRoadmapParams extends NextStepParams {
   route: NonNullable<NextStepParams['route']>;
 }
 
-/** Week range of month m (1..6) within the 26-week horizon. */
-export function monthWeekRange(m: number): { startWeek: number; endWeek: number } {
-  const per = HORIZON_WEEKS / HORIZON_MONTHS;
-  return { startWeek: Math.ceil((m - 1) * per) + 1, endWeek: Math.ceil(m * per) };
+/** Week range of month m within a horizon of `months` months. */
+export function monthWeekRange(m: number, months: number): { startWeek: number; endWeek: number } {
+  const total = monthsToWeeks(months);
+  return { startWeek: Math.round(((m - 1) * total) / months) + 1, endWeek: Math.round((m * total) / months) };
 }
 
-function lessonAction(l: CurriculumLesson, storeLessons: NextStepParams['lessons'], requirementId: string): RoadmapAction {
+function toAction(i: PlanItem): RoadmapAction {
   return {
-    kind: 'study',
-    title: l.title,
-    minutes: l.estimatedMinutes,
-    curriculumLessonId: l.id,
-    studyLessonId: findStudyLesson(l, storeLessons)?.id,
-    requirementId,
+    kind: i.kind,
+    title: i.title,
+    minutes: i.minutes,
+    curriculumLessonId: i.curriculumLessonId,
+    skillId: i.skillId,
+    studyLessonId: i.studyLessonId,
+    requirementId: i.requirementId,
   };
 }
 
@@ -76,22 +62,12 @@ export function buildRoadmap(params: BuildRoadmapParams): Roadmap {
   const today = getNextStep(p);
   const route = buildNextStepRoute(p)!;
   const profile = normalizeStudentProfile(p.route.profile);
+  const horizon = resolvePlanningHorizon(p.route.profile);
   const dailyMinutes = p.route.budget ?? profile.availableMinutes;
-  const weeklyMinutes = dailyMinutes * STUDY_DAYS_PER_WEEK;
 
-  const skillGaps = getSkillGaps({ storeLessons: lessons, records: p.route.records, referenceDate });
-  const ordered = getOrderedCurriculumLessons(CURRICULUM);
-  const scheduled = new Set<string>();
-
-  // Insert missing prerequisites (any subject) before the lesson that needs them.
-  const withPrereqs = (l: CurriculumLesson, out: CurriculumLesson[]) => {
-    if (scheduled.has(l.id) || isCurriculumLessonCompleted(l, lessons)) return;
-    for (const pre of getMissingPrerequisites(l, lessons)) withPrereqs(pre, out);
-    if (!scheduled.has(l.id)) {
-      scheduled.add(l.id);
-      out.push(l);
-    }
-  };
+  const plan = computePlan({ route, storeLessons: lessons, records: p.route.records, referenceDate, dailyMinutes, horizon });
+  const weeklyMinutes = plan.fit.weeklyMinutes;
+  const horizonWeeks = plan.fit.targetWeeks;
 
   // ── Phases ──────────────────────────────────────────────────────────
   const phases: RoadmapPhase[] = route.steps.map((step) => {
@@ -108,22 +84,7 @@ export function buildRoadmap(params: BuildRoadmapParams): Roadmap {
         openEnded: true,
       };
     }
-    const work: RoadmapAction[] = [];
-    if (step.status !== 'done') {
-      const lessonsOut: CurriculumLesson[] = [];
-      ordered.filter((l) => l.subjectId === req.subjectId).forEach((l) => withPrereqs(l, lessonsOut));
-      lessonsOut.forEach((l) => work.push(lessonAction(l, lessons, req.id)));
-      // Skills not solid in this subject: needs-review always; developing only once its lessons are done
-      skillGaps
-        .filter((g) => g.skill.subjectId === req.subjectId)
-        .filter((g) => g.status === 'needs-review' || (g.status === 'developing' && g.lessonIds.every((id) => {
-          const cl = getCurriculumLesson(id);
-          return !cl || isCurriculumLessonCompleted(cl, lessons);
-        })))
-        .forEach((g) =>
-          work.push({ kind: 'strengthen', title: `ทบทวน: ${g.skill.title}`, minutes: STRENGTHEN_MINUTES, skillId: g.skill.id, studyLessonId: g.studyLessonIds[0], requirementId: req.id })
-        );
-    }
+    const work = (plan.work.get(req.id) ?? []).map(toAction);
     return {
       requirementId: req.id,
       title: req.title,
@@ -147,6 +108,19 @@ export function buildRoadmap(params: BuildRoadmapParams): Roadmap {
     cursor = ph.endWeek + 1;
   }
   const subjectWeeksNeeded = cursor - 1;
+  // Work that falls after the chosen horizon (shown as "ถ้ามีเวลา", not silently compressed)
+  const beyondHorizon: RoadmapAction[] = [];
+  {
+    let minutesSoFar = 0;
+    const capacity = horizonWeeks * weeklyMinutes;
+    for (const ph of phases) {
+      if (ph.openEnded) continue;
+      for (const a of ph.work) {
+        minutesSoFar += a.minutes ?? 0;
+        if (minutesSoFar > capacity) beyondHorizon.push(a);
+      }
+    }
+  }
   for (const ph of phases) {
     if (!ph.openEnded || ph.status === 'done') continue;
     const deps = route.steps.find((s) => s.requirement.id === ph.requirementId)?.requirement.dependsOn ?? [];
@@ -159,14 +133,15 @@ export function buildRoadmap(params: BuildRoadmapParams): Roadmap {
         return dep.openEnded ? dep.startWeek : dep.endWeek + 1;
       })
     );
-    ph.startWeek = Math.min(depStart, HORIZON_WEEKS);
-    ph.endWeek = HORIZON_WEEKS;
+    const end = Math.max(horizonWeeks, depStart);
+    ph.startWeek = depStart;
+    ph.endWeek = end;
   }
 
-  // ── Months ──────────────────────────────────────────────────────────
-  const months: RoadmapMonth[] = Array.from({ length: HORIZON_MONTHS }, (_, i) => {
+  // ── Months of the chosen horizon ───────────────────────────────────
+  const months: RoadmapMonth[] = Array.from({ length: horizon.months }, (_, i) => {
     const m = i + 1;
-    const { startWeek, endWeek } = monthWeekRange(m);
+    const { startWeek, endWeek } = monthWeekRange(m, horizon.months);
     const active = phases.filter((ph) => ph.startWeek !== undefined && ph.endWeek !== undefined && ph.startWeek <= endWeek && ph.endWeek >= startWeek);
     return {
       index: m,
@@ -178,14 +153,14 @@ export function buildRoadmap(params: BuildRoadmapParams): Roadmap {
     };
   });
 
-  // ── This week: today first, then the next work in roadmap order ─────
+  // ── This week: today first, then the next work in plan order ───────
   const first = todayAction(today);
   const actions: RoadmapAction[] = [first];
   let planned = first.minutes ?? 0;
   const same = (a: RoadmapAction) =>
     (first.curriculumLessonId && a.curriculumLessonId === first.curriculumLessonId) ||
     (first.kind === 'strengthen' && a.kind === 'strengthen' && a.studyLessonId === first.studyLessonId);
-  // Stop at the first item that does not fit, so the week keeps roadmap order.
+  // Stop at the first item that does not fit, so the week keeps plan order.
   fill: for (const ph of phases) {
     if (ph.openEnded) continue;
     for (const a of ph.work) {
@@ -197,16 +172,22 @@ export function buildRoadmap(params: BuildRoadmapParams): Roadmap {
   }
   const thisWeek: RoadmapWeek = { index: 1, budgetMinutes: weeklyMinutes, plannedMinutes: planned, actions };
 
+  const chosen: PlanningHorizon | undefined = profile.planningHorizon;
   return {
-    horizonWeeks: HORIZON_WEEKS,
+    horizonWeeks,
+    horizon: { months: horizon.months, isDefault: horizon.isDefault, preset: chosen?.preset ?? true },
+    dailyMinutes,
     weeklyMinutes,
+    fit: plan.fit,
+    prioritized: plan.prioritize,
+    beyondHorizon,
     phases,
     months,
     currentPhaseId: route.currentRequirementId,
     currentMonth: months[0],
     thisWeek,
     today,
-    fitsInHorizon: subjectWeeksNeeded <= HORIZON_WEEKS,
+    fitsInHorizon: subjectWeeksNeeded <= horizonWeeks,
     subjectWeeksNeeded,
     basis: route.basis,
   };

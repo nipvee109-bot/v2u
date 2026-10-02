@@ -214,7 +214,8 @@ await test('No invented dates: roadmap carries weeks, never calendar dates', () 
 
 console.log('\n6. Architecture');
 await test('Roadmap domain is pure and consumes route / skills / curriculum / next step', () => {
-  const eng = read('src/roadmap/engine.ts');
+  // Phase 50: workload/priority moved to the shared roadmap/plan.ts module
+  const eng = read('src/roadmap/engine.ts') + read('src/roadmap/plan.ts');
   assert(!/from ['"]react|useStore/.test(eng));
   for (const m of ["from '../utils/nextStep'", "from '../skills/engine'", "from '../curriculum/engine'"]) assert(eng.includes(m), m);
   assert(!/function buildStudentRoute|function getSkillGaps/.test(eng), 'does not re-implement route or skill gap');

@@ -24,6 +24,23 @@ export interface VocationalProgram {
   strengths: CurriculumSubjectId[];
 }
 
+/**
+ * Phase 50: the planning horizon the student chose. Not a promise that all
+ * content fits — the planner checks that separately.
+ */
+export interface PlanningHorizon {
+  /** Whole months, 1–24 */
+  months: number;
+  /** true when picked from the preset list, false for a custom value */
+  preset: boolean;
+}
+
+export const HORIZON_PRESET_MONTHS = [3, 6, 9, 12] as const;
+export const MIN_HORIZON_MONTHS = 1;
+export const MAX_HORIZON_MONTHS = 24;
+/** Used for planning only while the student has not chosen a horizon. */
+export const DEFAULT_HORIZON_MONTHS = 6;
+
 /** Persisted per student (store: studentProfile). */
 export interface StudentProfile {
   educationLevel: EducationLevel;
@@ -31,6 +48,8 @@ export interface StudentProfile {
   targetId: string;
   /** Preferred daily study time; drives the time-based plan. */
   availableMinutes: TimeBudgetMinutes;
+  /** Chosen planning horizon; absent = not chosen yet (planner uses the default, labelled as such). */
+  planningHorizon?: PlanningHorizon;
 }
 
 export interface RouteTarget {

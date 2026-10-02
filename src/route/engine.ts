@@ -24,7 +24,8 @@ import type {
   StudentRoute,
   VocationalProgram,
 } from './types';
-import { EDUCATION_LEVELS } from './types';
+import { EDUCATION_LEVELS, DEFAULT_HORIZON_MONTHS, MAX_HORIZON_MONTHS, MIN_HORIZON_MONTHS } from './types';
+import type { PlanningHorizon } from './types';
 import { checklistKey } from './keys';
 import { ADMISSION_REGISTRY } from '../admission/registry';
 import { getPathsForRouteTarget, toRouteRequirements } from '../admission/engine';
@@ -44,10 +45,32 @@ export function getVocationalProgram(id: string): VocationalProgram {
   return VOCATIONAL_PROGRAMS.find((p) => p.id === id) ?? VOCATIONAL_PROGRAMS[VOCATIONAL_PROGRAMS.length - 1];
 }
 
+export function isValidPlanningHorizon(h: unknown): h is PlanningHorizon {
+  if (!h || typeof h !== 'object') return false;
+  const { months, preset } = h as PlanningHorizon;
+  return Number.isInteger(months) && months >= MIN_HORIZON_MONTHS && months <= MAX_HORIZON_MONTHS && typeof preset === 'boolean';
+}
+
+export interface ResolvedHorizon {
+  months: number;
+  /** true when the student has not chosen one (default used for planning only) */
+  isDefault: boolean;
+  preset: boolean;
+}
+
+export function resolvePlanningHorizon(profile?: Partial<StudentProfile> | null): ResolvedHorizon {
+  const h = profile?.planningHorizon;
+  return isValidPlanningHorizon(h)
+    ? { months: h.months, isDefault: false, preset: h.preset }
+    : { months: DEFAULT_HORIZON_MONTHS, isDefault: true, preset: true };
+}
+
 /** Fill gaps / repair invalid values from older or partial persisted profiles. */
 export function normalizeStudentProfile(profile?: Partial<StudentProfile> | null): StudentProfile {
   const p = { ...DEFAULT_STUDENT_PROFILE, ...(profile ?? {}) };
+  const horizon = isValidPlanningHorizon(p.planningHorizon) ? { planningHorizon: { months: p.planningHorizon.months, preset: p.planningHorizon.preset } } : {};
   return {
+    ...horizon,
     educationLevel: EDUCATION_LEVELS.includes(p.educationLevel) ? p.educationLevel : DEFAULT_STUDENT_PROFILE.educationLevel,
     programId: VOCATIONAL_PROGRAMS.some((x) => x.id === p.programId) ? p.programId : DEFAULT_STUDENT_PROFILE.programId,
     targetId: getRouteTarget(p.targetId) ? p.targetId : DEFAULT_STUDENT_PROFILE.targetId,
@@ -206,7 +229,9 @@ export function getRouteNextStep(
   route: StudentRoute,
   storeLessons: Lesson[],
   budget?: TimeBudgetMinutes,
-  curriculum: Curriculum = CURRICULUM
+  curriculum: Curriculum = CURRICULUM,
+  /** Phase 50: the personal plan's next lesson for this requirement (priority order). */
+  preferredLessonId?: string
 ): RouteNextStep | null {
   const step = route.steps.find((s) => s.requirement.id === route.currentRequirementId);
   const subjectId = step?.requirement.subjectId;
@@ -214,7 +239,15 @@ export function getRouteNextStep(
 
   const budgetMinutes = budget ?? route.profile.availableMinutes;
   const ordered = getOrderedCurriculumLessons(curriculum);
-  const wanted = ordered.find((l) => l.subjectId === subjectId && !isCurriculumLessonCompleted(l, storeLessons));
+  const preferredRaw = preferredLessonId ? curriculum.lessons.find((l) => l.id === preferredLessonId) : undefined;
+  const preferred = preferredRaw && !isCurriculumLessonCompleted(preferredRaw, storeLessons) ? preferredRaw : undefined;
+  const remainingInSubject = ordered.filter((l) => l.subjectId === subjectId && !isCurriculumLessonCompleted(l, storeLessons));
+  // A preferred lesson from another subject is a prerequisite gap: name the lesson that needs it.
+  const wanted = preferred
+    ? preferred.subjectId === subjectId
+      ? preferred
+      : remainingInSubject.find((l) => resolvePrerequisiteGap(l, storeLessons, curriculum).id === preferred.id) ?? preferred
+    : remainingInSubject[0];
   if (!wanted) return null;
 
   const lesson = resolvePrerequisiteGap(wanted, storeLessons, curriculum);

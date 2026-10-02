@@ -38,7 +38,8 @@ import type { CurriculumLesson } from '../curriculum/types';
 import { CURRICULUM } from '../curriculum/data';
 import { getResourcesForLesson } from '../resources/engine';
 import type { LearningPlan, TimeBudgetMinutes } from '../resources/types';
-import { buildStudentRoute, getRouteNextStep } from '../route/engine';
+import { buildStudentRoute, getRouteNextStep, resolvePlanningHorizon } from '../route/engine';
+import { computePlan } from '../roadmap/plan';
 import type { StudentProfile, StudentRoute } from '../route/types';
 import type { AdmissionRegistry } from '../admission/types';
 import { createSkillReadinessProvider, getWeakestSkill } from '../skills/engine';
@@ -218,7 +219,7 @@ export function getNextStep(params: NextStepParams): NextStep {
       }
     : {
         label: 'เข้ามหาวิทยาลัยที่คุณต้องการ',
-        detail: `ทำตามเส้นทาง 6 เดือนให้ครบ · ${roadmap.monthTitle}`,
+        detail: `ทำตามเส้นทางให้ครบ · ${roadmap.monthTitle}`,
       };
 
   // ── What is missing ───────────────────────────────────────────────────
@@ -269,7 +270,11 @@ export function getNextStep(params: NextStepParams): NextStep {
       },
       goal: {
         label: `${route.target.faculty} · ${route.target.title}`,
-        detail: `${route.horizon} · ผ่านแล้ว ${route.completedCount}/${route.steps.length} ขั้น`,
+        detail: (() => {
+          const h = resolvePlanningHorizon(route.profile);
+          const horizonText = h.isDefault ? route.horizon : `คุณตั้งเป้าหมายไว้ใน ${h.months} เดือน`;
+          return `${horizonText} · ผ่านแล้ว ${route.completedCount}/${route.steps.length} ขั้น`;
+        })(),
       },
       missing: routeMissing,
     };
@@ -342,7 +347,17 @@ export function getNextStep(params: NextStepParams): NextStep {
 
   // 4. Next lesson on the route (prerequisite-gap aware, time-budgeted)
   if (route) {
-    const rs = getRouteNextStep(route, lessons, budget);
+    // Phase 50: follow the personal plan's order (important topics first when time is short)
+    const plan = computePlan({
+      route,
+      storeLessons: lessons,
+      records: routeCtx!.records,
+      referenceDate,
+      dailyMinutes: budget ?? route.profile.availableMinutes,
+      horizon: resolvePlanningHorizon(route.profile),
+    });
+    const preferred = (plan.work.get(route.currentRequirementId ?? '') ?? []).find((i) => i.kind === 'study')?.curriculumLessonId;
+    const rs = getRouteNextStep(route, lessons, budget, undefined, preferred);
     const cLesson = rs ? getCurriculumLesson(rs.curriculumLessonId) : undefined;
     if (rs && rs.studyLessonId && cLesson) {
       return {

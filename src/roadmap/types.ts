@@ -1,7 +1,7 @@
 /* =========================================================================
    V2U Roadmap (Phase 47) — domain types
    -------------------------------------------------------------------------
-   6 months → month → week → today, derived from (never duplicating):
+   horizon (student's own months) → month → week → today, derived from:
      Route (requirements, verified admission path or generic)
      Skill Gap (readiness, weak skills)
      Curriculum (lessons, prerequisites, estimated minutes)
@@ -10,6 +10,7 @@
 
 import type { RequirementStatus } from '../route/types';
 import type { NextStep } from '../utils/nextStep';
+import type { PlanFit } from './plan';
 
 export type RoadmapActionKind = 'study' | 'strengthen' | 'review' | 'continue' | 'checklist';
 
@@ -63,7 +64,17 @@ export interface RoadmapWeek {
 }
 
 export interface Roadmap {
+  /** Weeks in the planning horizon (chosen by the student, or the default) */
   horizonWeeks: number;
+  /** Phase 50: the horizon; isDefault = student has not chosen one yet */
+  horizon: { months: number; isDefault: boolean; preset: boolean };
+  dailyMinutes: number;
+  /** Does the remaining work fit the horizon at the current daily time? */
+  fit: PlanFit;
+  /** true when time is short and important topics were moved first */
+  prioritized: boolean;
+  /** Work that does not fit inside the horizon at the current daily time */
+  beyondHorizon: RoadmapAction[];
   /** Daily minutes × study days per week */
   weeklyMinutes: number;
   phases: RoadmapPhase[];
@@ -73,7 +84,7 @@ export interface Roadmap {
   thisWeek: RoadmapWeek;
   /** TODAY — identical to getNextStep() for the same inputs. */
   today: NextStep;
-  /** Subject work fits within 6 months at the current daily time. */
+  /** Subject work fits within the horizon at the current daily time. */
   fitsInHorizon: boolean;
   /** Weeks of subject work remaining at the current daily time. */
   subjectWeeksNeeded: number;
