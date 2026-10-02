@@ -294,6 +294,9 @@ export function migrateToLatestSchema(raw: unknown): {
       ...(Array.isArray(item.resourcesUsed) ? { resourcesUsed: item.resourcesUsed as any } : {}),
       ...(typeof item.plannedMinutes === 'number' ? { plannedMinutes: item.plannedMinutes } : {}),
       ...(typeof item.curriculumLessonId === 'string' ? { curriculumLessonId: item.curriculumLessonId } : {}),
+      // Phase 54: learning mode + understanding check (absent in older backups)
+      ...(item.learningMode === 'read' || item.learningMode === 'video' || item.learningMode === 'v2u' ? { learningMode: item.learningMode } : {}),
+      ...(item.understandingCheck && typeof item.understandingCheck === 'object' ? { understandingCheck: item.understandingCheck as any } : {}),
     };
   });
 

@@ -459,6 +459,10 @@ interface StoreState {
   pauseLearningSession: () => void;
   resumeLearningSession: () => void;
   updateLearningSessionDraft: (draft: Partial<NonNullable<LearningSession['notesDraft']>>) => void;
+  /** Phase 54: record the learning mode chosen for the active sitting. */
+  setLearningMode: (mode: NonNullable<LearningSession['learningMode']>) => void;
+  /** Phase 54: record V2U's understanding check for the active sitting. */
+  recordUnderstandingCheck: (check: Omit<NonNullable<LearningSession['understandingCheck']>, 'checkedAt'>) => void;
   finishLearningSession: (actualStudyMinutes?: number, quizScore?: number, confidence?: ConfidenceLevel) => void;
   abandonLearningSession: () => void;
   recoverLearningSession: (confirmedMinutes?: number) => void;
@@ -1807,6 +1811,19 @@ export const useStore = create<StoreState>()(
         };
 
         set({ activeLearningSession: updated });
+      },
+
+      setLearningMode: (mode) => {
+        const current = get().activeLearningSession;
+        if (!current) return;
+        set({ activeLearningSession: { ...current, learningMode: mode, lastHeartbeatAt: new Date().toISOString() } });
+      },
+
+      recordUnderstandingCheck: (check) => {
+        const current = get().activeLearningSession;
+        if (!current) return;
+        const now = new Date().toISOString();
+        set({ activeLearningSession: { ...current, understandingCheck: { ...check, checkedAt: now }, lastHeartbeatAt: now } });
       },
 
       updateLearningSessionDraft: (draft) => {

@@ -167,7 +167,10 @@ await test('Confirmation modal renders describePlan from the same plan; Study Ro
   assert(read('src/pages/StudyRoom.tsx').includes('<LearningPathPanel'));
   assert(read('src/App.tsx').includes('/learn/curriculum/:lessonId'));
   const page = read('src/pages/CurriculumLessonPage.tsx');
-  for (const m of ['ดูคลิป', 'อ่าน', 'เรียนจาก V2U']) assert(page.includes(m));
+  // Phase 54: modes live in the shared learning flow; the third mode is now “เรียนกับ V2U”
+  assert(page.includes('<LessonLearning'));
+  const modes = read('src/components/learning/meta.ts');
+  for (const m of ['ดูคลิป', 'อ่าน', 'เรียนกับ V2U']) assert(modes.includes(m), m);
 });
 await test('Reading mode shows time, sections, summary, key terms, examples', () => {
   const v = read('src/components/learn/OriginalLessonView.tsx');

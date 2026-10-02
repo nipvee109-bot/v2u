@@ -1,0 +1,132 @@
+/* =========================================================================
+   Interactive lesson: สมการเชิงเส้นตัวแปรเดียว (math-alg-linear-eq)
+   Every problem, answer, step and mistake comes from the V2U original
+   lesson (src/content/originals.ts) or the curriculum quiz — nothing new
+   is claimed academically; only the questions around them are V2U's.
+   ========================================================================= */
+
+import type { InteractiveLesson } from '../types';
+
+export const LINEAR_EQUATION_LESSON: InteractiveLesson = {
+  lessonId: 'math-alg-linear-eq',
+  contentId: 'v2u-math-alg-linear-eq',
+  source: 'authored',
+  mission: {
+    title: 'ปลดล็อกสมการ',
+    goal: 'วันนี้เราจะทำให้สมการที่ดูยุ่งยาก เหลือเพียง x ตัวเดียว',
+  },
+  steps: [
+    {
+      id: 'variable',
+      type: 'concept',
+      title: 'เข้าใจตัวแปร',
+      body: 'สมการคือประโยคที่บอกว่าสองข้างมีค่าเท่ากัน ตัวอักษรอย่าง x คือค่าที่เรายังไม่รู้',
+      visual: { lines: ['3x + 5 = 20'], caption: 'ข้างซ้าย = ข้างขวา' },
+      keyIdea: 'คำตอบคือค่าของตัวแปรที่ทำให้สองข้างเท่ากันจริง',
+      skillId: 'skill-math-solve-linear',
+      interaction: {
+        kind: 'choice',
+        prompt: 'x ในสมการนี้หมายถึงอะไร?',
+        choices: ['ค่าที่ยังไม่รู้ ที่ทำให้สองข้างเท่ากัน', 'ตัวเลข 3 ที่อยู่ข้างหน้า', 'เครื่องหมายคูณ', 'ผลบวกของ 5 กับ 20'],
+        correctIndex: 0,
+        hint: 'ตัวแปรคือ “ตัวอักษรแทนค่าที่ยังไม่รู้” — ลองหาตัวเลือกที่พูดถึงค่าที่ยังไม่รู้',
+        explanation: 'x คือตัวแปร: ค่าที่เรายังไม่รู้ งานของเราคือหาค่าของ x ที่ทำให้ 3x + 5 เท่ากับ 20 จริง ๆ',
+      },
+    },
+    {
+      id: 'first-move',
+      type: 'think',
+      title: 'คิดก่อนทำ',
+      body: 'เป้าหมายคือให้เหลือ x ตัวเดียว ทำอะไรกับข้างหนึ่ง ต้องทำแบบเดียวกันกับอีกข้าง',
+      visual: { lines: ['3x + 5 = 20'] },
+      skillId: 'skill-math-solve-linear',
+      interaction: {
+        kind: 'choice',
+        prompt: 'ขั้นต่อไปควรทำอะไร?',
+        choices: ['ลบ 5 ทั้งสองข้าง', 'หารด้วย 3 เฉพาะข้างซ้าย', 'บวก 5 ทั้งสองข้าง', 'คูณ 20 ทั้งสองข้าง'],
+        correctIndex: 0,
+        hint: 'อะไรที่ “ติด” อยู่กับ 3x และต้องเอาออก? ทำสิ่งเดียวกันทั้งสองข้างเสมอ',
+        explanation: 'ย้าย +5 ออกจากข้างที่มี x — ลบ 5 ทั้งสองข้าง (ย้ายข้างแล้วเปลี่ยนเครื่องหมาย) จากนั้นหารด้วยตัวเลขหน้า x',
+      },
+      afterVisual: { lines: ['3x + 5 = 20', '3x = 20 − 5 = 15', 'x = 15 ÷ 3 = 5', 'ตรวจ: 3(5) + 5 = 20 ✓'], caption: 'ย้ายตัวเลข → หาร → ตรวจ' },
+    },
+    {
+      id: 'order-brackets',
+      type: 'example',
+      title: 'สมการที่มีวงเล็บ',
+      body: 'ถ้ามีวงเล็บ ให้กระจายวงเล็บก่อน แล้วค่อยย้ายข้างและหาร',
+      visual: { lines: ['2(x − 4) = 10'] },
+      skillId: 'skill-math-solve-linear',
+      interaction: {
+        kind: 'order',
+        prompt: 'เรียงขั้นตอนการแก้ให้ถูกต้อง',
+        items: ['2x − 8 = 10', '2x = 18', 'x = 9', 'ตรวจ: 2(9 − 4) = 10 ✓'],
+        hint: 'เริ่มจากกระจายวงเล็บ: 2 คูณทุกตัวในวงเล็บ',
+        explanation: 'กระจายวงเล็บ → ย้าย −8 → หารด้วย 2 → แทนค่ากลับเพื่อตรวจ',
+      },
+    },
+    {
+      id: 'try-1',
+      type: 'try',
+      title: 'ลองทำเอง',
+      visual: { lines: ['5x − 7 = 18'] },
+      skillId: 'skill-math-solve-linear',
+      interaction: {
+        kind: 'typed',
+        prompt: 'หาค่า x',
+        inputLabel: 'x =',
+        accept: ['5'],
+        hint: 'บวก 7 ทั้งสองข้างก่อน แล้วหารด้วย 5',
+        workedSteps: ['5x = 18 + 7 = 25', 'x = 25 ÷ 5 = 5', 'ตรวจ: 5(5) − 7 = 18 ✓'],
+        explanation: 'ย้าย −7 ไปอีกข้างเป็น +7 แล้วหารด้วยตัวเลขหน้า x',
+      },
+    },
+    {
+      id: 'spot-mistake',
+      type: 'challenge',
+      title: 'ภารกิจย่อย: หาจุดผิด',
+      body: 'เพื่อนคนหนึ่งเริ่มแก้ 2(x − 4) = 10 แบบนี้',
+      visual: { lines: ['2(x − 4) = 10', '2x − 4 = 10   ← ?'] },
+      skillId: 'skill-math-check-solution',
+      interaction: {
+        kind: 'choice',
+        prompt: 'บรรทัดที่สองผิดตรงไหน?',
+        choices: ['กระจาย 2 ไม่ครบ ควรเป็น 2x − 8', 'ไม่ผิด ถูกต้องแล้ว', 'ควรเป็น 2x + 4', 'ต้องหารด้วย 10 ก่อน'],
+        correctIndex: 0,
+        hint: '2 ต้องคูณ “ทุกตัว” ในวงเล็บ ทั้ง x และ 4',
+        explanation: '2(x − 4) = 2x − 8 — การกระจายวงเล็บไม่ครบเป็นจุดที่พลาดบ่อยที่สุดจุดหนึ่ง',
+      },
+    },
+    {
+      id: 'try-2',
+      type: 'challenge',
+      title: 'ภารกิจย่อย: เศษส่วน',
+      visual: { lines: ['x/4 + 3 = 7'] },
+      skillId: 'skill-math-solve-linear',
+      interaction: {
+        kind: 'typed',
+        prompt: 'หาค่า x',
+        inputLabel: 'x =',
+        accept: ['16'],
+        hint: 'ลบ 3 ทั้งสองข้างก่อน แล้วคูณ 4 ทั้งสองข้าง',
+        workedSteps: ['x/4 = 7 − 3 = 4', 'x = 4 × 4 = 16', 'ตรวจ: 16/4 + 3 = 7 ✓'],
+        explanation: 'เมื่อ x ถูกหารด้วย 4 การคูณ 4 ทั้งสองข้างจะทำให้เหลือ x ตัวเดียว',
+      },
+    },
+  ],
+  finalCheck: [
+    { id: 'fc-1', prompt: '5x − 4 = 11 แล้ว x เท่ากับเท่าใด', choices: ['1', '3', '5', '7'], correctIndex: 1, explanation: '5x = 15 → x = 3', skillId: 'skill-math-solve-linear' },
+    { id: 'fc-2', prompt: 'x = 2 เป็นคำตอบของสมการใด', choices: ['3x + 1 = 8', '2x − 1 = 3', 'x + 5 = 6', '4x = 6'], correctIndex: 1, explanation: '2(2) − 1 = 3', skillId: 'skill-math-check-solution' },
+    { id: 'fc-3', prompt: 'ถ้า 4x = 2x + 10 แล้ว x เท่าไร', choices: ['2', '5', '10', '20'], correctIndex: 1, explanation: '2x = 10 → x = 5', skillId: 'skill-math-solve-linear' },
+    {
+      id: 'fc-4',
+      prompt: 'ขั้นสุดท้ายที่ควรทำทุกครั้งคืออะไร',
+      choices: ['แทนค่ากลับเพื่อตรวจคำตอบ', 'กระจายวงเล็บ', 'ย้าย x ไปข้างขวา', 'ไม่ต้องทำอะไรเพิ่ม'],
+      correctIndex: 0,
+      explanation: 'แทนค่ากลับในสมการเดิม ถ้าสองข้างเท่ากันจริง คำตอบถูก',
+      skillId: 'skill-math-check-solution',
+    },
+  ],
+  mistakes: ['ย้ายข้างแต่ลืมเปลี่ยนเครื่องหมาย', 'กระจายวงเล็บไม่ครบทุกตัว เช่น 2(x − 4) เป็น 2x − 4', 'ไม่แทนค่ากลับเพื่อตรวจ'],
+  nextLessonId: 'math-alg-linear-system',
+};

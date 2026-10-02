@@ -258,6 +258,10 @@ export interface LearningSession {
   plannedMinutes?: number;
   /** Phase 50: the curriculum lesson this sitting was for (from the next step). */
   curriculumLessonId?: string;
+  /** Phase 54: how the learner chose to study (อ่าน / ดูคลิป / เรียนกับ V2U). */
+  learningMode?: 'read' | 'video' | 'v2u';
+  /** Phase 54: result of V2U's understanding check in this sitting. */
+  understandingCheck?: { score: number; understood: string[]; confused: string[]; checkedAt: string };
   lessonId: string;
   startedAt: string; // ISO timestamp
   pausedAt?: string; // ISO timestamp

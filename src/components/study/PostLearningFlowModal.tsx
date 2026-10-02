@@ -33,6 +33,8 @@ interface PostLearningFlowModalProps {
   initialUnclearNotes?: string;
   initialReviewNotes?: string;
   initialConfidence?: ConfidenceLevel;
+  /** Phase 54: score from V2U's understanding check — prefills the quiz step. */
+  initialQuizScore?: number;
   nextLesson?: Lesson | null;
   onConfirm: (result: {
     actualMinutes: number;
@@ -56,6 +58,7 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
   initialUnclearNotes = '',
   initialReviewNotes = '',
   initialConfidence = 'Medium',
+  initialQuizScore,
   nextLesson,
   onConfirm,
 }) => {
@@ -69,8 +72,11 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
   // ── Step 2: Review Questions & Quiz state ──
   const groundedQuiz = useMemo(() => getGroundedQuestionsForLesson(lesson), [lesson]);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
-  const [quizScoreInput, setQuizScoreInput] = useState<string>(lesson.quizScore !== undefined ? String(lesson.quizScore) : '');
-  const [useInteractiveQuiz, setUseInteractiveQuiz] = useState<boolean>(true);
+  const [quizScoreInput, setQuizScoreInput] = useState<string>(
+    initialQuizScore !== undefined ? String(initialQuizScore) : lesson.quizScore !== undefined ? String(lesson.quizScore) : ''
+  );
+  // A V2U understanding check already measured this sitting → use that score
+  const [useInteractiveQuiz, setUseInteractiveQuiz] = useState<boolean>(initialQuizScore === undefined);
   const [confidence, setConfidence] = useState<ConfidenceLevel>(initialConfidence || lesson.confidence || 'Medium');
 
   // Compute quiz score from interactive quiz or input

@@ -1,26 +1,26 @@
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useRef } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { CURRICULUM } from '../curriculum/data';
 import { findStudyLesson, getMissingPrerequisites, isCurriculumLessonCompleted } from '../curriculum/engine';
 import { buildLearningPlan, isTimeBudget } from '../resources/engine';
 import { getLearningPath, describePlan } from '../content/engine';
 import { normalizeStudentProfile } from '../route/engine';
-import { OriginalLessonView } from '../components/learn/OriginalLessonView';
+import { LessonLearning } from '../components/learning/LessonLearning';
+import type { LearningMode, UnderstandingSummary } from '../interactive/types';
+import { unclearNoteFrom } from '../interactive/engine';
 import { ResourceLink } from '../components/learn/ResourceLink';
 import { Chip, LoopStrip, PlanBar, ScreenHeader } from '../components/ui';
 
-type Mode = 'video' | 'read' | 'original';
-const MODES: { id: Mode; label: string }[] = [
-  { id: 'video', label: 'ดูคลิป' },
-  { id: 'read', label: 'อ่าน' },
-  { id: 'original', label: 'เรียนจาก V2U' },
-];
+const MODES: LearningMode[] = ['read', 'video', 'v2u'];
 
 /** /learn/curriculum/:lessonId — one lesson, three ways to learn it. */
 export function CurriculumLessonPage() {
   const { lessonId = '' } = useParams();
   const [params, setParams] = useSearchParams();
-  const { lessons, studentProfile } = useStore();
+  const navigate = useNavigate();
+  const { lessons, studentProfile, startLearningSession, setLearningMode, recordUnderstandingCheck, updateLearningSessionDraft } = useStore();
+  const lastCheck = useRef<UnderstandingSummary | null>(null);
   const lesson = CURRICULUM.lessons.find((l) => l.id === lessonId);
   const path = getLearningPath(lessonId);
   if (!lesson || !path) {
@@ -31,8 +31,9 @@ export function CurriculumLessonPage() {
       </div>
     );
   }
-  const m = params.get('mode');
-  const mode: Mode = m === 'read' || m === 'original' || m === 'video' ? m : path.primary?.type === 'video' ? 'video' : 'original';
+  // No default: the learner chooses how to learn (old links: ?mode=original → เรียนกับ V2U)
+  const m = params.get('mode') === 'original' ? 'v2u' : params.get('mode');
+  const mode = MODES.find((x) => x === m);
   const daily = normalizeStudentProfile(studentProfile).availableMinutes;
   const budget = isTimeBudget(daily) ? daily : 30;
   const plan = buildLearningPlan(lessonId, budget);
@@ -43,8 +44,22 @@ export function CurriculumLessonPage() {
   const video = [path.primary, path.alternative].find((r) => r && (r.type === 'video' || r.type === 'course'));
   const altVideo = path.alternative && path.alternative.id !== video?.id && (path.alternative.type === 'video' || path.alternative.type === 'course') ? path.alternative : undefined;
 
+  // Finishing here records the sitting through the normal study flow (mastery, review, next step)
+  const finishAndRecord = (summary?: UnderstandingSummary) => {
+    if (!studyLesson) return navigate('/');
+    startLearningSession({ lessonId: studyLesson.id, curriculumLessonId: lesson.id, plannedMinutes: budget });
+    if (mode) setLearningMode(mode);
+    const c = summary ?? lastCheck.current;
+    if (c) {
+      recordUnderstandingCheck({ score: c.score, understood: c.understood, confused: c.confused });
+      const note = unclearNoteFrom(c);
+      if (note) updateLearningSessionDraft({ stillUnclearNotes: note });
+    }
+    navigate(`/study/${studyLesson.id}?finish=1`);
+  };
+
   return (
-    <div className="mx-auto w-full max-w-3xl lg:max-w-6xl space-y-5 pb-20 md:pb-0">
+    <div className={`mx-auto w-full max-w-3xl lg:max-w-6xl space-y-5 md:pb-0 ${mode ? '' : 'pb-20'}`}>
       <ScreenHeader
         back={{ to: '/learn/curriculum', label: 'หลักสูตร' }}
         eyebrow={subject?.title}
@@ -59,34 +74,24 @@ export function CurriculumLessonPage() {
 
       <div className="space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-8 lg:space-y-0">
         <div className="min-w-0 space-y-5">
-      <div role="tablist" aria-label="วิธีเรียน" className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-200/60 p-1">
-        {MODES.map((x) => (
-          <button
-            key={x.id}
-            role="tab"
-            aria-selected={mode === x.id}
-            onClick={() => setParams({ mode: x.id }, { replace: true })}
-            className={`min-h-[44px] rounded-xl px-2 text-sm font-semibold transition-colors ${mode === x.id ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-600 hover:text-ink'}`}
-          >
-            {x.label}
-          </button>
-        ))}
-      </div>
-
-      {mode === 'video' && (
-        <section aria-label="ดูคลิป" className="space-y-2">
-          {video ? <ResourceLink r={video} heading="คลิปหลัก" /> : <p className="text-sm text-slate-600">บทนี้ยังไม่มีคลิปที่ V2U คัดไว้ — ลองโหมด “เรียนจาก V2U”</p>}
-          {altVideo && <ResourceLink r={altVideo} heading="อีกคลิปถ้าคลิปแรกไม่เข้าใจ" />}
-          <OriginalLessonView content={path.original} compact />
-        </section>
-      )}
-      {mode === 'read' && (
-        <section aria-label="อ่าน" className="space-y-2">
-          {path.reading ? <ResourceLink r={path.reading} heading="อ่านเพิ่ม" /> : <p className="text-sm text-slate-600">ยังไม่มีเอกสารภายนอกที่คัดไว้ — อ่านบทของ V2U ด้านล่างได้เลย</p>}
-          <OriginalLessonView content={path.original} />
-        </section>
-      )}
-      {mode === 'original' && <OriginalLessonView content={path.original} />}
+          <LessonLearning
+            curriculumLessonId={lesson.id}
+            mode={mode}
+            onModeChange={(next) => setParams({ mode: next }, { replace: true })}
+            video={video ? { title: video.title, provider: video.provider, minutes: video.estimatedMinutes } : undefined}
+            renderVideo={() => (
+              <div className="space-y-3">
+                {video ? <ResourceLink r={video} heading="คลิปที่ V2U คัดให้ (แหล่งภายนอก)" /> : <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">บทนี้ยังไม่มีคลิปที่ V2U คัดไว้ — ลอง “อ่าน” หรือ “เรียนกับ V2U”</p>}
+                {altVideo && <ResourceLink r={altVideo} heading="อีกคลิปถ้าคลิปแรกไม่เข้าใจ" />}
+                {path.reading && <ResourceLink r={path.reading} heading="อ่านประกอบ" />}
+              </div>
+            )}
+            onCheckSubmitted={(c) => {
+              lastCheck.current = c;
+            }}
+            onNext={finishAndRecord}
+            nextLabel={studyLesson ? 'บันทึกผลและไปขั้นต่อไป' : 'ไปขั้นต่อไป'}
+          />
         </div>
         <aside aria-label="แผน ความคืบหน้า และเริ่มเรียน" className="space-y-4 lg:sticky lg:top-0">
       {plan && (
@@ -122,7 +127,7 @@ export function CurriculumLessonPage() {
             )}
           </section>
       {studyLesson && (
-        <div className="fixed inset-x-0 bottom-[68px] z-30 border-t border-slate-200 bg-white/95 p-3 backdrop-blur md:static md:border-0 md:bg-transparent md:p-0">
+        <div className={mode ? '' : 'fixed inset-x-0 bottom-[68px] z-30 border-t border-slate-200 bg-white/95 p-3 backdrop-blur md:static md:border-0 md:bg-transparent md:p-0'}>
           <Link to={`/lessons/${studyLesson.id}`} className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-6 text-base font-bold text-white shadow-sm hover:bg-brand-700 md:w-auto md:inline-flex lg:flex lg:w-full">
             เริ่มเรียนตามแผน
           </Link>

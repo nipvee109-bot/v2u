@@ -1,0 +1,268 @@
+import { useState } from 'react';
+import { ArrowDown, ArrowUp, Check, Lightbulb, X, Eye } from 'lucide-react';
+import type { ChoiceInteraction, OrderInteraction, SelfCheckInteraction, StepResult, TypedInteraction } from '../../interactive/types';
+import { checkChoice, checkOrder, checkTyped, scrambled } from '../../interactive/engine';
+
+/* Interaction widgets. Each reports through onAnswer(correct) / onHint() / onReveal();
+   the engine owns the state, so a widget can be swapped per subject. */
+
+interface Props<I> {
+  interaction: I;
+  result: StepResult;
+  onAnswer: (correct: boolean) => void;
+  onHint: () => void;
+  onReveal: () => void;
+}
+
+export function Feedback({ tone, title, children }: { tone: 'good' | 'try'; title: string; children?: React.ReactNode }) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={`mt-4 rounded-2xl border p-4 text-sm animate-in fade-in slide-in-from-bottom-1 duration-200 ${
+        tone === 'good' ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-amber-200 bg-amber-50 text-amber-900'
+      }`}
+    >
+      <p className="flex items-center gap-2 font-bold">
+        {tone === 'good' ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+        {title}
+      </p>
+      {children && <div className="mt-1.5 leading-relaxed">{children}</div>}
+    </div>
+  );
+}
+
+function HintBox({ text }: { text: string }) {
+  return (
+    <p className="mt-2 flex items-start gap-2 rounded-xl bg-white/70 p-2.5 text-sm text-amber-900">
+      <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+      <span>{text}</span>
+    </p>
+  );
+}
+
+export function ChoiceQuestion({ interaction: i, result, onAnswer }: Props<ChoiceInteraction>) {
+  const [picked, setPicked] = useState<number | null>(null);
+  const [wrong, setWrong] = useState<number[]>([]);
+  const choose = (k: number) => {
+    if (result.solved) return;
+    setPicked(k);
+    const ok = checkChoice(i, k);
+    if (!ok) setWrong((w) => (w.includes(k) ? w : [...w, k]));
+    onAnswer(ok);
+  };
+  const lastWrong = picked !== null && !result.solved && wrong.includes(picked);
+  return (
+    <div>
+      <p className="text-base font-semibold text-ink">{i.prompt}</p>
+      <div role="group" aria-label={i.prompt} className="mt-3 grid gap-2">
+        {i.choices.map((c, k) => {
+          const isRight = result.solved && k === i.correctIndex;
+          const isWrong = wrong.includes(k);
+          return (
+            <button
+              key={c}
+              type="button"
+              onClick={() => choose(k)}
+              disabled={result.solved || isWrong}
+              aria-pressed={picked === k}
+              className={`flex min-h-[52px] items-center gap-3 rounded-2xl border-2 px-4 text-left text-sm font-medium transition-colors focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200 ${
+                isRight
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-900'
+                  : isWrong
+                    ? 'border-slate-200 bg-slate-50 text-slate-400 line-through'
+                    : 'border-slate-200 bg-white text-ink hover:border-brand-300 hover:bg-brand-50'
+              }`}
+            >
+              <span
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                  isRight ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                {isRight ? <Check className="h-4 w-4" /> : String.fromCharCode(65 + k)}
+              </span>
+              <span className="break-words">{c}</span>
+            </button>
+          );
+        })}
+      </div>
+      {result.solved && <Feedback tone="good" title="ถูกต้อง">{i.explanation}</Feedback>}
+      {lastWrong && (
+        <Feedback tone="try" title="ยังไม่ใช่ — ลองอีกครั้งได้เลย">
+          <HintBox text={i.hint} />
+        </Feedback>
+      )}
+    </div>
+  );
+}
+
+export function TypedQuestion({ interaction: i, result, onAnswer, onReveal }: Props<TypedInteraction>) {
+  const [value, setValue] = useState('');
+  const [lastWrong, setLastWrong] = useState(false);
+  const submit = () => {
+    if (!value.trim() || result.solved) return;
+    const ok = checkTyped(i, value);
+    setLastWrong(!ok);
+    onAnswer(ok);
+  };
+  const id = `typed-${i.prompt.length}-${i.accept[0]}`;
+  return (
+    <div>
+      <label htmlFor={id} className="text-base font-semibold text-ink">
+        {i.prompt}
+      </label>
+      <form
+        className="mt-3 flex flex-wrap items-center gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
+      >
+        {i.inputLabel && <span className="font-mono text-lg font-semibold text-ink">{i.inputLabel}</span>}
+        <input
+          id={id}
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value);
+            setLastWrong(false);
+          }}
+          disabled={result.solved}
+          inputMode="text"
+          autoComplete="off"
+          aria-label={i.inputLabel ? `${i.prompt} ${i.inputLabel}` : i.prompt}
+          className="min-h-[52px] w-32 rounded-2xl border-2 border-slate-200 bg-white px-4 font-mono text-lg text-ink outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-100 disabled:bg-emerald-50"
+        />
+        <button
+          type="submit"
+          disabled={result.solved || !value.trim()}
+          className="min-h-[52px] rounded-2xl bg-brand-600 px-5 text-sm font-bold text-white hover:bg-brand-700 disabled:bg-slate-200 disabled:text-slate-500"
+        >
+          ตรวจคำตอบ
+        </button>
+      </form>
+      {result.solved && (
+        <Feedback tone="good" title="เยี่ยม ถูกต้อง">
+          <p>{i.explanation}</p>
+          <ol className="mt-2 space-y-0.5 font-mono text-[13px]">
+            {i.workedSteps.map((s) => (
+              <li key={s}>{s}</li>
+            ))}
+          </ol>
+        </Feedback>
+      )}
+      {!result.solved && lastWrong && (
+        <Feedback tone="try" title="ยังไม่ใช่ — ไม่เป็นไร ลองใหม่ได้">
+          <HintBox text={i.hint} />
+        </Feedback>
+      )}
+      {!result.solved && result.attempts > 0 && (
+        <div className="mt-3">
+          {result.revealed ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
+              <p className="font-semibold text-ink">วิธีทำทีละขั้น</p>
+              <ol className="mt-1.5 space-y-0.5 font-mono text-[13px] text-slate-700">
+                {i.workedSteps.map((s) => (
+                  <li key={s}>{s}</li>
+                ))}
+              </ol>
+              <p className="mt-2 text-xs text-slate-500">ลองพิมพ์คำตอบอีกครั้ง หรือไปต่อแล้ว V2U จะนับจุดนี้เป็นเรื่องที่ควรทบทวน</p>
+            </div>
+          ) : (
+            <button type="button" onClick={onReveal} className="inline-flex min-h-[44px] items-center gap-1.5 text-sm font-semibold text-brand-700">
+              <Eye className="h-4 w-4" /> ดูวิธีทำทีละขั้น
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function OrderQuestion({ interaction: i, result, onAnswer }: Props<OrderInteraction>) {
+  const [order, setOrder] = useState(() => scrambled(i.items));
+  const [lastWrong, setLastWrong] = useState(false);
+  const move = (k: number, d: -1 | 1) => {
+    const j = k + d;
+    if (j < 0 || j >= order.length || result.solved) return;
+    const next = [...order];
+    [next[k], next[j]] = [next[j], next[k]];
+    setOrder(next);
+    setLastWrong(false);
+  };
+  const submit = () => {
+    const ok = checkOrder(i, order);
+    setLastWrong(!ok);
+    onAnswer(ok);
+  };
+  const shown = result.solved ? i.items : order;
+  return (
+    <div>
+      <p className="text-base font-semibold text-ink">{i.prompt}</p>
+      <ol className="mt-3 space-y-2">
+        {shown.map((item, k) => (
+          <li
+            key={item}
+            className={`flex min-h-[52px] items-center gap-3 rounded-2xl border-2 px-3 ${
+              result.solved ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white'
+            }`}
+          >
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">{k + 1}</span>
+            <span className="min-w-0 flex-1 font-mono text-sm text-ink break-words">{item}</span>
+            {!result.solved && (
+              <span className="flex shrink-0 gap-1">
+                <button type="button" onClick={() => move(k, -1)} disabled={k === 0} aria-label={`เลื่อน “${item}” ขึ้น`} className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 disabled:opacity-30">
+                  <ArrowUp className="h-4 w-4" />
+                </button>
+                <button type="button" onClick={() => move(k, 1)} disabled={k === shown.length - 1} aria-label={`เลื่อน “${item}” ลง`} className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 disabled:opacity-30">
+                  <ArrowDown className="h-4 w-4" />
+                </button>
+              </span>
+            )}
+          </li>
+        ))}
+      </ol>
+      {!result.solved && (
+        <button type="button" onClick={submit} className="mt-3 min-h-[48px] rounded-2xl bg-brand-600 px-5 text-sm font-bold text-white hover:bg-brand-700">
+          ตรวจลำดับ
+        </button>
+      )}
+      {result.solved && <Feedback tone="good" title="ลำดับถูกต้อง">{i.explanation}</Feedback>}
+      {!result.solved && lastWrong && (
+        <Feedback tone="try" title="ยังไม่ใช่ลำดับนี้">
+          <HintBox text={i.hint} />
+        </Feedback>
+      )}
+    </div>
+  );
+}
+
+export function SelfCheck({ interaction: i, result, onAnswer, onReveal }: Props<SelfCheckInteraction>) {
+  const [open, setOpen] = useState(result.solved || result.revealed);
+  return (
+    <div>
+      <p className="text-base font-semibold text-ink">{i.prompt}</p>
+      {!open ? (
+        <button type="button" onClick={() => setOpen(true)} className="mt-3 inline-flex min-h-[48px] items-center gap-2 rounded-2xl border-2 border-brand-200 bg-white px-5 text-sm font-bold text-brand-700 hover:bg-brand-50">
+          <Eye className="h-4 w-4" /> เปิดเฉลย
+        </button>
+      ) : (
+        <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-xs font-semibold text-slate-500">เฉลย</p>
+          <p className="mt-1 font-mono text-sm text-ink break-words">{i.answer}</p>
+          {!result.solved && !result.revealed && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" onClick={() => onAnswer(true)} className="min-h-[44px] rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700">
+                ฉันทำได้ตรงกัน
+              </button>
+              <button type="button" onClick={onReveal} className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                ยังไม่ตรง
+              </button>
+            </div>
+          )}
+          {result.solved && <p className="mt-2 text-sm font-semibold text-emerald-700">✓ บันทึกว่าทำได้</p>}
+          {result.revealed && !result.solved && <p className="mt-2 text-sm text-amber-700">△ V2U จะนับเรื่องนี้ไว้ในสิ่งที่ควรทบทวน</p>}
+        </div>
+      )}
+    </div>
+  );
+}
