@@ -10,23 +10,44 @@
    network. A future backend (e.g. Supabase) can map 1:1 to these shapes.
 
    DATA RULE: no real-world admission data is shipped until it has a cited
-   source. Every University and AdmissionPath carries a DataSource; only
-   'verified' sources may drive recommendations.
+   official source. Universities and AdmissionPaths reference AdmissionSource
+   records by id; only paths whose sources are ALL verified may drive
+   personalised recommendations.
    ========================================================================= */
 
 import type { CurriculumSubjectId } from '../curriculum/types';
 import type { EducationLevel } from '../route/types';
 
-export type SourceStatus = 'unverified' | 'verified';
+/* ── Official sources (Phase 46B) ───────────────────────────────────── */
 
-export interface DataSource {
-  /** e.g. official admission announcement name */
-  sourceName: string;
-  /** Only when actually checked. */
-  sourceUrl?: string;
-  /** ISO date the source was read. Required when verified. */
-  retrievedAt?: string;
-  status: SourceStatus;
+export type SourceType =
+  | 'university-announcement'
+  | 'faculty-announcement'
+  | 'admission-page'
+  | 'tcas-official'
+  | 'exam-official';
+
+/**
+ * - unverified: recorded for staging/reference; never drives recommendations
+ * - verified:   the URL was actually opened and the content checked on checkedAt
+ */
+export type SourceVerificationStatus = 'unverified' | 'verified';
+
+export interface AdmissionSource {
+  sourceId: string;
+  sourceType: SourceType;
+  /** Issuing organisation, e.g. the university or the national admission body */
+  publisher: string;
+  title: string;
+  /** Required when verified; never invented. */
+  url?: string;
+  /** ISO dates from the document itself, when it states them. */
+  publishedAt?: string;
+  updatedAt?: string;
+  /** ISO date someone actually opened and checked the source. Required when verified. */
+  checkedAt?: string;
+  status: SourceVerificationStatus;
+  notes?: string;
 }
 
 export interface Exam {
@@ -44,7 +65,8 @@ export interface University {
   id: string;
   name: string;
   nameEn?: string;
-  source: DataSource;
+  /** AdmissionSource ids backing this record. */
+  sourceIds: string[];
 }
 
 export interface Faculty {
@@ -132,10 +154,12 @@ export interface AdmissionPath {
   eligibility: EligibilityRule[];
   requirements: AdmissionRequirement[];
   milestones: ApplicationMilestone[];
-  source: DataSource;
+  /** AdmissionSource ids; the path is verified only if all are verified. */
+  sourceIds: string[];
 }
 
 export interface AdmissionRegistry {
+  sources: AdmissionSource[];
   exams: Exam[];
   universities: University[];
   faculties: Faculty[];

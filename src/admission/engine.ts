@@ -16,7 +16,7 @@ import type {
   AdmissionRegistry,
   AdmissionRequirement,
   ApplicationMilestone,
-  DataSource,
+  AdmissionSource,
   RequirementEvaluation,
   StudentAdmissionState,
 } from './types';
@@ -25,25 +25,57 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /* ── Validation ───────────────────────────────────────────────────────── */
 
-function validateSource(source: DataSource | undefined, where: string, errors: string[]) {
-  if (!source || !source.sourceName?.trim()) {
-    errors.push(`${where}: missing source`);
-    return;
+const SOURCE_TYPES = ['university-announcement', 'faculty-announcement', 'admission-page', 'tcas-official', 'exam-official'];
+
+/** Verified sources older than this are reported as stale. */
+export const SOURCE_STALE_AFTER_DAYS = 365;
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const u = new URL(value);
+    return u.protocol === 'https:' || u.protocol === 'http:';
+  } catch {
+    return false;
   }
-  if (source.sourceUrl !== undefined) {
-    try {
-      const u = new URL(source.sourceUrl);
-      if (u.protocol !== 'https:' && u.protocol !== 'http:') errors.push(`${where}: invalid source url`);
-    } catch {
-      errors.push(`${where}: invalid source url`);
+}
+
+function validateSourceRecord(src: AdmissionSource, errors: string[]) {
+  const where = `source ${src.sourceId}`;
+  if (!src.sourceId?.trim()) errors.push('source without sourceId');
+  if (!SOURCE_TYPES.includes(src.sourceType)) errors.push(`${where}: invalid sourceType`);
+  if (!src.publisher?.trim() || !src.title?.trim()) errors.push(`${where}: missing publisher/title`);
+  if (src.url !== undefined && !isHttpUrl(src.url)) errors.push(`${where}: invalid url`);
+  for (const [k, v] of [['publishedAt', src.publishedAt], ['updatedAt', src.updatedAt], ['checkedAt', src.checkedAt]] as const) {
+    if (v !== undefined && (!ISO_DATE.test(v) || Number.isNaN(Date.parse(v)))) errors.push(`${where}: invalid ${k}`);
+  }
+  if (src.status === 'verified') {
+    if (!src.url) errors.push(`${where}: verified source without url`);
+    if (!src.checkedAt) errors.push(`${where}: verified source without verification date (checkedAt)`);
+  } else if (src.status !== 'unverified') {
+    errors.push(`${where}: invalid status`);
+  }
+}
+
+/** True when every referenced source exists and is verified (and at least one is referenced). */
+export function isBackedByVerifiedSources(sourceIds: string[], registry: AdmissionRegistry = ADMISSION_REGISTRY): boolean {
+  if (sourceIds.length === 0) return false;
+  return sourceIds.every((id) => registry.sources.find((s) => s.sourceId === id)?.status === 'verified');
+}
+
+/**
+ * Non-blocking metadata warnings: stale verification, or a source that
+ * states neither a published nor an updated date.
+ */
+export function getSourceWarnings(registry: AdmissionRegistry = ADMISSION_REGISTRY, now: Date = new Date()): string[] {
+  const warnings: string[] = [];
+  for (const src of registry.sources) {
+    if (src.status === 'verified' && src.checkedAt) {
+      const ageDays = (now.getTime() - Date.parse(src.checkedAt)) / 86_400_000;
+      if (ageDays > SOURCE_STALE_AFTER_DAYS) warnings.push(`source ${src.sourceId}: stale (checked ${src.checkedAt})`);
     }
+    if (!src.publishedAt && !src.updatedAt) warnings.push(`source ${src.sourceId}: unknown published/updated date`);
   }
-  if (source.status === 'verified' && (!source.sourceUrl || !source.retrievedAt || !ISO_DATE.test(source.retrievedAt))) {
-    errors.push(`${where}: verified sources need sourceUrl and retrievedAt`);
-  }
-  if (source.status === 'unverified' && source.sourceUrl) {
-    errors.push(`${where}: unverified sources must not carry a url`);
-  }
+  return warnings;
 }
 
 export function validateAdmissionRegistry(
@@ -51,6 +83,16 @@ export function validateAdmissionRegistry(
   curriculum: Curriculum = CURRICULUM
 ): string[] {
   const errors: string[] = [];
+  const sourceIds = new Set<string>();
+  for (const src of registry.sources) {
+    if (sourceIds.has(src.sourceId)) errors.push(`duplicate source id: ${src.sourceId}`);
+    sourceIds.add(src.sourceId);
+    validateSourceRecord(src, errors);
+  }
+  const checkSourceRefs = (ids: string[] | undefined, where: string) => {
+    if (!ids || ids.length === 0) return errors.push(`${where}: missing source`);
+    ids.forEach((id) => !sourceIds.has(id) && errors.push(`${where}: unknown source ${id}`));
+  };
   const seen = new Set<string>();
   const all = [...registry.exams, ...registry.universities, ...registry.faculties, ...registry.majors, ...registry.paths];
   for (const x of all) {
@@ -72,7 +114,7 @@ export function validateAdmissionRegistry(
     e.subjectIds.forEach((s) => !subjects.has(s) && errors.push(`exam ${e.id}: unknown subject ${s}`));
     if (e.maxScore !== undefined && !(e.maxScore > 0)) errors.push(`exam ${e.id}: invalid maxScore`);
   }
-  for (const u of registry.universities) validateSource(u.source, `university ${u.id}`, errors);
+  for (const u of registry.universities) checkSourceRefs(u.sourceIds, `university ${u.id}`);
   for (const f of registry.faculties) if (!uni.has(f.universityId)) errors.push(`faculty ${f.id}: unknown university ${f.universityId}`);
   for (const m of registry.majors) {
     if (!fac.has(m.facultyId)) errors.push(`major ${m.id}: unknown faculty ${m.facultyId}`);
@@ -85,7 +127,7 @@ export function validateAdmissionRegistry(
     if (!Number.isInteger(p.round) || p.round < 1) errors.push(`${where}: invalid round`);
     if (!/^\d{4}$/.test(p.admissionYear)) errors.push(`${where}: invalid admissionYear`);
     if (p.quota !== undefined && (!Number.isInteger(p.quota) || p.quota < 0)) errors.push(`${where}: invalid quota`);
-    validateSource(p.source, where, errors);
+    checkSourceRefs(p.sourceIds, where);
 
     for (const rule of p.eligibility) {
       if (rule.kind === 'education-level' && (rule.allowed.length === 0 || rule.allowed.some((l) => !EDUCATION_LEVELS.includes(l)))) {
@@ -229,7 +271,7 @@ export function evaluateAdmissionPath(
     metCount: requirements.filter((r) => r.check === 'met').length,
     gapCount: requirements.filter((r) => r.check === 'gap').length,
     unknownCount: requirements.filter((r) => r.check === 'unknown').length,
-    recommendable: path.source.status === 'verified',
+    recommendable: isBackedByVerifiedSources(path.sourceIds, registry),
   };
 }
 
@@ -243,7 +285,7 @@ export function getPathsForRouteTarget(
 ): AdmissionPath[] {
   const majors = new Set(registry.majors.filter((m) => m.routeTargetId === routeTargetId).map((m) => m.id));
   return registry.paths
-    .filter((p) => majors.has(p.majorId) && (options.includeUnverified || p.source.status === 'verified'))
+    .filter((p) => majors.has(p.majorId) && (options.includeUnverified || isBackedByVerifiedSources(p.sourceIds, registry)))
     .sort((a, b) => a.round - b.round || a.id.localeCompare(b.id));
 }
 

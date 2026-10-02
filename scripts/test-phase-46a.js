@@ -33,10 +33,13 @@ const A = await jiti.import(path.join(root, 'src/admission/engine.ts'));
 const { ADMISSION_REGISTRY } = await jiti.import(path.join(root, 'src/admission/registry.ts'));
 const RE = await jiti.import(path.join(root, 'src/route/engine.ts'));
 
-const verified = { sourceName: 'fixture source', sourceUrl: 'https://example.org/fixture', retrievedAt: '2026-10-01', status: 'verified' };
+// Phase 46B: sources are first-class records referenced by id
+const verifiedSource = { sourceId: 'fixture-src-verified', sourceType: 'admission-page', publisher: 'Fixture', title: 'Fixture page', url: 'https://example.org/fixture', publishedAt: '2026-09-01', checkedAt: '2026-10-01', status: 'verified' };
+const unverifiedSource = { sourceId: 'fixture-src-unverified', sourceType: 'admission-page', publisher: 'Fixture', title: 'Fixture note', status: 'unverified' };
 const fixture = () => ({
+  sources: [{ ...verifiedSource }, { ...unverifiedSource }],
   exams: [{ id: 'fixture-exam-math', code: 'FX-MATH', title: 'Fixture math exam', subjectIds: ['math'], maxScore: 100 }],
-  universities: [{ id: 'fixture-uni', name: 'Fixture University', source: verified }],
+  universities: [{ id: 'fixture-uni', name: 'Fixture University', sourceIds: ['fixture-src-verified'] }],
   faculties: [{ id: 'fixture-fac', universityId: 'fixture-uni', name: 'Fixture Faculty' }],
   majors: [{ id: 'fixture-major', facultyId: 'fixture-fac', name: 'Fixture Major', routeTargetId: 'target-computer-engineering' }],
   paths: [
@@ -53,13 +56,13 @@ const fixture = () => ({
         { id: 'm-reg', kind: 'registration', title: 'Fixture registration', date: '2026-11-01', dateStatus: 'tentative' },
         { id: 'm-ann', kind: 'announcement', title: 'Fixture announcement', dateStatus: 'unknown' },
       ],
-      source: verified,
+      sourceIds: ['fixture-src-verified'],
     },
     {
       id: 'fixture-path-r1', majorId: 'fixture-major', round: 1, name: 'Fixture round 1 (unverified)', admissionYear: '2570',
       eligibility: [], requirements: [{ kind: 'portfolio', items: ['fixture project'] }],
       milestones: [{ id: 'm1', kind: 'portfolio-submission', title: 'Fixture submission', date: '2026-10-15', dateStatus: 'confirmed' }],
-      source: { sourceName: 'fixture note', status: 'unverified' },
+      sourceIds: ['fixture-src-unverified'],
     },
   ],
 });
@@ -72,7 +75,7 @@ const state = (patch = {}) => ({
 
 console.log('1. Shipped data');
 await test('Shipped admission registry is empty — no invented university data', () => {
-  for (const k of ['exams', 'universities', 'faculties', 'majors', 'paths']) assert.deepStrictEqual(ADMISSION_REGISTRY[k], [], k);
+  for (const k of ['sources', 'exams', 'universities', 'faculties', 'majors', 'paths']) assert.deepStrictEqual(ADMISSION_REGISTRY[k], [], k);
   assert.deepStrictEqual(A.validateAdmissionRegistry(), []);
 });
 await test('No route target has admission paths yet (UI stays on the generic route)', () => {
@@ -89,10 +92,10 @@ await test('Broken references, duplicates, bad dates/weights/sources are caught'
   f.majors[0].routeTargetId = 'nope';
   f.paths[0].requirements.push({ kind: 'skill', skillId: 'skill-nope' }, { kind: 'exam', examId: 'fixture-exam-math', weightPercent: 60 });
   f.paths[0].milestones.push({ id: 'm-bad', kind: 'exam', title: 'x', dateStatus: 'confirmed' });
-  f.paths[1].source = { sourceName: 'x', sourceUrl: 'https://example.org', status: 'unverified' };
-  f.universities[0].source = { sourceName: 'x', status: 'verified' };
+  f.sources[1].url = 'notaurl';
+  f.sources[0] = { ...f.sources[0], url: undefined };
   const errs = A.validateAdmissionRegistry(f).join('\n');
-  for (const s of ['duplicate id: fixture-fac', 'unknown university', 'unknown route target', 'unknown skill', 'weights exceed', 'needs an ISO date', 'unverified sources must not carry a url', 'verified sources need']) {
+  for (const s of ['duplicate id: fixture-fac', 'unknown university', 'unknown route target', 'unknown skill', 'weights exceed', 'needs an ISO date', 'invalid url', 'verified source without url']) {
     assert(errs.includes(s), s);
   }
 });
