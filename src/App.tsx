@@ -1,7 +1,15 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
-import { Dashboard } from './pages/Dashboard';
+import { HomePage } from './pages/HomePage';
+
+// V2U primary section hubs (Phase 41)
+const LearnHub = lazy(() => import('./pages/hubs/LearnHub').then((m) => ({ default: m.LearnHub })));
+const ReviewHub = lazy(() => import('./pages/hubs/ReviewHub').then((m) => ({ default: m.ReviewHub })));
+const RouteHub = lazy(() => import('./pages/hubs/RouteHub').then((m) => ({ default: m.RouteHub })));
+const MeHub = lazy(() => import('./pages/hubs/MeHub').then((m) => ({ default: m.MeHub })));
+// Full legacy learning overview (former Home) — kept reachable from เรียน
+const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
 
 // Code-split pages for high-performance on-demand chunk loading
 const SearchPage = lazy(() => import('./pages/SearchPage').then((m) => ({ default: m.SearchPage })));
@@ -35,7 +43,24 @@ function App() {
     <Layout>
       <Suspense fallback={<PageLoadingFallback />}>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
+          {/* V2U primary navigation (5 sections) */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/learn" element={<LearnHub />} />
+          <Route path="/review" element={<ReviewHub />} />
+          <Route path="/route" element={<RouteHub />} />
+          <Route path="/me" element={<MeHub />} />
+
+          {/* Compatibility redirects */}
+          <Route path="/home" element={<Navigate to="/" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/subjects" element={<Navigate to="/learn" replace />} />
+          <Route path="/lessons" element={<Navigate to="/learn" replace />} />
+          <Route path="/study" element={<Navigate to="/learn" replace />} />
+          <Route path="/study-room" element={<Navigate to="/learn" replace />} />
+          <Route path="/review-room" element={<Navigate to="/review" replace />} />
+          <Route path="/profile" element={<Navigate to="/me" replace />} />
+
+          {/* Legacy deep links (unchanged) */}
           <Route path="/search" element={<SearchPage />} />
           <Route path="/planner" element={<PlannerPage />} />
           <Route path="/calendar" element={<PlannerPage />} />
@@ -53,6 +78,7 @@ function App() {
           <Route path="/not-understood" element={<NotUnderstoodPage />} />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </Layout>

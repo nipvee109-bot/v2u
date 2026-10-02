@@ -108,8 +108,8 @@ export function Sidebar({ onClose }: SidebarProps) {
             <GraduationCap className="h-5 w-5" aria-hidden="true" />
           </div>
           <div>
-            <h1 className="text-sm font-bold text-white tracking-tight">NextStep</h1>
-            <p className="text-[10px] text-slate-400">เส้นทางจากอาชีวะสู่มหา'ลัย</p>
+            <h1 className="text-sm font-bold text-white tracking-tight">V2U</h1>
+            <p className="text-[10px] text-slate-400">เส้นทางสายอาชีพสู่มหาวิทยาลัย</p>
           </div>
         </div>
         {onClose && (

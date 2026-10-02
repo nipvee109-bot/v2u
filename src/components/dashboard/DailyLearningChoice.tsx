@@ -188,8 +188,8 @@ export function DailyLearningChoice({
               <Sparkles className="w-6 h-6" />
             </div>
             <div>
-              <p className="font-bold text-slate-900 text-sm sm:text-base">ให้ NextStep วางแผนให้</p>
-              <p className="text-xs text-slate-500 mt-0.5">Let NextStep Plan It &middot; จัดตารางอัตโนมัติตามเวลาที่คุณมี</p>
+              <p className="font-bold text-slate-900 text-sm sm:text-base">ให้ V2U วางแผนให้</p>
+              <p className="text-xs text-slate-500 mt-0.5">Let V2U Plan It &middot; จัดตารางอัตโนมัติตามเวลาที่คุณมี</p>
             </div>
             <ChevronRight className="w-5 h-5 text-slate-400 ml-auto shrink-0 group-hover:text-purple-500" />
           </button>

@@ -181,7 +181,7 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-700">
-                NextStep &middot; Core Learning Loop
+                V2U &middot; เรียน → ทดสอบ → ทบทวน
               </span>
               <span className="text-[10px] text-slate-400">สรุปการเรียนรู้</span>
             </div>
@@ -242,11 +242,11 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
         {/* ── STEP 1: SUMMARY & REFLECTION (VOICE / TEXT) ── */}
         {activeStep === 'recall' && (
           <div className="space-y-4 animate-in fade-in">
-            {/* Tell NextStep what you learned prompt */}
+            {/* Tell V2U what you learned prompt */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 rounded-2xl p-3.5 space-y-1">
               <div className="flex items-center gap-1.5 text-blue-900 text-xs font-bold">
                 <Sparkles className="w-4 h-4 text-blue-600" />
-                <span>บอก NextStep ว่าวันนี้คุณได้เรียนรู้อะไร</span>
+                <span>บอก V2U ว่าวันนี้คุณได้เรียนรู้อะไร</span>
               </div>
               <p className="text-[11px] text-blue-700 leading-relaxed">
                 ใช้ไมโครโฟนพูดสรุป 🎙️ หรือพิมพ์ ⌨️ ด้วยคำพูดของตนเอง เพื่อกระตุ้นสมองให้จดจำได้ยาวนานขึ้น (+50% Retention)

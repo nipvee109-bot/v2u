@@ -28,26 +28,26 @@ console.log('\n=== NextStep Core Learning Loop Test Suite ===\n');
 // ── Test 1: Rebranding Verification ───────────────────────────
 console.log('1. Rebranding Integrity:');
 
-test('index.html contains NextStep title', () => {
+test('index.html contains V2U title', () => {
   const content = fs.readFileSync('index.html', 'utf-8');
-  assert(content.includes('NextStep — เส้นทางจากอาชีวะสู่มหาวิทยาลัย'), 'index.html title must match NextStep');
+  assert(content.includes('V2U — Vocational to University'), 'index.html title must match V2U (rebranded in Phase 41)');
 });
 
-test('vite.config.ts contains NextStep manifest', () => {
+test('vite.config.ts contains V2U manifest', () => {
   const content = fs.readFileSync('vite.config.ts', 'utf-8');
-  assert(content.includes("name: 'NextStep — เส้นทางจากอาชีวะสู่มหาวิทยาลัย'"), 'manifest name must be NextStep');
-  assert(content.includes("short_name: 'NextStep'"), 'manifest short_name must be NextStep');
+  assert(content.includes("name: 'V2U — Vocational to University'"), 'manifest name must be V2U');
+  assert(content.includes("short_name: 'V2U'"), 'manifest short_name must be V2U');
 });
 
-test('Sidebar.tsx displays NextStep branding', () => {
+test('Sidebar.tsx displays V2U branding', () => {
   const content = fs.readFileSync('src/components/Sidebar.tsx', 'utf-8');
-  assert(content.includes('NextStep'), 'Sidebar must display NextStep');
-  assert(content.includes("เส้นทางจากอาชีวะสู่มหา'ลัย"), 'Sidebar must display NextStep subtitle');
+  assert(content.includes('V2U'), 'Sidebar must display V2U');
+  assert(content.includes('เส้นทางสายอาชีพสู่มหาวิทยาลัย'), 'Sidebar must display V2U subtitle');
 });
 
-test('Layout.tsx displays NextStep', () => {
+test('Layout.tsx displays V2U', () => {
   const content = fs.readFileSync('src/components/Layout.tsx', 'utf-8');
-  assert(content.includes('NextStep'), 'Layout header must display NextStep');
+  assert(content.includes('V2U'), 'Layout header must display V2U');
 });
 
 test('Settings.tsx exports backup with nextstep prefix', () => {

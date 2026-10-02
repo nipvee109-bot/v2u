@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Search, Bell, GraduationCap, Menu } from 'lucide-react';
+import { Search, Bell, GraduationCap } from 'lucide-react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
-import { Sidebar } from './Sidebar';
+import { BottomNav } from './BottomNav';
+import { TopNav } from './navigation/TopNav';
 import { useStore } from '../store/useStore';
 import { OfflineIndicator } from './OfflineIndicator';
 
@@ -13,7 +14,6 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
@@ -25,17 +25,6 @@ export function Layout({ children }: LayoutProps) {
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   const todayFormatted = format(new Date(), 'd MMM yyyy', { locale: th });
-
-  // Close mobile sidebar on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && sidebarOpen) {
-        setSidebarOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [sidebarOpen]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,65 +44,34 @@ export function Layout({ children }: LayoutProps) {
         ข้ามไปยังเนื้อหาหลัก (Skip to main content)
       </a>
 
-      {/* Desktop sidebar */}
-      <div className="hidden md:flex shrink-0">
-        <Sidebar />
-      </div>
-
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          role="presentation"
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden animate-fadeIn"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Mobile drawer */}
-      <div
-        id="mobile-sidebar"
-        role="dialog"
-        aria-modal="true"
-        aria-label="เมนูนำทางหลัก"
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out md:hidden ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <Sidebar onClose={() => setSidebarOpen(false)} />
-      </div>
-
       {/* Main content area */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <OfflineIndicator />
         {/* Header */}
         <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between border-b border-slate-200/60 bg-white/90 px-3.5 sm:px-4 lg:px-6 backdrop-blur-xl">
-          {/* Left section */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="เปิดเมนูนำทาง"
-              aria-expanded={sidebarOpen}
-              aria-controls="mobile-sidebar"
-              className="rounded-xl p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors md:hidden focus:ring-2 focus:ring-blue-500"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-            <div className="hidden items-center gap-2 sm:flex md:hidden">
-              <GraduationCap className="h-5 w-5 text-blue-600" />
-              <span className="text-sm font-bold text-slate-900">NextStep</span>
-            </div>
+          {/* Left section: V2U brand + desktop primary nav */}
+          <div className="flex items-center gap-3 lg:gap-5 min-w-0">
+            <Link to="/" aria-label="V2U หน้าหลัก" className="flex items-center gap-2 shrink-0">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
+                <GraduationCap className="h-4.5 w-4.5" />
+              </span>
+              <span className="flex flex-col leading-tight">
+                <span className="text-sm font-extrabold text-slate-900">V2U</span>
+                <span className="hidden text-[10px] font-medium text-slate-500 sm:block lg:hidden xl:block">เส้นทางสายอาชีพสู่มหาวิทยาลัย</span>
+              </span>
+            </Link>
+            <TopNav />
           </div>
 
           {/* Right cluster */}
           <div className="flex items-center gap-2 lg:gap-3">
             {/* Today's date */}
-            <span className="hidden text-xs font-medium text-slate-500 lg:block">
+            <span className="hidden text-xs font-medium text-slate-500 2xl:block">
               {todayFormatted}
             </span>
 
             {/* Progress stat pill */}
-            <div className="hidden items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 sm:flex text-slate-700">
+            <div className="hidden items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 sm:flex md:hidden xl:flex text-slate-700">
               <span className="text-xs font-semibold">{progressPercent}%</span>
               <span className="text-xs text-slate-400">&middot;</span>
               <span className="text-xs text-slate-600">
@@ -137,7 +95,7 @@ export function Layout({ children }: LayoutProps) {
             )}
 
             {/* Search */}
-            <form onSubmit={handleSearch} className="hidden md:block" role="search">
+            <form onSubmit={handleSearch} className="hidden lg:block" role="search">
               <div className="relative">
                 <label htmlFor="header-search-input" className="sr-only">
                   ค้นหาบทเรียนและเนื้อหา
@@ -152,7 +110,7 @@ export function Layout({ children }: LayoutProps) {
                   onFocus={() => setSearchFocused(true)}
                   onBlur={() => setSearchFocused(false)}
                   className={`rounded-xl border border-slate-300 bg-slate-50 py-2 pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition-all duration-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 ${
-                    searchFocused ? 'w-72' : 'w-56'
+                    searchFocused ? 'w-64' : 'w-44'
                   }`}
                 />
               </div>
@@ -168,14 +126,14 @@ export function Layout({ children }: LayoutProps) {
               <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-red-600 ring-2 ring-white" />
             </button>
 
-            {/* Avatar */}
-            <button
-              type="button"
+            {/* Avatar → ฉัน */}
+            <Link
+              to="/me"
               aria-label="โปรไฟล์ผู้ใช้งาน"
               className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-xs font-bold text-white shadow-sm transition-transform hover:scale-105 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             >
               S
-            </button>
+            </Link>
           </div>
         </header>
 
@@ -183,11 +141,14 @@ export function Layout({ children }: LayoutProps) {
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 overflow-y-auto overflow-x-hidden px-3.5 sm:px-4 py-5 sm:py-6 lg:px-6 xl:px-8 focus:outline-none"
+          className="flex-1 overflow-y-auto overflow-x-hidden px-3.5 sm:px-4 pt-5 pb-24 sm:pt-6 md:pb-6 lg:px-6 xl:px-8 focus:outline-none"
         >
           {children}
         </main>
       </div>
+
+      {/* Mobile primary navigation */}
+      <BottomNav />
     </div>
   );
 }

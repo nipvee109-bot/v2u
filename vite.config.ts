@@ -9,9 +9,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'NextStep — เส้นทางจากอาชีวะสู่มหาวิทยาลัย',
-        short_name: 'NextStep',
-        description: 'เส้นทางจากอาชีวะสู่มหาวิทยาลัย — Personal Learning Environment',
+        name: 'V2U — Vocational to University',
+        short_name: 'V2U',
+        description: 'เส้นทางสายอาชีพสู่มหาวิทยาลัย — จากจุดที่คุณอยู่ → สู่มหาวิทยาลัยที่คุณต้องการ',
         theme_color: '#1e3a8a', // blue-900
         background_color: '#f9fafb', // gray-50
         display: 'standalone',

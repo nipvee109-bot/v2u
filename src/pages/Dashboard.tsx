@@ -343,10 +343,10 @@ export function Dashboard() {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 rounded-full bg-blue-500/20 px-3.5 py-1 text-xs font-semibold text-blue-300 border border-blue-400/20">
               <Compass className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>NextStep &middot; เส้นทางจากอาชีวะสู่มหาวิทยาลัย</span>
+              <span>V2U &middot; เส้นทางสายอาชีพสู่มหาวิทยาลัย</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-              ศูนย์การเรียนรู้ NextStep
+              ภาพรวมการเรียนทั้งหมด
             </h1>
             <p className="text-white/70 text-xs md:text-sm max-w-lg">
               ระบบเตรียมความพร้อมสู่มหาวิทยาลัยสำหรับนักศึกษาอาชีวะ: สิ่งที่ต้องทำวันนี้ &middot; คิวทบทวน &middot; Roadmap &middot; จุดเสริมความเข้าใจ

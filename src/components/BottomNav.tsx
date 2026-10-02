@@ -1,27 +1,34 @@
-import { NavLink } from 'react-router-dom';
-import { Home, Calendar, Map, BookOpen } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { PRIMARY_NAV, isPrimaryNavActive } from './navigation/primaryNav';
 
+/** Mobile primary navigation (V2U) — 5 items, hidden from md breakpoint up. */
 export function BottomNav() {
+  const { pathname } = useLocation();
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
-      <div className="flex justify-around items-center h-16">
-        <NavLink to="/" className={({isActive}) => `flex flex-col items-center justify-center w-full h-full ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
-          <Home className="h-6 w-6" />
-          <span className="text-[10px] mt-1">หน้าแรก</span>
-        </NavLink>
-        <NavLink to="/calendar" className={({isActive}) => `flex flex-col items-center justify-center w-full h-full ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
-          <Calendar className="h-6 w-6" />
-          <span className="text-[10px] mt-1">ตารางเรียน</span>
-        </NavLink>
-        <NavLink to="/roadmap" className={({isActive}) => `flex flex-col items-center justify-center w-full h-full ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
-          <Map className="h-6 w-6" />
-          <span className="text-[10px] mt-1">แผน 6 เดือน</span>
-        </NavLink>
-        <NavLink to="/subjects/math" className={({isActive}) => `flex flex-col items-center justify-center w-full h-full ${isActive ? 'text-blue-600' : 'text-gray-500'}`}>
-          <BookOpen className="h-6 w-6" />
-          <span className="text-[10px] mt-1">วิชา</span>
-        </NavLink>
-      </div>
+    <nav
+      aria-label="เมนูหลัก"
+      className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
+    >
+      <ul className="grid grid-cols-5 h-16">
+        {PRIMARY_NAV.map((item) => {
+          const active = isPrimaryNavActive(item, pathname);
+          const Icon = item.icon;
+          return (
+            <li key={item.to} className="flex">
+              <Link
+                to={item.to}
+                aria-current={active ? 'page' : undefined}
+                className={`flex flex-1 flex-col items-center justify-center gap-0.5 min-h-[44px] text-[11px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                  active ? 'text-blue-700' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                <span>{item.label}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
     </nav>
   );
 }
