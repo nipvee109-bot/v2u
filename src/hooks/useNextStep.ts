@@ -6,6 +6,8 @@ import type { NextStep } from '../utils/nextStep';
 import { buildRoadmap } from '../roadmap/engine';
 import type { BuildRoadmapParams } from '../roadmap/engine';
 import type { Roadmap } from '../roadmap/types';
+import { getReadinessSummary } from '../readiness/engine';
+import type { ReadinessSummary } from '../readiness/engine';
 
 /**
  * The ONE set of inputs for "what should I do today?".
@@ -47,4 +49,11 @@ export function useNextStep(): NextStep {
 
 export function useRoadmap(): Roadmap {
   return buildRoadmap(useNextStepParams());
+}
+
+/** "ตอนนี้ฉันพร้อมแค่ไหน?" — same inputs as the next step, plus admission answers. */
+export function useReadiness(): ReadinessSummary {
+  const params = useNextStepParams();
+  const admissionInputs = useStore((s) => s.admissionInputs);
+  return getReadinessSummary({ ...params, admissionInputs });
 }

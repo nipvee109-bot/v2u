@@ -2,16 +2,17 @@ import { TrendingUp, BarChart3, CalendarCheck, Settings as SettingsIcon, ArrowDo
 import { useStore } from '../../store/useStore';
 import { HubHeader, HubLinkList } from '../../components/navigation/HubLinkList';
 import { AdmissionStatusCard } from '../../components/AdmissionStatusCard';
+import { ReadinessCard } from '../../components/ReadinessCard';
 
 /** ฉัน — progress, analytics, weekly summary, settings and import/export. */
 export function MeHub() {
   const { lessons } = useStore();
   const completed = lessons.filter((l) => l.status === 'COMPLETED').length;
-  const readiness = lessons.length > 0 ? Math.round((completed / lessons.length) * 100) : 0;
 
   return (
     <div className="mx-auto max-w-5xl">
-      <HubHeader title="ฉัน" subtitle={`ความพร้อมโดยรวม ${readiness}% · เรียนจบ ${completed}/${lessons.length} บท`} />
+      <HubHeader title="ฉัน" subtitle={`เรียนจบ ${completed}/${lessons.length} บท · ความพร้อมดูได้ด้านล่าง`} />
+      <ReadinessCard />
       <AdmissionStatusCard />
       <HubLinkList
         heading="ความก้าวหน้า"
