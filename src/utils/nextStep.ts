@@ -43,6 +43,11 @@ import { computePlan } from '../roadmap/plan';
 import type { StudentProfile, StudentRoute } from '../route/types';
 import type { AdmissionRegistry } from '../admission/types';
 import { createSkillReadinessProvider, getWeakestSkill } from '../skills/engine';
+import { computeLessonGaps, recommendPathway } from '../diagnostic/engine';
+import type { DiagnosticData } from '../diagnostic/types';
+import type { CurriculumSubjectId } from '../curriculum/types';
+import { buildLearningPlan } from '../resources/engine';
+import { findStudyLesson } from '../curriculum/engine';
 
 export type NextStepKind = 'continue' | 'review' | 'strengthen' | 'study' | 'empty';
 
@@ -67,6 +72,8 @@ export interface NextStepRouteContext {
   checklist?: Record<string, 'met' | 'gap'>;
   /** Admission data (defaults to the shipped registry); only verified paths are used. */
   admissionRegistry?: AdmissionRegistry;
+  /** Phase 60: per-subject diagnostic history */
+  diagnostic?: DiagnosticData | null;
 }
 
 export interface NextStepGoalInput {
@@ -117,6 +124,12 @@ export interface NextStep {
   missing: string[];
   /** Phase 42A: the curriculum lesson behind this step, when one is linked. */
   curriculum?: NextStepCurriculumInfo;
+  /** Phase 60: which subject the pathway chose, and what else it could be */
+  pathway?: {
+    subjectId: CurriculumSubjectId;
+    alternatives: { lessonId: string; title: string; subjectId: CurriculumSubjectId; reason: string }[];
+    suggestDiagnostic: boolean;
+  };
 }
 
 export interface NextStepCurriculumInfo {
@@ -347,19 +360,58 @@ export function getNextStep(params: NextStepParams): NextStep {
     };
   }
 
-  // 4. Next lesson on the route (prerequisite-gap aware, time-budgeted)
+  // 4. Next lesson on the pathway — Phase 60: chosen ACROSS subjects by the gap
+  //    engine (diagnostic + learning evidence + prerequisites + target), not
+  //    "first unfinished requirement" (which always meant Math).
   if (route) {
-    // Phase 50: follow the personal plan's order (important topics first when time is short)
-    const plan = computePlan({
-      route,
+    const pathParams = {
       storeLessons: lessons,
       records: routeCtx!.records,
+      diagnostic: routeCtx!.diagnostic,
       referenceDate,
-      dailyMinutes: budget ?? route.profile.availableMinutes,
-      horizon: resolvePlanningHorizon(route.profile),
-    });
-    const preferred = (plan.work.get(route.currentRequirementId ?? '') ?? []).find((i) => i.kind === 'study')?.curriculumLessonId;
-    const rs = getRouteNextStep(route, lessons, budget, undefined, preferred);
+      profile: route.profile,
+      budget: budget ?? route.profile.availableMinutes,
+    };
+    const pick = recommendPathway(pathParams);
+    if (pick) {
+      // Phase 50: inside the chosen subject, keep the personal plan's priority order when it names a lesson that is ready to learn
+      const subjectReq = route.steps.find((x) => x.requirement.subjectId === pick.subjectId)?.requirement.id;
+      const plan = computePlan({
+        route,
+        storeLessons: lessons,
+        records: routeCtx!.records,
+        referenceDate,
+        dailyMinutes: budget ?? route.profile.availableMinutes,
+        horizon: resolvePlanningHorizon(route.profile),
+      });
+      const preferredId = (plan.work.get(subjectReq ?? '') ?? []).find((i) => i.kind === 'study')?.curriculumLessonId;
+      const gaps = computeLessonGaps(pathParams).gaps.filter((g) => g.state === 'gap');
+      const pickIsReview = gaps.find((g) => g.lesson.id === pick.lesson.id)?.missingSkills.some((m) => m.status === 'needs-review');
+      const preferred = pickIsReview ? undefined : gaps.find((g) => g.lesson.id === preferredId && g.lesson.subjectId === pick.subjectId)?.lesson;
+      const cLesson = preferred ?? pick.lesson;
+      const study = findStudyLesson(cLesson, lessons);
+      if (study) {
+        const minutes: TimeBudgetMinutes = budget ?? route.profile.availableMinutes;
+        const lplan = buildLearningPlan(cLesson.id, minutes);
+        return {
+          ...base,
+          kind: 'study',
+          rule: 'route',
+          minutes,
+          outcome: cLesson.learningOutcomes.join(' · '),
+          plan: lplan ?? undefined,
+          href: `/learn/curriculum/${cLesson.id}`,
+          requiresResourceConfirmation: true,
+          lessonId: study.id,
+          todayAction: `เรียน: ${cLesson.title}`,
+          reason: pick.reasons.join(' และ'),
+          curriculum: curriculumInfoFor(cLesson, lessons, lplan?.steps.find((x) => x.resourceId)?.resourceId),
+          pathway: { subjectId: pick.subjectId, alternatives: pick.alternatives.map((a) => ({ lessonId: a.lesson.id, title: a.lesson.title, subjectId: a.lesson.subjectId, reason: a.reason })), suggestDiagnostic: pick.suggestDiagnostic },
+        };
+      }
+    }
+    // Fallback: the original per-requirement route step
+    const rs = getRouteNextStep(route, lessons, budget);
     const cLesson = rs ? getCurriculumLesson(rs.curriculumLessonId) : undefined;
     if (rs && rs.studyLessonId && cLesson) {
       return {

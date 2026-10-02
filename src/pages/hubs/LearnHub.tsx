@@ -1,12 +1,14 @@
 import { learningHubPathFor } from '../../curriculum/engine';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { usePathway } from '../../hooks/usePathway';
+import { AutoRecommendation, ManualPicker } from '../../components/pathway/PathwayBits';
+import type { CurriculumSubjectId } from '../../curriculum/types';
 import { Calculator, Code2, Atom, Brain, Cpu, BookMarked, Search, LayoutGrid, PlayCircle, Route as RouteIcon, ArrowRight, Clock } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { SUBJECTS } from '../../types';
 import type { SubjectId } from '../../types';
 import { HubHeader, HubLinkList } from '../../components/navigation/HubLinkList';
 import type { HubLink } from '../../components/navigation/HubLinkList';
-import { useNextStep } from '../../hooks/useNextStep';
 import { RowGroup, Section, Surface, LoopStrip } from '../../components/ui';
 
 const SUBJECT_ICONS: Record<SubjectId, HubLink['icon']> = {
@@ -21,7 +23,13 @@ const SUBJECT_ICONS: Record<SubjectId, HubLink['icon']> = {
 export function LearnHub() {
   const navigate = useNavigate();
   const { lessons, activeLearningSession } = useStore();
-  const step = useNextStep();
+  const [params, setParams] = useSearchParams();
+  const manual = params.get('pick') === 'manual';
+  const subjectParam = params.get('subject');
+  const manualSubject = subjectParam === 'math' || subjectParam === 'physics' || subjectParam === 'programming' ? (subjectParam as CurriculumSubjectId) : null;
+  const pathway = usePathway();
+  const setManual = (on: boolean, subject: CurriculumSubjectId | null = null) =>
+    setParams(on ? { pick: 'manual', ...(subject ? { subject } : {}) } : {}, { replace: true });
 
   const liveSession =
     activeLearningSession &&
@@ -35,9 +43,7 @@ export function LearnHub() {
   // "Continue" card: a live sitting first, otherwise today's curriculum lesson
   const cont = liveLesson
     ? { to: liveHref, eyebrow: 'กำลังเรียนอยู่', title: liveLesson.title, meta: 'กลับไปเรียนบทนี้', stage: 'learn' as const }
-    : step.curriculum
-      ? { to: `/learn/curriculum/${step.curriculum.lessonId}`, eyebrow: 'บทถัดไปของคุณ', title: step.curriculum.title, meta: step.minutes ? `วันนี้ ${step.minutes} นาที` : `${step.curriculum.estimatedMinutes} นาที`, stage: 'today' as const }
-      : null;
+    : null;
 
   const subjectItems = (Object.keys(SUBJECTS) as SubjectId[]).map((id) => {
     const subjectLessons = lessons.filter((l) => l.subjectId === id);
@@ -84,6 +90,24 @@ export function LearnHub() {
           </p>
         </Link>
       )}
+
+      {/* Phase 60: two clear ways to start — V2U decides, or I choose */}
+      <section aria-labelledby="learn-how" className="order-2 lg:order-none space-y-4" data-testid="learn-modes">
+        <h2 id="learn-how" className="sr-only">เริ่มเรียนแบบไหน</h2>
+        <div role="tablist" aria-label="วิธีเลือกบทเรียน" className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1">
+          <button type="button" role="tab" aria-selected={!manual} onClick={() => setManual(false)} className={`min-h-[48px] rounded-xl px-3 text-sm font-bold ${!manual ? 'bg-white text-brand-800 shadow-sm' : 'text-slate-600'}`}>
+            ✨ ให้ V2U จัดให้
+          </button>
+          <button type="button" role="tab" aria-selected={manual} onClick={() => setManual(true, manualSubject)} className={`min-h-[48px] rounded-xl px-3 text-sm font-bold ${manual ? 'bg-white text-brand-800 shadow-sm' : 'text-slate-600'}`}>
+            ฉันอยากเลือกเอง
+          </button>
+        </div>
+        {manual ? (
+          <ManualPicker subject={manualSubject} onSubject={(s) => setManual(true, s)} gaps={pathway.gaps} />
+        ) : (
+          <AutoRecommendation rec={pathway.recommendation} onManual={() => setManual(true)} />
+        )}
+      </section>
 
       <Section title="วิชา" id="learn-subjects" className="order-3 lg:order-none">
         <RowGroup label="วิชา" items={subjectItems} />

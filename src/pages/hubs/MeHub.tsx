@@ -4,6 +4,9 @@ import { useStore } from '../../store/useStore';
 import { HubLinkList } from '../../components/navigation/HubLinkList';
 import { AdmissionStatusCard } from '../../components/AdmissionStatusCard';
 import { ReadinessCard } from '../../components/ReadinessCard';
+import { ProfileEditor } from '../../components/pathway/ProfileEditor';
+import { SubjectStatusCard } from '../../components/pathway/PathwayBits';
+import { usePathway } from '../../hooks/usePathway';
 import { useNextStep } from '../../hooks/useNextStep';
 import { ProgressRing, ScreenHeader, Surface } from '../../components/ui';
 
@@ -11,6 +14,7 @@ import { ProgressRing, ScreenHeader, Surface } from '../../components/ui';
 export function MeHub() {
   const { lessons, studentProfile } = useStore();
   const step = useNextStep();
+  const pathway = usePathway();
   const completed = lessons.filter((l) => l.status === 'COMPLETED').length;
 
   return (
@@ -33,6 +37,20 @@ export function MeHub() {
           </Link>
         </div>
       </Surface>
+
+      <ProfileEditor />
+      <section aria-labelledby="me-diagnostic" className="space-y-3" data-testid="me-diagnostic">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="me-diagnostic" className="text-base font-bold text-ink">การวัดระดับของฉัน</h2>
+          <Link to="/me/diagnostic" className="inline-flex min-h-[44px] items-center rounded-xl border-2 border-brand-200 px-4 text-sm font-bold text-brand-700 hover:bg-brand-50">
+            {pathway.hasDiagnostic ? 'วัดใหม่' : 'เริ่มวัดระดับ'}
+          </Link>
+        </div>
+        <p className="text-xs text-slate-500">แยกตามวิชา ไม่รวมเป็นคะแนนเดียว · วัดใหม่จะเก็บผลเดิมไว้เป็นประวัติ · ผลการเรียนและการเช็กความเข้าใจที่ใหม่กว่าจะปรับสถานะให้อัตโนมัติ</p>
+        <div className="grid gap-3">
+          {pathway.subjects.map((sp) => <SubjectStatusCard key={sp.subjectId} p={sp} detailed />)}
+        </div>
+      </section>
 
       <ReadinessCard />
         </div>

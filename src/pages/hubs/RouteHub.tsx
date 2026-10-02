@@ -1,3 +1,5 @@
+import { usePathway } from '../../hooks/usePathway';
+import { PathwayOverview } from '../../components/pathway/PathwayBits';
 import { Map, Target, CalendarDays, CheckCircle2, CircleDot, Circle, Lock, ArrowRight, Clock, Lightbulb, Trophy } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { buildNextStepRoute } from '../../utils/nextStep';
@@ -44,6 +46,7 @@ export function RouteHub() {
   const { start, confirmModal } = useStartNextStep();
   const subjectGaps = getSubjectSkillGaps({ storeLessons: lessons, records });
   const { profile } = route;
+  const pathway = usePathway();
   const currentPhase = roadmap.phases.find((p) => p.requirementId === roadmap.currentPhaseId);
   const currentStep = route.steps.find((s) => s.requirement.id === route.currentRequirementId);
 
@@ -70,6 +73,8 @@ export function RouteHub() {
           <p className="mt-1.5 text-xs text-slate-500">ผ่านแล้ว {route.completedCount}/{route.steps.length} ขั้น · ตอนนี้: {currentStep ? currentStep.requirement.title : 'ครบทุกขั้นแล้ว'}</p>
         </div>
       </section>
+
+      <PathwayOverview subjects={pathway.subjects} bySubject={pathway.bySubject} goal={`${route.target.faculty} · ${route.target.title}`} />
 
       <div className="flex flex-col gap-6 sm:gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-8">
         <div className="contents lg:flex lg:flex-col lg:gap-8">

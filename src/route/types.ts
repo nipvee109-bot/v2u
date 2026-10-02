@@ -50,6 +50,10 @@ export interface StudentProfile {
   availableMinutes: TimeBudgetMinutes;
   /** Chosen planning horizon; absent = not chosen yet (planner uses the default, labelled as such). */
   planningHorizon?: PlanningHorizon;
+  /* Phase 60: the learner's own words for their goal (never inferred; absent = not set yet) */
+  targetUniversity?: string;
+  targetFaculty?: string;
+  targetMajor?: string;
 }
 
 export interface RouteTarget {

@@ -7,8 +7,11 @@ import { shouldShowOnboarding } from '../utils/onboardingUtils';
 import { StudyOnboardingModal } from '../components/onboarding/StudyOnboardingModal';
 import { useNextStepParams } from '../hooks/useNextStep';
 import { useStartNextStep } from '../hooks/useStartNextStep';
+import { usePathway } from '../hooks/usePathway';
+import { StatusPill } from '../components/pathway/PathwayBits';
+import { SUBJECT_EMOJI, SUBJECT_LABEL } from '../diagnostic/engine';
 import { TimeBudgetPicker } from '../components/TimeBudgetPicker';
-import { normalizeStudentProfile } from '../route/engine';
+import { getRouteTarget, normalizeStudentProfile } from '../route/engine';
 import { LoopStrip, PlanBar, ProgressBar, Section, Stat, Surface, Chip } from '../components/ui';
 
 /**
@@ -41,6 +44,13 @@ export function HomePage() {
   const { start, confirmModal } = useStartNextStep();
   const handleStart = () => start(step);
   const rec = step.curriculum?.recommendedResource;
+  const pathway = usePathway();
+  const diagnostic = useStore((st) => st.diagnostic);
+  const needsDiagnostic = !pathway.hasDiagnostic && (diagnostic?.skippedSubjects.length ?? 0) < 3;
+  const goalText = studentProfile
+    ? [studentProfile.targetUniversity, studentProfile.targetFaculty, studentProfile.targetMajor].filter(Boolean).join(' · ') ||
+      `${getRouteTarget(normalizeStudentProfile(studentProfile).targetId)?.title ?? ''} (เส้นทางที่ใช้ตอนนี้)`
+    : null;
 
   return (
     <div className="mx-auto w-full max-w-3xl lg:max-w-6xl space-y-6 sm:space-y-8">
@@ -122,6 +132,33 @@ export function HomePage() {
           {step.ctaLabel}
           <ArrowRight className="h-5 w-5" />
         </button>
+      </section>
+
+      <section aria-labelledby="home-now" className="order-2 lg:order-none rounded-3xl border border-slate-200/80 bg-white p-4 sm:p-5" data-testid="home-now">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="home-now" className="text-base font-bold text-ink">📊 ตอนนี้</h2>
+          <p className="text-xs text-slate-600 break-words">
+            🎯 {goalText ?? <span className="text-slate-500">ยังไม่ได้ตั้งเป้าหมาย · <Link to="/me" className="font-semibold text-brand-700">ตั้งเป้าหมาย</Link></span>}
+          </p>
+        </div>
+        <ul className="mt-3 grid gap-2 sm:grid-cols-3">
+          {pathway.subjects.map((p) => (
+            <li key={p.subjectId} className="flex items-center justify-between gap-2 rounded-2xl bg-slate-50 px-3 py-2.5">
+              <span className="text-sm font-semibold text-ink">{SUBJECT_EMOJI[p.subjectId]} {SUBJECT_LABEL[p.subjectId]}</span>
+              <StatusPill status={p.status} />
+            </li>
+          ))}
+        </ul>
+        {needsDiagnostic && (
+          <div className="mt-3 flex flex-col gap-2 rounded-2xl bg-brand-50 p-4 sm:flex-row sm:items-center sm:justify-between" data-testid="diagnostic-prompt">
+            <p className="text-sm text-brand-900">
+              <b className="font-semibold">ก่อนเริ่มเรียน มารู้จักพื้นฐานของคุณกันก่อน</b> — ไม่หักคะแนน ใช้จัดเส้นทางให้ตรงกับคุณ ข้ามได้
+            </p>
+            <Link to="/me/diagnostic" className="inline-flex min-h-[48px] shrink-0 items-center justify-center rounded-2xl bg-brand-600 px-5 text-sm font-bold text-white hover:bg-brand-700">
+              วัดระดับ
+            </Link>
+          </div>
+        )}
       </section>
 
       <Section className="order-5 lg:order-none"

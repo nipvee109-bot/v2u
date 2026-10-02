@@ -35,6 +35,10 @@ import type {
   CourseItem
 } from '../types';
 import type { StudentProfile } from '../route/types';
+import type { DiagnosticAttempt, DiagnosticData } from '../diagnostic/types';
+import { EMPTY_DIAGNOSTIC } from '../diagnostic/types';
+import { sanitizeDiagnosticData } from '../diagnostic/engine';
+import type { CurriculumSubjectId } from '../curriculum/types';
 import { DEFAULT_STUDENT_PROFILE } from '../route/data';
 import { budgetFromWeeklyHours } from '../route/engine';
 import { creditCurriculumLesson, skillIdsForTitles } from '../curriculum/engine';
@@ -526,6 +530,11 @@ interface StoreState {
   studentProfile: StudentProfile | null;
   setStudentProfile: (patch: Partial<StudentProfile>) => void;
 
+  // Phase 60: per-subject diagnostic history (latest sitting per subject is used)
+  diagnostic: DiagnosticData;
+  recordDiagnosticAttempt: (subjectId: CurriculumSubjectId, answers: Record<string, number | null>) => DiagnosticAttempt;
+  setDiagnosticSkipped: (subjectId: CurriculumSubjectId, skipped: boolean) => void;
+
   // Phase 46C: what the student has told V2U (never inferred)
   admissionInputs: StudentAdmissionInputs;
   /** Phase 55: personal study notes, summaries and video progress */
@@ -569,6 +578,7 @@ interface StoreState {
     admissionInputs?: StudentAdmissionInputs | null;
     /** Phase 55: restored when present, kept otherwise. */
     learningNotes?: LearningNotesData | null;
+    diagnostic?: DiagnosticData | null;
   }) => void;
   resetToInitial: () => void;
 }
@@ -581,6 +591,22 @@ export const useStore = create<StoreState>()(
       hasCompletedOnboarding: false,
       admissionInputs: EMPTY_ADMISSION_INPUTS,
       learningNotes: EMPTY_NOTES_DATA,
+      diagnostic: EMPTY_DIAGNOSTIC,
+      recordDiagnosticAttempt: (subjectId, answers) => {
+        const attempt: DiagnosticAttempt = { id: `diag-${subjectId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, subjectId, takenAt: new Date().toISOString(), answers: { ...answers } };
+        set((state) => {
+          const d = sanitizeDiagnosticData(state.diagnostic);
+          // History is kept: "วัดใหม่" adds a sitting, it never deletes the old ones
+          return { diagnostic: { attempts: [...d.attempts, attempt], skippedSubjects: d.skippedSubjects.filter((x) => x !== subjectId) } };
+        });
+        return attempt;
+      },
+      setDiagnosticSkipped: (subjectId, skipped) =>
+        set((state) => {
+          const d = sanitizeDiagnosticData(state.diagnostic);
+          const rest = d.skippedSubjects.filter((x) => x !== subjectId);
+          return { diagnostic: { ...d, skippedSubjects: skipped ? [...rest, subjectId] : rest } };
+        }),
       addStudyNote: (input) => {
         const now = new Date().toISOString();
         const note: StudyNote = { ...input, text: input.text.trim(), id: uuidv4(), createdAt: now, updatedAt: now };
@@ -2305,6 +2331,7 @@ export const useStore = create<StoreState>()(
           ...(data.studentProfile ? { studentProfile: data.studentProfile } : {}),
           ...(data.admissionInputs ? { admissionInputs: normalizeAdmissionInputs(data.admissionInputs) } : {}),
           ...(data.learningNotes ? { learningNotes: sanitizeNotesData(data.learningNotes) } : {}),
+          ...(data.diagnostic ? { diagnostic: sanitizeDiagnosticData(data.diagnostic) } : {}),
         }),
       resetToInitial: () =>
         set({
@@ -2312,6 +2339,7 @@ export const useStore = create<StoreState>()(
           studentProfile: null,
           admissionInputs: EMPTY_ADMISSION_INPUTS,
           learningNotes: EMPTY_NOTES_DATA,
+          diagnostic: EMPTY_DIAGNOSTIC,
           lessons: initialLessons,
           unclearTopics: [],
           sessions: [],

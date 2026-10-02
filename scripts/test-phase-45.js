@@ -98,16 +98,15 @@ await test('Available time adapts the plan (15/30/60/120)', () => {
   assert.strictEqual(s.minutes, 120);
 });
 await test('Prerequisite gap is respected via the route', () => {
-  // Pretend math is proven by skills but its lessons are not completed; physics is current.
-  const proven = blank.map((r) => (lessons.find((l) => l.id === r.lessonId).subjectId === 'math'
-    ? { ...r, completionStatus: 'COMPLETED', studyCount: 1, masteryScore: 4, nextReviewAt: '2026-12-01T00:00:00Z' } : r));
+  // Phase 60: physics units/vectors done, math NOT proven → kinematics must not be chosen
+  // (it needs linear equations); every chosen lesson has its prerequisites actually known.
   const done = lessons.map((l) => (l.title === 'หน่วย และ เวกเตอร์' ? { ...l, status: 'COMPLETED' } : l));
-  const provenPlusPhysics = proven.map((r) => (r.lessonId === byTitle('หน่วย และ เวกเตอร์').id
+  const physicsDone = blank.map((r) => (r.lessonId === byTitle('หน่วย และ เวกเตอร์').id
     ? { ...r, completionStatus: 'COMPLETED', studyCount: 1, masteryScore: 4, nextReviewAt: '2026-12-01T00:00:00Z' } : r));
-  const s = getNextStep({ lessons: done, referenceDate: NOW, route: { profile, records: provenPlusPhysics } });
+  const s = getNextStep({ lessons: done, referenceDate: NOW, route: { profile, records: physicsDone } });
   assert.strictEqual(s.rule, 'route');
-  assert.strictEqual(s.curriculum.lessonId, 'math-alg-linear-eq', 'kinematics needs linear equations first');
-  assert(s.reason.includes('ต้องปูพื้น'), s.reason);
+  assert.notStrictEqual(s.curriculum.lessonId, 'phy-kin-1d', 'kinematics needs linear equations first');
+  assert.deepStrictEqual(s.curriculum.missingPrerequisiteTitles, [], 'chosen lesson has no missing prerequisite');
 });
 await test('Same inputs → same step (deterministic)', () => {
   assert.deepStrictEqual(step({}, { records: weakPython }), step({}, { records: weakPython }));

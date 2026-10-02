@@ -8,6 +8,7 @@ import { LegacyLessonRoute } from './pages/legacy/LegacyLessonRoute';
 const LearnHub = lazy(() => import('./pages/hubs/LearnHub').then((m) => ({ default: m.LearnHub })));
 const ReviewHub = lazy(() => import('./pages/hubs/ReviewHub').then((m) => ({ default: m.ReviewHub })));
 const RouteHub = lazy(() => import('./pages/hubs/RouteHub').then((m) => ({ default: m.RouteHub })));
+const DiagnosticPage = lazy(() => import('./pages/DiagnosticPage').then((m) => ({ default: m.DiagnosticPage })));
 const CurriculumPage = lazy(() => import('./pages/CurriculumPage').then((m) => ({ default: m.CurriculumPage })));
 const CurriculumLessonPage = lazy(() => import('./pages/CurriculumLessonPage').then((m) => ({ default: m.CurriculumLessonPage })));
 const MeHub = lazy(() => import('./pages/hubs/MeHub').then((m) => ({ default: m.MeHub })));
@@ -53,6 +54,7 @@ function App() {
           <Route path="/review" element={<ReviewHub />} />
           <Route path="/route" element={<RouteHub />} />
           <Route path="/me" element={<MeHub />} />
+          <Route path="/me/diagnostic" element={<DiagnosticPage />} />
 
           {/* Compatibility redirects */}
           <Route path="/home" element={<Navigate to="/" replace />} />

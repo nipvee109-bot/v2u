@@ -25,6 +25,7 @@ export function useNextStepParams(): BuildRoadmapParams {
     getCalculatedGoals,
     studentProfile,
     admissionInputs,
+    diagnostic,
   } = useStore();
   const records = useLearningRecords();
   const budget = normalizeStudentProfile(studentProfile).availableMinutes;
@@ -39,7 +40,7 @@ export function useNextStepParams(): BuildRoadmapParams {
     knowledgeGaps: getKnowledgeGaps(),
     goals: getCalculatedGoals(),
     // Adaptive, route-aware mode (Phase 45); checklist answers (Phase 46C)
-    route: { profile: studentProfile, records, budget, checklist: admissionInputs?.checklist },
+    route: { profile: studentProfile, records, budget, checklist: admissionInputs?.checklist, diagnostic },
   };
 }
 

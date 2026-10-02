@@ -1,3 +1,5 @@
+import type { DiagnosticData } from '../diagnostic/types';
+import { hasDiagnosticData, sanitizeDiagnosticData } from '../diagnostic/engine';
 import { hasNotesData, sanitizeNotesData } from '../notes/engine';
 import type { LearningNotesData } from '../notes/types';
 import { format } from 'date-fns';
@@ -56,6 +58,8 @@ export interface FullBackupPayload {
   admissionInputs?: StudentAdmissionInputs;
   /** v5 (Phase 55, optional): personal notes, summaries and video progress. */
   learningNotes?: LearningNotesData;
+  /** v5 (Phase 60, optional): per-subject diagnostic history. */
+  diagnostic?: DiagnosticData;
 }
 
 export interface ValidationStats {
@@ -105,6 +109,8 @@ export function computePayloadChecksum(payload: Partial<FullBackupPayload>): str
     // Phase 50: planning horizon is covered only when present, so v5 files
     // written before it existed keep verifying.
     if (p?.planningHorizon) str += `|h${p.planningHorizon.months}${p.planningHorizon.preset ? 'p' : 'c'}`;
+    // Phase 60: goal text only when set, so earlier v5 files keep verifying
+    if (p?.targetUniversity || p?.targetFaculty || p?.targetMajor) str += `|g${p.targetUniversity ?? ''}/${p.targetFaculty ?? ''}/${p.targetMajor ?? ''}`;
     // Optional admission inputs: only part of the checksum when present, so
     // v5 files written before Phase 46C keep verifying.
     const a = payload.admissionInputs;
@@ -121,6 +127,9 @@ export function computePayloadChecksum(payload: Partial<FullBackupPayload>): str
     }
     // Phase 55: notes are covered only when present, so older v5 files keep verifying
     const n = payload.learningNotes;
+    const dg = payload.diagnostic;
+    if (dg && (dg.attempts.length || dg.skippedSubjects.length))
+      str += `_diag:${dg.attempts.map((a) => `${a.subjectId}@${a.takenAt}#${Object.keys(a.answers).length}`).join(',')}|${[...dg.skippedSubjects].sort().join(',')}`;
     if (n) str += `_notes:${n.notes.length}|${Object.keys(n.summaries).length}|${Object.keys(n.videoProgress).length}|${n.notes.reduce((acc, x) => acc + x.text.length, 0)}`;
   }
   let hash = 0;
@@ -434,6 +443,8 @@ export function migrateToLatestSchema(raw: unknown): {
     ...(admissionInputs ? { admissionInputs } : {}),
     // Phase 55: optional; old backups simply have none
     ...(rawObj.learningNotes && typeof rawObj.learningNotes === 'object' ? { learningNotes: sanitizeNotesData(rawObj.learningNotes) } : {}),
+    // Phase 60: optional; old backups simply have none
+    ...(hasDiagnosticData(sanitizeDiagnosticData(rawObj.diagnostic)) ? { diagnostic: sanitizeDiagnosticData(rawObj.diagnostic) } : {}),
   };
 
   payload.checksum = computePayloadChecksum(payload);
@@ -716,10 +727,19 @@ export function mergePayloadWithExisting(
       ? { admissionInputs: imported.admissionInputs ?? existing.admissionInputs }
       : {}),
     ...(imported.learningNotes || existing.learningNotes ? { learningNotes: mergeNotesData(existing.learningNotes, imported.learningNotes) } : {}),
+    ...(imported.diagnostic || existing.diagnostic ? { diagnostic: mergeDiagnostic(existing.diagnostic, imported.diagnostic) } : {}),
   };
 
   mergedPayload.checksum = computePayloadChecksum(mergedPayload);
   return mergedPayload;
+}
+
+/** Union of sittings by id (history is never dropped); skipped = union. */
+function mergeDiagnostic(a?: DiagnosticData, b?: DiagnosticData): DiagnosticData {
+  const x = sanitizeDiagnosticData(a);
+  const y = sanitizeDiagnosticData(b);
+  const byId = new Map([...x.attempts, ...y.attempts].map((t) => [t.id, t]));
+  return { attempts: [...byId.values()].sort((p, q) => p.takenAt.localeCompare(q.takenAt)), skippedSubjects: [...new Set([...x.skippedSubjects, ...y.skippedSubjects])] };
 }
 
 /** Union of notes by id (newer edit wins); summaries/progress: newer updatedAt wins. */
@@ -755,6 +775,7 @@ export function createExportPayload(state: {
   studentProfile?: StudentProfile | null;
   admissionInputs?: StudentAdmissionInputs | null;
   learningNotes?: LearningNotesData | null;
+  diagnostic?: DiagnosticData | null;
 }): FullBackupPayload {
   const completedLessons = (state.lessons || []).filter((l) => l.status === 'COMPLETED').length;
   const totalMinutes = (state.lessons || []).reduce((acc, l) => acc + (l.actualStudyMinutes || 0), 0);
@@ -783,6 +804,7 @@ export function createExportPayload(state: {
     studentProfile: state.studentProfile ? normalizeStudentProfile(state.studentProfile) : null,
     ...(state.admissionInputs ? { admissionInputs: normalizeAdmissionInputs(state.admissionInputs) } : {}),
     ...(hasNotesData(state.learningNotes) ? { learningNotes: sanitizeNotesData(state.learningNotes) } : {}),
+    ...(hasDiagnosticData(state.diagnostic) ? { diagnostic: sanitizeDiagnosticData(state.diagnostic) } : {}),
   };
 
   payload.checksum = computePayloadChecksum(payload);

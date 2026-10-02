@@ -69,8 +69,13 @@ export function resolvePlanningHorizon(profile?: Partial<StudentProfile> | null)
 export function normalizeStudentProfile(profile?: Partial<StudentProfile> | null): StudentProfile {
   const p = { ...DEFAULT_STUDENT_PROFILE, ...(profile ?? {}) };
   const horizon = isValidPlanningHorizon(p.planningHorizon) ? { planningHorizon: { months: p.planningHorizon.months, preset: p.planningHorizon.preset } } : {};
+  const text = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, 120) : undefined);
+  const goalText = Object.fromEntries(
+    (['targetUniversity', 'targetFaculty', 'targetMajor'] as const).map((k) => [k, text(p[k])]).filter(([, v]) => v !== undefined)
+  ) as Pick<StudentProfile, 'targetUniversity' | 'targetFaculty' | 'targetMajor'>;
   return {
     ...horizon,
+    ...goalText,
     educationLevel: EDUCATION_LEVELS.includes(p.educationLevel) ? p.educationLevel : DEFAULT_STUDENT_PROFILE.educationLevel,
     programId: VOCATIONAL_PROGRAMS.some((x) => x.id === p.programId) ? p.programId : DEFAULT_STUDENT_PROFILE.programId,
     targetId: getRouteTarget(p.targetId) ? p.targetId : DEFAULT_STUDENT_PROFILE.targetId,

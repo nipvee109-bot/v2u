@@ -48,6 +48,7 @@ export function Settings() {
     studentProfile,
     admissionInputs,
     learningNotes,
+    diagnostic,
     importData,
     resetToInitial,
   } = useStore();
@@ -92,6 +93,7 @@ export function Settings() {
       hasCompletedOnboarding,
       admissionInputs,
       learningNotes,
+      diagnostic,
       studentProfile,
     });
   };
@@ -169,6 +171,7 @@ export function Settings() {
         studentProfile: finalPayload.studentProfile,
         admissionInputs: finalPayload.admissionInputs,
         learningNotes: finalPayload.learningNotes,
+        diagnostic: finalPayload.diagnostic,
       });
 
       // 3. Close modal & refresh snapshot list
@@ -243,6 +246,7 @@ export function Settings() {
         studentProfile: p.studentProfile,
         admissionInputs: p.admissionInputs,
         learningNotes: p.learningNotes,
+        diagnostic: p.diagnostic,
       });
 
       refreshSnapshots();
