@@ -6,6 +6,8 @@
    Small on purpose: every lesson is real, sequenced, and linked to the
    existing trackable study lesson (studyLessonTitle) in initialData.ts.
    Expand by appending — never reuse or rename an existing id.
+   Resources live in the single registry (src/resources/registry.ts);
+   lessons reference them by id only (Phase 42C).
    ========================================================================= */
 
 import type { Curriculum } from './types';
@@ -145,7 +147,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-math-solve-linear', 'skill-math-check-solution'],
       exerciseIds: ['ex-math-linear-eq'],
       quizIds: ['quiz-math-linear-eq'],
-      resourceIds: ['res-math-textbook-m4'],
+      resourceIds: ['cr-khan-alg1-equations', 'cr-ipst-math-m1-linear-eq', 'cr-openstax-college-algebra-ch2', 'res-math-textbook-m4'],
       studyLessonTitle: 'สมการและอสมการเชิงเส้น',
     },
     {
@@ -161,7 +163,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-math-linear-system', 'skill-math-word-problem'],
       exerciseIds: ['ex-math-linear-system'],
       quizIds: ['quiz-math-linear-system'],
-      resourceIds: ['res-math-textbook-m4'],
+      resourceIds: ['cr-khan-alg1-systems', 'cr-openstax-college-algebra-systems', 'res-math-textbook-m4'],
       studyLessonTitle: 'สมการและอสมการเชิงเส้น',
     },
     {
@@ -177,7 +179,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-math-solve-inequality'],
       exerciseIds: ['ex-math-linear-ineq'],
       quizIds: ['quiz-math-linear-ineq'],
-      resourceIds: ['res-math-textbook-m4'],
+      resourceIds: ['cr-khan-alg1-equations', 'cr-openstax-college-algebra-ch2', 'res-math-textbook-m4'],
       studyLessonTitle: 'สมการและอสมการเชิงเส้น',
     },
     {
@@ -193,7 +195,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-math-exponent-laws'],
       exerciseIds: ['ex-math-exponents'],
       quizIds: ['quiz-math-exponents'],
-      resourceIds: ['res-math-textbook-m4'],
+      resourceIds: ['cr-khan-alg1-exponents', 'cr-ipst-math-m1-exponents', 'res-math-textbook-m4'],
       studyLessonTitle: 'เลขยกกำลัง และราก',
     },
     {
@@ -209,7 +211,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-math-slope', 'skill-math-graph-reading'],
       exerciseIds: ['ex-math-fn-linear'],
       quizIds: ['quiz-math-fn-linear'],
-      resourceIds: ['res-math-textbook-m4'],
+      resourceIds: ['cr-khan-alg1-linear-graphs', 'cr-openstax-college-algebra-linear-fn', 'res-math-textbook-m4'],
       studyLessonTitle: 'ฟังก์ชันและกราฟ',
     },
     {
@@ -225,7 +227,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-math-trig-ratio', 'skill-math-special-angles'],
       exerciseIds: ['ex-math-trig'],
       quizIds: ['quiz-math-trig'],
-      resourceIds: ['res-math-textbook-m5'],
+      resourceIds: ['cr-khan-geometry-trig', 'cr-ipst-math-m3-trig', 'res-math-textbook-m5'],
       studyLessonTitle: 'ตรีโกณมิติ',
     },
 
@@ -243,7 +245,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-prog-variables', 'skill-prog-operators'],
       exerciseIds: ['ex-prog-variables'],
       quizIds: ['quiz-prog-variables'],
-      resourceIds: ['res-python-tutorial'],
+      resourceIds: ['cr-cs50p-lecture0', 'cr-python-tutorial-informal', 'res-python-tutorial'],
       studyLessonTitle: 'Python พื้นฐาน',
     },
     {
@@ -259,7 +261,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-prog-io'],
       exerciseIds: ['ex-prog-io'],
       quizIds: ['quiz-prog-io'],
-      resourceIds: ['res-python-tutorial'],
+      resourceIds: ['cr-cs50p-lecture0', 'cr-python-tutorial-io', 'res-python-tutorial'],
       studyLessonTitle: 'Python พื้นฐาน',
     },
     {
@@ -275,7 +277,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-prog-conditions'],
       exerciseIds: ['ex-prog-conditions'],
       quizIds: ['quiz-prog-conditions'],
-      resourceIds: ['res-python-tutorial'],
+      resourceIds: ['cr-cs50p-lecture1', 'cr-python-tutorial-controlflow', 'res-python-tutorial'],
       studyLessonTitle: 'Control Flow (if, loop)',
     },
     {
@@ -291,7 +293,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-prog-loops', 'skill-prog-trace'],
       exerciseIds: ['ex-prog-loops'],
       quizIds: ['quiz-prog-loops'],
-      resourceIds: ['res-python-tutorial'],
+      resourceIds: ['cr-cs50p-lecture2', 'cr-python-tutorial-controlflow', 'res-python-tutorial'],
       studyLessonTitle: 'Control Flow (if, loop)',
     },
     {
@@ -307,7 +309,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-prog-functions', 'skill-prog-collections'],
       exerciseIds: ['ex-prog-functions'],
       quizIds: ['quiz-prog-functions'],
-      resourceIds: ['res-python-tutorial'],
+      resourceIds: ['cr-cs50p-lecture2', 'cr-python-tutorial-controlflow', 'cr-python-tutorial-datastructures', 'res-python-tutorial'],
       studyLessonTitle: 'Functions, List, Dictionary',
     },
 
@@ -325,7 +327,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-phy-units'],
       exerciseIds: ['ex-phy-units'],
       quizIds: ['quiz-phy-units'],
-      resourceIds: ['res-physics-textbook-m4'],
+      resourceIds: ['cr-openstax-physics-units', 'cr-ipst-physics-m4-v1', 'res-physics-textbook-m4'],
       studyLessonTitle: 'หน่วย และ เวกเตอร์',
     },
     {
@@ -341,7 +343,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-phy-vector-components'],
       exerciseIds: ['ex-phy-vectors'],
       quizIds: ['quiz-phy-vectors'],
-      resourceIds: ['res-physics-textbook-m4'],
+      resourceIds: ['cr-khan-physics-2d-vectors', 'cr-openstax-physics-vectors', 'res-physics-textbook-m4'],
       studyLessonTitle: 'หน่วย และ เวกเตอร์',
     },
     {
@@ -357,7 +359,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-phy-kinematics-equations', 'skill-math-graph-reading'],
       exerciseIds: ['ex-phy-kin-1d'],
       quizIds: ['quiz-phy-kin-1d'],
-      resourceIds: ['res-physics-textbook-m4'],
+      resourceIds: ['cr-ipst-physics-m4-v1', 'cr-khan-physics-1d', 'cr-openstax-physics-kinematics', 'res-physics-textbook-m4'],
       studyLessonTitle: 'การเคลื่อนที่แนวตรง',
     },
     {
@@ -373,7 +375,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-phy-free-body', 'skill-phy-newton-second'],
       exerciseIds: ['ex-phy-newton'],
       quizIds: ['quiz-phy-newton'],
-      resourceIds: ['res-physics-textbook-m4'],
+      resourceIds: ['cr-ipst-physics-m4-v1', 'cr-khan-physics-newton', 'res-physics-textbook-m4'],
       studyLessonTitle: 'แรง และ กฎของนิวตัน',
     },
   ],
@@ -695,10 +697,4 @@ export const CURRICULUM: Curriculum = {
     },
   ],
 
-  resources: [
-    { id: 'res-math-textbook-m4', title: 'หนังสือเรียนคณิตศาสตร์ ม.4 (สสวท.)', type: 'textbook', reference: 'บทที่ว่าด้วยจำนวนจริง สมการ และฟังก์ชัน' },
-    { id: 'res-math-textbook-m5', title: 'หนังสือเรียนคณิตศาสตร์ ม.5 (สสวท.)', type: 'textbook', reference: 'บทฟังก์ชันตรีโกณมิติ' },
-    { id: 'res-python-tutorial', title: 'The Python Tutorial (python.org)', type: 'website', reference: 'docs.python.org/3/tutorial' },
-    { id: 'res-physics-textbook-m4', title: 'หนังสือเรียนฟิสิกส์ ม.4 เล่ม 1 (สสวท.)', type: 'textbook', reference: 'บทการเคลื่อนที่แนวตรง และแรงและกฎการเคลื่อนที่' },
-  ],
 };

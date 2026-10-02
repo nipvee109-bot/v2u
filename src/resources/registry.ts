@@ -1,20 +1,27 @@
 /* =========================================================================
-   V2U Resource Curation Foundation (Phase 42B) — curated resource pool
+   V2U Resource Registry (Phase 42C) — the ONE authoritative resource list
    -------------------------------------------------------------------------
-   Small and trustworthy on purpose: official docs, universities, official
-   Thai textbooks (สสวท.) and reputable free platforms only.
+   Every learning resource V2U knows about lives here. The curriculum
+   references resources only by id; the Resource Engine reads only this list.
 
-   URL policy: the curation environment could not reach the publishers'
-   sites, so NO url is stored yet (status 'unverified-link'). `locator`
-   names the exact book / chapter / section / lecture instead. When a link is
-   verified, add `url` (and `videoId` for videos) and set status 'active'.
+   Status lifecycle:
+     unverified → content curated, link NOT checked. No url / videoId stored;
+                  `locator` says where to find it.
+     verified   → link checked; `verification` records what/when/how.
+     active     → verified AND approved for recommendation.
+     deprecated → kept so old references resolve; never recommended.
+
+   Never fabricate URLs. The 42B/42C curation environment could not reach
+   the publishers' sites, so every curated entry is still `unverified`.
    ========================================================================= */
 
 import type { CuratedResource } from './types';
 
+const MIGRATED = '2026-10-02';
+
 const CHECKED = '2026-10-02';
 
-export const CURATED_RESOURCES: CuratedResource[] = [
+export const RESOURCE_REGISTRY: CuratedResource[] = [
   // ── Mathematics ───────────────────────────────────────────────────────
   {
     id: 'cr-khan-alg1-equations',
@@ -32,7 +39,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-ipst-math-m1-linear-eq',
@@ -50,7 +57,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'th',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-openstax-college-algebra-ch2',
@@ -68,7 +75,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-khan-alg1-systems',
@@ -86,7 +93,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-openstax-college-algebra-systems',
@@ -104,7 +111,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-khan-alg1-exponents',
@@ -122,7 +129,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-ipst-math-m1-exponents',
@@ -140,7 +147,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'th',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-khan-alg1-linear-graphs',
@@ -158,7 +165,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-openstax-college-algebra-linear-fn',
@@ -176,7 +183,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-khan-geometry-trig',
@@ -194,7 +201,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-ipst-math-m3-trig',
@@ -212,7 +219,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'th',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
 
   // ── Programming ───────────────────────────────────────────────────────
@@ -232,7 +239,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-python-tutorial-informal',
@@ -250,7 +257,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-python-tutorial-io',
@@ -268,7 +275,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-cs50p-lecture1',
@@ -286,7 +293,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-cs50p-lecture2',
@@ -304,7 +311,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-python-tutorial-controlflow',
@@ -322,7 +329,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-python-tutorial-datastructures',
@@ -340,7 +347,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
 
   // ── Physics ───────────────────────────────────────────────────────────
@@ -360,7 +367,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-ipst-physics-m4-v1',
@@ -378,7 +385,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'th',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-khan-physics-2d-vectors',
@@ -396,7 +403,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-openstax-physics-vectors',
@@ -414,7 +421,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-khan-physics-1d',
@@ -432,7 +439,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-openstax-physics-kinematics',
@@ -450,7 +457,7 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
   },
   {
     id: 'cr-khan-physics-newton',
@@ -468,6 +475,85 @@ export const CURATED_RESOURCES: CuratedResource[] = [
     lastChecked: CHECKED,
     language: 'en',
     isFree: true,
-    status: 'unverified-link',
+    status: 'unverified',
+  },
+
+  // ── Deprecated: Phase 42A curriculum references (merged in 42C) ─────────
+  // Kept for historical compatibility; superseded by the specific entries above.
+  {
+    id: 'res-math-textbook-m4',
+    title: 'หนังสือเรียนคณิตศาสตร์ ม.4 (สสวท.)',
+    provider: 'สสวท. (สถาบันส่งเสริมการสอนวิทยาศาสตร์และเทคโนโลยี)',
+    type: 'book',
+    role: 'reference',
+    locator: 'บทที่ว่าด้วยจำนวนจริง สมการ และฟังก์ชัน',
+    estimatedMinutes: 30,
+    level: 'intermediate',
+    description: 'อ้างอิงทั่วไประดับเล่ม (Phase 42A)',
+    curriculumLessonIds: ['math-alg-linear-eq', 'math-alg-linear-system', 'math-alg-linear-ineq', 'math-alg-exponents', 'math-fn-linear'],
+    coveredOutcomes: [],
+    whyV2USelected: 'อ้างอิงเดิมระดับเล่ม — แทนที่ด้วยบทที่ตรงกว่า',
+    lastChecked: MIGRATED,
+    language: 'th',
+    isFree: true,
+    status: 'deprecated',
+    supersededBy: ['cr-ipst-math-m1-linear-eq', 'cr-ipst-math-m1-exponents'],
+  },
+  {
+    id: 'res-math-textbook-m5',
+    title: 'หนังสือเรียนคณิตศาสตร์ ม.5 (สสวท.)',
+    provider: 'สสวท. (สถาบันส่งเสริมการสอนวิทยาศาสตร์และเทคโนโลยี)',
+    type: 'book',
+    role: 'reference',
+    locator: 'บทฟังก์ชันตรีโกณมิติ',
+    estimatedMinutes: 30,
+    level: 'intermediate',
+    description: 'อ้างอิงทั่วไประดับเล่ม (Phase 42A)',
+    curriculumLessonIds: ['math-trig-ratios'],
+    coveredOutcomes: [],
+    whyV2USelected: 'อ้างอิงเดิมระดับเล่ม — แทนที่ด้วยบทที่ตรงกว่า',
+    lastChecked: MIGRATED,
+    language: 'th',
+    isFree: true,
+    status: 'deprecated',
+    supersededBy: ['cr-ipst-math-m3-trig'],
+  },
+  {
+    id: 'res-python-tutorial',
+    title: 'The Python Tutorial (python.org)',
+    provider: 'Python Software Foundation (docs.python.org)',
+    type: 'documentation',
+    role: 'reference',
+    locator: 'docs.python.org → The Python Tutorial',
+    estimatedMinutes: 30,
+    level: 'beginner',
+    description: 'อ้างอิงทั้งเล่ม (Phase 42A)',
+    curriculumLessonIds: ['prog-py-variables', 'prog-py-io', 'prog-ctrl-conditions', 'prog-ctrl-loops', 'prog-fn-functions'],
+    coveredOutcomes: [],
+    whyV2USelected: 'อ้างอิงเดิมทั้งเล่ม — แทนที่ด้วยหัวข้อที่ตรงบทเรียน',
+    lastChecked: MIGRATED,
+    language: 'en',
+    isFree: true,
+    status: 'deprecated',
+    supersededBy: ['cr-python-tutorial-informal', 'cr-python-tutorial-io', 'cr-python-tutorial-controlflow', 'cr-python-tutorial-datastructures'],
+  },
+  {
+    id: 'res-physics-textbook-m4',
+    title: 'หนังสือเรียนฟิสิกส์ ม.4 เล่ม 1 (สสวท.)',
+    provider: 'สสวท. (สถาบันส่งเสริมการสอนวิทยาศาสตร์และเทคโนโลยี)',
+    type: 'book',
+    role: 'reference',
+    locator: 'บทการเคลื่อนที่แนวตรง และแรงและกฎการเคลื่อนที่',
+    estimatedMinutes: 40,
+    level: 'intermediate',
+    description: 'อ้างอิงเดิม (Phase 42A)',
+    curriculumLessonIds: ['phy-vec-units', 'phy-vec-vectors', 'phy-kin-1d', 'phy-dyn-newton'],
+    coveredOutcomes: [],
+    whyV2USelected: 'อ้างอิงเดิม — รวมเข้ากับรายการหนังสือฟิสิกส์ ม.4 เล่ม 1',
+    lastChecked: MIGRATED,
+    language: 'th',
+    isFree: true,
+    status: 'deprecated',
+    supersededBy: ['cr-ipst-physics-m4-v1'],
   },
 ];

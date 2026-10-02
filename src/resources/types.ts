@@ -6,6 +6,7 @@
      → existing Study Room → Summary → Quiz → Progress
 
    Curated resources are static reference data (not user state).
+   The single registry is src/resources/registry.ts (Phase 42C).
    URLs are only stored once verified; until then `url` is omitted and
    `locator` tells the student exactly where to find the material.
    ========================================================================= */
@@ -20,11 +21,21 @@ export type ResourceLevel = 'beginner' | 'intermediate' | 'advanced';
 export type ResourceLanguage = 'th' | 'en';
 
 /**
- * - active: curated and URL verified
- * - unverified-link: content curated, URL not yet verified (no url stored)
- * - retired: no longer recommended (kept so old references resolve)
+ * - unverified: curated content, link NOT checked (no url / videoId stored)
+ * - verified:   link checked; see `verification`
+ * - active:     verified and approved for recommendation
+ * - deprecated: kept for old references; never recommended
  */
-export type ResourceStatus = 'active' | 'unverified-link' | 'retired';
+export type ResourceStatus = 'unverified' | 'verified' | 'active' | 'deprecated';
+
+export interface ResourceVerification {
+  /** ISO date the link/source was checked. */
+  checkedAt: string;
+  /** How it was checked, e.g. "HTTP 200 + title matched" */
+  method: string;
+  /** What was confirmed, e.g. "section heading matches locator" */
+  note: string;
+}
 
 /** Outcome id format: `${curriculumLessonId}#o${1-based index}` */
 export type OutcomeId = string;
@@ -55,6 +66,10 @@ export interface CuratedResource {
   /** Explicit — never undefined. */
   isFree: boolean;
   status: ResourceStatus;
+  /** Required for verified / active. */
+  verification?: ResourceVerification;
+  /** Deprecated entries point at their replacements. */
+  supersededBy?: string[];
 }
 
 export type TimeBudgetMinutes = 15 | 30 | 60 | 120;

@@ -173,7 +173,10 @@ export function CurriculumPage() {
                                                 เปิดแหล่งเรียนรู้
                                               </a>
                                             ) : (
-                                              <p className="mt-1 text-[11px] text-slate-500">หาได้ที่: {r.locator}</p>
+                                              <p className="mt-1 text-[11px] text-slate-500">
+                                                หาได้ที่: {r.locator}
+                                                {r.status === 'unverified' && <span className="ml-1 text-amber-700">(ยังไม่ได้ตรวจลิงก์)</span>}
+                                              </p>
                                             )}
                                           </li>
                                         ))}

@@ -11,6 +11,8 @@ import type {
   CurriculumTopic,
 } from './types';
 import { CURRICULUM } from './data';
+import { RESOURCE_REGISTRY } from '../resources/registry';
+import type { CuratedResource } from '../resources/types';
 
 /** Minutes outside this range are rejected by validateCurriculum(). */
 export const MIN_LESSON_MINUTES = 10;
@@ -132,7 +134,10 @@ export function getPathwayReadiness(storeLessons: Lesson[], curriculum: Curricul
 
 /* ── Integrity validation ─────────────────────────────────────────────── */
 
-export function validateCurriculum(curriculum: Curriculum = CURRICULUM): string[] {
+export function validateCurriculum(
+  curriculum: Curriculum = CURRICULUM,
+  registry: CuratedResource[] = RESOURCE_REGISTRY
+): string[] {
   const errors: string[] = [];
   const allIds = [
     curriculum.pathway.id,
@@ -142,7 +147,6 @@ export function validateCurriculum(curriculum: Curriculum = CURRICULUM): string[
     ...curriculum.skills.map((x) => x.id),
     ...curriculum.exercises.map((x) => x.id),
     ...curriculum.quizzes.map((x) => x.id),
-    ...curriculum.resources.map((x) => x.id),
   ];
   const seen = new Set<string>();
   for (const id of allIds) {
@@ -156,7 +160,7 @@ export function validateCurriculum(curriculum: Curriculum = CURRICULUM): string[
   const skillIds = new Set(curriculum.skills.map((s) => s.id));
   const exerciseIds = new Set(curriculum.exercises.map((e) => e.id));
   const quizIds = new Set(curriculum.quizzes.map((q) => q.id));
-  const resourceIds = new Set(curriculum.resources.map((r) => r.id));
+  const resourceIds = new Set(registry.map((r) => r.id));
   const ref = (set: Set<string>, id: string, where: string) => {
     if (!set.has(id)) errors.push(`${where} → unknown id ${id}`);
   };
@@ -201,7 +205,11 @@ export function validateCurriculum(curriculum: Curriculum = CURRICULUM): string[
     l.skillIds.forEach((s) => ref(skillIds, s, where));
     l.exerciseIds.forEach((e) => ref(exerciseIds, e, where));
     l.quizIds.forEach((q) => ref(quizIds, q, where));
-    l.resourceIds.forEach((r) => ref(resourceIds, r, where));
+    l.resourceIds.forEach((r) => {
+      ref(resourceIds, r, where);
+      const entry = registry.find((x) => x.id === r);
+      if (entry && !entry.curriculumLessonIds.includes(l.id)) errors.push(`${where}: resource ${r} does not list this lesson`);
+    });
   }
   for (const s of curriculum.skills) ref(subjectIds, s.subjectId, `skill ${s.id}`);
   for (const e of curriculum.exercises) {

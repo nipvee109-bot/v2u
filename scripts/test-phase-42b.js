@@ -27,7 +27,8 @@ async function test(name, fn) {
 
 console.log('=== Phase 42B: V2U Resource Curation Foundation ===\n');
 
-const { CURATED_RESOURCES: R } = await jiti.import(path.join(root, 'src/resources/data.ts'));
+// Phase 42C: the curated pool was consolidated into the single Resource Registry
+const { RESOURCE_REGISTRY: R } = await jiti.import(path.join(root, 'src/resources/registry.ts'));
 const E = await jiti.import(path.join(root, 'src/resources/engine.ts'));
 const { TIME_BUDGETS } = await jiti.import(path.join(root, 'src/resources/types.ts'));
 const { CURRICULUM: C } = await jiti.import(path.join(root, 'src/curriculum/data.ts'));
@@ -51,7 +52,7 @@ await test('Every lesson has an explanation-role resource', () => {
 });
 await test('No invented URLs: unverified resources carry no url / videoId', () => {
   for (const r of R) {
-    if (r.status !== 'active') {
+    if (r.status === 'unverified') {
       assert.strictEqual(r.url, undefined, `${r.id} has url`);
       assert.strictEqual(r.videoId, undefined, `${r.id} has videoId`);
       assert(r.locator.length > 10, `${r.id} needs a locator`);
@@ -70,7 +71,7 @@ await test('validateResources() reports no errors', () => {
 await test('Unique resource IDs and no clash with curriculum IDs', () => {
   const ids = R.map((r) => r.id);
   assert.strictEqual(new Set(ids).size, ids.length);
-  const cIds = new Set([...C.lessons, ...C.topics, ...C.skills, ...C.exercises, ...C.quizzes, ...C.resources].map((x) => x.id));
+  const cIds = new Set([...C.lessons, ...C.topics, ...C.skills, ...C.exercises, ...C.quizzes].map((x) => x.id));
   for (const id of ids) assert(!cIds.has(id), `${id} clashes`);
 });
 await test('Every referenced lesson and outcome exists', () => {
@@ -96,7 +97,7 @@ await test('Validator rejects bad urls and misplaced videoId', () => {
   assert(bad({ status: 'active', url: 'javascript:alert(1)' }).some((e) => e.includes('invalid url')));
   assert(bad({ url: 'https://example.org/x' }).some((e) => e.includes('unverified resources must not carry a url')));
   assert(bad({ type: 'book', videoId: 'abcdefghijk' }).some((e) => e.includes('videoId only allowed')));
-  assert.deepStrictEqual(bad({ type: 'video', status: 'active', url: 'https://example.org/v', videoId: 'abcdefghijk' }), []);
+  assert.deepStrictEqual(bad({ type: 'video', status: 'active', url: 'https://example.org/v', videoId: 'abcdefghijk', verification: { checkedAt: '2026-10-02', method: 'HTTP 200', note: 'title matched' } }), []);
 });
 await test('Validator rejects unknown lessons/outcomes and missing why/lastChecked/isFree', () => {
   assert(bad({ curriculumLessonIds: ['nope'] }).some((e) => e.includes('unknown lesson')));
@@ -195,7 +196,7 @@ await test('Home explains resource choice and outcomes; still one CTA', () => {
 });
 await test('Primary navigation still exactly 5 items; resource layer is pure', () => {
   assert.strictEqual([...read('src/components/navigation/primaryNav.ts').matchAll(/\{\s*to: '/g)].length, 5);
-  for (const f of ['src/resources/types.ts', 'src/resources/data.ts', 'src/resources/engine.ts']) {
+  for (const f of ['src/resources/types.ts', 'src/resources/registry.ts', 'src/resources/engine.ts']) {
     assert(!/from 'react'|useStore/.test(read(f)), f);
   }
 });

@@ -5,7 +5,7 @@
 
 import type { Curriculum, CurriculumLesson } from '../curriculum/types';
 import { CURRICULUM } from '../curriculum/data';
-import { CURATED_RESOURCES } from './data';
+import { RESOURCE_REGISTRY } from './registry';
 import type {
   CuratedResource,
   CuratedResourceType,
@@ -49,7 +49,37 @@ export function getOutcomeText(outcomeId: OutcomeId, curriculum: Curriculum = CU
 
 /* ── Selection ────────────────────────────────────────────────────────── */
 
-const usable = (r: CuratedResource) => r.status !== 'retired';
+/** Deprecated resources are never recommended for new study sessions. */
+export function isRecommendable(r: CuratedResource): boolean {
+  return r.status !== 'deprecated';
+}
+const usable = isRecommendable;
+
+/**
+ * Trust tier used before relevance: active > verified > unverified.
+ * Unverified entries are still offered (with their locator and a clear
+ * "link not checked" label) so a lesson is never left without material,
+ * but any active/verified alternative always ranks first.
+ */
+const STATUS_TIER: Record<CuratedResource['status'], number> = {
+  active: 3,
+  verified: 2,
+  unverified: 1,
+  deprecated: 0,
+};
+
+/** Look up any registry entry by id, including deprecated ones (for old references). */
+export function getResourceById(id: string, resources: CuratedResource[] = RESOURCE_REGISTRY): CuratedResource | undefined {
+  return resources.find((r) => r.id === id);
+}
+
+/** Follow `supersededBy` from a deprecated entry to its current replacements. */
+export function resolveCurrentResources(id: string, resources: CuratedResource[] = RESOURCE_REGISTRY): CuratedResource[] {
+  const r = getResourceById(id, resources);
+  if (!r) return [];
+  if (isRecommendable(r)) return [r];
+  return (r.supersededBy ?? []).map((x) => getResourceById(x, resources)).filter((x): x is CuratedResource => !!x && isRecommendable(x));
+}
 
 /**
  * Relevance / quality score for a resource within one lesson.
@@ -63,24 +93,28 @@ export function scoreResourceForLesson(r: CuratedResource, lesson: CurriculumLes
   if (lesson.level !== 'foundation' && r.level !== 'beginner') score += 2;
   if (r.isFree) score += 3;
   if (r.language === 'th') score += 2;
-  if (r.status === 'active') score += 1;
   return score;
 }
 
 /** All usable resources for a lesson, best first. */
 export function getResourcesForLesson(
   lessonId: string,
-  resources: CuratedResource[] = CURATED_RESOURCES,
+  resources: CuratedResource[] = RESOURCE_REGISTRY,
   curriculum: Curriculum = CURRICULUM
 ): CuratedResource[] {
   const lesson = curriculum.lessons.find((l) => l.id === lessonId);
   if (!lesson) return [];
   return resources
     .filter((r) => usable(r) && r.curriculumLessonIds.includes(lessonId))
-    .sort((a, b) => scoreResourceForLesson(b, lesson) - scoreResourceForLesson(a, lesson) || a.estimatedMinutes - b.estimatedMinutes);
+    .sort(
+      (a, b) =>
+        STATUS_TIER[b.status] - STATUS_TIER[a.status] ||
+        scoreResourceForLesson(b, lesson) - scoreResourceForLesson(a, lesson) ||
+        a.estimatedMinutes - b.estimatedMinutes
+    );
 }
 
-export function getResourcesForOutcome(outcomeId: OutcomeId, resources: CuratedResource[] = CURATED_RESOURCES): CuratedResource[] {
+export function getResourcesForOutcome(outcomeId: OutcomeId, resources: CuratedResource[] = RESOURCE_REGISTRY): CuratedResource[] {
   return resources.filter((r) => usable(r) && r.coveredOutcomes.includes(outcomeId));
 }
 
@@ -91,7 +125,7 @@ export function getResourcesForOutcome(outcomeId: OutcomeId, resources: CuratedR
 export function getBestResourcesForTime(
   lessonId: string,
   minutes: number,
-  resources: CuratedResource[] = CURATED_RESOURCES,
+  resources: CuratedResource[] = RESOURCE_REGISTRY,
   curriculum: Curriculum = CURRICULUM
 ): CuratedResource[] {
   const picked: CuratedResource[] = [];
@@ -161,7 +195,7 @@ export function isTimeBudget(n: number): n is TimeBudgetMinutes {
 export function buildLearningPlan(
   lessonId: string,
   budgetMinutes: TimeBudgetMinutes,
-  resources: CuratedResource[] = CURATED_RESOURCES,
+  resources: CuratedResource[] = RESOURCE_REGISTRY,
   curriculum: Curriculum = CURRICULUM
 ): LearningPlan | null {
   const lesson = curriculum.lessons.find((l) => l.id === lessonId);
@@ -256,7 +290,7 @@ function isValidHttpUrl(value: string): boolean {
 }
 
 export function validateResources(
-  resources: CuratedResource[] = CURATED_RESOURCES,
+  resources: CuratedResource[] = RESOURCE_REGISTRY,
   curriculum: Curriculum = CURRICULUM
 ): string[] {
   const errors: string[] = [];
@@ -277,7 +311,7 @@ export function validateResources(
     if (!RESOURCE_ROLES.includes(r.role)) errors.push(`${where}: invalid role ${r.role}`);
     if (!['beginner', 'intermediate', 'advanced'].includes(r.level)) errors.push(`${where}: invalid level`);
     if (!['th', 'en'].includes(r.language)) errors.push(`${where}: invalid language`);
-    if (!['active', 'unverified-link', 'retired'].includes(r.status)) errors.push(`${where}: invalid status`);
+    if (!['unverified', 'verified', 'active', 'deprecated'].includes(r.status)) errors.push(`${where}: invalid status`);
 
     if (typeof r.estimatedMinutes !== 'number' || !Number.isFinite(r.estimatedMinutes) || r.estimatedMinutes < 0) {
       errors.push(`${where}: negative or invalid duration`);
@@ -285,11 +319,29 @@ export function validateResources(
       errors.push(`${where}: estimatedMinutes out of range (${r.estimatedMinutes})`);
     }
 
+    const checked = r.status === 'verified' || r.status === 'active';
     if (r.url !== undefined && !isValidHttpUrl(r.url)) errors.push(`${where}: invalid url`);
-    if (r.status === 'active' && !r.url) errors.push(`${where}: active resources need a verified url`);
-    if (r.status === 'unverified-link' && r.url) errors.push(`${where}: unverified resources must not carry a url`);
+    if (r.status === 'unverified' && (r.url !== undefined || r.videoId !== undefined)) {
+      errors.push(`${where}: unverified resources must not carry a url`);
+    }
+    if (checked) {
+      if (!r.url) errors.push(`${where}: ${r.status} resources need a verified url`);
+      const v = r.verification;
+      if (!v || !ISO_DATE.test(v.checkedAt) || !v.method?.trim() || !v.note?.trim()) {
+        errors.push(`${where}: ${r.status} resources must record what was verified`);
+      }
+    } else if (r.status === 'unverified' && r.verification) {
+      errors.push(`${where}: unverified resources must not carry a verification record`);
+    }
     if (r.videoId !== undefined && r.type !== 'video') errors.push(`${where}: videoId only allowed for video`);
     if (r.videoId !== undefined && !/^[A-Za-z0-9_-]{6,20}$/.test(r.videoId)) errors.push(`${where}: invalid videoId`);
+    if (r.videoId !== undefined && !r.url) errors.push(`${where}: videoId requires a verified url`);
+    if (r.supersededBy && r.status !== 'deprecated') errors.push(`${where}: only deprecated resources may be superseded`);
+    for (const id of r.supersededBy ?? []) {
+      const next = resources.find((x) => x.id === id);
+      if (!next) errors.push(`${where}: supersededBy unknown ${id}`);
+      else if (next.status === 'deprecated') errors.push(`${where}: supersededBy points to deprecated ${id}`);
+    }
 
     if (!r.whyV2USelected?.trim()) errors.push(`${where}: missing whyV2USelected`);
     if (!r.lastChecked || !ISO_DATE.test(r.lastChecked) || Number.isNaN(Date.parse(r.lastChecked))) {
@@ -298,8 +350,13 @@ export function validateResources(
     if (typeof r.isFree !== 'boolean') errors.push(`${where}: isFree must be explicit`);
 
     if (r.curriculumLessonIds.length === 0) errors.push(`${where}: not linked to any lesson`);
-    for (const id of r.curriculumLessonIds) if (!lessonIds.has(id)) errors.push(`${where}: unknown lesson ${id}`);
-    if (r.coveredOutcomes.length === 0) errors.push(`${where}: covers no outcomes`);
+    for (const id of r.curriculumLessonIds) {
+      if (!lessonIds.has(id)) errors.push(`${where}: unknown lesson ${id}`);
+      else if (!curriculum.lessons.find((l) => l.id === id)?.resourceIds.includes(r.id)) {
+        errors.push(`${where}: lesson ${id} does not list this resource`);
+      }
+    }
+    if (r.coveredOutcomes.length === 0 && r.status !== 'deprecated') errors.push(`${where}: covers no outcomes`);
     for (const o of r.coveredOutcomes) {
       if (!outcomeIds.has(o)) errors.push(`${where}: unknown outcome ${o}`);
       else if (!r.curriculumLessonIds.includes(o.split('#')[0])) errors.push(`${where}: outcome ${o} belongs to an unlinked lesson`);

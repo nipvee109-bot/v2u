@@ -32,6 +32,7 @@ const { CURRICULUM: C } = await jiti.import(path.join(root, 'src/curriculum/data
 const E = await jiti.import(path.join(root, 'src/curriculum/engine.ts'));
 const { getNextStep } = await jiti.import(path.join(root, 'src/utils/nextStep.ts'));
 const { initialLessons } = await jiti.import(path.join(root, 'src/data/initialData.ts'));
+const { RESOURCE_REGISTRY } = await jiti.import(path.join(root, 'src/resources/registry.ts'));
 
 console.log('1. Structure');
 await test('Pathway is Computer Engineering with requirements for math, programming, physics', () => {
@@ -57,7 +58,7 @@ await test('validateCurriculum() reports no errors', () => {
   assert.deepStrictEqual(E.validateCurriculum(C), []);
 });
 await test('No duplicate IDs across all entity types', () => {
-  const ids = [C.pathway.id, ...['subjects', 'topics', 'lessons', 'skills', 'exercises', 'quizzes', 'resources'].flatMap((k) => C[k].map((x) => x.id))];
+  const ids = [C.pathway.id, ...['subjects', 'topics', 'lessons', 'skills', 'exercises', 'quizzes'].flatMap((k) => C[k].map((x) => x.id))];
   assert.strictEqual(new Set(ids).size, ids.length);
 });
 await test('Every referenced subject/topic/lesson/skill/exercise/quiz/resource ID exists', () => {
@@ -69,7 +70,8 @@ await test('Every referenced subject/topic/lesson/skill/exercise/quiz/resource I
     l.skillIds.forEach((id) => assert(has('skills', id), `${l.id} skill ${id}`));
     l.exerciseIds.forEach((id) => assert(has('exercises', id), `${l.id} exercise ${id}`));
     l.quizIds.forEach((id) => assert(has('quizzes', id), `${l.id} quiz ${id}`));
-    l.resourceIds.forEach((id) => assert(has('resources', id), `${l.id} resource ${id}`));
+    // Phase 42C: resources live in the single Resource Registry
+    l.resourceIds.forEach((id) => assert(RESOURCE_REGISTRY.some((r) => r.id === id), `${l.id} resource ${id}`));
   }
   for (const e of C.exercises) { assert(has('lessons', e.lessonId)); e.skillIds.forEach((id) => assert(has('skills', id), id)); }
   for (const q of C.quizzes) { assert(has('lessons', q.lessonId)); q.questions.forEach((x) => assert(has('skills', x.skillId), x.skillId)); }

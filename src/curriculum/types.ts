@@ -63,6 +63,7 @@ export interface CurriculumLesson {
   skillIds: string[];
   exerciseIds: string[];
   quizIds: string[];
+  /** Ids in the Resource Registry (src/resources/registry.ts). */
   resourceIds: string[];
   /** Title of the trackable store lesson (existing study flow) that covers this lesson. */
   studyLessonTitle: string;
@@ -103,16 +104,6 @@ export interface CurriculumQuiz {
   questions: QuizQuestion[];
 }
 
-export type CurriculumResourceType = 'textbook' | 'video' | 'website' | 'practice';
-
-export interface CurriculumResource {
-  id: string;
-  title: string;
-  type: CurriculumResourceType;
-  /** Free-text locator (book chapter / search phrase). No fabricated URLs. */
-  reference: string;
-}
-
 export interface Curriculum {
   version: string;
   pathway: CurriculumPathway;
@@ -122,5 +113,4 @@ export interface Curriculum {
   skills: CurriculumSkill[];
   exercises: CurriculumExercise[];
   quizzes: CurriculumQuiz[];
-  resources: CurriculumResource[];
 }
