@@ -51,7 +51,11 @@ await test('Exactly one registry module; old pool file and curriculum.resources 
 await test('Resource Engine reads only the consolidated registry', () => {
   const eng = read('src/resources/engine.ts');
   assert(eng.includes("import { RESOURCE_REGISTRY } from './registry';"));
-  const importers = srcFiles.filter(([, c]) => c.includes("resources/registry'") || c.includes("from './registry'")).map(([f]) => f).sort();
+  // the resource registry is imported as '../resources/registry' or, inside src/resources, './registry'
+  const importers = srcFiles
+    .filter(([f, c]) => c.includes("resources/registry'") || (f.startsWith('src/resources/') && c.includes("from './registry'")))
+    .map(([f]) => f)
+    .sort();
   assert.deepStrictEqual(importers, ['src/curriculum/engine.ts', 'src/resources/engine.ts']);
 });
 await test('Registry and curriculum both validate cleanly', () => {
