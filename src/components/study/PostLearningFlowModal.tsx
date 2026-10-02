@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Award,
   Clock,
@@ -129,10 +129,22 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
     return 'dashboard';
   }, [stillUnclearNotes, computedQuizScore, nextLesson, newMasteryScore]);
 
-  const [selectedNextAction, setSelectedNextAction] = useState<NextActionChoice>(defaultRecommendedAction);
+  // Phase 49: follow the recommendation until the student explicitly picks something else
+  const [userPickedAction, setUserPickedAction] = useState<NextActionChoice | null>(null);
+  const selectedNextAction = userPickedAction ?? defaultRecommendedAction;
 
   // Active step inside modal: 'recall' -> 'test' -> 'mastery'
   const [activeStep, setActiveStep] = useState<'recall' | 'test' | 'summary'>('recall');
+
+  // Phase 49: Escape closes the dialog (keyboard users must never be trapped)
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -213,7 +225,7 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
                 : 'text-slate-400 hover:text-slate-700'
             }`}
           >
-            1. สรุปความรู้ (Voice/Text)
+            1. สรุปสิ่งที่เรียน
           </button>
           <button
             type="button"
@@ -224,7 +236,7 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
                 : 'text-slate-400 hover:text-slate-700'
             }`}
           >
-            2. คำถามทบทวน & Quiz
+            2. เช็กความเข้าใจ
           </button>
           <button
             type="button"
@@ -235,7 +247,7 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
                 : 'text-slate-400 hover:text-slate-700'
             }`}
           >
-            <Award className="w-3.5 h-3.5" /> 3. Mastery & ก้าวถัดไป
+            <Award className="w-3.5 h-3.5" /> 3. ความพร้อม & ก้าวถัดไป
           </button>
         </div>
 
@@ -249,17 +261,18 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
                 <span>บอก V2U ว่าวันนี้คุณได้เรียนรู้อะไร</span>
               </div>
               <p className="text-[11px] text-blue-700 leading-relaxed">
-                ใช้ไมโครโฟนพูดสรุป 🎙️ หรือพิมพ์ ⌨️ ด้วยคำพูดของตนเอง เพื่อกระตุ้นสมองให้จดจำได้ยาวนานขึ้น (+50% Retention)
+                พูดหรือพิมพ์สรุปด้วยคำพูดของตัวเอง ช่วยให้จำได้ดีขึ้น
               </p>
             </div>
 
             {/* Voice / Text Summary Input */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
-                <span>สิ่งที่ได้เรียนรู้ / สรุปสาระสำคัญ (Learned Notes)</span>
-                <span className="text-[10px] text-emerald-600 font-normal">บันทึกช่วยยกระดับ Mastery</span>
+              <label htmlFor="post-learned-notes" className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                <span>สิ่งที่ได้เรียนรู้ / สรุปสาระสำคัญ</span>
+                <span className="text-[10px] text-emerald-600 font-normal">ช่วยให้ V2U ประเมินความพร้อมได้แม่นขึ้น</span>
               </label>
               <VoiceSummaryInput
+                id="post-learned-notes"
                 value={learnedNotes}
                 onChange={setLearnedNotes}
                 placeholder="สรุปแนวคิดหลัก สูตร วิธีแก้ปัญหา หรือสิ่งที่เข้าใจชัดเจน... (พิมพ์หรือกดไอคอนไมโครโฟนเพื่อพูด)"
@@ -269,13 +282,14 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
 
             {/* Still Unclear Notes */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+              <label htmlFor="post-unclear-notes" className="text-xs font-bold text-slate-700 flex items-center justify-between">
                 <span className="flex items-center gap-1 text-amber-700">
-                  <HelpCircle className="w-3.5 h-3.5" /> สิ่งที่ยังติดขัด / ไม่เข้าใจ (Still Unclear)
+                  <HelpCircle className="w-3.5 h-3.5" /> สิ่งที่ยังติดขัด / ไม่เข้าใจ
                 </span>
                 <span className="text-[10px] text-slate-400">ถ้ามี จะตั้งคิวทบทวนให้อัตโนมัติ</span>
               </label>
               <input
+                id="post-unclear-notes"
                 type="text"
                 value={stillUnclearNotes}
                 onChange={(e) => setStillUnclearNotes(e.target.value)}
@@ -286,10 +300,11 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
 
             {/* Review Notes */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 block">
-                สิ่งที่ต้องทบทวนเพิ่มเติม (Review Focus)
+              <label htmlFor="post-review-notes" className="text-xs font-bold text-slate-700 block">
+                สิ่งที่ต้องทบทวนเพิ่มเติม
               </label>
               <input
+                id="post-review-notes"
                 type="text"
                 value={reviewNotes}
                 onChange={(e) => setReviewNotes(e.target.value)}
@@ -459,7 +474,7 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
                   <TrendingUp className={`w-5 h-5 ${isMasteryIncreased ? 'text-emerald-600' : 'text-blue-600'}`} />
                   <div>
                     <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                      การคำนวณระดับความเชี่ยวชาญ (Mastery Recalculation)
+                      ความพร้อมของบทนี้หลังเรียน
                     </h4>
                     <p className="text-[11px] text-slate-500">
                       {isMasteryIncreased
@@ -507,7 +522,7 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
                 {defaultRecommendedAction === 'review'
                   ? '⚠️ มีจุดที่ยังติดขัดหรือคะแนนทดสอบต้องทวน แนะนำให้ตั้งคิวทบทวนพรุ่งนี้'
                   : defaultRecommendedAction === 'next_lesson' && nextLesson
-                  ? `🌟 เข้าใจบทเรียนดีแล้ว แนะนำให้เรียนบทถัดไป: "${nextLesson.title}"`
+                  ? '🌟 เข้าใจบทเรียนดีแล้ว ไปขั้นต่อไปที่ V2U จัดให้ตามเส้นทางของคุณ'
                   : '✅ บันทึกความก้าวหน้าเรียบร้อย สามารถกลับสู่หน้าหลักเพื่อดูภาพรวม'}
               </p>
 
@@ -516,21 +531,21 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
                 {nextLesson && (
                   <button
                     type="button"
-                    onClick={() => setSelectedNextAction('next_lesson')}
+                    onClick={() => setUserPickedAction('next_lesson')}
                     className={`p-2.5 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition-all ${
                       selectedNextAction === 'next_lesson'
                         ? 'border-indigo-600 bg-white text-indigo-900 shadow-xs ring-2 ring-indigo-500/20'
                         : 'border-indigo-200 bg-white/60 text-slate-700 hover:bg-white'
                     }`}
                   >
-                    <span className="truncate">เรียนบทถัดไป</span>
+                    <span className="truncate">ไปขั้นต่อไป</span>
                     <ArrowRight className="w-3.5 h-3.5 text-indigo-600 shrink-0 ml-1" />
                   </button>
                 )}
 
                 <button
                   type="button"
-                  onClick={() => setSelectedNextAction('review')}
+                  onClick={() => setUserPickedAction('review')}
                   className={`p-2.5 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition-all ${
                     selectedNextAction === 'review'
                       ? 'border-indigo-600 bg-white text-indigo-900 shadow-xs ring-2 ring-indigo-500/20'
@@ -543,7 +558,7 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => setSelectedNextAction('dashboard')}
+                  onClick={() => setUserPickedAction('dashboard')}
                   className={`p-2.5 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition-all ${
                     selectedNextAction === 'dashboard'
                       ? 'border-indigo-600 bg-white text-indigo-900 shadow-xs ring-2 ring-indigo-500/20'
@@ -556,7 +571,7 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => setSelectedNextAction('notebook')}
+                  onClick={() => setUserPickedAction('notebook')}
                   className={`p-2.5 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition-all ${
                     selectedNextAction === 'notebook'
                       ? 'border-indigo-600 bg-white text-indigo-900 shadow-xs ring-2 ring-indigo-500/20'
@@ -601,7 +616,7 @@ export const PostLearningFlowModal: React.FC<PostLearningFlowModalProps> = ({
                 className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/25 transition-all flex items-center gap-1.5"
               >
                 <Check className="w-4 h-4" />
-                <span>บันทึกและจบการเรียน (Update Mastery)</span>
+                <span>บันทึกและจบการเรียน</span>
               </button>
             )}
           </div>

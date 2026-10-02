@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { MapPin, Flag, ListChecks, Sparkles, Lightbulb, ArrowRight, Clock, Trophy } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { getNextStep } from '../utils/nextStep';
@@ -129,6 +130,11 @@ export function HomePage() {
           </div>
           <p id="home-current" className="mt-1.5 text-base font-bold text-slate-900">{step.current.label}</p>
           <p className="mt-0.5 text-xs text-slate-600">{step.current.detail}</p>
+          {!studentProfile && (
+            <Link to="/route" className="mt-1 inline-block text-xs font-semibold text-blue-700 underline">
+              บอกระดับชั้นและสาขาของคุณ เพื่อให้เส้นทางตรงกับคุณ
+            </Link>
+          )}
           <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
             <div className="h-full rounded-full bg-blue-600" style={{ width: `${step.current.progressPercent}%` }} />
           </div>
@@ -163,7 +169,12 @@ export function HomePage() {
         </section>
       </div>
 
-      <StudyOnboardingModal isOpen={isOnboardingOpen} onClose={() => setIsOnboardingOpen(false)} lessons={lessons} />
+      <StudyOnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+        lessons={lessons}
+        onStartFirstLesson={() => start(step)}
+      />
 
       {confirmModal}
     </div>

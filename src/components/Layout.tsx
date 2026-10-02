@@ -17,7 +17,9 @@ export function Layout({ children }: LayoutProps) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
-  const { lessons, activeLearningSession } = useStore();
+  const { lessons, activeLearningSession, getDueReviewItems } = useStore();
+  const { overdue, dueToday } = getDueReviewItems();
+  const dueCount = overdue.length + dueToday.length;
 
   const activeLesson = activeLearningSession ? lessons.find(l => l.id === activeLearningSession.lessonId) : null;
   const completedCount = lessons.filter((l) => l.status === 'COMPLETED').length;
@@ -116,15 +118,15 @@ export function Layout({ children }: LayoutProps) {
               </div>
             </form>
 
-            {/* Notification bell */}
-            <button
-              type="button"
-              aria-label="การแจ้งเตือน"
+            {/* Review reminder: dot only when something is actually due (Phase 49) */}
+            <Link
+              to="/review"
+              aria-label={dueCount > 0 ? `ถึงเวลาทบทวน ${dueCount} เรื่อง` : 'ทบทวน — ไม่มีเรื่องที่ถึงรอบ'}
               className="relative rounded-xl p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors focus:ring-2 focus:ring-blue-500"
             >
               <Bell className="h-5 w-5" />
-              <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-red-600 ring-2 ring-white" />
-            </button>
+              {dueCount > 0 && <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-red-600 ring-2 ring-white" aria-hidden="true" />}
+            </Link>
 
             {/* Avatar → ฉัน */}
             <Link

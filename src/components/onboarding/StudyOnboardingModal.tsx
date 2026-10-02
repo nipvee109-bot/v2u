@@ -22,6 +22,11 @@ interface StudyOnboardingModalProps {
   isOpen: boolean;
   onClose: () => void;
   lessons: Lesson[];
+  /**
+   * Phase 49: start the shared next step (same lesson as Home, through
+   * resource confirmation) instead of a separate onboarding pick.
+   */
+  onStartFirstLesson?: () => void;
 }
 
 const PRESET_GOALS = [
@@ -47,6 +52,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
   isOpen,
   onClose,
   lessons,
+  onStartFirstLesson,
 }) => {
   const navigate = useNavigate();
   const { completeOnboarding, skipOnboarding, startLearningSession } = useStore();
@@ -117,7 +123,9 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
   const handleSaveAndStartLesson = () => {
     const { firstLessonId } = completeOnboarding(activePreferences);
     onClose();
-    if (firstLessonId) {
+    if (onStartFirstLesson) {
+      onStartFirstLesson();
+    } else if (firstLessonId) {
       startLearningSession({ lessonId: firstLessonId });
       navigate(`/lessons/${firstLessonId}?action=study`);
     } else {
@@ -161,7 +169,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
             </div>
             <div>
               <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">
-                Study Onboarding &middot; ขั้นตอนที่ {currentStep}
+                เริ่มต้นใช้งาน V2U &middot; ขั้นตอนที่ {currentStep}
               </p>
               <h2 id="onboarding-modal-title" className="text-sm font-bold text-slate-800">
                 {currentStep === 1 && 'เป้าหมายหลัก 6 เดือน'}
@@ -180,7 +188,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
               onClick={handleSkip}
               className="text-xs font-semibold text-slate-500 hover:text-slate-800 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors focus:ring-2 focus:ring-blue-500"
             >
-              ข้ามไปก่อน (Skip)
+              ข้ามไปก่อน
             </button>
             <button
               type="button"
@@ -209,7 +217,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
               <div>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100 mb-2">
                   <Target className="w-3.5 h-3.5" />
-                  <span>Step 1: กำหนดเป้าหมาย</span>
+                  <span>ขั้นที่ 1: กำหนดเป้าหมาย</span>
                 </span>
                 <h3 className="text-lg md:text-xl font-bold text-slate-900">
                   อะไรคือเป้าหมายหลักของคุณใน 6 เดือนนี้?
@@ -276,7 +284,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
               <div>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 mb-2">
                   <BookOpen className="w-3.5 h-3.5" />
-                  <span>Step 2: เลือกวิชาที่ต้องเรียน</span>
+                  <span>ขั้นที่ 2: เลือกวิชาที่ต้องเรียน</span>
                 </span>
                 <h3 className="text-lg md:text-xl font-bold text-slate-900">
                   เลือกวิชาที่คุณต้องการเน้นในหลักสูตร 6 เดือน
@@ -339,7 +347,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
               <div>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-100 mb-2">
                   <Clock className="w-3.5 h-3.5" />
-                  <span>Step 3: จำนวนชั่วโมงต่อสัปดาห์</span>
+                  <span>ขั้นที่ 3: จำนวนชั่วโมงต่อสัปดาห์</span>
                 </span>
                 <h3 className="text-lg md:text-xl font-bold text-slate-900">
                   คุณต้องการใช้เวลาอ่านหนังสือ/เรียนกี่ชั่วโมงต่อสัปดาห์?
@@ -353,20 +361,20 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
                 {[
                   {
                     hours: 8,
-                    title: 'สบายๆ (Paced)',
+                    title: 'สบาย ๆ',
                     subtitle: 'ประมาณ 1–1.5 ชม./วัน',
                     desc: 'เหมาะสำหรับคนที่มีการบ้านหรือกิจกรรมอื่นเยอะ',
                   },
                   {
                     hours: 12,
-                    title: 'แนะนำ (Balanced)',
+                    title: 'แนะนำ',
                     subtitle: 'ประมาณ 1.5–2 ชม./วัน',
                     desc: 'ความเข้มข้นมาตรฐานเพื่อพิชิตคะแนนสอบ',
                     badge: 'ยอดนิยม',
                   },
                   {
                     hours: 16,
-                    title: 'เข้มข้น (Intensive)',
+                    title: 'เข้มข้น',
                     subtitle: 'ประมาณ 2–2.5 ชม./วัน',
                     desc: 'สำหรับผู้เตรียมสอบแข่งขันและมุ่งสู่ท็อป 3',
                   },
@@ -449,7 +457,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
               <div>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100 mb-2">
                   <Calendar className="w-3.5 h-3.5" />
-                  <span>Step 4: วันและช่วงเวลาที่สะดวก</span>
+                  <span>ขั้นที่ 4: วันและช่วงเวลาที่สะดวก</span>
                 </span>
                 <h3 className="text-lg md:text-xl font-bold text-slate-900">
                   คุณสะดวกเรียนวันไหนและช่วงเวลาใดบ้าง?
@@ -526,7 +534,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
               <div>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-50 text-cyan-700 border border-cyan-100 mb-2">
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Step 5: ตรวจสอบแผนสัปดาห์แรก</span>
+                  <span>ขั้นที่ 5: ตรวจสอบแผนสัปดาห์แรก</span>
                 </span>
                 <h3 className="text-lg md:text-xl font-bold text-slate-900">
                   ระบบคำนวณและสร้างตารางเรียนสัปดาห์แรกให้คุณแล้ว
@@ -587,7 +595,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
               <div>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 mb-2">
                   <PlayCircle className="w-3.5 h-3.5" />
-                  <span>Step 6: พร้อมเริ่มเรียนคาบแรก</span>
+                  <span>ขั้นที่ 6: พร้อมเริ่มเรียนคาบแรก</span>
                 </span>
                 <h3 className="text-lg md:text-xl font-bold text-slate-900">
                   ยินดีด้วยครับ! แผนการเรียน 6 เดือนของคุณพร้อมแล้ว
@@ -651,7 +659,7 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
               onClick={handleSkip}
               className="text-xs font-semibold text-slate-500 hover:text-slate-800 px-3 py-2.5 min-h-[44px] rounded-xl transition-colors focus:ring-2 focus:ring-blue-500 text-center"
             >
-              ข้าม (Skip)
+              ข้าม
             </button>
           )}
 

@@ -25,6 +25,8 @@ import { PostLearningFlowModal, type NextActionChoice } from '../components/stud
 import { ResourceConfirmationModal } from '../components/study/ResourceConfirmationModal';
 import { formatVideoTime } from '../components/study/YouTubePlayer';
 import { VoiceSummaryInput } from '../components/study/VoiceSummaryInput';
+import { resolveCurriculumStep } from '../curriculum/engine';
+import { getResourcesForLesson } from '../resources/engine';
 
 type ActiveTab = 'notes' | 'timestamps' | 'resources' | 'info';
 
@@ -254,10 +256,12 @@ export const StudyRoom: React.FC = () => {
     setIsFinishModalOpen(false);
 
     // 5. Navigate to user-controlled next action
-    if (nextAction === 'next_lesson' && nextLesson) {
-      navigate(`/study/${nextLesson.id}`);
+    // Phase 49: "next" goes to the shared V2U next step on Home (single source of
+    // truth: it may be a review or a prerequisite, not just the next list item)
+    if (nextAction === 'next_lesson') {
+      navigate('/');
     } else if (nextAction === 'review') {
-      navigate('/planner');
+      navigate('/review');
     } else if (nextAction === 'dashboard') {
       navigate('/');
     } else if (nextAction === 'notebook') {
@@ -284,7 +288,16 @@ export const StudyRoom: React.FC = () => {
 
   const subjectInfo = SUBJECTS[lesson.subjectId];
   const isTimerActive = activeLearningSession?.status === 'active';
-  const targetDurationMinutes = lesson.durationHours * 60;
+  // Phase 49: V2U's curated recommendation for this lesson (same ranking as Home)
+  const curriculumStep = resolveCurriculumStep(lesson, lessons);
+  const topCurated = curriculumStep ? getResourcesForLesson(curriculumStep.lesson.id)[0] : undefined;
+  const curatedSuggestion = topCurated ? { title: topCurated.title, locator: topCurated.locator } : undefined;
+
+  // Phase 49: use today's planned time when the session was started from the V2U next step
+  const targetDurationMinutes =
+    activeLearningSession?.lessonId === lesson.id && activeLearningSession.plannedMinutes
+      ? activeLearningSession.plannedMinutes
+      : lesson.durationHours * 60;
   const elapsedMinutes = Math.floor(elapsedSeconds / 60);
   const durationProgressPercent = Math.min(
     100,
@@ -421,6 +434,7 @@ export const StudyRoom: React.FC = () => {
           {/* Primary Embedded Resource Viewer */}
           <ResourceViewer
             resource={selectedResource}
+            suggestion={curatedSuggestion}
             onTimeUpdate={(seconds) => setVideoCurrentSeconds(seconds)}
             seekToSeconds={seekTargetSeconds}
           />
@@ -507,7 +521,7 @@ export const StudyRoom: React.FC = () => {
               <div className="space-y-1.5">
                 <label className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span>สิ่งที่ฉันเรียนรู้ (Learned Notes)</span>
+                  <span>สิ่งที่ฉันเรียนรู้</span>
                 </label>
                 <VoiceSummaryInput
                   value={learnedNotes}
@@ -519,11 +533,12 @@ export const StudyRoom: React.FC = () => {
 
               {/* Section 2: สิ่งที่ยังไม่เข้าใจ */}
               <div className="space-y-1.5">
-                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                <label htmlFor="study-unclear-notes" className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
                   <HelpCircle className="w-4 h-4 text-rose-500" />
-                  <span>สิ่งที่ยังไม่เข้าใจ (Still Unclear)</span>
+                  <span>สิ่งที่ยังไม่เข้าใจ</span>
                 </label>
                 <textarea
+                  id="study-unclear-notes"
                   value={stillUnclearNotes}
                   onChange={(e) => handleUnclearNotesChange(e.target.value)}
                   placeholder="จุดที่ยังติดขัด ข้อสงสัย หรือทฤษฎีที่ยังต้องการคำอธิบายเพิ่ม..."
@@ -534,11 +549,12 @@ export const StudyRoom: React.FC = () => {
 
               {/* Section 3: ต้องกลับมาทบทวน */}
               <div className="space-y-1.5">
-                <label className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                <label htmlFor="study-review-notes" className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
                   <RotateCcw className="w-4 h-4 text-purple-500" />
-                  <span>ต้องกลับมาทบทวน (Review Focus)</span>
+                  <span>ต้องกลับมาทบทวน</span>
                 </label>
                 <textarea
+                  id="study-review-notes"
                   value={reviewNotes}
                   onChange={(e) => handleReviewNotesChange(e.target.value)}
                   placeholder="หัวข้อย่อยหรือโจทย์ข้อสำคัญที่ต้องกลับมาทำซ้ำในรอบทบทวน..."

@@ -174,13 +174,14 @@ export const ReviewRoom: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 text-purple-700 border border-purple-200 text-xs font-bold">
-            <RotateCcw className="w-3.5 h-3.5" /> Review Room (พื้นที่ทบทวนเฉพาะ)
+            <RotateCcw className="w-3.5 h-3.5" /> ห้องทบทวน
           </span>
         </div>
       </div>
 
       {/* ── Lesson & Review Context Banner ── */}
-      <div className="card p-6 bg-gradient-to-r from-purple-900 via-indigo-900 to-blue-900 text-white shadow-lg space-y-4">
+      {/* Phase 49: not using .card here — its white background hid this dark header */}
+      <div className="rounded-2xl p-6 bg-gradient-to-r from-purple-900 via-indigo-900 to-blue-900 text-white shadow-lg space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -233,10 +234,10 @@ export const ReviewRoom: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">
-                    ขั้นตอนที่ 1: ทดสอบความจำทันที (Active Recall Challenge)
+                    ขั้นตอนที่ 1: ลองนึกก่อนเปิดโน้ต
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    ลองพิมพ์สิ่งที่จำได้ก่อนเปิดดูสมุดโน้ต เพื่อกระตุ้น Neural Pathway ในสมอง
+                    พิมพ์สิ่งที่จำได้ก่อนเปิดสมุดโน้ต ช่วยให้รู้ว่าจุดไหนยังไม่แม่น
                   </p>
                 </div>
               </div>
@@ -294,7 +295,7 @@ export const ReviewRoom: React.FC = () => {
                 {/* Learned Notes */}
                 <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100 space-y-2">
                   <span className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> สิ่งที่ได้เรียนรู้ (Learned Notes)
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> สิ่งที่ได้เรียนรู้
                   </span>
                   <div className="text-xs text-slate-700 whitespace-pre-line leading-relaxed max-h-48 overflow-y-auto">
                     {lesson.learnedNotes || 'ยังไม่มีบันทึกสิ่งที่ได้เรียนรู้ในบทนี้'}
@@ -347,7 +348,7 @@ export const ReviewRoom: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-slate-900">
-                      ขั้นตอนที่ 3: ประเมินความจำ & กำหนดรอบ Spaced Repetition
+                      ขั้นตอนที่ 3: ประเมินว่าจำได้แค่ไหน
                     </h3>
                     <p className="text-[11px] text-slate-500">
                       เลือกระดับความจำจริงเพื่อให้อัลกอริทึมจัดระยะเวลาทบทวนรอบถัดไปได้อย่างแม่นยำ
@@ -477,7 +478,7 @@ export const ReviewRoom: React.FC = () => {
                   className="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:pointer-events-none text-white text-xs font-bold shadow-md shadow-purple-600/25 transition-all flex items-center gap-2"
                 >
                   <Check className="w-4 h-4" />
-                  <span>บันทึกผลการทบทวน (Update Spaced Schedule)</span>
+                  <span>บันทึกผลการทบทวน</span>
                 </button>
               </div>
             </div>
@@ -495,7 +496,7 @@ export const ReviewRoom: React.FC = () => {
               บันทึกการทบทวนเสร็จสมบูรณ์!
             </h2>
             <p className="text-xs text-slate-500">
-              ระบบได้อัปเดตความจำและการจัดตาราง Spaced Repetition เรียบร้อยแล้ว
+              V2U จัดรอบทบทวนครั้งถัดไปให้ตามที่คุณจำได้แล้ว
             </p>
           </div>
 

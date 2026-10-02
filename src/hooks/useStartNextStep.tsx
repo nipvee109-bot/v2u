@@ -13,30 +13,32 @@ import type { NextStep } from '../utils/nextStep';
 export function useStartNextStep(): { start: (step: NextStep) => void; confirmModal: ReactNode } {
   const navigate = useNavigate();
   const { lessons, startLearningSession } = useStore();
-  const [confirmingLessonId, setConfirmingLessonId] = useState<string | null>(null);
-  const confirmingLesson = confirmingLessonId ? lessons.find((l) => l.id === confirmingLessonId) : undefined;
+  const [confirming, setConfirming] = useState<NextStep | null>(null);
+  const confirmingLesson = confirming?.lessonId ? lessons.find((l) => l.id === confirming.lessonId) : undefined;
 
   const start = (step: NextStep) => {
     if (step.requiresResourceConfirmation && step.lessonId) {
-      setConfirmingLessonId(step.lessonId);
+      setConfirming(step);
       return;
     }
     navigate(step.href);
   };
 
-  const handleConfirmedStart = (lessonId: string, resource?: Resource) => {
-    startLearningSession({ lessonId, source: resource });
+  const handleConfirmedStart = (lessonId: string, resource?: Resource, plannedMinutes?: number) => {
+    startLearningSession({ lessonId, source: resource, plannedMinutes });
     navigate(`/study/${lessonId}`);
   };
 
   const confirmModal = confirmingLesson ? (
     <ResourceConfirmationModal
       isOpen={true}
-      onClose={() => setConfirmingLessonId(null)}
+      onClose={() => setConfirming(null)}
       lesson={confirmingLesson}
+      suggestion={confirming?.curriculum?.recommendedResource}
+      plannedMinutes={confirming?.minutes}
       onConfirm={(selectedResource) => {
-        handleConfirmedStart(confirmingLesson.id, selectedResource);
-        setConfirmingLessonId(null);
+        handleConfirmedStart(confirmingLesson.id, selectedResource, confirming?.minutes);
+        setConfirming(null);
       }}
     />
   ) : null;

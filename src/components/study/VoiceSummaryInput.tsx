@@ -9,9 +9,12 @@ interface VoiceSummaryInputProps {
   label?: string;
   rows?: number;
   className?: string;
+  /** Phase 49: lets a parent <label htmlFor> point at the textarea. */
+  id?: string;
 }
 
 export const VoiceSummaryInput: React.FC<VoiceSummaryInputProps> = ({
+  id,
   value,
   onChange,
   placeholder = 'พิมพ์สรุปความเข้าใจของคุณที่นี่...',
@@ -57,6 +60,8 @@ export const VoiceSummaryInput: React.FC<VoiceSummaryInputProps> = ({
       
       <div className="relative">
         <textarea
+          id={id}
+          aria-label={id ? undefined : label || placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}

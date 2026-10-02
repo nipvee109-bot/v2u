@@ -34,24 +34,14 @@ import type {
 } from '../types';
 import type { StudentProfile } from '../route/types';
 import { DEFAULT_STUDENT_PROFILE } from '../route/data';
+import { budgetFromWeeklyHours } from '../route/engine';
 import type { StudentAdmissionInputs } from '../admission/types';
 import { EMPTY_ADMISSION_INPUTS, normalizeAdmissionInputs } from '../admission/engine';
 import { 
   SUBJECTS,
   MASTERY_SCALE
 } from '../types';
-import { 
-  initialLessons, 
-  initialSessions, 
-  initialWeeklyGoal, 
-  createInitialSessions,
-  initialReviewQueue,
-  createInitialReviewQueue,
-  initialGoals,
-  createInitialGoals,
-  initialResources,
-  createInitialResources
-} from '../data/initialData';
+import { initialLessons, initialWeeklyGoal, initialGoals, createInitialGoals } from '../data/initialData';
 import { initialCourses, createInitialCourses } from '../data/initialCourses';
 import { 
   isValidUrl, 
@@ -461,6 +451,7 @@ interface StoreState {
   startLearningSession: (params: {
     lessonId: string;
     plannedSessionId?: string;
+    plannedMinutes?: number;
     source?: Resource;
   }) => LearningSession;
   pauseLearningSession: () => void;
@@ -592,13 +583,14 @@ export const useStore = create<StoreState>()(
         })),
       lessons: initialLessons,
       unclearTopics: [],
-      sessions: initialSessions,
+      // Phase 49: fresh installs start without demo history (no fake sessions/reviews/links)
+      sessions: [],
       weeklyGoal: initialWeeklyGoal,
       activeLearningSession: null,
       learningSessionsHistory: [],
-      reviewQueue: initialReviewQueue,
+      reviewQueue: [],
       goals: initialGoals,
-      resources: initialResources,
+      resources: [],
       courses: initialCourses,
 
       // Lesson Actions
@@ -1746,11 +1738,12 @@ export const useStore = create<StoreState>()(
         })),
 
       // Learning Session Engine Actions
-      startLearningSession: ({ lessonId, plannedSessionId, source }) => {
+      startLearningSession: ({ lessonId, plannedSessionId, plannedMinutes, source }) => {
         const now = new Date().toISOString();
         const newSession: LearningSession = {
           sessionId: uuidv4(),
           plannedSessionId,
+          ...(plannedMinutes ? { plannedMinutes } : {}),
           lessonId,
           startedAt: now,
           accumulatedSeconds: 0,
@@ -2107,6 +2100,11 @@ export const useStore = create<StoreState>()(
           sessions: [...state.sessions, ...newSessions],
           goals: [...state.goals, mainGoal],
           weeklyGoal: updatedWeeklyGoal,
+          // Phase 49: the time chosen in onboarding becomes V2U's daily time
+          studentProfile: {
+            ...(state.studentProfile ?? DEFAULT_STUDENT_PROFILE),
+            availableMinutes: budgetFromWeeklyHours(prefs.weeklyTargetHours),
+          },
         }));
 
         const firstLessonId = firstWeekSessions[0]?.lessonId || lessons[0]?.id;
@@ -2225,12 +2223,12 @@ export const useStore = create<StoreState>()(
         set({
           lessons: data.lessons || [],
           unclearTopics: data.unclearTopics || [],
-          sessions: data.sessions || initialSessions,
+          sessions: data.sessions || [],
           weeklyGoal: data.weeklyGoal || initialWeeklyGoal,
           learningSessionsHistory: data.learningSessionsHistory || [],
-          reviewQueue: data.reviewQueue || createInitialReviewQueue(data.lessons || []),
+          reviewQueue: data.reviewQueue || [],
           goals: data.goals || initialGoals,
-          resources: data.resources || initialResources,
+          resources: data.resources || [],
           courses: data.courses || initialCourses,
           hasCompletedOnboarding: data.hasCompletedOnboarding ?? true,
           ...(data.studentProfile ? { studentProfile: data.studentProfile } : {}),
@@ -2243,13 +2241,13 @@ export const useStore = create<StoreState>()(
           admissionInputs: EMPTY_ADMISSION_INPUTS,
           lessons: initialLessons,
           unclearTopics: [],
-          sessions: createInitialSessions(),
+          sessions: [],
           weeklyGoal: initialWeeklyGoal,
           activeLearningSession: null,
           learningSessionsHistory: [],
-          reviewQueue: createInitialReviewQueue(initialLessons),
+          reviewQueue: [],
           goals: createInitialGoals(),
-          resources: createInitialResources(initialLessons),
+          resources: [],
           courses: createInitialCourses(),
         }),
     }),

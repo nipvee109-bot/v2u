@@ -8,12 +8,15 @@ interface ResourceViewerProps {
   resource: Resource | null;
   onTimeUpdate?: (seconds: number) => void;
   seekToSeconds?: number | null;
+  /** Phase 49: V2U's curated recommendation, shown when no resource is selected. */
+  suggestion?: { title: string; locator: string };
 }
 
 export const ResourceViewer: React.FC<ResourceViewerProps> = ({
   resource,
   onTimeUpdate,
   seekToSeconds,
+  suggestion,
 }) => {
   const [iframeError, setIframeError] = useState(false);
   const { isOnline } = useNetworkStatus();
@@ -23,9 +26,17 @@ export const ResourceViewer: React.FC<ResourceViewerProps> = ({
       <div className="w-full aspect-video rounded-2xl bg-slate-900 border border-slate-800 flex flex-col items-center justify-center p-8 text-white text-center shadow-lg">
         <FileText className="w-12 h-12 text-slate-600 mb-3" />
         <h4 className="text-base font-bold text-slate-300">ยังไม่ได้เลือกแหล่งเรียนรู้</h4>
-        <p className="text-xs text-slate-500 mt-1 max-w-sm">
-          เลือกสื่อจากรายการด้านบน หรือกดเพิ่มแหล่งเรียนรู้ใหม่เพื่อเริ่มศึกษา
-        </p>
+        {suggestion ? (
+          <div className="mt-2 max-w-sm text-xs text-slate-300">
+            <p className="font-semibold text-white">V2U แนะนำ: {suggestion.title}</p>
+            <p className="mt-1 text-slate-400">หาได้ที่: {suggestion.locator}</p>
+            <p className="mt-1 text-slate-500">เปิดเรียนจากแหล่งนี้ แล้วจดสิ่งที่เรียนรู้ในสมุดโน้ตด้านล่าง</p>
+          </div>
+        ) : (
+          <p className="text-xs text-slate-500 mt-1 max-w-sm">
+            เลือกสื่อจากรายการด้านบน หรือกดเพิ่มแหล่งเรียนรู้ใหม่เพื่อเริ่มศึกษา
+          </p>
+        )}
       </div>
     );
   }

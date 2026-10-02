@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BookOpen,
   Play,
@@ -20,6 +20,10 @@ interface ResourceConfirmationModalProps {
   lesson: Lesson;
   onConfirm: (selectedResource: Resource | undefined) => void;
   onAddResource?: () => void;
+  /** Phase 49: V2U's curated recommendation for this step (from getNextStep). */
+  suggestion?: { title: string; provider: string; whyV2USelected: string; locator: string; url?: string };
+  /** Phase 49: minutes planned for today (from the student's daily time). */
+  plannedMinutes?: number;
 }
 
 const RESOURCE_TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -37,10 +41,22 @@ export const ResourceConfirmationModal: React.FC<ResourceConfirmationModalProps>
   lesson,
   onConfirm,
   onAddResource,
+  suggestion,
+  plannedMinutes,
 }) => {
   const [selectedResourceId, setSelectedResourceId] = useState<string | null>(
     lesson.resources.find((r) => r.role === 'primary')?.id || lesson.resources[0]?.id || null
   );
+
+  // Phase 49: Escape closes the dialog
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -89,6 +105,24 @@ export const ResourceConfirmationModal: React.FC<ResourceConfirmationModalProps>
             )}
           </div>
         </div>
+
+        {/* V2U recommendation for today's step (Phase 49) */}
+        {suggestion && (
+          <div className="mb-3 rounded-2xl border border-blue-200 bg-blue-50/60 p-3">
+            <p className="text-[11px] font-bold text-blue-800">V2U แนะนำสำหรับวันนี้</p>
+            <p className="mt-0.5 text-xs font-semibold text-slate-900">{suggestion.title}</p>
+            <p className="mt-0.5 text-[11px] text-slate-600">{suggestion.whyV2USelected}</p>
+            {suggestion.url ? (
+              <a href={suggestion.url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-[11px] font-semibold text-blue-700 underline">
+                เปิดแหล่งเรียนรู้
+              </a>
+            ) : (
+              <p className="mt-1 text-[11px] text-slate-500">
+                หาได้ที่: {suggestion.locator} <span className="text-amber-700">(ยังไม่ได้ตรวจลิงก์)</span>
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Resource Selection */}
         <div className="space-y-3">
@@ -154,8 +188,10 @@ export const ResourceConfirmationModal: React.FC<ResourceConfirmationModalProps>
           ) : (
             <div className="text-center py-6 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
               <BookOpen className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-              <p className="text-xs text-slate-500">ยังไม่มีสื่อการเรียน</p>
-              <p className="text-[10px] text-slate-400 mt-1">สามารถเรียนแบบจดโน้ตอย่างเดียวได้</p>
+              <p className="text-xs text-slate-500">ยังไม่มีสื่อที่บันทึกไว้ในบทนี้</p>
+              <p className="text-[10px] text-slate-400 mt-1">
+                {suggestion ? 'ใช้สื่อที่ V2U แนะนำด้านบน แล้วจดโน้ตระหว่างเรียนได้' : 'สามารถเรียนแบบจดโน้ตอย่างเดียวได้'}
+              </p>
             </div>
           )}
         </div>
@@ -165,7 +201,7 @@ export const ResourceConfirmationModal: React.FC<ResourceConfirmationModalProps>
           <div className="flex items-center gap-4 text-xs text-slate-600">
             <span className="flex items-center gap-1.5">
               <BookOpen className="w-3.5 h-3.5 text-blue-500" />
-              {lesson.durationHours} ชม. (เป้าหมาย)
+              {plannedMinutes !== undefined ? `วันนี้ ${plannedMinutes} นาที` : `${lesson.durationHours} ชม. (เป้าหมาย)`}
             </span>
             <span className="flex items-center gap-1.5 text-slate-400">
               ความยาก: {lesson.difficulty === 'Easy' ? 'ง่าย' : lesson.difficulty === 'Medium' ? 'ปานกลาง' : 'ยาก'}

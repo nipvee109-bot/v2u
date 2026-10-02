@@ -55,6 +55,16 @@ export function normalizeStudentProfile(profile?: Partial<StudentProfile> | null
   };
 }
 
+/**
+ * Map the onboarding weekly study load to the nearest daily time option,
+ * using the onboarding's own wording (hours ÷ 7 days).
+ */
+export function budgetFromWeeklyHours(hours: number): TimeBudgetMinutes {
+  const daily = (Math.max(0, hours) * 60) / 7;
+  const options: TimeBudgetMinutes[] = [15, 30, 60, 120];
+  return options.reduce((best, m) => (Math.abs(m - daily) < Math.abs(best - daily) ? m : best), options[0]);
+}
+
 export function getHorizonText(level: StudentProfile['educationLevel']): string {
   if (level === 'ปวช.3' || level === 'ปวส.2') return 'ปีสุดท้าย — เตรียมสอบและสมัครในรอบปีนี้';
   if (level === 'ปวช.2' || level === 'ปวส.1') return 'เหลือเวลาประมาณ 1 ปีก่อนสมัคร';

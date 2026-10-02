@@ -249,6 +249,8 @@ export interface MonthRoadmapInfo {
 export interface LearningSession {
   sessionId: string;
   plannedSessionId?: string;
+  /** Phase 49: minutes planned for this sitting (student's daily time). */
+  plannedMinutes?: number;
   lessonId: string;
   startedAt: string; // ISO timestamp
   pausedAt?: string; // ISO timestamp

@@ -133,6 +133,10 @@ export interface NextStepCurriculumInfo {
     provider: string;
     estimatedMinutes: number;
     whyV2USelected: string;
+    /** Where to find it (shown when no checked link exists). */
+    locator: string;
+    /** Only true when the registry holds a verified URL. */
+    url?: string;
   };
 }
 
@@ -153,7 +157,15 @@ function curriculumInfoFor(cLesson: CurriculumLesson, lessons: Lesson[], preferr
     learningOutcomes: cLesson.learningOutcomes,
     missingPrerequisiteTitles: getMissingPrerequisites(cLesson, lessons).map((l) => l.title),
     recommendedResource: r
-      ? { id: r.id, title: r.title, provider: r.provider, estimatedMinutes: r.estimatedMinutes, whyV2USelected: r.whyV2USelected }
+      ? {
+          id: r.id,
+          title: r.title,
+          provider: r.provider,
+          estimatedMinutes: r.estimatedMinutes,
+          whyV2USelected: r.whyV2USelected,
+          locator: r.locator,
+          ...(r.url && (r.status === 'active' || r.status === 'verified') ? { url: r.url } : {}),
+        }
       : undefined,
   };
 }

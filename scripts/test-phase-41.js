@@ -131,7 +131,7 @@ await test('Home keeps resource confirmation and onboarding', () => {
   assert(home.includes('useStartNextStep()') && home.includes('{confirmModal}'));
   const startHook = read('src/hooks/useStartNextStep.tsx');
   assert(startHook.includes('ResourceConfirmationModal'));
-  assert(startHook.includes('startLearningSession({ lessonId, source: resource })'));
+  assert(startHook.includes('startLearningSession({ lessonId, source: resource')); // Phase 49 also passes plannedMinutes
   assert(home.includes('StudyOnboardingModal'));
 });
 

@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { Lesson, ReviewItem, StudyGoal, Resource } from '../types';
+import type { Lesson, StudyGoal } from '../types';
 
 export const initialLessons: Lesson[] = [
   // Month 1
@@ -11,18 +11,11 @@ export const initialLessons: Lesson[] = [
     week: 1,
     durationHours: 2,
     description: 'พื้นฐานสมการและอสมการสำหรับวิศวกรรม',
-    status: 'IN PROGRESS',
+    // Phase 49: new students start clean — no pretend progress, no placeholder links
+    status: 'NOT STARTED',
     difficulty: 'Medium',
     notes: '',
-    resources: [
-      {
-        id: uuidv4(),
-        type: 'youtube',
-        title: 'สมการเชิงเส้นสำหรับผู้เริ่มต้น',
-        url: 'https://youtube.com/watch?v=sample1',
-        description: 'คลิปนี้ใช้ทบทวนเรื่องสมการ',
-      }
-    ],
+    resources: [],
     images: []
   },
   {
@@ -368,8 +361,8 @@ export const initialLessons: Lesson[] = [
   },
 ];
 
-import { format, addDays, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths } from 'date-fns';
-import type { StudySession, WeeklyGoal } from '../types';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths } from 'date-fns';
+import type { WeeklyGoal } from '../types';
 
 export const initialWeeklyGoal: WeeklyGoal = {
   targetHours: 18,
@@ -377,233 +370,7 @@ export const initialWeeklyGoal: WeeklyGoal = {
   targetReviews: 4,
 };
 
-export const createInitialSessions = (): StudySession[] => {
-  const today = new Date();
-  const todayStr = format(today, 'yyyy-MM-dd');
-  const yesterdayStr = format(subDays(today, 1), 'yyyy-MM-dd');
-  const tomorrowStr = format(addDays(today, 1), 'yyyy-MM-dd');
-  const dayAfterTomorrowStr = format(addDays(today, 2), 'yyyy-MM-dd');
-  const twoDaysAgoStr = format(subDays(today, 2), 'yyyy-MM-dd');
 
-  return [
-    // Overdue from 2 days ago
-    {
-      id: uuidv4(),
-      date: twoDaysAgoStr,
-      startTime: '16:00',
-      endTime: '17:30',
-      plannedMinutes: 90,
-      lessonId: initialLessons[0]?.id,
-      subjectId: 'tgat3',
-      title: 'ทบทวน: สมรรถนะการทำงานในอนาคต',
-      status: 'overdue',
-      priority: 'Medium',
-      type: 'review',
-      notes: 'อ่านสรุปและฝึกทำโจทย์สถานการณ์จำลอง',
-      createdAt: subDays(today, 3).toISOString(),
-      updatedAt: subDays(today, 2).toISOString(),
-    },
-    // Yesterday Completed
-    {
-      id: uuidv4(),
-      date: yesterdayStr,
-      startTime: '10:00',
-      endTime: '12:00',
-      plannedMinutes: 120,
-      actualMinutes: 115,
-      lessonId: initialLessons[0]?.id,
-      subjectId: 'physics',
-      title: 'การเคลื่อนที่แนวตรงและสมการการเคลื่อนที่',
-      status: 'completed',
-      priority: 'High',
-      type: 'learn',
-      notes: 'ทำความเข้าใจ 5 สูตรการเคลื่อนที่',
-      createdAt: subDays(today, 2).toISOString(),
-      updatedAt: yesterdayStr,
-      completedAt: yesterdayStr + 'T12:00:00.000Z',
-    },
-    {
-      id: uuidv4(),
-      date: yesterdayStr,
-      startTime: '15:00',
-      endTime: '16:30',
-      plannedMinutes: 90,
-      actualMinutes: 90,
-      lessonId: initialLessons[1]?.id,
-      subjectId: 'math',
-      title: 'เลขยกกำลัง และการถอดราก',
-      status: 'completed',
-      priority: 'Medium',
-      type: 'review',
-      notes: 'ทบทวนสูตรกำลังสองสมบูรณ์',
-      createdAt: subDays(today, 2).toISOString(),
-      updatedAt: yesterdayStr,
-      completedAt: yesterdayStr + 'T16:30:00.000Z',
-    },
-    // Today
-    {
-      id: uuidv4(),
-      date: todayStr,
-      startTime: '09:00',
-      endTime: '11:00',
-      plannedMinutes: 120,
-      lessonId: initialLessons[0]?.id,
-      subjectId: 'math',
-      title: 'สมการและอสมการเชิงเส้น',
-      status: 'planned',
-      priority: 'High',
-      type: 'learn',
-      notes: 'ฝึกทำโจทย์ 20 ข้อ และจดเทคนิคการย้ายข้าง',
-      createdAt: todayStr,
-      updatedAt: todayStr,
-    },
-    {
-      id: uuidv4(),
-      date: todayStr,
-      startTime: '14:00',
-      endTime: '15:30',
-      plannedMinutes: 90,
-      lessonId: initialLessons[2]?.id,
-      subjectId: 'programming',
-      title: 'Python พื้นฐาน: Data Types & Control Flow',
-      status: 'planned',
-      priority: 'Medium',
-      type: 'practice',
-      notes: 'เขียนโปรแกรมคำนวณค่าไฟและแปลงหน่วย',
-      createdAt: todayStr,
-      updatedAt: todayStr,
-    },
-    {
-      id: uuidv4(),
-      date: todayStr,
-      startTime: '19:00',
-      endTime: '20:30',
-      plannedMinutes: 90,
-      lessonId: initialLessons[0]?.id,
-      subjectId: 'tgat3',
-      title: 'TGAT 3: แบบทดสอบการคิดอย่างมีเหตุผล',
-      status: 'planned',
-      priority: 'Medium',
-      type: 'quiz',
-      notes: 'จับเวลาทำชุดทดสอบ 30 นาที',
-      createdAt: todayStr,
-      updatedAt: todayStr,
-    },
-    // Tomorrow
-    {
-      id: uuidv4(),
-      date: tomorrowStr,
-      startTime: '09:30',
-      endTime: '11:30',
-      plannedMinutes: 120,
-      lessonId: initialLessons[3]?.id,
-      subjectId: 'ai',
-      title: 'Machine Learning Basics: Supervised Learning',
-      status: 'planned',
-      priority: 'High',
-      type: 'learn',
-      notes: 'เรียนรู้ Concept Regression vs Classification',
-      createdAt: todayStr,
-      updatedAt: todayStr,
-    },
-    {
-      id: uuidv4(),
-      date: tomorrowStr,
-      startTime: '14:00',
-      endTime: '15:30',
-      plannedMinutes: 90,
-      lessonId: initialLessons[0]?.id,
-      subjectId: 'physics',
-      title: 'แรงและกฎการเคลื่อนที่ของนิวตัน',
-      status: 'planned',
-      priority: 'Medium',
-      type: 'practice',
-      notes: 'วาด Free Body Diagram ให้แม่นยำ',
-      createdAt: todayStr,
-      updatedAt: todayStr,
-    },
-    // Day After Tomorrow
-    {
-      id: uuidv4(),
-      date: dayAfterTomorrowStr,
-      startTime: '10:00',
-      endTime: '12:00',
-      plannedMinutes: 120,
-      lessonId: initialLessons[2]?.id,
-      subjectId: 'programming',
-      title: 'Python Functions & Modular Coding',
-      status: 'planned',
-      priority: 'High',
-      type: 'learn',
-      notes: 'เขียนฟังก์ชันแบบ return ค่าและรับ default parameters',
-      createdAt: todayStr,
-      updatedAt: todayStr,
-    },
-  ];
-};
-
-export const initialSessions = createInitialSessions();
-
-export const createInitialReviewQueue = (lessons: Lesson[] = initialLessons): ReviewItem[] => {
-  const now = new Date();
-  const todayStr = now.toISOString();
-  const yesterdayDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const tomorrowDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const threeDaysLaterDate = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-
-  return [
-    {
-      id: uuidv4(),
-      lessonId: lessons[0]?.id || 'lesson-1',
-      topic: lessons[0]?.title || 'สมการและอสมการเชิงเส้น',
-      createdAt: yesterdayDate.toISOString(),
-      lastReviewedAt: yesterdayDate.toISOString(),
-      nextReviewAt: yesterdayDate.toISOString(),
-      reviewCount: 1,
-      status: 'overdue',
-      reason: 'spaced_repetition',
-      priority: 'High',
-    },
-    {
-      id: uuidv4(),
-      lessonId: lessons[2]?.id || 'lesson-3',
-      topic: lessons[2]?.title || 'Python พื้นฐาน',
-      createdAt: todayStr,
-      lastReviewedAt: undefined,
-      nextReviewAt: todayStr,
-      reviewCount: 0,
-      status: 'pending',
-      reason: 'spaced_repetition',
-      priority: 'High',
-    },
-    {
-      id: uuidv4(),
-      lessonId: lessons[1]?.id || 'lesson-2',
-      topic: lessons[1]?.title || 'เลขยกกำลัง และราก',
-      createdAt: todayStr,
-      lastReviewedAt: todayStr,
-      nextReviewAt: tomorrowDate.toISOString(),
-      reviewCount: 1,
-      status: 'pending',
-      reason: 'spaced_repetition',
-      priority: 'Medium',
-    },
-    {
-      id: uuidv4(),
-      lessonId: lessons[3]?.id || 'lesson-4',
-      topic: lessons[3]?.title || 'หน่วย และ เวกเตอร์',
-      createdAt: todayStr,
-      lastReviewedAt: undefined,
-      nextReviewAt: threeDaysLaterDate.toISOString(),
-      reviewCount: 0,
-      status: 'pending',
-      reason: 'spaced_repetition',
-      priority: 'Low',
-    },
-  ];
-};
-
-export const initialReviewQueue = createInitialReviewQueue();
 
 export const createInitialGoals = (): StudyGoal[] => {
   const now = new Date();
@@ -737,95 +504,3 @@ export const createInitialGoals = (): StudyGoal[] => {
 
 export const initialGoals = createInitialGoals();
 
-export const createInitialResources = (lessons: Lesson[] = initialLessons): Resource[] => {
-  const now = new Date().toISOString();
-  const mathLesson = lessons.find((l) => l.subjectId === 'math');
-  const progLesson = lessons.find((l) => l.subjectId === 'programming');
-  const physicsLesson = lessons.find((l) => l.subjectId === 'physics');
-  const tgatLesson = lessons.find((l) => l.subjectId === 'tgat3');
-  const aiLesson = lessons.find((l) => l.subjectId === 'ai');
-
-  return [
-    {
-      id: uuidv4(),
-      title: 'สมการเชิงเส้นสำหรับผู้เริ่มต้น (Linear Equations Crash Course)',
-      url: 'https://youtube.com/watch?v=sample1',
-      type: 'youtube',
-      subject: 'math',
-      lessonId: mathLesson?.id,
-      thumbnail: 'https://img.youtube.com/vi/sample1/hqdefault.jpg',
-      description: 'คลิปทบทวนการแก้สมการเชิงเส้นและการย้ายข้าง สำหรับเตรียมสอบวิศวะ',
-      createdAt: now,
-      favorite: true,
-      lastOpened: now,
-    },
-    {
-      id: uuidv4(),
-      title: 'Python 3 Official Documentation & Tutorial',
-      url: 'https://docs.python.org/3/tutorial/',
-      type: 'website',
-      subject: 'programming',
-      lessonId: progLesson?.id,
-      description: 'เอกสารทางการของภาษา Python ครอบคลุม Control Flow, Data Structures และ Functions',
-      createdAt: now,
-      favorite: true,
-    },
-    {
-      id: uuidv4(),
-      title: 'สรุปสูตรฟิสิกส์ ม.ปลาย: เวกเตอร์และการเคลื่อนที่ 1 มิติ',
-      url: 'https://example.com/physics-summary-vectors.pdf',
-      type: 'document',
-      subject: 'physics',
-      lessonId: physicsLesson?.id,
-      description: 'แผ่นสรุป 5 สูตรการเคลื่อนที่แนวตรง กราฟการกระจัด-ความเร็ว-ความเร่ง',
-      createdAt: now,
-      favorite: true,
-    },
-    {
-      id: uuidv4(),
-      title: 'โครงสร้างข้อสอบ TGAT 3 สมรรถนะการทำงาน (Blueprint)',
-      url: 'https://mytgat.com/tgat3-blueprint',
-      type: 'website',
-      subject: 'tgat3',
-      lessonId: tgatLesson?.id,
-      description: 'เกณฑ์คะแนน แนวข้อสอบการคิดอย่างมีเหตุผล และการแก้ไขปัญหาที่ซับซ้อน',
-      createdAt: now,
-      favorite: false,
-    },
-    {
-      id: uuidv4(),
-      title: 'Machine Learning Crash Course by Google',
-      url: 'https://developers.google.com/machine-learning/crash-course',
-      type: 'website',
-      subject: 'ai',
-      lessonId: aiLesson?.id,
-      description: 'คอร์สเรียนรู้พื้นฐาน Supervised Learning, Loss Function และ Gradient Descent',
-      createdAt: now,
-      favorite: true,
-    },
-    {
-      id: uuidv4(),
-      title: 'MIT OpenCourseWare: Linear Algebra (Gilbert Strang)',
-      url: 'https://youtube.com/watch?v=7UJ4CFr9KAw',
-      type: 'youtube',
-      subject: 'math',
-      thumbnail: 'https://img.youtube.com/vi/7UJ4CFr9KAw/hqdefault.jpg',
-      description: 'เลกเชอร์ระดับตำนานวิชา Linear Algebra สำหรับวิทยาศาสตร์และวิศวกรรมศาสตร์',
-      createdAt: now,
-      favorite: false,
-    },
-    {
-      id: uuidv4(),
-      title: 'แผนภาพความสัมพันธ์ Free Body Diagram Cheat Sheet',
-      url: 'https://example.com/fbd-cheat-sheet.png',
-      type: 'image',
-      subject: 'physics',
-      lessonId: physicsLesson?.id,
-      description: 'รวมภาพตัวอย่างการแตกแรงในระบบรอก พื้นเอียง และแรงเสียดทาน',
-      createdAt: now,
-      favorite: false,
-    },
-  ];
-};
-
-export const initialResources = createInitialResources();
