@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, Circle, Clock, ChevronDown } from 'lucide-react';
 import { useStore } from '../store/useStore';
@@ -13,8 +12,9 @@ import {
 } from '../curriculum/engine';
 import type { CurriculumLevel } from '../curriculum/types';
 import { getResourcesForLesson, buildLearningPlan, TYPE_LABEL } from '../resources/engine';
-import { TIME_BUDGETS } from '../resources/types';
-import type { TimeBudgetMinutes, ResourceLevel } from '../resources/types';
+import type { ResourceLevel } from '../resources/types';
+import { TimeBudgetPicker } from '../components/TimeBudgetPicker';
+import { normalizeStudentProfile } from '../route/engine';
 
 const RESOURCE_LEVEL_LABEL: Record<ResourceLevel, string> = {
   beginner: 'เริ่มต้น',
@@ -30,9 +30,9 @@ const LEVEL_LABEL: Record<CurriculumLevel, string> = {
 
 /** เรียน → หลักสูตร: browse Pathway → Subject → Topic → Lesson. */
 export function CurriculumPage() {
-  const { lessons } = useStore();
+  const { lessons, studentProfile, setStudentProfile } = useStore();
   const readiness = getPathwayReadiness(lessons);
-  const [budget, setBudget] = useState<TimeBudgetMinutes>(30);
+  const budget = normalizeStudentProfile(studentProfile).availableMinutes;
   const skillTitle = (id: string) => CURRICULUM.skills.find((s) => s.id === id)?.title ?? id;
 
   return (
@@ -64,24 +64,8 @@ export function CurriculumPage() {
         })}
       </section>
 
-      <section aria-labelledby="time-budget" className="sticky top-0 z-[5] -mx-3.5 mb-5 border-b border-slate-200 bg-[#EFF3F8]/95 px-3.5 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border sm:bg-white sm:px-4">
-        <h2 id="time-budget" className="text-sm font-bold text-slate-900">คุณมีเวลาเท่าไหร่?</h2>
-        <div role="radiogroup" aria-labelledby="time-budget" className="mt-2 grid grid-cols-4 gap-1.5">
-          {TIME_BUDGETS.map((b) => (
-            <button
-              key={b.minutes}
-              type="button"
-              role="radio"
-              aria-checked={budget === b.minutes}
-              onClick={() => setBudget(b.minutes)}
-              className={`rounded-xl border px-2 py-2 min-h-[44px] text-xs font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                budget === b.minutes ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300'
-              }`}
-            >
-              {b.label}
-            </button>
-          ))}
-        </div>
+      <section aria-label="เวลาที่มี" className="sticky top-0 z-[5] -mx-3.5 mb-5 border-b border-slate-200 bg-[#EFF3F8]/95 px-3.5 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border sm:bg-white sm:px-4">
+        <TimeBudgetPicker value={budget} onChange={(m) => setStudentProfile({ availableMinutes: m })} />
         <p className="mt-1.5 text-[11px] text-slate-500">เปิดบทเรียนด้านล่างเพื่อดูแผนที่ V2U จัดให้ตามเวลานี้</p>
       </section>
 

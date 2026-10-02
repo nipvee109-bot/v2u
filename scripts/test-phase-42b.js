@@ -182,10 +182,13 @@ await test('getNextStep() exposes the recommended resource, time and outcomes', 
 });
 await test('Curriculum page shows time picker, resources, why, and plan; continues into existing study flow', () => {
   const page = read('src/pages/CurriculumPage.tsx');
-  for (const s of ['คุณมีเวลาเท่าไหร่?', 'แผนที่ V2U จัดให้', 'ทำไม V2U เลือก', 'TYPE_LABEL[r.type]', 'r.estimatedMinutes',
-    'RESOURCE_LEVEL_LABEL[r.level]', 'buildLearningPlan(lesson.id, budget)', 'role="radiogroup"']) {
+  for (const s of ['แผนที่ V2U จัดให้', 'ทำไม V2U เลือก', 'TYPE_LABEL[r.type]', 'r.estimatedMinutes',
+    'RESOURCE_LEVEL_LABEL[r.level]', 'buildLearningPlan(lesson.id, budget)', '<TimeBudgetPicker']) {
     assert(page.includes(s), `missing ${s}`);
   }
+  // Phase 43: the time picker became a shared component
+  const picker = read('src/components/TimeBudgetPicker.tsx');
+  assert(picker.includes('คุณมีเวลาเท่าไหร่?') && picker.includes('role="radiogroup"'));
   assert(page.includes('to={`/lessons/${studyLesson.id}`}'), 'final action must use the existing lesson/study flow');
   assert(!page.includes('startLearningSession'), 'must not create a second study system');
 });

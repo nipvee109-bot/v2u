@@ -32,6 +32,8 @@ import type {
   CourseModule,
   CourseItem
 } from '../types';
+import type { StudentProfile } from '../route/types';
+import { DEFAULT_STUDENT_PROFILE } from '../route/data';
 import { 
   SUBJECTS,
   MASTERY_SCALE
@@ -511,6 +513,10 @@ interface StoreState {
 
   // Phase 18: Study Onboarding State & Actions
   hasCompletedOnboarding: boolean;
+
+  // Phase 43: V2U Route — starting point, target and daily time (null until set)
+  studentProfile: StudentProfile | null;
+  setStudentProfile: (patch: Partial<StudentProfile>) => void;
   completeOnboarding: (prefs: OnboardingPreferences) => { firstLessonId?: string };
   skipOnboarding: () => void;
   resetOnboarding: () => void;
@@ -546,6 +552,11 @@ export const useStore = create<StoreState>()(
       theme: 'system',
       setTheme: (theme) => set({ theme }),
       hasCompletedOnboarding: false,
+      studentProfile: null,
+      setStudentProfile: (patch) =>
+        set((state) => ({
+          studentProfile: { ...(state.studentProfile ?? DEFAULT_STUDENT_PROFILE), ...patch },
+        })),
       lessons: initialLessons,
       unclearTopics: [],
       sessions: initialSessions,
@@ -2193,6 +2204,7 @@ export const useStore = create<StoreState>()(
       resetToInitial: () =>
         set({
           hasCompletedOnboarding: false,
+          studentProfile: null,
           lessons: initialLessons,
           unclearTopics: [],
           sessions: createInitialSessions(),
