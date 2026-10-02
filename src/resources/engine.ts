@@ -74,6 +74,13 @@ export function getRecommendableResources(resources: CuratedResource[] = RESOURC
   return resources.filter(isRecommendable);
 }
 
+/** Phase 52: plain-Thai link state shown wherever a resource appears. */
+export function linkStateLabel(r: CuratedResource): string {
+  if (r.status === 'deprecated') return 'เลิกใช้แล้ว';
+  if ((r.status === 'active' || r.status === 'verified') && r.url) return `ตรวจลิงก์แล้ว ${r.verification?.checkedAt ?? ''}`.trim();
+  return 'ยังไม่ได้ตรวจลิงก์';
+}
+
 /** Look up any registry entry by id, including deprecated ones (for old references). */
 export function getResourceById(id: string, resources: CuratedResource[] = RESOURCE_REGISTRY): CuratedResource | undefined {
   return resources.find((r) => r.id === id);
@@ -299,6 +306,14 @@ export function buildLearningPlan(
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+/** True when `a` and `b` share any 6-character run (works for Thai, which has no spaces). */
+function sharesPhrase(a: string, b: string): boolean {
+  const x = a.replace(/\s+/g, '');
+  const y = b.replace(/\s+/g, '');
+  for (let i = 0; i + 6 <= x.length; i++) if (y.includes(x.slice(i, i + 6))) return true;
+  return false;
+}
+
 function isValidHttpUrl(value: string): boolean {
   try {
     const u = new URL(value);
@@ -351,6 +366,8 @@ export function validateResources(
         errors.push(`${where}: candidateUrl needs search provenance (query, foundAt, resultTitle)`);
       }
       if (/example\.(com|org)|sample|placeholder|localhost/i.test(r.candidateUrl)) errors.push(`${where}: placeholder candidateUrl`);
+      // Phase 52: the search result must be about THIS resource, not just the site's name
+      if (pv?.resultTitle && !sharesPhrase(pv.resultTitle.split(' - ')[0], r.title)) errors.push(`${where}: search result title does not match the resource`);
     }
     if (r.urlProvenance && r.candidateUrl === undefined) errors.push(`${where}: provenance without candidateUrl`);
     if (checked) {
@@ -358,6 +375,10 @@ export function validateResources(
       const v = r.verification;
       if (!v || !ISO_DATE.test(v.checkedAt) || !v.method?.trim() || !v.note?.trim()) {
         errors.push(`${where}: ${r.status} resources must record what was verified`);
+      }
+      // Phase 52: a search result is not verification — working URL + title + coverage + legality
+      if (v && !(typeof v.httpStatus === 'number' && v.httpStatus >= 200 && v.httpStatus < 300 && v.pageTitle?.trim() && v.titleMatches && v.coverageChecked && v.legalSource)) {
+        errors.push(`${where}: ${r.status} needs httpStatus 2xx, pageTitle, titleMatches, coverageChecked and legalSource`);
       }
     } else if (r.status === 'unverified' && r.verification) {
       errors.push(`${where}: unverified resources must not carry a verification record`);

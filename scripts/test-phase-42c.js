@@ -102,7 +102,7 @@ await test('Active / verified resources must have valid source metadata', () => 
   const errs = (patch) => E.validateResources([{ ...base, ...patch }], C);
   assert(errs({ status: 'active' }).some((e) => e.includes('need a verified url')));
   assert(errs({ status: 'verified', url: 'https://example.org/x' }).some((e) => e.includes('record what was verified')));
-  assert.deepStrictEqual(errs({ status: 'active', url: 'https://example.org/x', verification: { checkedAt: '2026-10-02', method: 'HTTP 200', note: 'heading matched' } }), []);
+  assert.deepStrictEqual(errs({ status: 'active', url: 'https://example.org/x', verification: { checkedAt: '2026-10-02', method: 'HTTP 200', note: 'heading matched', httpStatus: 200, pageTitle: 'p', titleMatches: true, coverageChecked: true, legalSource: true } }), []);
   assert(errs({ verification: { checkedAt: '2026-10-02', method: 'x', note: 'y' } }).some((e) => e.includes('must not carry a verification')));
 });
 await test('Deprecated resources are never recommended', () => {
@@ -119,7 +119,7 @@ await test('Deprecated resources are never recommended', () => {
 await test('Active/verified entries outrank unverified ones', () => {
   const lesson = 'math-alg-linear-eq';
   const fake = R.map((r) => (r.id === 'cr-openstax-college-algebra-ch2'
-    ? { ...r, status: 'active', url: 'https://example.org/x', verification: { checkedAt: '2026-10-02', method: 't', note: 't' } } : r));
+    ? { ...r, status: 'active', url: 'https://example.org/x', verification: { checkedAt: '2026-10-02', method: 't', note: 't', httpStatus: 200, pageTitle: 't', titleMatches: true, coverageChecked: true, legalSource: true } } : r));
   assert.strictEqual(E.getResourcesForLesson(lesson, fake)[0].id, 'cr-openstax-college-algebra-ch2');
 });
 await test('Only deprecated entries may be superseded, and only by live entries', () => {

@@ -147,7 +147,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-math-solve-linear', 'skill-math-check-solution'],
       exerciseIds: ['ex-math-linear-eq'],
       quizIds: ['quiz-math-linear-eq'],
-      resourceIds: ['cr-khan-alg1-equations', 'cr-ipst-math-m1-linear-eq', 'cr-openstax-college-algebra-ch2', 'res-math-textbook-m4', 'th-p14-m1-linear-eq-solve-2', 'th-p14-book-m1-math-2', 'th-scimath-ebooks'],
+      resourceIds: ['cr-khan-alg1-equations', 'cr-ipst-math-m1-linear-eq', 'cr-openstax-college-algebra-ch2', 'res-math-textbook-m4', 'th-p14-m1-linear-eq-solve-2', 'th-p14-book-m1-math-2'],
       studyLessonTitle: 'สมการและอสมการเชิงเส้น',
     },
     {
@@ -227,7 +227,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-math-trig-ratio', 'skill-math-special-angles'],
       exerciseIds: ['ex-math-trig'],
       quizIds: ['quiz-math-trig'],
-      resourceIds: ['cr-khan-geometry-trig', 'cr-ipst-math-m3-trig', 'res-math-textbook-m5', 'th-p14-m3-trig-meaning-1', 'th-p14-m3-trig-acute-1', 'th-p14-book-m3-math-2', 'th-scimath-ebooks'],
+      resourceIds: ['cr-khan-geometry-trig', 'cr-ipst-math-m3-trig', 'res-math-textbook-m5', 'th-p14-m3-trig-meaning-1', 'th-p14-m3-trig-acute-1', 'th-p14-book-m3-math-2'],
       studyLessonTitle: 'ตรีโกณมิติ',
     },
 
@@ -359,7 +359,7 @@ export const CURRICULUM: Curriculum = {
       skillIds: ['skill-phy-kinematics-equations', 'skill-math-graph-reading'],
       exerciseIds: ['ex-phy-kin-1d'],
       quizIds: ['quiz-phy-kin-1d'],
-      resourceIds: ['cr-ipst-physics-m4-v1', 'cr-khan-physics-1d', 'cr-openstax-physics-kinematics', 'res-physics-textbook-m4', 'th-p14-m4-phys-freefall', 'th-p14-book-m4-phys-1', 'th-scimath-ebooks'],
+      resourceIds: ['cr-ipst-physics-m4-v1', 'cr-khan-physics-1d', 'cr-openstax-physics-kinematics', 'res-physics-textbook-m4', 'th-p14-m4-phys-freefall', 'th-p14-book-m4-phys-1'],
       studyLessonTitle: 'การเคลื่อนที่แนวตรง',
     },
     {

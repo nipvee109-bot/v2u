@@ -97,7 +97,7 @@ await test('Validator rejects bad urls and misplaced videoId', () => {
   assert(bad({ status: 'active', url: 'javascript:alert(1)' }).some((e) => e.includes('invalid url')));
   assert(bad({ url: 'https://example.org/x' }).some((e) => e.includes('unverified resources must not carry a url')));
   assert(bad({ type: 'book', videoId: 'abcdefghijk' }).some((e) => e.includes('videoId only allowed')));
-  assert.deepStrictEqual(bad({ type: 'video', status: 'active', url: 'https://example.org/v', videoId: 'abcdefghijk', verification: { checkedAt: '2026-10-02', method: 'HTTP 200', note: 'title matched' } }), []);
+  assert.deepStrictEqual(bad({ type: 'video', status: 'active', url: 'https://example.org/v', videoId: 'abcdefghijk', verification: { checkedAt: '2026-10-02', method: 'HTTP 200', note: 'title matched', httpStatus: 200, pageTitle: 'p', titleMatches: true, coverageChecked: true, legalSource: true } }), []);
 });
 await test('Validator rejects unknown lessons/outcomes and missing why/lastChecked/isFree', () => {
   assert(bad({ curriculumLessonIds: ['nope'] }).some((e) => e.includes('unknown lesson')));

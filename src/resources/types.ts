@@ -35,6 +35,16 @@ export interface ResourceVerification {
   method: string;
   /** What was confirmed, e.g. "section heading matches locator" */
   note: string;
+  /** Phase 52: the four checks that make a link "verified" (all must be true). */
+  /** HTTP status the URL actually returned (2xx required). */
+  httpStatus?: number;
+  /** Page title as seen when opened; must match the resource title. */
+  pageTitle?: string;
+  titleMatches?: boolean;
+  /** Content covers the lesson's outcomes (checked by a person). */
+  coverageChecked?: boolean;
+  /** Published by the rights holder / free and legal to watch. */
+  legalSource?: boolean;
 }
 
 /** Outcome id format: `${curriculumLessonId}#o${1-based index}` */

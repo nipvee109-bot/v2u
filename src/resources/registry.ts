@@ -948,13 +948,6 @@ export const RESOURCE_REGISTRY: CuratedResource[] = [
     "language": "th",
     "isFree": true,
     "status": "unverified",
-    "candidateUrl": "https://proj14.ipst.ac.th/m1/m1-math-book2/",
-    "urlProvenance": {
-      "kind": "search-result",
-      "query": "proj14.ipst.ac.th m1-math-book2 การแก้สมการเชิงเส้นตัวแปรเดียว ตอนที่ 1",
-      "foundAt": "2026-10-02",
-      "resultTitle": "โครงการสอนออนไลน์ - Project 14"
-    },
     "durationKnown": false,
     "suitedFor": "คนที่อยากเรียนครบทั้งบท",
     "needsFirst": "—",
@@ -1134,44 +1127,7 @@ export const RESOURCE_REGISTRY: CuratedResource[] = [
     "needsFirst": "—",
     "doNext": "กลับมาทำแบบฝึกของ V2U"
   },
-  {
-    "id": "th-scimath-ebooks",
-    "title": "คลัง E-Book ของ SciMath (สสวท.) — หนังสือเรียนและคู่มือครู",
-    "provider": "SciMath · สสวท.",
-    "type": "book",
-    "role": "reference",
-    "locator": "scimath.org → E-Book → เลือกวิชาและระดับชั้น",
-    "estimatedMinutes": 30,
-    "level": "beginner",
-    "description": "คลังหนังสือเรียนและคู่มือครูของ สสวท. ที่เปิดให้อ่านออนไลน์ (ตรวจเงื่อนไขการใช้ของแต่ละเล่มก่อนดาวน์โหลด)",
-    "curriculumLessonIds": [
-      "math-alg-linear-eq",
-      "math-trig-ratios",
-      "phy-kin-1d"
-    ],
-    "coveredOutcomes": [
-      "math-alg-linear-eq#o3",
-      "math-trig-ratios#o1",
-      "phy-kin-1d#o1"
-    ],
-    "whyV2USelected": "แหล่งหนังสือเรียนทางการที่เปิดให้อ่าน ใช้แทนการดาวน์โหลดไฟล์จากที่อื่น",
-    "lastChecked": "2026-10-02",
-    "language": "th",
-    "isFree": true,
-    "status": "unverified",
-    "candidateUrl": "https://www.scimath.org/ebooks",
-    "urlProvenance": {
-      "kind": "search-result",
-      "query": "scimath.org หนังสือเรียน คณิตศาสตร์ e-book สสวท ดาวน์โหลด",
-      "foundAt": "2026-10-02",
-      "resultTitle": "คลังความรู้ SciMath"
-    },
-    "durationKnown": false,
-    "suitedFor": "คนที่ชอบเรียนจากการอ่าน",
-    "needsFirst": "—",
-    "doNext": "อ่านจบแล้วเช็กความเข้าใจใน V2U"
-  },
-  {
+    {
     "id": "th-scimath-newton-article",
     "title": "กฎการเคลื่อนที่ไม่ใช่แค่เรื่องของคนเรียนสายวิทย์ (บทความ SciMath)",
     "provider": "SciMath · สสวท.",
