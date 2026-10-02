@@ -27,6 +27,7 @@ import type {
   KnowledgeGap,
 } from '../types';
 import { getSmartDashboardRecommendation, getDashboardRoadmapStatus } from './dashboardUtils';
+import { resolveCurriculumStep } from '../curriculum/engine';
 
 export type NextStepKind = 'continue' | 'review' | 'study' | 'empty';
 
@@ -68,6 +69,18 @@ export interface NextStep {
   goal: { label: string; detail: string };
   /** ยังขาดอะไร */
   missing: string[];
+  /** Phase 42A: the curriculum lesson behind this step, when one is linked. */
+  curriculum?: NextStepCurriculumInfo;
+}
+
+export interface NextStepCurriculumInfo {
+  lessonId: string;
+  title: string;
+  /** Goal → Subject → Topic → Lesson */
+  path: string;
+  estimatedMinutes: number;
+  learningOutcomes: string[];
+  missingPrerequisiteTitles: string[];
 }
 
 export const NEXT_STEP_CTA_LABEL = 'เริ่มขั้นต่อไป' as const;
@@ -162,14 +175,29 @@ export function getNextStep(params: NextStepParams): NextStep {
   const rec = getSmartDashboardRecommendation({ lessons, sessions, learningSessionsHistory, referenceDate });
   const allCompleted = lessons.length > 0 && lessons.every((l) => l.status === 'COMPLETED');
   if (rec && !allCompleted) {
+    const ctx = resolveCurriculumStep(rec.lesson, lessons);
+    const curriculum: NextStepCurriculumInfo | undefined = ctx
+      ? {
+          lessonId: ctx.lesson.id,
+          title: ctx.lesson.title,
+          path: ctx.path,
+          estimatedMinutes: ctx.lesson.estimatedMinutes,
+          learningOutcomes: ctx.lesson.learningOutcomes,
+          missingPrerequisiteTitles: ctx.missingPrerequisites.map((l) => l.title),
+        }
+      : undefined;
     return {
       ...base,
       kind: 'study',
+      // Study flow still runs on the trackable store lesson
       href: `/lessons/${rec.lesson.id}`,
       requiresResourceConfirmation: true,
       lessonId: rec.lesson.id,
-      todayAction: `เรียน: ${rec.lesson.title}`,
-      reason: rec.reasonDescription,
+      todayAction: curriculum ? `เรียน: ${curriculum.title}` : `เรียน: ${rec.lesson.title}`,
+      reason: curriculum
+        ? `${rec.reasonDescription} · เรียนจบแล้วคุณจะ${curriculum.learningOutcomes[0]}`
+        : rec.reasonDescription,
+      curriculum,
     };
   }
 

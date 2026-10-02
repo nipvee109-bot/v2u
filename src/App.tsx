@@ -7,6 +7,7 @@ import { HomePage } from './pages/HomePage';
 const LearnHub = lazy(() => import('./pages/hubs/LearnHub').then((m) => ({ default: m.LearnHub })));
 const ReviewHub = lazy(() => import('./pages/hubs/ReviewHub').then((m) => ({ default: m.ReviewHub })));
 const RouteHub = lazy(() => import('./pages/hubs/RouteHub').then((m) => ({ default: m.RouteHub })));
+const CurriculumPage = lazy(() => import('./pages/CurriculumPage').then((m) => ({ default: m.CurriculumPage })));
 const MeHub = lazy(() => import('./pages/hubs/MeHub').then((m) => ({ default: m.MeHub })));
 // Full legacy learning overview (former Home) — kept reachable from เรียน
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
@@ -46,6 +47,7 @@ function App() {
           {/* V2U primary navigation (5 sections) */}
           <Route path="/" element={<HomePage />} />
           <Route path="/learn" element={<LearnHub />} />
+          <Route path="/learn/curriculum" element={<CurriculumPage />} />
           <Route path="/review" element={<ReviewHub />} />
           <Route path="/route" element={<RouteHub />} />
           <Route path="/me" element={<MeHub />} />

@@ -79,11 +79,21 @@ export function HomePage() {
         <h2 id="next-step-today" className="mt-2 text-lg sm:text-xl font-extrabold leading-snug">
           {step.todayAction}
         </h2>
+        {step.curriculum && (
+          <p className="mt-1.5 text-xs font-medium text-blue-100">
+            {step.curriculum.path} · ประมาณ {step.curriculum.estimatedMinutes} นาที
+          </p>
+        )}
         <div className="mt-3 flex items-start gap-2 rounded-2xl bg-white/10 p-3 text-sm text-blue-50">
           <Lightbulb className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
             <span className="font-bold">ทำไม: </span>
             {step.reason}
+            {step.curriculum && step.curriculum.missingPrerequisiteTitles.length > 0 && (
+              <span className="mt-1 block text-xs text-amber-100">
+                ควรปูพื้นก่อน: {step.curriculum.missingPrerequisiteTitles.join(', ')}
+              </span>
+            )}
           </p>
         </div>
         <button

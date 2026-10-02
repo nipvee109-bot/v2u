@@ -1,4 +1,4 @@
-import { Calculator, Code2, Atom, Brain, Cpu, BookMarked, Search, LayoutGrid, PlayCircle } from 'lucide-react';
+import { Calculator, Code2, Atom, Brain, Cpu, BookMarked, Search, LayoutGrid, PlayCircle, Route as RouteIcon } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { SUBJECTS } from '../../types';
 import type { SubjectId } from '../../types';
@@ -40,6 +40,7 @@ export function LearnHub() {
     ...(liveLesson
       ? [{ to: `/study/${liveLesson.id}`, title: 'ห้องเรียน', description: `เรียนต่อ: ${liveLesson.title}`, icon: PlayCircle }]
       : []),
+    { to: '/learn/curriculum', title: 'หลักสูตรวิศวกรรมคอมพิวเตอร์', description: 'วิชา → หัวข้อ → บทเรียน ที่ต้องใช้สอบเข้า', icon: RouteIcon },
     { to: '/resources', title: 'คลังแหล่งเรียนรู้', description: 'วิดีโอ เอกสาร และเว็บไซต์ที่บันทึกไว้', icon: BookMarked },
     { to: '/search', title: 'ค้นหา', description: 'ค้นหาบทเรียนและเนื้อหา', icon: Search },
     { to: '/dashboard', title: 'ภาพรวมการเรียนแบบเต็ม', description: 'แผนวันนี้ บทที่ค้าง และสรุปทั้งหมด', icon: LayoutGrid },
