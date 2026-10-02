@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ExternalLink, AlertCircle, RefreshCw } from 'lucide-react';
+import { parseYouTubeMessage } from '../../video/youtube';
 
 interface YouTubePlayerProps {
   url: string;
@@ -7,6 +8,10 @@ interface YouTubePlayerProps {
   thumbnail?: string;
   onTimeUpdate?: (seconds: number) => void;
   seekToSeconds?: number | null;
+  /** Phase 55: the player ACTUALLY reported its time (YouTube infoDelivery). */
+  onTimeSupported?: () => void;
+  /** Phase 55: the player reported that the video ended. */
+  onEnded?: () => void;
 }
 
 /**
@@ -41,10 +46,41 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   thumbnail,
   onTimeUpdate,
   seekToSeconds,
+  onTimeSupported,
+  onEnded,
 }) => {
   const videoId = extractYouTubeVideoId(url);
   const [embedError, setEmbedError] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Phase 55: real playback time from the embed (only YouTube-origin messages count)
+  useEffect(() => {
+    if (!onTimeUpdate && !onEnded && !onTimeSupported) return;
+    let reported = false;
+    const onMessage = (e: MessageEvent) => {
+      if (e.source !== iframeRef.current?.contentWindow) return;
+      const info = parseYouTubeMessage(e.origin, e.data);
+      if (!info) return;
+      if (info.currentTime !== undefined) {
+        if (!reported) {
+          reported = true;
+          onTimeSupported?.();
+        }
+        onTimeUpdate?.(info.currentTime);
+      }
+      if (info.ended) onEnded?.();
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [onTimeUpdate, onEnded, onTimeSupported]);
+
+  const startListening = () => {
+    try {
+      iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: 'v2u-player', channel: 'widget' }), '*');
+    } catch {
+      /* the player will simply not report time; notes fall back to no timestamp */
+    }
+  };
 
   // If seeking is requested externally (e.g. from timestamped notes)
   useEffect(() => {
@@ -123,6 +159,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowFullScreen
         onError={() => setEmbedError(true)}
+        onLoad={startListening}
       />
 
       {/* Floating External Open Button */}

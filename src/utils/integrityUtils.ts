@@ -1,3 +1,5 @@
+import { hasNotesData, sanitizeNotesData } from '../notes/engine';
+import type { LearningNotesData } from '../notes/types';
 import { format } from 'date-fns';
 import type {
   Lesson,
@@ -52,6 +54,8 @@ export interface FullBackupPayload {
   studentProfile: StudentProfile | null;
   /** v5 (Phase 46C, optional): student-entered admission facts. */
   admissionInputs?: StudentAdmissionInputs;
+  /** v5 (Phase 55, optional): personal notes, summaries and video progress. */
+  learningNotes?: LearningNotesData;
 }
 
 export interface ValidationStats {
@@ -115,6 +119,9 @@ export function computePayloadChecksum(payload: Partial<FullBackupPayload>): str
         .join(',');
       str += `_adm:${a.gpax ?? 'na'}|${scores}|${answers}`;
     }
+    // Phase 55: notes are covered only when present, so older v5 files keep verifying
+    const n = payload.learningNotes;
+    if (n) str += `_notes:${n.notes.length}|${Object.keys(n.summaries).length}|${Object.keys(n.videoProgress).length}|${n.notes.reduce((acc, x) => acc + x.text.length, 0)}`;
   }
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -425,6 +432,8 @@ export function migrateToLatestSchema(raw: unknown): {
     hasCompletedOnboarding,
     studentProfile,
     ...(admissionInputs ? { admissionInputs } : {}),
+    // Phase 55: optional; old backups simply have none
+    ...(rawObj.learningNotes && typeof rawObj.learningNotes === 'object' ? { learningNotes: sanitizeNotesData(rawObj.learningNotes) } : {}),
   };
 
   payload.checksum = computePayloadChecksum(payload);
@@ -706,10 +715,28 @@ export function mergePayloadWithExisting(
     ...((imported.admissionInputs ?? existing.admissionInputs)
       ? { admissionInputs: imported.admissionInputs ?? existing.admissionInputs }
       : {}),
+    ...(imported.learningNotes || existing.learningNotes ? { learningNotes: mergeNotesData(existing.learningNotes, imported.learningNotes) } : {}),
   };
 
   mergedPayload.checksum = computePayloadChecksum(mergedPayload);
   return mergedPayload;
+}
+
+/** Union of notes by id (newer edit wins); summaries/progress: newer updatedAt wins. */
+function mergeNotesData(a?: LearningNotesData, b?: LearningNotesData): LearningNotesData {
+  const x = sanitizeNotesData(a);
+  const y = sanitizeNotesData(b);
+  const notes = new Map(x.notes.map((n) => [n.id, n]));
+  for (const n of y.notes) {
+    const prev = notes.get(n.id);
+    if (!prev || n.updatedAt > prev.updatedAt) notes.set(n.id, n);
+  }
+  const newer = <T extends { updatedAt: string }>(p: Record<string, T>, q: Record<string, T>) => {
+    const out = { ...p };
+    for (const [k, v] of Object.entries(q)) if (!out[k] || v.updatedAt > out[k].updatedAt) out[k] = v;
+    return out;
+  };
+  return { notes: [...notes.values()], summaries: newer(x.summaries, y.summaries), videoProgress: newer(x.videoProgress, y.videoProgress) };
 }
 
 /**
@@ -727,6 +754,7 @@ export function createExportPayload(state: {
   hasCompletedOnboarding?: boolean;
   studentProfile?: StudentProfile | null;
   admissionInputs?: StudentAdmissionInputs | null;
+  learningNotes?: LearningNotesData | null;
 }): FullBackupPayload {
   const completedLessons = (state.lessons || []).filter((l) => l.status === 'COMPLETED').length;
   const totalMinutes = (state.lessons || []).reduce((acc, l) => acc + (l.actualStudyMinutes || 0), 0);
@@ -754,6 +782,7 @@ export function createExportPayload(state: {
     hasCompletedOnboarding: !!state.hasCompletedOnboarding,
     studentProfile: state.studentProfile ? normalizeStudentProfile(state.studentProfile) : null,
     ...(state.admissionInputs ? { admissionInputs: normalizeAdmissionInputs(state.admissionInputs) } : {}),
+    ...(hasNotesData(state.learningNotes) ? { learningNotes: sanitizeNotesData(state.learningNotes) } : {}),
   };
 
   payload.checksum = computePayloadChecksum(payload);

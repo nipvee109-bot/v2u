@@ -8,6 +8,8 @@ interface ResourceViewerProps {
   resource: Resource | null;
   onTimeUpdate?: (seconds: number) => void;
   seekToSeconds?: number | null;
+  onTimeSupported?: () => void;
+  onEnded?: () => void;
   /** Phase 49: V2U's curated recommendation, shown when no resource is selected. */
   suggestion?: { title: string; locator: string };
 }
@@ -17,6 +19,8 @@ export const ResourceViewer: React.FC<ResourceViewerProps> = ({
   onTimeUpdate,
   seekToSeconds,
   suggestion,
+  onTimeSupported,
+  onEnded,
 }) => {
   const [iframeError, setIframeError] = useState(false);
   const { isOnline } = useNetworkStatus();
@@ -77,6 +81,8 @@ export const ResourceViewer: React.FC<ResourceViewerProps> = ({
         thumbnail={resource.thumbnail}
         onTimeUpdate={onTimeUpdate}
         seekToSeconds={seekToSeconds}
+        onTimeSupported={onTimeSupported}
+        onEnded={onEnded}
       />
     );
   }

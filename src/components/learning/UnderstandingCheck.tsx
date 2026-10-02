@@ -108,10 +108,12 @@ interface DoneProps {
   onReviewWeak: () => void;
   onNext: () => void;
   nextLabel: string;
+  /** What the learner did today and what still needs work (notes + check). */
+  recap?: { done: string[]; weak: string[] };
 }
 
 /** Completion: what is understood, what can be done, what to review — then the next step. */
-export function LessonCompletion({ lesson, state, onReviewWeak, onNext, nextLabel }: DoneProps) {
+export function LessonCompletion({ lesson, state, onReviewWeak, onNext, nextLabel, recap }: DoneProps) {
   const s = useMemo(() => summarize(lesson, state), [lesson, state]);
   const passed = s.score >= 70 && s.confused.length === 0;
   return (
@@ -149,8 +151,29 @@ export function LessonCompletion({ lesson, state, onReviewWeak, onNext, nextLabe
         </div>
       </div>
 
+      {recap && (
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 text-sm" data-testid="session-recap">
+          <p className="font-bold text-ink">วันนี้คุณเรียน:</p>
+          <ul className="mt-1.5 space-y-0.5 text-slate-700">
+            {recap.done.map((d) => (
+              <li key={d}>✓ {d}</li>
+            ))}
+          </ul>
+          {recap.weak.length > 0 && (
+            <>
+              <p className="mt-3 font-bold text-amber-800">แต่ยังมีจุดที่ควรทบทวน:</p>
+              <ul className="mt-1 space-y-0.5 text-amber-900">
+                {recap.weak.map((w) => (
+                  <li key={w} className="break-words">△ {w}</li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        {s.confused.length > 0 && (
+        {(s.confused.length > 0 || (recap?.weak.length ?? 0) > 0) && (
           <button type="button" onClick={onReviewWeak} className="min-h-[52px] rounded-2xl border-2 border-brand-200 bg-white px-5 text-sm font-bold text-brand-700 hover:bg-brand-50">
             ทบทวนจุดที่ยังไม่เข้าใจ
           </button>

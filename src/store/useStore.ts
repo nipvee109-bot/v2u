@@ -1,3 +1,5 @@
+import { EMPTY_NOTES_DATA, progressKey, sanitizeNotesData } from '../notes/engine';
+import type { LearningNotesData, StudyNote, VideoProgress } from '../notes/types';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -519,6 +521,13 @@ interface StoreState {
 
   // Phase 46C: what the student has told V2U (never inferred)
   admissionInputs: StudentAdmissionInputs;
+  /** Phase 55: personal study notes, summaries and video progress */
+  learningNotes: LearningNotesData;
+  addStudyNote: (note: Omit<StudyNote, 'id' | 'createdAt' | 'updatedAt'>) => StudyNote;
+  updateStudyNote: (id: string, patch: Partial<Pick<StudyNote, 'text' | 'type'>>) => void;
+  deleteStudyNote: (id: string) => void;
+  savePersonalSummary: (lessonId: string, text: string) => void;
+  setVideoProgress: (lessonId: string, videoKey: string, patch: Partial<Omit<VideoProgress, 'updatedAt'>>) => void;
   setGpax: (gpax: number | null) => void;
   setExamScore: (examId: string, score: number | null) => void;
   setChecklistAnswer: (key: string, answer: 'met' | 'gap' | null) => void;
@@ -551,6 +560,8 @@ interface StoreState {
     studentProfile?: StudentProfile | null;
     /** v5 backups with admission inputs: restored when present, kept otherwise. */
     admissionInputs?: StudentAdmissionInputs | null;
+    /** Phase 55: restored when present, kept otherwise. */
+    learningNotes?: LearningNotesData | null;
   }) => void;
   resetToInitial: () => void;
 }
@@ -562,6 +573,36 @@ export const useStore = create<StoreState>()(
       setTheme: (theme) => set({ theme }),
       hasCompletedOnboarding: false,
       admissionInputs: EMPTY_ADMISSION_INPUTS,
+      learningNotes: EMPTY_NOTES_DATA,
+      addStudyNote: (input) => {
+        const now = new Date().toISOString();
+        const note: StudyNote = { ...input, text: input.text.trim(), id: uuidv4(), createdAt: now, updatedAt: now };
+        set((state) => ({ learningNotes: { ...(state.learningNotes ?? EMPTY_NOTES_DATA), notes: [...(state.learningNotes?.notes ?? []), note] } }));
+        return note;
+      },
+      updateStudyNote: (id, patch) =>
+        set((state) => {
+          const d = state.learningNotes ?? EMPTY_NOTES_DATA;
+          const now = new Date().toISOString();
+          return { learningNotes: { ...d, notes: d.notes.map((n) => (n.id === id ? { ...n, ...patch, ...(patch.text !== undefined ? { text: patch.text.trim() } : {}), updatedAt: now } : n)) } };
+        }),
+      deleteStudyNote: (id) =>
+        set((state) => {
+          const d = state.learningNotes ?? EMPTY_NOTES_DATA;
+          return { learningNotes: { ...d, notes: d.notes.filter((n) => n.id !== id) } };
+        }),
+      savePersonalSummary: (lessonId, text) =>
+        set((state) => {
+          const d = state.learningNotes ?? EMPTY_NOTES_DATA;
+          return { learningNotes: { ...d, summaries: { ...d.summaries, [lessonId]: { lessonId, text, edited: true, updatedAt: new Date().toISOString() } } } };
+        }),
+      setVideoProgress: (lessonId, videoKey, patch) =>
+        set((state) => {
+          const d = state.learningNotes ?? EMPTY_NOTES_DATA;
+          const key = progressKey(lessonId, videoKey);
+          const prev = d.videoProgress[key] ?? { state: 'not-started' as const, updatedAt: '' };
+          return { learningNotes: { ...d, videoProgress: { ...d.videoProgress, [key]: { ...prev, ...patch, updatedAt: new Date().toISOString() } } } };
+        }),
       setGpax: (gpax) =>
         set((state) => ({
           admissionInputs: normalizeAdmissionInputs({ ...(state.admissionInputs ?? EMPTY_ADMISSION_INPUTS), gpax }),
@@ -2256,12 +2297,14 @@ export const useStore = create<StoreState>()(
           hasCompletedOnboarding: data.hasCompletedOnboarding ?? true,
           ...(data.studentProfile ? { studentProfile: data.studentProfile } : {}),
           ...(data.admissionInputs ? { admissionInputs: normalizeAdmissionInputs(data.admissionInputs) } : {}),
+          ...(data.learningNotes ? { learningNotes: sanitizeNotesData(data.learningNotes) } : {}),
         }),
       resetToInitial: () =>
         set({
           hasCompletedOnboarding: false,
           studentProfile: null,
           admissionInputs: EMPTY_ADMISSION_INPUTS,
+          learningNotes: EMPTY_NOTES_DATA,
           lessons: initialLessons,
           unclearTopics: [],
           sessions: [],

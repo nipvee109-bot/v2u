@@ -59,3 +59,31 @@ export function useReadingProgress(lessonId: string) {
   );
   return [seen, mark] as const;
 }
+
+/** Phase 55: the video the learner chose for this lesson (survives mode switches/reloads in the tab). */
+export function useSelectedVideo(lessonId: string) {
+  const key = `v2u-video:${lessonId}`;
+  const [selected, setSelected] = useState<string | undefined>(() => read<string | undefined>(key, undefined));
+  const set = useCallback(
+    (v: string | undefined) => {
+      setSelected(v);
+      write(key, v ?? null);
+    },
+    [key]
+  );
+  return [selected ?? undefined, set] as const;
+}
+
+export type VideoStage = 'entry' | 'pick' | 'watch' | 'reflect';
+export function useVideoStage(lessonId: string) {
+  const key = `v2u-video-stage:${lessonId}`;
+  const [stage, setStage] = useState<VideoStage>(() => read<VideoStage>(key, 'entry'));
+  const set = useCallback(
+    (s: VideoStage) => {
+      setStage(s);
+      write(key, s);
+    },
+    [key]
+  );
+  return [stage, set] as const;
+}

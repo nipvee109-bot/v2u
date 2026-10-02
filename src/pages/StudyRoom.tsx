@@ -30,6 +30,9 @@ import { LearningPathPanel } from '../components/learn/LearningPathPanel';
 import { LoopStrip } from '../components/ui';
 import { LessonLearning } from '../components/learning/LessonLearning';
 import { unclearNoteFrom } from '../interactive/engine';
+import { mergeIntoDraft, notesToSessionDraft } from '../notes/engine';
+import { useLearningRecords } from '../hooks/useLearningRecords';
+import { getSkillGaps } from '../skills/engine';
 import type { LearningMode } from '../interactive/types';
 import { getResourcesForLesson } from '../resources/engine';
 
@@ -97,6 +100,8 @@ export const StudyRoom: React.FC = () => {
   // Phase 54: chosen learning mode (kept on the session when one is running)
   const [localMode, setLocalMode] = useState<LearningMode | undefined>(undefined);
   const [searchParams] = useSearchParams();
+  const studyNotes = useStore((st) => st.learningNotes?.notes) ?? [];
+  const learningRecords = useLearningRecords();
   // Phase 54: a lesson finished on the lesson page lands here to record the result
   const wantsFinish = searchParams.get('finish') === '1';
   const [finishHandoffDismissed, setFinishHandoffDismissed] = useState(false);
@@ -306,6 +311,9 @@ export const StudyRoom: React.FC = () => {
   const curriculumStep = resolveCurriculumStep(lesson, lessons);
   const topCurated = curriculumStep ? getResourcesForLesson(curriculumStep.lesson.id)[0] : undefined;
   const curatedSuggestion = topCurated ? { title: topCurated.title, locator: topCurated.locator, provider: topCurated.provider } : undefined;
+  const weakSkillIds = getSkillGaps({ storeLessons: lessons, records: learningRecords }).filter((g) => g.status === 'needs-review').map((g) => g.skill.id);
+  const cLessonIdForMode = (isSessionStarted ? activeLearningSession?.curriculumLessonId : undefined) ?? curriculumStep?.lesson.id;
+  const videoWorkspaceMode = !!cLessonIdForMode && (activeLearningSession?.learningMode ?? localMode) === 'video';
   const cLessonId = (isSessionStarted ? activeLearningSession?.curriculumLessonId : undefined) ?? curriculumStep?.lesson.id;
 
   // Phase 49: use today's planned time when the session was started from the V2U next step
@@ -486,7 +494,7 @@ export const StudyRoom: React.FC = () => {
       </div>
 
       {/* ═══════════ MULTI-PANEL MAIN LEARNING WORKSPACE ═══════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px] gap-5 lg:gap-6 items-start">
+      <div className={`grid grid-cols-1 gap-5 lg:gap-6 items-start ${videoWorkspaceMode ? '' : 'lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]'}`}>
         {/* LEFT COLUMN: Resource Switcher & Primary Player (all remaining width) */}
         <div className="min-w-0 space-y-3">
           {cLessonId ? (
@@ -497,14 +505,10 @@ export const StudyRoom: React.FC = () => {
                 setLocalMode(m);
                 if (isSessionStarted) setLearningMode(m);
               }}
-              video={
-                selectedResource
-                  ? { title: selectedResource.title, provider: selectedResource.provider || 'แหล่งภายนอก' }
-                  : curatedSuggestion
-                    ? { title: curatedSuggestion.title, provider: curatedSuggestion.provider }
-                    : undefined
-              }
-              renderVideo={() => videoWorkspace}
+              ownResources={lessonResources}
+              availableMinutes={targetDurationMinutes}
+              weakSkillIds={weakSkillIds}
+              onAddResource={() => setIsResourceModalOpen(true)}
               onCheckSubmitted={(c) => {
                 recordUnderstandingCheck({ score: c.score, understood: c.understood, confused: c.confused });
                 const note = unclearNoteFrom(c);
@@ -515,6 +519,11 @@ export const StudyRoom: React.FC = () => {
               }}
               onNext={(c) => {
                 if (c && !activeLearningSession?.understandingCheck) recordUnderstandingCheck({ score: c.score, understood: c.understood, confused: c.confused });
+                // personal notes → the existing notebook fields the finish flow already records
+                const d = mergeIntoDraft(notesToSessionDraft(studyNotes, cLessonId), c ? unclearNoteFrom(c) : '');
+                if (d.learnedNotes && !learnedNotes.trim()) setLearnedNotes(d.learnedNotes);
+                if (d.stillUnclearNotes) setStillUnclearNotes(d.stillUnclearNotes);
+                if (Object.keys(d).length) updateLearningSessionDraft(d);
                 setIsFinishModalOpen(true);
               }}
               nextLabel="บันทึกผลและไปขั้นต่อไป"
@@ -524,7 +533,9 @@ export const StudyRoom: React.FC = () => {
           )}
         </div>
 
+        {/* Video mode has its own notes beside the clip (Phase 55); other modes keep this notebook */}
         {/* RIGHT COLUMN: Notebook, Timestamps & Lesson Hub (360–400px, sticky) */}
+        {!videoWorkspaceMode && (
         <div className="lg:sticky lg:top-0 bg-white rounded-3xl border border-slate-200/80 shadow-md overflow-hidden flex flex-col min-h-[540px]">
           {/* Workspace Tabs Header */}
           <div className="flex flex-wrap items-center border-b border-slate-100 bg-slate-50/70 p-2 gap-1">
@@ -807,6 +818,7 @@ export const StudyRoom: React.FC = () => {
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* ═══════════ PHASE 33: POST-LEARNING FLOW (Learn -> Test -> Master) ═══════════ */}

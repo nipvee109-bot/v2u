@@ -9,7 +9,9 @@ import { normalizeStudentProfile } from '../route/engine';
 import { LessonLearning } from '../components/learning/LessonLearning';
 import type { LearningMode, UnderstandingSummary } from '../interactive/types';
 import { unclearNoteFrom } from '../interactive/engine';
-import { ResourceLink } from '../components/learn/ResourceLink';
+import { mergeIntoDraft, notesToSessionDraft } from '../notes/engine';
+import { useLearningRecords } from '../hooks/useLearningRecords';
+import { getSkillGaps } from '../skills/engine';
 import { Chip, LoopStrip, PlanBar, ScreenHeader } from '../components/ui';
 
 const MODES: LearningMode[] = ['read', 'video', 'v2u'];
@@ -21,6 +23,8 @@ export function CurriculumLessonPage() {
   const navigate = useNavigate();
   const { lessons, studentProfile, startLearningSession, setLearningMode, recordUnderstandingCheck, updateLearningSessionDraft } = useStore();
   const lastCheck = useRef<UnderstandingSummary | null>(null);
+  const notes = useStore((st) => st.learningNotes?.notes) ?? [];
+  const records = useLearningRecords();
   const lesson = CURRICULUM.lessons.find((l) => l.id === lessonId);
   const path = getLearningPath(lessonId);
   if (!lesson || !path) {
@@ -40,9 +44,8 @@ export function CurriculumLessonPage() {
   const studyLesson = findStudyLesson(lesson, lessons);
   const missing = getMissingPrerequisites(lesson, lessons);
   const done = isCurriculumLessonCompleted(lesson, lessons);
+  const weakSkillIds = getSkillGaps({ storeLessons: lessons, records }).filter((g) => g.status === 'needs-review').map((g) => g.skill.id);
   const subject = CURRICULUM.subjects.find((s) => s.id === lesson.subjectId);
-  const video = [path.primary, path.alternative].find((r) => r && (r.type === 'video' || r.type === 'course'));
-  const altVideo = path.alternative && path.alternative.id !== video?.id && (path.alternative.type === 'video' || path.alternative.type === 'course') ? path.alternative : undefined;
 
   // Finishing here records the sitting through the normal study flow (mastery, review, next step)
   const finishAndRecord = (summary?: UnderstandingSummary) => {
@@ -50,11 +53,9 @@ export function CurriculumLessonPage() {
     startLearningSession({ lessonId: studyLesson.id, curriculumLessonId: lesson.id, plannedMinutes: budget });
     if (mode) setLearningMode(mode);
     const c = summary ?? lastCheck.current;
-    if (c) {
-      recordUnderstandingCheck({ score: c.score, understood: c.understood, confused: c.confused });
-      const note = unclearNoteFrom(c);
-      if (note) updateLearningSessionDraft({ stillUnclearNotes: note });
-    }
+    if (c) recordUnderstandingCheck({ score: c.score, understood: c.understood, confused: c.confused });
+    // personal notes + confused skills → the existing session notes (post-study flow, review engine)
+    updateLearningSessionDraft(mergeIntoDraft(notesToSessionDraft(notes, lesson.id), c ? unclearNoteFrom(c) : ''));
     navigate(`/study/${studyLesson.id}?finish=1`);
   };
 
@@ -72,20 +73,15 @@ export function CurriculumLessonPage() {
         {missing.length > 0 && <Chip tone="warn">ควรปูพื้นก่อน: {missing.map((x) => x.title).join(', ')}</Chip>}
       </div>
 
-      <div className="space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-8 lg:space-y-0">
+      <div className={mode === 'video' ? 'space-y-5' : 'space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-8 lg:space-y-0'}>
         <div className="min-w-0 space-y-5">
           <LessonLearning
             curriculumLessonId={lesson.id}
             mode={mode}
             onModeChange={(next) => setParams({ mode: next }, { replace: true })}
-            video={video ? { title: video.title, provider: video.provider, minutes: video.estimatedMinutes } : undefined}
-            renderVideo={() => (
-              <div className="space-y-3">
-                {video ? <ResourceLink r={video} heading="คลิปที่ V2U คัดให้ (แหล่งภายนอก)" /> : <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">บทนี้ยังไม่มีคลิปที่ V2U คัดไว้ — ลอง “อ่าน” หรือ “เรียนกับ V2U”</p>}
-                {altVideo && <ResourceLink r={altVideo} heading="อีกคลิปถ้าคลิปแรกไม่เข้าใจ" />}
-                {path.reading && <ResourceLink r={path.reading} heading="อ่านประกอบ" />}
-              </div>
-            )}
+            ownResources={studyLesson?.resources ?? []}
+            availableMinutes={budget}
+            weakSkillIds={weakSkillIds}
             onCheckSubmitted={(c) => {
               lastCheck.current = c;
             }}
@@ -93,7 +89,7 @@ export function CurriculumLessonPage() {
             nextLabel={studyLesson ? 'บันทึกผลและไปขั้นต่อไป' : 'ไปขั้นต่อไป'}
           />
         </div>
-        <aside aria-label="แผน ความคืบหน้า และเริ่มเรียน" className="space-y-4 lg:sticky lg:top-0">
+        <aside aria-label="แผน ความคืบหน้า และเริ่มเรียน" className={mode === 'video' ? 'hidden' : 'space-y-4 lg:sticky lg:top-0'}>
       {plan && (
         <section aria-label="แผนวันนี้" className="rounded-2xl border border-brand-100 bg-brand-50 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2 lg:flex-col lg:items-start">

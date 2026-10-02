@@ -59,18 +59,20 @@ await test('2. Three modes with the specified titles and descriptions', () => {
 });
 await test('3. No external video before choosing: the picker renders no viewer, Study Room gates the workspace', () => {
   const picker = LL.slice(LL.indexOf('if (!mode) {'), LL.indexOf('/* ── Explicit mode switch'));
-  assert(!/renderVideo\(|<iframe|ResourceViewer|YouTube/i.test(picker), 'picker must not render video');
-  assert(STUDY.includes('renderVideo={() => videoWorkspace}'), 'study room passes the viewer lazily');
-  // the viewer only exists inside videoWorkspace
+  assert(!/VideoLearning|<iframe|ResourceViewer|YouTube/i.test(picker), 'picker must not render video');
+  // Phase 55: the video branch is V2U's video workflow; the legacy viewer is only for non-curriculum lessons
+  assert(STUDY.includes(') : (\n            videoWorkspace\n          )}'), 'legacy workspace only without a curriculum lesson');
   assert.strictEqual((STUDY.match(/<ResourceViewer/g) || []).length, 1);
   assert(STUDY.indexOf('<ResourceViewer') > STUDY.indexOf('const videoWorkspace = ('));
-  assert(STUDY.indexOf('<ResourceViewer') < STUDY.indexOf('return (\n    <div className="mx-auto w-full max-w-[1600px]'));
 });
-await test('4. The viewer is rendered only in video mode, with outcomes, external label and a check CTA', () => {
-  const videoBranch = LL.slice(LL.indexOf('} else {\n    body = ('), LL.indexOf('return (\n    <div className="space-y-5" data-learning-mode'));
-  assert(videoBranch.includes('{renderVideo()}'));
-  assert(LL.split('renderVideo()').length === 2, 'renderVideo called exactly once');
-  for (const x of ['ดูคลิปนี้เพื่อ', 'แหล่งภายนอก', 'ลองเช็กความเข้าใจ', 'ดูคลิปอย่างเดียวยังไม่ได้แปลว่าเข้าใจ']) assert(videoBranch.includes(x), x);
+await test('4. The player is rendered only after a clip is chosen, with outcomes, external label and a check CTA', () => {
+  const VL = read('src/components/video/VideoLearning.tsx');
+  const videoBranch = LL.slice(LL.indexOf("} else {\n    // ดูคลิป"), LL.indexOf('return (\n    <div className="space-y-5" data-learning-mode'));
+  assert(videoBranch.includes('<VideoLearning'));
+  // the only player lives in the workspace, after the entry / pick / reflect early returns
+  assert.strictEqual((VL.match(/<YouTubePlayer/g) || []).length, 1);
+  assert(VL.indexOf('<YouTubePlayer') > VL.indexOf("/* ── Workspace: video + notes"));
+  for (const x of ['ดูคลิปนี้เพื่อ', 'แหล่งภายนอก', 'ลองเช็กความเข้าใจ', 'ดูคลิปอย่างเดียวยังไม่ได้แปลว่าเข้าใจ']) assert(VL.includes(x), x);
 });
 
 console.log('\n2. Modes');

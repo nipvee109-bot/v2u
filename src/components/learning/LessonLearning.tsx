@@ -1,32 +1,35 @@
 import type { ReactNode } from 'react';
-import { Clock, ExternalLink, ArrowRight, Check } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { MODE_META, READING_SECTION_IDS } from './meta';
 import { CURRICULUM } from '../../curriculum/data';
 import { getOriginalLesson } from '../../content/originals';
 import { getInteractiveLesson } from '../../interactive/registry';
 import type { LearningMode, UnderstandingSummary } from '../../interactive/types';
 import { summarize } from '../../interactive/engine';
-import { useLearningStage, useLessonPlayer, useReadingProgress } from '../../interactive/usePlayer';
+import { useLearningStage, useLessonPlayer, useReadingProgress, useSelectedVideo, useVideoStage } from '../../interactive/usePlayer';
+import { useStore } from '../../store/useStore';
+import type { Resource } from '../../types';
+import { getLessonVideoSequence } from '../../video/engine';
+import { notesForLesson } from '../../notes/engine';
+import { VideoLearning } from '../video/VideoLearning';
+import { PersonalSummaryCard } from '../video/PersonalSummaryCard';
 import { InteractivePlayer } from './InteractivePlayer';
 import { LessonCompletion, UnderstandingCheck } from './UnderstandingCheck';
 import { ReadingExperience } from './ReadingExperience';
 
 const ORDER: LearningMode[] = ['read', 'video', 'v2u'];
 
-export interface VideoInfo {
-  title: string;
-  provider: string;
-  minutes?: number;
-}
-
 interface Props {
   curriculumLessonId: string;
   mode?: LearningMode;
   onModeChange: (m: LearningMode) => void;
-  /** Description of the external clip (shown on the picker WITHOUT loading it). */
-  video?: VideoInfo;
-  /** Rendered ONLY after the learner picks "ดูคลิป". */
-  renderVideo: () => ReactNode;
+  /** The learner's own resources for this lesson (their YouTube links appear as videos). */
+  ownResources?: Resource[];
+  /** Today's study minutes (used to suggest a clip that fits). */
+  availableMinutes?: number;
+  /** Weak curriculum skills right now (from the existing skill engine). */
+  weakSkillIds?: string[];
+  onAddResource?: () => void;
   onCheckSubmitted?: (s: UnderstandingSummary) => void;
   /** Receives the check result (also after a reload, from the saved state). */
   onNext: (summary?: UnderstandingSummary) => void;
@@ -34,15 +37,21 @@ interface Props {
 }
 
 /** Lesson → "วันนี้คุณอยากเรียนแบบไหน?" → mode → check → completion → next step. */
-export function LessonLearning({ curriculumLessonId, mode, onModeChange, video, renderVideo, onCheckSubmitted, onNext, nextLabel }: Props) {
+export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownResources = [], availableMinutes, weakSkillIds = [], onAddResource, onCheckSubmitted, onNext, nextLabel }: Props) {
   const lesson = CURRICULUM.lessons.find((l) => l.id === curriculumLessonId);
   const original = getOriginalLesson(curriculumLessonId);
   const interactive = getInteractiveLesson(curriculumLessonId);
   const [state, dispatch] = useLessonPlayer(curriculumLessonId);
   const [stage, setStage] = useLearningStage(curriculumLessonId);
   const [seen] = useReadingProgress(curriculumLessonId);
+  const [videoKey] = useSelectedVideo(curriculumLessonId);
+  const [, setVideoStage] = useVideoStage(curriculumLessonId);
+  const notes = useStore((st) => st.learningNotes?.notes) ?? [];
+  const { setVideoProgress } = useStore();
   if (!lesson || !original || !interactive) return null;
 
+  const videos = getLessonVideoSequence(curriculumLessonId, ownResources);
+  const lessonNotes = notesForLesson(notes, curriculumLessonId);
   const readPct = Math.round((seen.length / READING_SECTION_IDS.length) * 100);
   const answered = interactive.steps.filter((s) => s.interaction && (state.results[s.id]?.solved || state.results[s.id]?.revealed)).length;
   const interactiveTotal = interactive.steps.filter((s) => s.interaction).length;
@@ -62,8 +71,9 @@ export function LessonLearning({ curriculumLessonId, mode, onModeChange, video, 
     const meta: Record<LearningMode, { time: string; detail: string; progress?: string }> = {
       read: { time: `${original.readingMinutes} นาที`, detail: lesson.learningOutcomes.slice(0, 2).join(' · '), progress: readPct ? `อ่านแล้ว ${readPct}%` : undefined },
       video: {
-        time: video?.minutes ? `${video.minutes} นาที` : 'ตามความยาวคลิป',
-        detail: video ? `${video.title} · ${video.provider} (แหล่งภายนอก)` : 'บทนี้ยังไม่มีคลิปที่ V2U คัดไว้',
+        time: videos.length ? `${videos.length} คลิป · ${videos[0].durationKnown ? '' : 'ประมาณ '}${videos[0].minutes ?? '?'} นาที/คลิป` : 'ยังไม่มีคลิป',
+        detail: videos.length ? `V2U ช่วยเลือกคลิปที่เหมาะกับคุณ หรือเลือกเองก็ได้ · แหล่งภายนอก` : 'บทนี้ยังไม่มีคลิปที่ V2U คัดไว้',
+        progress: lessonNotes.length ? `จดโน้ตแล้ว ${lessonNotes.length}` : undefined,
       },
       v2u: {
         time: `${interactive.steps.length} ขั้น + เช็ก ${interactive.finalCheck.length} ข้อ`,
@@ -156,52 +166,55 @@ export function LessonLearning({ curriculumLessonId, mode, onModeChange, video, 
         onBack={() => setStage('learn')}
         onSubmit={(s) => {
           setStage('done');
+          // the check — not watching — decides whether the clip counts as learned
+          if (mode === 'video' && videoKey) {
+            setVideoProgress(videoKey.startsWith('curated:') || videoKey.startsWith('own:') ? curriculumLessonId : curriculumLessonId, videoKey, {
+              state: s.score >= 70 && s.confused.length === 0 ? 'done' : 'checked',
+            });
+          }
+          // the round is over: next time "ดูคลิป" starts from V2U's suggestion again
+          setVideoStage('entry');
           onCheckSubmitted?.(s);
         }}
       />
     );
   } else if (stage === 'done') {
-    body = <LessonCompletion lesson={interactive} state={state} onReviewWeak={reviewWeak} onNext={() => onNext(state.finished ? summarize(interactive, state) : undefined)} nextLabel={nextLabel} />;
+    const sum = state.finished ? summarize(interactive, state) : undefined;
+    const unclear = lessonNotes.filter((n) => n.type === 'unclear').map((n) => n.text);
+    const recap = {
+      done: [
+        mode === 'video' ? 'ดูคลิป' : mode === 'read' ? 'อ่านบทเรียน' : 'เรียนกับ V2U ทีละขั้น',
+        ...(lessonNotes.length ? [`จดโน้ต ${lessonNotes.length} รายการ`] : []),
+        ...(state.finished ? ['เช็กความเข้าใจ'] : []),
+      ],
+      weak: [...(sum?.confused ?? []), ...unclear],
+    };
+    body = (
+      <div className="space-y-5">
+        <LessonCompletion lesson={interactive} state={state} recap={recap} onReviewWeak={reviewWeak} onNext={() => onNext(sum)} nextLabel={nextLabel} />
+        {(mode === 'video' || lessonNotes.length > 0) && (
+          <PersonalSummaryCard lessonId={curriculumLessonId} videoTitle={videos.find((v) => v.key === videoKey)?.title} check={sum ? { score: sum.score, understood: sum.understood, confused: sum.confused } : undefined} />
+        )}
+      </div>
+    );
   } else if (mode === 'read') {
     body = <ReadingExperience content={original} outcomes={lesson.learningOutcomes} onDone={() => setStage('check')} />;
   } else if (mode === 'v2u') {
     body = <InteractivePlayer lesson={interactive} state={state} dispatch={dispatch} onToCheck={() => setStage('check')} />;
   } else {
+    // ดูคลิป: V2U's video workflow — choose → watch + notes → reflect → check
     body = (
-      <section aria-label="ดูคลิป" className="space-y-4" data-testid="video-mode">
-        <div className="rounded-3xl border border-slate-200/80 bg-white p-5">
-          <p className="text-xs font-semibold text-brand-700">ดูคลิปนี้เพื่อ</p>
-          <ul className="mt-1.5 space-y-1 text-sm text-slate-800">
-            {lesson.learningOutcomes.map((o) => (
-              <li key={o} className="flex gap-2 break-words">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
-                {o}
-              </li>
-            ))}
-          </ul>
-          {video && (
-            <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-500">
-              <ExternalLink className="h-3.5 w-3.5" />
-              <span className="font-semibold text-slate-700">แหล่งภายนอก</span>
-              <span className="break-words">{video.title}</span>
-              <span>· {video.provider}</span>
-              {video.minutes && <span>· ประมาณ {video.minutes} นาที</span>}
-            </p>
-          )}
-        </div>
-        {renderVideo()}
-        <div className="rounded-3xl bg-brand-50 p-5 text-center">
-          <p className="text-sm text-brand-900">ดูจบแล้ว — ดูคลิปอย่างเดียวยังไม่ได้แปลว่าเข้าใจ</p>
-          <div className="mt-3 flex flex-wrap justify-center gap-2">
-            <button type="button" onClick={() => setStage('check')} className="inline-flex min-h-[52px] items-center gap-2 rounded-2xl bg-brand-600 px-6 text-sm font-bold text-white hover:bg-brand-700">
-              ลองเช็กความเข้าใจ <ArrowRight className="h-4 w-4" />
-            </button>
-            <button type="button" onClick={() => onModeChange('v2u')} className="min-h-[52px] rounded-2xl border-2 border-brand-200 bg-white px-5 text-sm font-bold text-brand-700 hover:bg-brand-50">
-              ยังไม่เข้าใจ — เรียนกับ V2U
-            </button>
-          </div>
-        </div>
-      </section>
+      <div data-testid="video-mode">
+        <VideoLearning
+          lessonId={curriculumLessonId}
+          ownResources={ownResources}
+          availableMinutes={availableMinutes}
+          weakSkillIds={weakSkillIds}
+          onAddResource={onAddResource}
+          onToCheck={() => setStage('check')}
+          onSwitchToV2U={() => onModeChange('v2u')}
+        />
+      </div>
     );
   }
 

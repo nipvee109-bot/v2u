@@ -5,6 +5,8 @@ import type { HubLink } from '../../components/navigation/HubLinkList';
 import { useLearningRecords } from '../../hooks/useLearningRecords';
 import { getSkillGaps } from '../../skills/engine';
 import { ButtonLink, EmptyState, Stat } from '../../components/ui';
+import { Link } from 'react-router-dom';
+import { getUnclearSignals } from '../../notes/engine';
 
 /** ทบทวน — due reviews, review questions (inside each review room) and not-understood topics. */
 export function ReviewHub() {
@@ -21,7 +23,10 @@ export function ReviewHub() {
   });
 
   const unclearCount = unclearTopics.filter((t) => t.status !== 'Understood').length;
-  const nothingDue = overdue.length === 0 && dueToday.length === 0 && weakSkills.length === 0;
+  const studyNotes = useStore((st) => st.learningNotes?.notes) ?? [];
+  // Phase 55: what the learner said they still don't get (personal signal, mapped only when data supports it)
+  const signals = getUnclearSignals(studyNotes);
+  const nothingDue = overdue.length === 0 && dueToday.length === 0 && weakSkills.length === 0 && signals.length === 0;
 
   return (
     <div className="mx-auto w-full max-w-3xl lg:max-w-6xl space-y-6 sm:space-y-8">
@@ -51,6 +56,31 @@ export function ReviewHub() {
       )}
       {dueToday.length > 0 && (
         <HubLinkList heading={`ถึงรอบวันนี้ (${dueToday.length})`} links={dueToday.map(toLink(RotateCcw, 'ทบทวนพร้อมคำถามทบทวน'))} />
+      )}
+      {signals.length > 0 && (
+        <section aria-labelledby="said-unclear" className="space-y-3" data-testid="unclear-signals">
+          <h2 id="said-unclear" className="text-base font-bold text-ink">สิ่งที่คุณเคยบอกว่ายังไม่เข้าใจ</h2>
+          <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+            {signals.map((g) => (
+              <li key={`${g.lessonId}|${g.skillId ?? ''}`}>
+                <Link to={`/learn/curriculum/${g.lessonId}?mode=v2u`} className="flex min-h-[60px] items-start gap-3 px-4 py-3 hover:bg-slate-50">
+                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+                    <HelpCircle className="h-5 w-5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-ink break-words">“{g.notes[g.notes.length - 1].text}”</span>
+                    <span className="mt-0.5 block text-xs text-slate-500 break-words">
+                      บท {g.lessonTitle} ·{' '}
+                      {g.mapping === 'skill' ? `ทักษะ: ${g.skillTitle}` : 'บันทึกส่วนตัว (ยังระบุทักษะไม่ได้แน่ชัด)'}
+                      {g.notes.length > 1 && ` · บอกไว้ ${g.notes.length} ครั้ง`}
+                    </span>
+                  </span>
+                  <span className="shrink-0 self-center text-xs font-semibold text-brand-700">ทบทวน</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
       {nothingDue && (
         <EmptyState
