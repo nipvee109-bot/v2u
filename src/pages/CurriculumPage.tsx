@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, Circle, Clock, ChevronDown } from 'lucide-react';
 import { useStore } from '../store/useStore';
@@ -11,6 +12,15 @@ import {
   getPathwayReadiness,
 } from '../curriculum/engine';
 import type { CurriculumLevel } from '../curriculum/types';
+import { getResourcesForLesson, buildLearningPlan, TYPE_LABEL } from '../resources/engine';
+import { TIME_BUDGETS } from '../resources/types';
+import type { TimeBudgetMinutes, ResourceLevel } from '../resources/types';
+
+const RESOURCE_LEVEL_LABEL: Record<ResourceLevel, string> = {
+  beginner: 'เริ่มต้น',
+  intermediate: 'กลาง',
+  advanced: 'สูง',
+};
 
 const LEVEL_LABEL: Record<CurriculumLevel, string> = {
   foundation: 'พื้นฐาน',
@@ -22,6 +32,7 @@ const LEVEL_LABEL: Record<CurriculumLevel, string> = {
 export function CurriculumPage() {
   const { lessons } = useStore();
   const readiness = getPathwayReadiness(lessons);
+  const [budget, setBudget] = useState<TimeBudgetMinutes>(30);
   const skillTitle = (id: string) => CURRICULUM.skills.find((s) => s.id === id)?.title ?? id;
 
   return (
@@ -51,6 +62,27 @@ export function CurriculumPage() {
             </div>
           );
         })}
+      </section>
+
+      <section aria-labelledby="time-budget" className="sticky top-0 z-[5] -mx-3.5 mb-5 border-b border-slate-200 bg-[#EFF3F8]/95 px-3.5 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border sm:bg-white sm:px-4">
+        <h2 id="time-budget" className="text-sm font-bold text-slate-900">คุณมีเวลาเท่าไหร่?</h2>
+        <div role="radiogroup" aria-labelledby="time-budget" className="mt-2 grid grid-cols-4 gap-1.5">
+          {TIME_BUDGETS.map((b) => (
+            <button
+              key={b.minutes}
+              type="button"
+              role="radio"
+              aria-checked={budget === b.minutes}
+              onClick={() => setBudget(b.minutes)}
+              className={`rounded-xl border px-2 py-2 min-h-[44px] text-xs font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                budget === b.minutes ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300'
+              }`}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1.5 text-[11px] text-slate-500">เปิดบทเรียนด้านล่างเพื่อดูแผนที่ V2U จัดให้ตามเวลานี้</p>
       </section>
 
       {CURRICULUM.subjects.map((subject) => (
@@ -113,12 +145,67 @@ export function CurriculumPage() {
                             {missing.length > 0 && (
                               <p className="text-amber-700">ควรปูพื้นก่อน: {missing.map((m) => m.title).join(', ')}</p>
                             )}
+                            {(() => {
+                              const curated = getResourcesForLesson(lesson.id);
+                              const plan = buildLearningPlan(lesson.id, budget);
+                              return (
+                                <>
+                                  {curated.length > 0 && (
+                                    <div>
+                                      <p className="font-bold text-slate-800">แหล่งเรียนรู้ที่ V2U คัดมา</p>
+                                      <ul className="mt-1 space-y-1.5">
+                                        {curated.map((r) => (
+                                          <li key={r.id} className="rounded-xl border border-slate-200 bg-white p-2.5">
+                                            <p className="font-semibold text-slate-900">{r.title}</p>
+                                            <p className="mt-0.5 flex flex-wrap gap-x-2 text-[11px] text-slate-500">
+                                              <span>{TYPE_LABEL[r.type]}</span>
+                                              <span>{r.estimatedMinutes} นาที</span>
+                                              <span>ระดับ{RESOURCE_LEVEL_LABEL[r.level]}</span>
+                                              <span>{r.language === 'th' ? 'ภาษาไทย' : 'ภาษาอังกฤษ'}</span>
+                                              <span>{r.isFree ? 'ฟรี' : 'มีค่าใช้จ่าย'}</span>
+                                            </p>
+                                            <p className="mt-1 text-slate-700">
+                                              <span className="font-semibold text-blue-700">ทำไม V2U เลือก: </span>
+                                              {r.whyV2USelected}
+                                            </p>
+                                            {r.url ? (
+                                              <a href={r.url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block font-semibold text-blue-700 underline">
+                                                เปิดแหล่งเรียนรู้
+                                              </a>
+                                            ) : (
+                                              <p className="mt-1 text-[11px] text-slate-500">หาได้ที่: {r.locator}</p>
+                                            )}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                  {plan && (
+                                    <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-2.5">
+                                      <p className="font-bold text-blue-900">แผนที่ V2U จัดให้ · {plan.totalMinutes} นาที</p>
+                                      <ol className="mt-1 space-y-1">
+                                        {plan.steps.map((st, i) => (
+                                          <li key={`${st.kind}-${i}`} className="text-slate-800">
+                                            <span className="font-semibold">
+                                              {i + 1}. {st.label} — {st.minutes} นาที
+                                            </span>
+                                            <span className="block text-[11px] text-slate-500">
+                                              {st.detail}
+                                            </span>
+                                          </li>
+                                        ))}
+                                      </ol>
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
                             {studyLesson && (
                               <Link
                                 to={`/lessons/${studyLesson.id}`}
-                                className="inline-flex items-center rounded-xl bg-blue-600 px-3.5 py-2 min-h-[40px] text-xs font-bold text-white hover:bg-blue-700"
+                                className="inline-flex items-center rounded-xl bg-blue-600 px-3.5 py-2 min-h-[44px] text-xs font-bold text-white hover:bg-blue-700"
                               >
-                                เปิดบทเรียน
+                                เริ่มเรียนตามแผน
                               </Link>
                             )}
                           </div>

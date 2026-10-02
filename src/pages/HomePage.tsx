@@ -89,6 +89,16 @@ export function HomePage() {
           <p>
             <span className="font-bold">ทำไม: </span>
             {step.reason}
+            {step.curriculum?.recommendedResource && (
+              <span className="mt-1 block text-xs text-blue-100">
+                แนะนำ: {step.curriculum.recommendedResource.title} — {step.curriculum.recommendedResource.whyV2USelected}
+              </span>
+            )}
+            {step.curriculum && step.curriculum.learningOutcomes.length > 0 && (
+              <span className="mt-1 block text-xs text-blue-100">
+                เรียนจบแล้วจะทำได้: {step.curriculum.learningOutcomes.join(' · ')}
+              </span>
+            )}
             {step.curriculum && step.curriculum.missingPrerequisiteTitles.length > 0 && (
               <span className="mt-1 block text-xs text-amber-100">
                 ควรปูพื้นก่อน: {step.curriculum.missingPrerequisiteTitles.join(', ')}

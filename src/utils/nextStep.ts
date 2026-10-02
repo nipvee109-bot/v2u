@@ -28,6 +28,7 @@ import type {
 } from '../types';
 import { getSmartDashboardRecommendation, getDashboardRoadmapStatus } from './dashboardUtils';
 import { resolveCurriculumStep } from '../curriculum/engine';
+import { getResourcesForLesson } from '../resources/engine';
 
 export type NextStepKind = 'continue' | 'review' | 'study' | 'empty';
 
@@ -81,6 +82,14 @@ export interface NextStepCurriculumInfo {
   estimatedMinutes: number;
   learningOutcomes: string[];
   missingPrerequisiteTitles: string[];
+  /** Phase 42B: best curated resource for this lesson (what to learn with, and why). */
+  recommendedResource?: {
+    id: string;
+    title: string;
+    provider: string;
+    estimatedMinutes: number;
+    whyV2USelected: string;
+  };
 }
 
 export const NEXT_STEP_CTA_LABEL = 'เริ่มขั้นต่อไป' as const;
@@ -184,6 +193,12 @@ export function getNextStep(params: NextStepParams): NextStep {
           estimatedMinutes: ctx.lesson.estimatedMinutes,
           learningOutcomes: ctx.lesson.learningOutcomes,
           missingPrerequisiteTitles: ctx.missingPrerequisites.map((l) => l.title),
+          recommendedResource: (() => {
+            const r = getResourcesForLesson(ctx.lesson.id)[0];
+            return r
+              ? { id: r.id, title: r.title, provider: r.provider, estimatedMinutes: r.estimatedMinutes, whyV2USelected: r.whyV2USelected }
+              : undefined;
+          })(),
         }
       : undefined;
     return {
