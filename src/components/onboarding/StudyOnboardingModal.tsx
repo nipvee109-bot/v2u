@@ -88,8 +88,6 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
 
   const firstSession = generatedFirstWeekSessions[0] || null;
 
-  if (!isOpen) return null;
-
   // Handlers
   const handleToggleSubject = (subjectId: SubjectId) => {
     if (selectedSubjects.includes(subjectId)) {
@@ -144,6 +142,8 @@ export const StudyOnboardingModal: React.FC<StudyOnboardingModalProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
