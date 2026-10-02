@@ -37,7 +37,7 @@ const { CURRICULUM: C } = await jiti.import(path.join(root, 'src/curriculum/data
 const { ORIGINAL_LESSONS } = await jiti.import(path.join(root, 'src/content/originals.ts'));
 const I = await jiti.import(path.join(root, 'src/utils/integrityUtils.ts'));
 const NS = await jiti.import(path.join(root, 'src/utils/nextStep.ts'));
-const { useStore } = await jiti.import(path.join(root, 'src/store/useStore.ts'));
+const { useStore, computeLessonLearningRecord } = await jiti.import(path.join(root, 'src/store/useStore.ts'));
 
 const LL = read('src/components/learning/LessonLearning.tsx');
 const META = read('src/components/learning/meta.ts');
@@ -200,22 +200,31 @@ await test('16–17. Mastery + review: finishing records quiz score, credits ONL
   assert(h.learningMode === 'v2u' && h.understandingCheck.confused[0] === 'ตรวจคำตอบ');
   const l = st.lessons.find((x) => x.id === studyLesson.id);
   assert.strictEqual(l.quizScore, 75);
-  assert.deepStrictEqual(l.completedCurriculumLessonIds, ['math-alg-linear-eq']);
+  // Phase 61: a check with a confused skill does NOT complete the lesson — evidence decides
+  assert(!(l.completedCurriculumLessonIds ?? []).includes('math-alg-linear-eq'), 'not credited while a skill is confused');
+  assert.strictEqual(l.status, 'IN PROGRESS');
   const rv = st.reviewQueue.find((r) => r.lessonId === studyLesson.id && r.status !== 'completed');
-  assert(rv && rv.reason === 'unclear_topic', 'confused skills go to the review queue');
-  assert(PAGE.includes('?finish=1') && STUDY.includes("searchParams.get('finish') === '1'"), 'lesson page hands off to the same finish flow');
+  assert(rv && rv.reason === 'unclear_topic' && rv.priority === 'High', 'confused skills go to the review queue');
+  // Phase 61: the hub finishes through the SAME session engine itself (no Study Room handoff)
+  const LOOP = read('src/hooks/learningLoop.ts');
+  assert(PAGE.includes('recordCheckEvidence(') && LOOP.includes('recordUnderstandingCheck(') && LOOP.includes('finishLearningSession(undefined, c.score)') && STUDY.includes("searchParams.get('finish') === '1'"), 'lesson page records through the same finish flow');
   assert(read('src/components/study/PostLearningFlowModal.tsx').includes('initialQuizScore'));
 });
 await test('18. Next step follows the check: confused skill → strengthen it; full understanding → move on', () => {
   const st = useStore.getState();
-  const recs = (lessons) => lessons.map((l) => ({ lessonId: l.id, subjectId: l.subjectId, totalStudyMinutes: l.totalStudyMinutes || 0, studyCount: l.studyCount || 0, completionStatus: l.status, confidence: l.confidence || 'Low', mastery: 'Novice', masteryScore: l.masteryScore ?? 0, quizBestScore: l.quizScore, reviewCount: 0, nextReviewAt: l.nextReviewAt }));
+  const recs = (lessons) => lessons.map((l) => computeLessonLearningRecord(l, useStore.getState().learningSessionsHistory, useStore.getState().sessions)) /* Phase 61: real records */;
   const profile = { educationLevel: 'ปวช.3', programId: 'digital-business-technology', targetId: 'target-computer-engineering', availableMinutes: 30 };
   const next = (lessons) => NS.getNextStep({ lessons, sessions: st.sessions, learningSessionsHistory: st.learningSessionsHistory, referenceDate: new Date(), route: { profile, records: recs(lessons), budget: 30 } });
   const confused = next(st.lessons);
   assert.strictEqual(confused.kind, 'strengthen', `${confused.kind} ${confused.rule}`);
   assert(confused.todayAction.includes('ตรวจคำตอบ'), confused.todayAction);
-  const clear = st.lessons.map((l) => (l.id === studyLesson.id ? { ...l, quizScore: 100, quizAttempts: [{ id: 'q', timestamp: new Date().toISOString(), score: 100 }], stillUnclearNotes: '', masteryScore: 4 } : l));
-  const moved = next(clear);
+  // Phase 61: "full understanding" = a NEWER passing check through the real store flow
+  const S = useStore.getState();
+  S.startLearningSession({ lessonId: studyLesson.id, curriculumLessonId: 'math-alg-linear-eq', plannedMinutes: 30 });
+  useStore.getState().recordUnderstandingCheck({ score: 100, understood: ['แก้สมการเชิงเส้น', 'ตรวจคำตอบ'], confused: [] });
+  useStore.getState().finishLearningSession(20, 100, 'Medium');
+  const st2 = useStore.getState();
+  const moved = NS.getNextStep({ lessons: st2.lessons, sessions: st2.sessions, learningSessionsHistory: st2.learningSessionsHistory, referenceDate: new Date(), route: { profile, records: recs(st2.lessons), budget: 30 } });
   assert(moved.curriculum?.lessonId !== 'math-alg-linear-eq', `should move on, got ${moved.kind} ${moved.curriculum?.lessonId}`);
   assert(!read('src/interactive/engine.ts').includes('useStore'), 'engine is pure — no second progress store');
 });
@@ -223,7 +232,7 @@ await test('19. Old study history still imports; new fields survive a backup rou
   const old = I.migrateToLatestSchema({ schemaVersion: 4, lessons: s0.lessons, learningSessionsHistory: [{ sessionId: 's', lessonId: studyLesson.id, startedAt: '2026-09-01T00:00:00Z', status: 'completed', accumulatedSeconds: 60, actualSeconds: 60, lastHeartbeatAt: '2026-09-01T00:00:00Z' }] });
   assert.strictEqual(old.payload.learningSessionsHistory[0].learningMode, undefined);
   const now = I.migrateToLatestSchema({ schemaVersion: 5, lessons: s0.lessons, learningSessionsHistory: useStore.getState().learningSessionsHistory });
-  const h = now.payload.learningSessionsHistory[0];
+  const h = now.payload.learningSessionsHistory.find((x) => x.understandingCheck?.score === 75);
   assert(h.learningMode === 'v2u' && h.understandingCheck.score === 75);
   const bad = I.migrateToLatestSchema({ schemaVersion: 5, lessons: [], learningSessionsHistory: [{ sessionId: 'x', lessonId: 'y', learningMode: 'tiktok' }] });
   assert.strictEqual(bad.payload.learningSessionsHistory[0].learningMode, undefined, 'unknown modes are dropped');

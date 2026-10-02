@@ -39,7 +39,7 @@ const IE = await jiti.import(path.join(root, 'src/interactive/engine.ts'));
 const IR = await jiti.import(path.join(root, 'src/interactive/registry.ts'));
 const { RESOURCE_REGISTRY: R } = await jiti.import(path.join(root, 'src/resources/registry.ts'));
 const { CURRICULUM: C } = await jiti.import(path.join(root, 'src/curriculum/data.ts'));
-const { useStore } = await jiti.import(path.join(root, 'src/store/useStore.ts'));
+const { useStore, computeLessonLearningRecord } = await jiti.import(path.join(root, 'src/store/useStore.ts'));
 
 const VL = read('src/components/video/VideoLearning.tsx');
 const NP = read('src/components/video/NotesPanel.tsx');
@@ -230,7 +230,7 @@ await test('Personal knowledge: "สิ่งที่คุณเคยบอ�
 });
 await test('19. Next step reacts: confused skill → strengthen it (existing engine)', () => {
   const s = useStore.getState();
-  const records = s.lessons.map((l) => ({ lessonId: l.id, subjectId: l.subjectId, totalStudyMinutes: l.totalStudyMinutes || 0, studyCount: l.studyCount || 0, completionStatus: l.status, confidence: l.confidence || 'Low', mastery: 'Novice', masteryScore: l.masteryScore ?? 0, quizBestScore: l.quizScore, reviewCount: 0, nextReviewAt: l.nextReviewAt }));
+  const records = s.lessons.map((l) => computeLessonLearningRecord(l, s.learningSessionsHistory, s.sessions)) /* Phase 61: real records */;
   const step = NS.getNextStep({ lessons: s.lessons, sessions: s.sessions, learningSessionsHistory: s.learningSessionsHistory, referenceDate: new Date(), route: { profile: { educationLevel: 'ปวช.3', programId: 'digital-business-technology', targetId: 'target-computer-engineering', availableMinutes: 30 }, records, budget: 30 } });
   assert.strictEqual(step.kind, 'strengthen');
 });

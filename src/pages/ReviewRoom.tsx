@@ -17,6 +17,12 @@ import { useStore, computeNextReviewDate } from '../store/useStore';
 import type { ReviewItem, ReviewOutcome } from '../types';
 import { SUBJECTS, MASTERY_SCALE } from '../types';
 import { format, parseISO } from 'date-fns';
+import { useStartNextStep } from '../hooks/useStartNextStep';
+import { recordReviewEvidence } from '../hooks/learningLoop';
+import type { NextStep } from '../utils/nextStep';
+import type { SkillChange } from '../diagnostic/engine';
+import { getCurriculumLessonsForStudyLesson } from '../curriculum/engine';
+import { StatusPill } from '../components/pathway/PathwayBits';
 import { th } from 'date-fns/locale';
 
 export const ReviewRoom: React.FC = () => {
@@ -26,7 +32,6 @@ export const ReviewRoom: React.FC = () => {
   const {
     lessons,
     reviewQueue = [],
-    submitReviewOutcome,
     createReviewItemForLesson,
     getDueReviewItems,
   } = useStore();
@@ -67,6 +72,8 @@ export const ReviewRoom: React.FC = () => {
 
   // Stages: 'recall' -> 'reveal' -> 'completed'
   const [stage, setStage] = useState<'recall' | 'reveal' | 'completed'>('recall');
+  const [reviewLoop, setReviewLoop] = useState<{ changes: SkillChange[]; next: NextStep } | null>(null);
+  const { start: startNext, confirmModal } = useStartNextStep();
   const [activeRecallText, setActiveRecallText] = useState('');
   const [selectedOutcome, setSelectedOutcome] = useState<ReviewOutcome | null>(null);
   const [reviewNote, setReviewNote] = useState('');
@@ -139,8 +146,15 @@ export const ReviewRoom: React.FC = () => {
       if (newlyCreated) targetItemId = newlyCreated.id;
     }
 
-    // Submit outcome to store
-    submitReviewOutcome(targetItemId, selectedOutcome, reviewNote.trim() || undefined);
+    // Phase 61: the review answer is evidence → skill / mastery → gap → next step, all recalculated
+    setReviewLoop(
+      recordReviewEvidence({
+        reviewItemId: targetItemId,
+        outcome: selectedOutcome,
+        notes: reviewNote.trim() || undefined,
+        skillIds: [...new Set(getCurriculumLessonsForStudyLesson(lesson).flatMap((c) => c.skillIds))],
+      })
+    );
 
     // Compute expected next review date and count
     const { nextReviewAt, nextReviewCount, intervalDays } = computeNextReviewDate(reviewItem.reviewCount, selectedOutcome);
@@ -163,6 +177,7 @@ export const ReviewRoom: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto pb-20 space-y-6">
+      {confirmModal}
       {/* ── Top Bar ── */}
       <div className="flex items-center justify-between">
         <button
@@ -499,6 +514,31 @@ export const ReviewRoom: React.FC = () => {
               V2U จัดรอบทบทวนครั้งถัดไปให้ตามที่คุณจำได้แล้ว
             </p>
           </div>
+
+          {reviewLoop && (
+            <div className="mx-auto mb-4 max-w-md space-y-3 text-left" data-testid="review-loop">
+              {reviewLoop.changes.length > 0 && (
+                <ul className="space-y-2" data-testid="skill-changes">
+                  {reviewLoop.changes.map((c) => (
+                    <li key={c.skillId} className="rounded-2xl bg-slate-50 px-4 py-3" data-skill={c.skillId} data-before={c.before} data-after={c.after}>
+                      <p className="text-sm font-semibold text-ink">{c.title}</p>
+                      <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-600">
+                        {c.before === c.after ? <>สถานะเดิม <StatusPill status={c.after} /></> : <>ก่อนหน้านี้ <StatusPill status={c.before} /> → ตอนนี้ <StatusPill status={c.after} /></>}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="rounded-2xl bg-gradient-to-br from-brand-700 to-brand-900 p-4 text-white" data-testid="loop-next">
+                <p className="text-xs font-semibold text-brand-100">ก้าวต่อไปของคุณ (คำนวณใหม่แล้ว)</p>
+                <p className="mt-1 text-base font-bold break-words">{reviewLoop.next.todayAction}</p>
+                <p className="mt-1 text-xs text-white/90 break-words">เพราะ {reviewLoop.next.reason}</p>
+                <button type="button" onClick={() => startNext(reviewLoop.next)} className="mt-3 inline-flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-white px-5 text-sm font-bold text-brand-800">
+                  {reviewLoop.next.ctaLabel}
+                </button>
+              </div>
+            </div>
+          )}
 
           {resultSummary && (
             <div className="max-w-md mx-auto grid grid-cols-2 gap-3 text-left">

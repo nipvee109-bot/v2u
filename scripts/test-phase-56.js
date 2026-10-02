@@ -38,7 +38,7 @@ const N = await jiti.import(path.join(root, 'src/notes/engine.ts'));
 const I = await jiti.import(path.join(root, 'src/utils/integrityUtils.ts'));
 const NS = await jiti.import(path.join(root, 'src/utils/nextStep.ts'));
 const { CURRICULUM: C } = await jiti.import(path.join(root, 'src/curriculum/data.ts'));
-const { useStore } = await jiti.import(path.join(root, 'src/store/useStore.ts'));
+const { useStore, computeLessonLearningRecord } = await jiti.import(path.join(root, 'src/store/useStore.ts'));
 
 const HOOK = read('src/hooks/useStartNextStep.tsx');
 const LL = read('src/components/learning/LessonLearning.tsx');
@@ -50,7 +50,7 @@ const PAGE = read('src/pages/CurriculumLessonPage.tsx');
 const fresh = useStore.getState().lessons;
 const LEQ = 'math-alg-linear-eq';
 const PERSONA = { educationLevel: 'ปวช.3', programId: 'digital-business-technology', targetId: 'target-computer-engineering', availableMinutes: 30 };
-const recs = (lessons) => lessons.map((l) => ({ lessonId: l.id, subjectId: l.subjectId, totalStudyMinutes: l.totalStudyMinutes || 0, studyCount: l.studyCount || 0, completionStatus: l.status, confidence: l.confidence || 'Low', mastery: 'Novice', masteryScore: l.masteryScore ?? 0, quizBestScore: l.quizScore, reviewCount: 0, nextReviewAt: l.nextReviewAt }));
+const recs = (lessons) => lessons.map((l) => computeLessonLearningRecord(l, useStore.getState().learningSessionsHistory, useStore.getState().sessions)) /* Phase 61: real records */;
 const nextFor = (s) => NS.getNextStep({ lessons: s.lessons, sessions: s.sessions, learningSessionsHistory: s.learningSessionsHistory, referenceDate: new Date(), route: { profile: PERSONA, records: recs(s.lessons), budget: 30 } });
 
 console.log('=== Phase 56: Learning Hub — 3 ways to master ===\n');

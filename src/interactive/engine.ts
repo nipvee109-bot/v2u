@@ -200,7 +200,13 @@ export function summarize(lesson: InteractiveLesson, state: PlayerState): Unders
     ...confused.map((c) => `ทักษะ: ${c}`),
     ...(confused.length > 0 ? lesson.mistakes.slice(0, 2).map((m) => `จุดที่มักพลาด: ${m}`) : []),
   ];
-  return { score, understood, confused, review, canDo };
+  const practiceSteps = lesson.steps.filter((st) => st.interaction && st.interaction.kind !== 'self');
+  const practice = {
+    total: practiceSteps.length,
+    solved: practiceSteps.filter((st) => state.results[st.id]?.solved).length,
+    revealed: practiceSteps.filter((st) => state.results[st.id]?.revealed && !state.results[st.id]?.solved).length,
+  };
+  return { score, understood, confused, review, canDo, practice };
 }
 
 /** Text for the existing "ยังไม่เข้าใจ" note, so the review engine picks it up. */

@@ -47,7 +47,7 @@ const URGENCY: Record<SkillStatus, number> = {
 export const PASSING_QUIZ_SCORE = 60;
 export const READY_MASTERY_SCORE = 3;
 
-export type SkillReason = 'overdue-review' | 'low-quiz' | 'check-confused' | 'low-readiness' | 'in-progress' | 'proven' | 'not-started';
+export type SkillReason = 'overdue-review' | 'low-quiz' | 'check-confused' | 'review-weak' | 'low-readiness' | 'in-progress' | 'proven' | 'not-started';
 
 export interface SkillGap {
   skill: CurriculumSkill;
@@ -66,6 +66,16 @@ export interface SubjectSkillGap {
   skills: SkillGap[];
 }
 
+/** The newest evidence about the lesson is a weak review answer. */
+export function reviewIsLatestWeak(record: LearningRecord): boolean {
+  const weak = record.lastReviewOutcome === 'forgot' || record.lastReviewOutcome === 'unsure';
+  return weak && (!record.lastCheckedAt || (record.lastReviewedAt ?? '') >= record.lastCheckedAt);
+}
+
+/** The newest evidence is a review that went well (it supersedes an older confused check). */
+const reviewIsLatestGood = (record: LearningRecord) =>
+  (record.lastReviewOutcome === 'remembered' || record.lastReviewOutcome === 'partially') && !!record.lastCheckedAt && (record.lastReviewedAt ?? '') > record.lastCheckedAt;
+
 /** Classify one study lesson's learning record. */
 export function classifyRecord(record: LearningRecord | undefined, referenceDate: Date): { status: SkillStatus; reason: SkillReason } {
   if (!record) return { status: 'not-learned', reason: 'not-started' };
@@ -78,6 +88,9 @@ export function classifyRecord(record: LearningRecord | undefined, referenceDate
   const score = record.masteryScore ?? 0;
 
   if (overdue) return { status: 'needs-review', reason: 'overdue-review' };
+  // Phase 61: the latest review answer is evidence — "ยังไม่แม่น / จำไม่ได้" means review again,
+  // unless a newer understanding check already showed otherwise
+  if (reviewIsLatestWeak(record)) return { status: 'needs-review', reason: 'review-weak' };
   if (quiz !== undefined && quiz < PASSING_QUIZ_SCORE) return { status: 'needs-review', reason: 'low-quiz' };
   if (score <= 1 && record.completionStatus === 'COMPLETED') return { status: 'needs-review', reason: 'low-readiness' };
   if (record.completionStatus === 'COMPLETED' && score >= READY_MASTERY_SCORE) return { status: 'ready', reason: 'proven' };
@@ -106,11 +119,12 @@ export function getSkillGaps(params: SkillGapParams): SkillGap[] {
       .map((cl) => findStudyLesson(cl, storeLessons))
       .map((study, i) => {
         if (!study) return null;
-        const tracked = study.completedCurriculumLessonIds;
-        if (Array.isArray(tracked) && !tracked.includes(cLessons[i].id)) return { status: 'not-learned' as SkillStatus, reason: 'not-started' as SkillReason };
         const record = recordByLesson.get(study.id);
         // Phase 56: the latest understanding check named THIS skill as shaky → review it
-        if (record?.confusedSkillIds?.includes(skill.id)) return { status: 'needs-review' as SkillStatus, reason: 'check-confused' as SkillReason };
+        // (Phase 61: skill-level evidence comes before the sibling-credit rule below)
+        if (record?.confusedSkillIds?.includes(skill.id) && !reviewIsLatestGood(record)) return { status: 'needs-review' as SkillStatus, reason: 'check-confused' as SkillReason };
+        const tracked = study.completedCurriculumLessonIds;
+        if (Array.isArray(tracked) && !tracked.includes(cLessons[i].id)) return { status: 'not-learned' as SkillStatus, reason: 'not-started' as SkillReason };
         return classifyRecord(record, referenceDate);
       })
       .filter((c): c is { status: SkillStatus; reason: SkillReason } => c !== null);

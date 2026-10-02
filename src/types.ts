@@ -116,6 +116,20 @@ export interface LearningRecord {
   nextReviewAt?: string;
   /** Phase 56: skills the LATEST understanding check found shaky (evidence, not self-report). */
   confusedSkillIds?: string[];
+  /** Phase 61: latest real evidence about this lesson */
+  lastCheckedAt?: string;
+  lastReviewOutcome?: 'remembered' | 'partially' | 'unsure' | 'forgot';
+  lastReviewedAt?: string;
+}
+
+/** Phase 61: what the learner did in practice steps (answers, not page views). */
+export interface PracticeEvidence {
+  /** Interactive practice steps in the lesson */
+  total: number;
+  /** Solved by the learner's own answer */
+  solved: number;
+  /** Only revealed (answer shown) — practised, but not shown to be understood */
+  revealed: number;
 }
 
 export interface Lesson {
@@ -156,6 +170,9 @@ export interface Lesson {
    * done. Undefined = legacy data (status COMPLETED counts for all of them).
    */
   completedCurriculumLessonIds?: string[];
+  /** Phase 61: the latest review answer (evidence) and when it was given */
+  lastReviewOutcome?: 'remembered' | 'partially' | 'unsure' | 'forgot';
+  lastReviewedAt?: string;
 }
 
 export interface TimestampedNote {
@@ -263,7 +280,14 @@ export interface LearningSession {
   /** Phase 54: how the learner chose to study (อ่าน / ดูคลิป / เรียนกับ V2U). */
   learningMode?: 'read' | 'video' | 'v2u';
   /** Phase 54: result of V2U's understanding check in this sitting. */
-  understandingCheck?: { score: number; understood: string[]; confused: string[]; checkedAt: string };
+  understandingCheck?: {
+    score: number;
+    understood: string[];
+    confused: string[];
+    checkedAt: string;
+    /** Phase 61: practice evidence from the lesson's interactive steps (absent = none done) */
+    practice?: PracticeEvidence;
+  };
   lessonId: string;
   startedAt: string; // ISO timestamp
   pausedAt?: string; // ISO timestamp

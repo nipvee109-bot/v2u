@@ -239,6 +239,9 @@ export function sanitizeLesson(raw: unknown, index: number): Lesson {
     studyCount: typeof l.studyCount === 'number' ? l.studyCount : undefined,
     nextReviewAt: typeof l.nextReviewAt === 'string' ? l.nextReviewAt : undefined,
     reviewCount: typeof l.reviewCount === 'number' ? l.reviewCount : undefined,
+    // Phase 61: latest review evidence (absent in older backups)
+    ...(['remembered', 'partially', 'unsure', 'forgot'].includes(l.lastReviewOutcome as string) ? { lastReviewOutcome: l.lastReviewOutcome as Lesson['lastReviewOutcome'] } : {}),
+    ...(typeof l.lastReviewedAt === 'string' ? { lastReviewedAt: l.lastReviewedAt } : {}),
   };
 }
 

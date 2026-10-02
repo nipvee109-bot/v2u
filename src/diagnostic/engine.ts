@@ -87,6 +87,12 @@ export function latestAttempt(data: DiagnosticData | null | undefined, subjectId
 
 /* ── Skill profile: diagnostic + learning evidence (newest wins) ───────── */
 
+/** Real evidence: an answered check/quiz, an answered review, or a completion (incl. legacy completions). */
+export function hasLearningEvidence(r?: LearningRecord): boolean {
+  if (!r) return false;
+  return r.quizLatestScore !== undefined || r.quizBestScore !== undefined || r.reviewCount > 0 || !!r.lastReviewOutcome || !!r.confusedSkillIds?.length || r.completionStatus === 'COMPLETED';
+}
+
 const FROM_LEARNING: Record<SkillStatus, ProfileStatus | null> = {
   ready: 'ready',
   developing: 'developing',
@@ -117,7 +123,10 @@ export function computeSkillProfile(params: ProfileParams): SkillProfileEntry[] 
 
   return CURRICULUM.skills.map((skill) => {
     const gap = gaps.find((g) => g.skill.id === skill.id);
-    const learned = gap ? FROM_LEARNING[gap.status] : null;
+    // Phase 61: learning status counts only when there is real evidence (check/quiz, review answer,
+    // or a completion) — starting or opening a lesson (IN PROGRESS) proves nothing
+    const evidence = gap?.studyLessonIds.some((id) => hasLearningEvidence(recordById.get(id)));
+    const learned = gap && evidence ? FROM_LEARNING[gap.status] : null;
     const learnedAt = gap?.studyLessonIds.map((id) => recordById.get(id)?.lastStudiedAt).filter((x): x is string => !!x).sort().pop();
     const d = scoreBySkill.get(skill.id);
     const diag = d && d.s.status !== 'not-assessed' ? d : undefined;
@@ -250,7 +259,10 @@ export function computeLessonGaps(params: PathwayParams): { gaps: LessonGap[]; p
   const profile = computeSkillProfile(params);
   const bySkill = new Map(profile.map((p) => [p.skillId, p]));
   const subjects = params.subjectId ? [params.subjectId] : targetSubjects(params.profile);
-  const known = (l: CurriculumLesson) => isCurriculumLessonCompleted(l, params.storeLessons) || l.skillIds.every((s) => bySkill.get(s)?.status === 'ready');
+  // Phase 61: completed but a skill needs review (failed/weak evidence) → still a gap
+  const known = (l: CurriculumLesson) =>
+    (isCurriculumLessonCompleted(l, params.storeLessons) && !l.skillIds.some((s) => bySkill.get(s)?.status === 'needs-review')) ||
+    l.skillIds.every((s) => bySkill.get(s)?.status === 'ready');
   const gaps = getOrderedCurriculumLessons(CURRICULUM)
     .filter((l) => subjects.includes(l.subjectId))
     .map((lesson): LessonGap => {
@@ -338,4 +350,25 @@ export const studyLessonFor = (l: CurriculumLesson, storeLessons: Lesson[]) => f
 export function subjectProgress(p: SubjectProfile) {
   const total = p.skills.length || 1;
   return { ready: p.counts.ready / total, developing: p.counts.developing / total, review: p.counts['needs-review'] / total, unknown: p.counts['not-assessed'] / total };
+}
+
+/* ── Phase 61: what one piece of evidence changed ─────────────────────── */
+
+export interface SkillChange {
+  skillId: string;
+  title: string;
+  subjectId: CurriculumSubjectId;
+  before: ProfileStatus;
+  after: ProfileStatus;
+}
+
+/** Status of each skill before vs after (only the skills given, in that order). */
+export function diffSkillProfiles(before: SkillProfileEntry[], after: SkillProfileEntry[], skillIds: string[]): SkillChange[] {
+  return skillIds
+    .map((id) => {
+      const a = after.find((x) => x.skillId === id);
+      const b = before.find((x) => x.skillId === id);
+      return a ? { skillId: id, title: a.title, subjectId: a.subjectId, before: b?.status ?? 'not-assessed', after: a.status } : null;
+    })
+    .filter((x): x is SkillChange => !!x);
 }

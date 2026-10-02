@@ -1,4 +1,4 @@
-import { useStore } from '../store/useStore';
+import { useStore, computeLessonLearningRecord } from '../store/useStore';
 import { useLearningRecords } from './useLearningRecords';
 import { normalizeStudentProfile } from '../route/engine';
 import { getNextStep } from '../utils/nextStep';
@@ -14,6 +14,34 @@ import type { ReadinessSummary } from '../readiness/engine';
  * Home, เส้นทาง and the Roadmap all derive their next action from this,
  * so they can never disagree.
  */
+type StoreSnapshot = ReturnType<typeof useStore.getState>;
+
+/**
+ * Phase 61: the same inputs computed from a store snapshot (no hooks), so a
+ * result screen can recalculate the next step right after new evidence lands.
+ */
+export function nextStepParamsFromState(st: StoreSnapshot): BuildRoadmapParams {
+  const records = st.lessons.map((l) => computeLessonLearningRecord(l, st.learningSessionsHistory ?? [], st.sessions ?? []));
+  const { overdue, dueToday } = st.getDueReviewItems();
+  return {
+    lessons: st.lessons,
+    sessions: st.sessions ?? [],
+    learningSessionsHistory: st.learningSessionsHistory ?? [],
+    activeLearningSession: st.activeLearningSession,
+    overdueReviews: overdue,
+    dueTodayReviews: dueToday,
+    knowledgeGaps: st.getKnowledgeGaps(),
+    goals: st.getCalculatedGoals(),
+    route: {
+      profile: st.studentProfile,
+      records,
+      budget: normalizeStudentProfile(st.studentProfile).availableMinutes,
+      checklist: st.admissionInputs?.checklist,
+      diagnostic: st.diagnostic,
+    },
+  };
+}
+
 export function useNextStepParams(): BuildRoadmapParams {
   const {
     lessons,

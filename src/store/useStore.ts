@@ -372,12 +372,14 @@ export function computeLessonLearningRecord(
   }
 
   // Extract review outcome from review notes if present
-  let lastReviewOutcome: ReviewOutcome | undefined;
-  if (lesson.reviewNotes) {
-    if (lesson.reviewNotes.includes('(จำได้)')) lastReviewOutcome = 'remembered';
-    else if (lesson.reviewNotes.includes('(พอจำได้)')) lastReviewOutcome = 'partially';
-    else if (lesson.reviewNotes.includes('(ยังไม่แม่น)')) lastReviewOutcome = 'unsure';
-    else if (lesson.reviewNotes.includes('(จำไม่ได้)')) lastReviewOutcome = 'forgot';
+  // Phase 61: the stored latest outcome wins; otherwise read the LAST note (notes are appended)
+  let lastReviewOutcome: ReviewOutcome | undefined = lesson.lastReviewOutcome;
+  if (!lastReviewOutcome && lesson.reviewNotes) {
+    const last = lesson.reviewNotes.trim().split('\n').pop() ?? '';
+    if (last.includes('(จำได้)')) lastReviewOutcome = 'remembered';
+    else if (last.includes('(พอจำได้)')) lastReviewOutcome = 'partially';
+    else if (last.includes('(ยังไม่แม่น)')) lastReviewOutcome = 'unsure';
+    else if (last.includes('(จำไม่ได้)')) lastReviewOutcome = 'forgot';
   }
 
   const hasLearnedNotes = Boolean(lesson.learnedNotes && lesson.learnedNotes.trim().length > 10);
@@ -401,6 +403,7 @@ export function computeLessonLearningRecord(
     .filter((s) => s.understandingCheck)
     .sort((a, b) => (b.understandingCheck!.checkedAt || '').localeCompare(a.understandingCheck!.checkedAt || ''))[0];
   const confusedSkillIds = skillIdsForTitles(lastChecked?.understandingCheck?.confused ?? []);
+  const lastCheckedAt = lastChecked?.understandingCheck?.checkedAt;
 
   const masteryScore = lesson.masteryScore !== undefined ? lesson.masteryScore : calculatedMasteryScore;
   const calculatedMastery: MasteryLevel = scoreToMasteryLevel(masteryScore);
@@ -422,6 +425,8 @@ export function computeLessonLearningRecord(
     reviewCount,
     nextReviewAt,
     ...(confusedSkillIds.length ? { confusedSkillIds } : {}),
+    ...(lastCheckedAt ? { lastCheckedAt } : {}),
+    ...(lesson.lastReviewOutcome ? { lastReviewOutcome: lesson.lastReviewOutcome, lastReviewedAt: lesson.lastReviewedAt } : {}),
   };
 }
 
@@ -816,7 +821,8 @@ export const useStore = create<StoreState>()(
           lastReviewedAt: now,
           nextReviewAt,
           reviewCount: nextReviewCount,
-          status: outcome === 'forgot' ? 'pending' : 'completed',
+          // Phase 61: a weak answer keeps the item in rotation — not understood ≠ done
+          status: outcome === 'forgot' || outcome === 'unsure' ? 'pending' : 'completed',
         };
 
         // Also update the lesson
@@ -833,7 +839,10 @@ export const useStore = create<StoreState>()(
             reviewCount: nextReviewCount,
             nextReviewAt,
             reviewNotes: updatedReviewNotes,
-            masteryScore: outcome === 'forgot' ? undefined : targetLesson.masteryScore,
+            lastReviewOutcome: outcome,
+            lastReviewedAt: now,
+            // Phase 61: the review answer is evidence → mastery is recalculated from it
+            masteryScore: undefined,
           };
           const record = computeLessonLearningRecord(updatedLesson, state.learningSessionsHistory, state.sessions);
           updatedLessons = state.lessons.map((l) => (l.id === currentItem.lessonId ? { 
@@ -1898,6 +1907,7 @@ export const useStore = create<StoreState>()(
         if (!current) return;
         const now = new Date().toISOString();
         set({ activeLearningSession: { ...current, understandingCheck: { ...check, checkedAt: now }, lastHeartbeatAt: now } });
+        // (practice evidence, when present, travels inside `check.practice`)
       },
 
       updateLearningSessionDraft: (draft) => {
@@ -1937,6 +1947,10 @@ export const useStore = create<StoreState>()(
           score: quizScore,
         } : null;
 
+        // Phase 61: with a V2U understanding check, the CHECK decides — not finishing the sitting
+        const check = current.understandingCheck;
+        const passed = check ? check.score >= 70 && check.confused.length === 0 : true;
+
         // Update the lesson
         set((state) => {
           const updatedHistory = [completedSession, ...(state.learningSessionsHistory || [])];
@@ -1950,12 +1964,13 @@ export const useStore = create<StoreState>()(
               const nextReviewDate = new Date(Date.now() + daysToAdd * 24 * 60 * 60 * 1000).toISOString();
 
               // Phase 50: credit only the curriculum lesson actually studied
-              const credited = creditCurriculumLesson(l, state.lessons, current.curriculumLessonId);
+              // Phase 61: …and only when its understanding check passed
+              const credited = passed ? creditCurriculumLesson(l, state.lessons, current.curriculumLessonId) : undefined;
               const merged: Lesson = {
                 ...l,
                 ...(credited ? { completedCurriculumLessonIds: credited } : {}),
-                status: 'COMPLETED',
-                completedAt: now,
+                status: passed ? 'COMPLETED' : l.status === 'COMPLETED' ? 'COMPLETED' : 'IN PROGRESS',
+                completedAt: passed ? now : l.completedAt,
                 firstStudiedAt: l.firstStudiedAt || current.startedAt || now,
                 lastStudiedAt: now,
                 actualStudyMinutes: calculatedMinutes,
@@ -1970,10 +1985,14 @@ export const useStore = create<StoreState>()(
                 reviewNotes: current.notesDraft?.reviewNotes ?? l.reviewNotes,
               };
 
-              const record = computeLessonLearningRecord(merged, updatedHistory, state.sessions);
+              // Phase 61: a check is new evidence → recompute mastery with the existing deterministic
+              // calculator (no manual override survives it; level 4 still needs a review)
+              const evidenceLesson: Lesson = check ? { ...merged, masteryScore: undefined, ...(passed ? {} : { nextReviewAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() }) } : merged;
+              const record = computeLessonLearningRecord(evidenceLesson, updatedHistory, state.sessions);
               return {
-                ...merged,
+                ...evidenceLesson,
                 mastery: record.mastery,
+                ...(check ? { masteryScore: record.masteryScore } : {}),
               };
             }
             return l;
@@ -1982,15 +2001,16 @@ export const useStore = create<StoreState>()(
           // Update review queue for this lesson
           let updatedReviewQueue = state.reviewQueue || [];
           const existingReviewIndex = updatedReviewQueue.findIndex(r => r.lessonId === current.lessonId && r.status !== 'completed');
+          const confusedInCheck = (check?.confused.length ?? 0) > 0;
           const reviewReason: ReviewReason = (quizScore !== undefined && quizScore < 70) 
             ? 'low_quiz_score' 
-            : (current.notesDraft?.stillUnclearNotes ? 'unclear_topic' : 'spaced_repetition');
-          const reviewPriority: 'Low' | 'Medium' | 'High' = (quizScore !== undefined && quizScore < 70) || current.notesDraft?.stillUnclearNotes ? 'High' : 'Medium';
+            : (confusedInCheck || current.notesDraft?.stillUnclearNotes ? 'unclear_topic' : 'spaced_repetition');
+          const reviewPriority: 'Low' | 'Medium' | 'High' = (quizScore !== undefined && quizScore < 70) || confusedInCheck || current.notesDraft?.stillUnclearNotes ? 'High' : 'Medium';
           const targetLesson = state.lessons.find(l => l.id === current.lessonId);
           const lessonTitle = targetLesson?.title || 'บทเรียน';
 
           // First interval is 1 day or 3 days depending on quiz score
-          const intervalDays = (quizScore !== undefined && quizScore >= 90) ? 3 : 1;
+          const intervalDays = (quizScore !== undefined && quizScore >= 90 && !confusedInCheck) ? 3 : 1;
           const nextReviewDate = new Date(Date.now() + intervalDays * 24 * 60 * 60 * 1000).toISOString();
 
           if (existingReviewIndex >= 0) {

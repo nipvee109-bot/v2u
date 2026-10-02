@@ -1,5 +1,5 @@
-import { useRef } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useRef, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { CURRICULUM } from '../curriculum/data';
 import { findStudyLesson, getMissingPrerequisites, isCurriculumLessonCompleted } from '../curriculum/engine';
@@ -13,6 +13,12 @@ import { mergeIntoDraft, notesToSessionDraft } from '../notes/engine';
 import { useLearningRecords } from '../hooks/useLearningRecords';
 import { getSkillGaps } from '../skills/engine';
 import { Chip, LoopStrip, PlanBar, ScreenHeader } from '../components/ui';
+import { useStartNextStep } from '../hooks/useStartNextStep';
+import { getNextStep } from '../utils/nextStep';
+import { LoopResult } from '../components/pathway/LoopResult';
+import { recordCheckEvidence } from '../hooks/learningLoop';
+import type { LoopOutcome } from '../hooks/learningLoop';
+import { nextStepParamsFromState } from '../hooks/useNextStep';
 
 const MODES: LearningMode[] = ['read', 'video', 'v2u'];
 
@@ -20,11 +26,12 @@ const MODES: LearningMode[] = ['read', 'video', 'v2u'];
 export function CurriculumLessonPage() {
   const { lessonId = '' } = useParams();
   const [params, setParams] = useSearchParams();
-  const navigate = useNavigate();
-  const { lessons, studentProfile, startLearningSession, setLearningMode, recordUnderstandingCheck, updateLearningSessionDraft, activeLearningSession } = useStore();
+  const { lessons, studentProfile, startLearningSession, setLearningMode, activeLearningSession } = useStore();
   const fromNext = params.get('from') === 'next';
   const plannedFromNext = Number(params.get('min')) || undefined;
   const lastCheck = useRef<UnderstandingSummary | null>(null);
+  const [outcome, setOutcome] = useState<LoopOutcome | null>(null);
+  const { start, confirmModal } = useStartNextStep();
   const notes = useStore((st) => st.learningNotes?.notes) ?? [];
   const records = useLearningRecords();
   const lesson = CURRICULUM.lessons.find((l) => l.id === lessonId);
@@ -59,20 +66,39 @@ export function CurriculumLessonPage() {
     if (fromNext || sessionHere) setLearningMode(next);
   };
 
-  const finishAndRecord = (summary?: UnderstandingSummary) => {
-    if (!studyLesson) return navigate('/');
-    // keep a sitting that is already running (its timer) — only start one if there is none
-    if (!sessionHere) startLearningSession({ lessonId: studyLesson.id, curriculumLessonId: lesson.id, plannedMinutes: plannedFromNext ?? budget });
-    if (mode) setLearningMode(mode);
-    const c = summary ?? lastCheck.current;
-    if (c) recordUnderstandingCheck({ score: c.score, understood: c.understood, confused: c.confused });
-    // personal notes + confused skills → the existing session notes (post-study flow, review engine)
-    updateLearningSessionDraft(mergeIntoDraft(notesToSessionDraft(notes, lesson.id), c ? unclearNoteFrom(c) : ''));
-    navigate(`/study/${studyLesson.id}?finish=1`);
+  /**
+   * Phase 61 — the learning loop, right here in the Learning Hub:
+   * check (+ practice) → evidence → skill / mastery / review → gap → next step.
+   * Uses the existing session engine (start → recordUnderstandingCheck → finish);
+   * everything after is recalculated from the fresh store, nothing is hard-coded.
+   */
+  const recordEvidence = (c: UnderstandingSummary) => {
+    lastCheck.current = c;
+    if (!studyLesson) return;
+    setOutcome(
+      recordCheckEvidence({
+        studyLessonId: studyLesson.id,
+        curriculumLessonId: lesson.id,
+        skillIds: lesson.skillIds,
+        summary: c,
+        mode,
+        plannedMinutes: plannedFromNext ?? budget,
+        // personal notes + confused skills → the existing session notes (review engine)
+        notesDraft: mergeIntoDraft(notesToSessionDraft(notes, lesson.id), unclearNoteFrom(c)),
+      })
+    );
+  };
+
+  /** Next: the RECALCULATED next step (never "the next lesson in the list"). */
+  const goNext = () => {
+    if (outcome) return start(outcome.next);
+    const st = useStore.getState();
+    start(getNextStep(nextStepParamsFromState(st)));
   };
 
   return (
     <div className={`mx-auto w-full max-w-3xl lg:max-w-6xl space-y-5 md:pb-0 ${mode ? '' : 'pb-20'}`}>
+      {confirmModal}
       <ScreenHeader
         back={{ to: '/learn/curriculum', label: 'หลักสูตร' }}
         eyebrow={subject?.title}
@@ -108,11 +134,10 @@ export function CurriculumLessonPage() {
             ownResources={studyLesson?.resources ?? []}
             availableMinutes={budget}
             weakSkillIds={weakSkillIds}
-            onCheckSubmitted={(c) => {
-              lastCheck.current = c;
-            }}
-            onNext={finishAndRecord}
-            nextLabel={studyLesson ? 'บันทึกผลและไปขั้นต่อไป' : 'ไปขั้นต่อไป'}
+            onCheckSubmitted={recordEvidence}
+            onNext={goNext}
+            nextLabel="เริ่มขั้นต่อไป"
+            result={outcome ? <LoopResult outcome={outcome} onNext={goNext} /> : undefined}
           />
         </div>
         <aside aria-label="แผน ความคืบหน้า และเริ่มเรียน" className={mode === 'video' ? 'hidden' : 'space-y-4 lg:sticky lg:top-0'}>

@@ -115,7 +115,8 @@ await test('7. Exactly 5 nav items', () => assert.strictEqual(PRIMARY_NAV.length
 console.log('5. Data logic preserved');
 const store = read('src/store/useStore.ts');
 await test('8. Progress kept: finishing still hands off to the recorder', () => {
-  assert(read('src/pages/CurriculumLessonPage.tsx').includes('navigate(`/study/${studyLesson.id}?finish=1`)'));
+  // Phase 61: recorded in the hub through the same store session engine (legacy finish route still exists)
+  assert(read('src/pages/CurriculumLessonPage.tsx').includes('recordCheckEvidence(') && read('src/hooks/learningLoop.ts').includes('finishLearningSession(undefined, c.score)'));
   assert(read('src/pages/StudyRoom.tsx').includes('{finishOpen && ('));
   for (const s of ['finishLearningSession', 'learningSessionsHistory', 'completedCurriculumLessonIds']) assert(store.includes(s), s);
 });

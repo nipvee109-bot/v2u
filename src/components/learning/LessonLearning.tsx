@@ -36,10 +36,12 @@ interface Props {
   /** Receives the check result (also after a reload, from the saved state). */
   onNext: (summary?: UnderstandingSummary) => void;
   nextLabel: string;
+  /** Phase 61: what the check changed (skills, mastery, review, next step) — shown on completion */
+  result?: React.ReactNode;
 }
 
 /** Lesson → "วันนี้คุณอยากเรียนแบบไหน?" → mode → check → completion → next step. */
-export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownResources = [], availableMinutes, weakSkillIds = [], onAddResource, onCheckSubmitted, onNext, nextLabel }: Props) {
+export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownResources = [], availableMinutes, weakSkillIds = [], onAddResource, onCheckSubmitted, onNext, nextLabel, result }: Props) {
   const lesson = CURRICULUM.lessons.find((l) => l.id === curriculumLessonId);
   const contentStatus = getLessonContentStatus(curriculumLessonId);
   const original = getOriginalLesson(curriculumLessonId);
@@ -205,6 +207,7 @@ export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownReso
     };
     body = (
       <div className="space-y-5">
+        {result}
         <LessonCompletion
           lesson={interactive}
           state={state}

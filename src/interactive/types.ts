@@ -153,4 +153,6 @@ export interface UnderstandingSummary {
   review: string[];
   /** Learning outcomes the learner demonstrated */
   canDo: string[];
+  /** Phase 61: practice evidence — interactive steps solved vs only revealed */
+  practice: { total: number; solved: number; revealed: number };
 }

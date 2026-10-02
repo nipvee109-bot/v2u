@@ -340,6 +340,8 @@ export function getNextStep(params: NextStepParams): NextStep {
     const why =
       weakSkill.reason === 'low-quiz'
         ? 'คะแนนแบบทดสอบเรื่องนี้ยังไม่ผ่าน'
+        : weakSkill.reason === 'review-weak'
+          ? 'รอบทบทวนล่าสุดคุณตอบว่ายังไม่แม่นหรือจำไม่ได้'
         : weakSkill.reason === 'check-confused'
           ? 'เช็กความเข้าใจครั้งล่าสุดพบว่าเรื่องนี้ยังสับสน'
         : weakSkill.reason === 'overdue-review'
