@@ -11,8 +11,17 @@ import type {
   SubjectId,
 } from '../types';
 import { initialWeeklyGoal } from '../data/initialData';
+import type { StudentProfile } from '../route/types';
+import { normalizeStudentProfile } from '../route/engine';
 
-export const CURRENT_SCHEMA_VERSION = 4;
+/**
+ * Backup schema history:
+ *   v1–v3 legacy shapes (migrated)
+ *   v4    full payload + count-based checksum
+ *   v5    + studentProfile (V2U route: starting point, target, daily time);
+ *         checksum also covers the profile (Phase 45B)
+ */
+export const CURRENT_SCHEMA_VERSION = 5;
 export const BACKUP_STORAGE_KEY = 'engineering_study_hub_snapshots';
 export const MAX_BACKUP_SNAPSHOTS = 5;
 
@@ -37,6 +46,8 @@ export interface FullBackupPayload {
   goals: StudyGoal[];
   resources: Resource[];
   hasCompletedOnboarding: boolean;
+  /** v5+: V2U route profile. null when the student has not set one. */
+  studentProfile: StudentProfile | null;
 }
 
 export interface ValidationStats {
@@ -73,11 +84,17 @@ export interface BackupSnapshot {
  * Computes a simple checksum hash for payload integrity verification.
  */
 export function computePayloadChecksum(payload: Partial<FullBackupPayload>): string {
-  const str = `${payload.schemaVersion || 0}_${(payload.lessons || []).length}_${
+  let str = `${payload.schemaVersion || 0}_${(payload.lessons || []).length}_${
     (payload.sessions || []).length
   }_${(payload.reviewQueue || []).length}_${(payload.goals || []).length}_${
     (payload.resources || []).length
   }`;
+  // v5+: include the route profile so it cannot be altered silently.
+  // v4 files keep the original formula and still verify.
+  if ((payload.schemaVersion || 0) >= 5) {
+    const p = payload.studentProfile;
+    str += p ? `_${p.educationLevel}|${p.programId}|${p.targetId}|${p.availableMinutes}` : '_noprofile';
+  }
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
@@ -85,6 +102,20 @@ export function computePayloadChecksum(payload: Partial<FullBackupPayload>): str
     hash |= 0;
   }
   return `hash-${Math.abs(hash).toString(16)}`;
+}
+
+export type ChecksumStatus = 'valid' | 'missing' | 'mismatch';
+
+/**
+ * Verifies the checksum recorded in a raw (pre-migration) backup object.
+ * Only v4+ files carry a checksum; older files (or an empty checksum) are 'missing'.
+ */
+export function verifyPayloadChecksum(raw: unknown): ChecksumStatus {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return 'missing';
+  const obj = raw as Partial<FullBackupPayload>;
+  if (typeof obj.schemaVersion !== 'number' || obj.schemaVersion < 4) return 'missing';
+  if (typeof obj.checksum !== 'string' || obj.checksum.trim() === '') return 'missing';
+  return computePayloadChecksum(obj) === obj.checksum ? 'valid' : 'mismatch';
 }
 
 /**
@@ -182,7 +213,7 @@ export function migrateToLatestSchema(raw: unknown): {
 
   let rawObj: Record<string, unknown> = {};
   if (Array.isArray(raw)) {
-    warnings.push('ตรวจพบไฟล์สำรองเวอร์ชัน 1 (อาร์เรย์บทเรียน): กำลังอัปเกรดเป็นเวอร์ชัน 4');
+    warnings.push('ตรวจพบไฟล์สำรองเวอร์ชัน 1 (อาร์เรย์บทเรียน): กำลังอัปเกรดเป็นเวอร์ชันล่าสุด');
     rawObj = { lessons: raw };
   } else if (raw && typeof raw === 'object') {
     rawObj = raw as Record<string, unknown>;
@@ -321,6 +352,16 @@ export function migrateToLatestSchema(raw: unknown): {
 
   const hasCompletedOnboarding = Boolean(rawObj.hasCompletedOnboarding ?? (lessons.length > 0 && lessons.some((l) => l.status === 'COMPLETED')));
 
+  // 9. V2U route profile (v5+). Older files have none → null (current profile is kept on import).
+  const rawProfile = rawObj.studentProfile;
+  const studentProfile: StudentProfile | null =
+    rawProfile && typeof rawProfile === 'object' && !Array.isArray(rawProfile)
+      ? normalizeStudentProfile(rawProfile as Partial<StudentProfile>)
+      : null;
+  if (!studentProfile && !Array.isArray(raw)) {
+    warnings.push('ไฟล์นี้ไม่มีข้อมูลเส้นทาง (จุดเริ่มต้น/เป้าหมาย/เวลาเรียน) — จะคงค่าปัจจุบันไว้');
+  }
+
   const completedLessons = lessons.filter((l) => l.status === 'COMPLETED');
   const totalStudyMinutes = lessons.reduce((acc, l) => acc + (l.actualStudyMinutes || 0), 0);
 
@@ -345,6 +386,7 @@ export function migrateToLatestSchema(raw: unknown): {
     goals,
     resources,
     hasCompletedOnboarding,
+    studentProfile,
   };
 
   payload.checksum = computePayloadChecksum(payload);
@@ -423,6 +465,28 @@ export function validateAndParseImport(jsonString: string): ValidationResult {
   }
 
   const detectedVersion = detectSchemaVersion(parsed);
+
+  // Integrity: a recorded checksum must match the file contents.
+  if (verifyPayloadChecksum(parsed) === 'mismatch') {
+    return {
+      isValid: false,
+      errors: ['ไฟล์สำรองข้อมูลไม่สมบูรณ์หรือถูกแก้ไข (checksum ไม่ตรงกัน) — ไม่สามารถนำเข้าได้'],
+      warnings: [],
+      detectedVersion,
+      stats: {
+        lessonsCount: 0,
+        completedLessonsCount: 0,
+        sessionsCount: 0,
+        learningSessionsCount: 0,
+        unclearTopicsCount: 0,
+        notesCount: 0,
+        reviewsCount: 0,
+        goalsCount: 0,
+        resourcesCount: 0,
+      },
+    };
+  }
+
   const { payload, warnings: migrationWarnings } = migrateToLatestSchema(parsed);
   warnings.push(...migrationWarnings);
 
@@ -600,6 +664,7 @@ export function mergePayloadWithExisting(
     goals: mergedGoals,
     resources: mergedResources,
     hasCompletedOnboarding: existing.hasCompletedOnboarding || imported.hasCompletedOnboarding,
+    studentProfile: imported.studentProfile ?? existing.studentProfile ?? null,
   };
 
   mergedPayload.checksum = computePayloadChecksum(mergedPayload);
@@ -619,6 +684,7 @@ export function createExportPayload(state: {
   goals: StudyGoal[];
   resources: Resource[];
   hasCompletedOnboarding?: boolean;
+  studentProfile?: StudentProfile | null;
 }): FullBackupPayload {
   const completedLessons = (state.lessons || []).filter((l) => l.status === 'COMPLETED').length;
   const totalMinutes = (state.lessons || []).reduce((acc, l) => acc + (l.actualStudyMinutes || 0), 0);
@@ -644,6 +710,7 @@ export function createExportPayload(state: {
     goals: state.goals || [],
     resources: state.resources || [],
     hasCompletedOnboarding: !!state.hasCompletedOnboarding,
+    studentProfile: state.studentProfile ? normalizeStudentProfile(state.studentProfile) : null,
   };
 
   payload.checksum = computePayloadChecksum(payload);

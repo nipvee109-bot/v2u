@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import {
   createExportPayload,
+  CURRENT_SCHEMA_VERSION,
   validateAndParseImport,
   createLocalBackupSnapshot,
   getLocalBackupSnapshots,
@@ -44,6 +45,7 @@ export function Settings() {
     goals,
     resources,
     hasCompletedOnboarding,
+    studentProfile,
     importData,
     resetToInitial,
   } = useStore();
@@ -86,10 +88,11 @@ export function Settings() {
       goals,
       resources,
       hasCompletedOnboarding,
+      studentProfile,
     });
   };
 
-  // 1. Export Handler (Full v4 schema + metadata + checksum)
+  // 1. Export Handler (full schema incl. V2U route profile + metadata + checksum)
   const handleExport = () => {
     try {
       const payload = getCurrentPayload();
@@ -159,6 +162,7 @@ export function Settings() {
         goals: finalPayload.goals,
         resources: finalPayload.resources,
         hasCompletedOnboarding: finalPayload.hasCompletedOnboarding,
+        studentProfile: finalPayload.studentProfile,
       });
 
       // 3. Close modal & refresh snapshot list
@@ -229,6 +233,8 @@ export function Settings() {
         goals: p.goals,
         resources: p.resources,
         hasCompletedOnboarding: p.hasCompletedOnboarding,
+        // Snapshots taken before v5 have no profile → current profile is kept
+        studentProfile: p.studentProfile,
       });
 
       refreshSnapshots();
@@ -307,7 +313,7 @@ export function Settings() {
           <div className="flex items-center gap-3 self-start md:self-auto">
             <div className="bg-white/10 backdrop-blur-md rounded-2xl px-4 py-3 border border-white/10 flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
-                v4
+                v{CURRENT_SCHEMA_VERSION}
               </div>
               <div>
                 <div className="text-[11px] text-slate-300">Data Schema</div>
@@ -397,7 +403,7 @@ export function Settings() {
                 onClick={handleExport}
                 className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-medium shadow-sm transition-colors text-sm"
               >
-                <Download className="w-4 h-4" /> Export Backup (v4 JSON)
+                <Download className="w-4 h-4" /> Export Backup (v{CURRENT_SCHEMA_VERSION} JSON)
               </button>
             </div>
 
@@ -411,7 +417,7 @@ export function Settings() {
                   นำเข้าข้อมูลอย่างปลอดภัย (Safe Import)
                 </div>
                 <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                  ตรวจสอบโครงสร้างข้อมูลก่อนนำเข้า รองรับไฟล์เวอร์ชันเก่าทั้งหมด (v1, v2, v3, v4) พร้อมหน้าต่าง Preview สรุปข้อมูล และตัวเลือกว่าจะเขียนทับหรือรวมเข้ากับข้อมูลเดิม
+                  ตรวจสอบโครงสร้างข้อมูลก่อนนำเข้า รองรับไฟล์เวอร์ชันเก่าทั้งหมด (v1–v5) พร้อมหน้าต่าง Preview สรุปข้อมูล และตัวเลือกว่าจะเขียนทับหรือรวมเข้ากับข้อมูลเดิม
                 </p>
               </div>
               <div>

@@ -542,6 +542,8 @@ interface StoreState {
     resources?: Resource[];
     courses?: Course[];
     hasCompletedOnboarding?: boolean;
+    /** v5 backups: restored when present; undefined/null keeps the current profile. */
+    studentProfile?: StudentProfile | null;
   }) => void;
   resetToInitial: () => void;
 }
@@ -2200,6 +2202,7 @@ export const useStore = create<StoreState>()(
           resources: data.resources || initialResources,
           courses: data.courses || initialCourses,
           hasCompletedOnboarding: data.hasCompletedOnboarding ?? true,
+          ...(data.studentProfile ? { studentProfile: data.studentProfile } : {}),
         }),
       resetToInitial: () =>
         set({
