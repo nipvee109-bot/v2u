@@ -150,7 +150,7 @@ export function CurriculumLessonPage() {
           </section>
       {studyLesson && (
         <div className={mode ? '' : 'fixed inset-x-0 bottom-[68px] z-30 border-t border-slate-200 bg-white/95 p-3 backdrop-blur md:static md:border-0 md:bg-transparent md:p-0'}>
-          <Link to={`/lessons/${studyLesson.id}`} className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-6 text-base font-bold text-white shadow-sm hover:bg-brand-700 md:w-auto md:inline-flex lg:flex lg:w-full">
+          <Link to={`/learn/curriculum/${lesson.id}?mode=v2u`} className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-6 text-base font-bold text-white shadow-sm hover:bg-brand-700 md:w-auto md:inline-flex lg:flex lg:w-full">
             เริ่มเรียนตามแผน
           </Link>
         </div>

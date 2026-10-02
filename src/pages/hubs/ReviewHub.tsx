@@ -47,7 +47,7 @@ export function ReviewHub() {
         <HubLinkList
           heading={`ทักษะที่ต้องทบทวน (${weakSkills.length})`}
           links={weakSkills.map((g) => ({
-            to: `/lessons/${g.studyLessonIds[0]}`,
+            to: g.lessonIds[0] ? `/learn/curriculum/${g.lessonIds[0]}` : `/lessons/${g.studyLessonIds[0]}`,
             title: g.skill.title,
             description: g.reason === 'overdue-review' ? 'ถึงเวลาทบทวนแล้ว' : g.reason === 'low-quiz' ? 'คะแนนแบบทดสอบยังไม่ผ่าน' : g.reason === 'check-confused' ? 'เช็กความเข้าใจล่าสุดยังสับสน' : 'ยังไม่แม่น',
             icon: Target,

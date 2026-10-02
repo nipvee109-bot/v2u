@@ -57,7 +57,7 @@ console.log('1. Deterministic priority');
 await test('1st: unfinished study wins over everything', () => {
   const s = step({ activeLearningSession: { lessonId: byTitle('ตรีโกณมิติ').id, status: 'active' }, overdueReviews: overdue }, { records: weakPython });
   assert.strictEqual(s.rule, 'unfinished-study');
-  assert.strictEqual(s.href, `/study/${byTitle('ตรีโกณมิติ').id}`);
+  assert(s.href.startsWith('/learn/curriculum/'), 'continue goes to the Learning Hub: ' + s.href);
 });
 await test('2nd: overdue review beats weak skill and new lessons', () => {
   const s = step({ overdueReviews: overdue }, { records: weakPython });
@@ -69,7 +69,7 @@ await test('3rd: weak skill beats the next route lesson', () => {
   const s = step({}, { records: weakPython });
   assert.strictEqual(s.rule, 'weak-skill');
   assert.strictEqual(s.kind, 'strengthen');
-  assert.strictEqual(s.href, `/lessons/${byTitle('Python พื้นฐาน').id}`);
+  assert(s.href.startsWith('/learn/curriculum/'), 'weak skill opens the Learning Hub: ' + s.href);
   assert(s.reason.includes('คะแนนแบบทดสอบ'), s.reason);
   assertExplained(s);
 });
@@ -77,7 +77,7 @@ await test('4th: route lesson — current requirement, with plan that fits avail
   const s = step();
   assert.strictEqual(s.rule, 'route');
   assert.strictEqual(s.curriculum.lessonId, 'math-alg-linear-eq');
-  assert.strictEqual(s.href, `/lessons/${byTitle('สมการและอสมการเชิงเส้น').id}`);
+  assert.strictEqual(s.href, '/learn/curriculum/math-alg-linear-eq');
   assert.strictEqual(s.requiresResourceConfirmation, true, 'still goes through resource confirmation');
   assert(s.reason.includes('เป็นพื้นฐานของ') && s.reason.includes('วิศวกรรมคอมพิวเตอร์'), s.reason);
   assertExplained(s);

@@ -8,6 +8,7 @@ import { TopNav } from './navigation/TopNav';
 import { DesktopSidebar } from './navigation/DesktopSidebar';
 import { useStore } from '../store/useStore';
 import { OfflineIndicator } from './OfflineIndicator';
+import { learningHubPathFor } from '../curriculum/engine';
 
 interface LayoutProps {
   children: ReactNode;
@@ -19,6 +20,10 @@ export function Layout({ children }: LayoutProps) {
   const dueCount = overdue.length + dueToday.length;
 
   const activeLesson = activeLearningSession ? lessons.find(l => l.id === activeLearningSession.lessonId) : null;
+  // Green chip returns to the Learning Hub for this lesson (legacy page only for non-curriculum lessons)
+  const activeHref = activeLesson
+    ? learningHubPathFor(activeLesson, lessons, activeLearningSession?.curriculumLessonId) ?? `/lessons/${activeLesson.id}`
+    : '/learn';
   const completedCount = lessons.filter((l) => l.status === 'COMPLETED').length;
   const totalCount = lessons.length;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -77,14 +82,16 @@ export function Layout({ children }: LayoutProps) {
             {/* Active Learning Session live pill */}
             {activeLesson && activeLearningSession && activeLearningSession.status !== 'completed' && activeLearningSession.status !== 'abandoned' && (
               <Link
-                to={`/lessons/${activeLesson.id}`}
-                aria-label={`เซสชันที่กำลังเรียนอยู่: ${activeLesson.title}`}
+                to={activeHref}
+                data-testid="live-session-chip"
+                aria-label={`กลับไปเรียนบทนี้: ${activeLesson.title}`}
+                title="กลับไปเรียนบทนี้"
                 className="flex items-center gap-2 px-3 py-1.5 min-h-[36px] rounded-full bg-emerald-50 border border-emerald-300 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-xs"
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
                 <span className="hidden lg:inline truncate max-w-[130px]">{activeLesson.title}</span>
                 <span className="text-[11px] font-mono font-semibold text-emerald-900">
-                  {activeLearningSession.status === 'paused' ? 'พักชั่วคราว' : 'กำลังเรียน'}
+                  {activeLearningSession.status === 'paused' ? 'กลับไปเรียนบทนี้' : 'กำลังเรียน'}
                 </span>
               </Link>
             )}

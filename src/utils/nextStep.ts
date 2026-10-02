@@ -33,7 +33,7 @@ import type {
   LearningRecord,
 } from '../types';
 import { getSmartDashboardRecommendation, getDashboardRoadmapStatus } from './dashboardUtils';
-import { resolveCurriculumStep, getCurriculumLesson, getMissingPrerequisites } from '../curriculum/engine';
+import { resolveCurriculumStep, learningHubPathFor, getCurriculumLesson, getMissingPrerequisites } from '../curriculum/engine';
 import type { CurriculumLesson } from '../curriculum/types';
 import { CURRICULUM } from '../curriculum/data';
 import { getResourcesForLesson } from '../resources/engine';
@@ -293,7 +293,7 @@ export function getNextStep(params: NextStepParams): NextStep {
         kind: 'continue',
         rule: 'unfinished-study',
         outcome: route ? 'เรียนบทนี้จบและพร้อมทำแบบทดสอบ' : undefined,
-        href: `/study/${lesson.id}`,
+        href: learningHubPathFor(lesson, lessons, activeLearningSession.curriculumLessonId) ?? `/study/${lesson.id}`,
         requiresResourceConfirmation: false,
         lessonId: lesson.id,
         todayAction: `เรียนต่อ: ${lesson.title}`,
@@ -338,7 +338,7 @@ export function getNextStep(params: NextStepParams): NextStep {
       rule: 'weak-skill',
       minutes: Math.min(budget ?? 30, 30),
       outcome: `${weakSkill.skill.title}ได้มั่นใจขึ้น`,
-      href: `/lessons/${studyId}`,
+      href: cLesson ? `/learn/curriculum/${cLesson.id}` : `/lessons/${studyId}`,
       requiresResourceConfirmation: false,
       lessonId: studyId,
       todayAction: `ทบทวนจุดที่ยังไม่แม่น: ${weakSkill.skill.title}`,
@@ -369,7 +369,7 @@ export function getNextStep(params: NextStepParams): NextStep {
         minutes: rs.budgetMinutes,
         outcome: rs.outcomes.join(' · '),
         plan: rs.plan ?? undefined,
-        href: `/lessons/${rs.studyLessonId}`,
+        href: `/learn/curriculum/${cLesson.id}`,
         requiresResourceConfirmation: true,
         lessonId: rs.studyLessonId,
         todayAction: `เรียน: ${rs.curriculumLessonTitle}`,
@@ -391,7 +391,7 @@ export function getNextStep(params: NextStepParams): NextStep {
       rule: 'recommendation',
       minutes: budget,
       // Study flow still runs on the trackable store lesson
-      href: `/lessons/${rec.lesson.id}`,
+      href: ctx ? `/learn/curriculum/${ctx.lesson.id}` : `/lessons/${rec.lesson.id}`,
       requiresResourceConfirmation: true,
       lessonId: rec.lesson.id,
       todayAction: curriculum ? `เรียน: ${curriculum.title}` : `เรียน: ${rec.lesson.title}`,

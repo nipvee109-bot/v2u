@@ -168,7 +168,7 @@ export function CurriculumPage() {
                             </Link>
                             {studyLesson && (
                               <Link
-                                to={`/lessons/${studyLesson.id}`}
+                                to={`/learn/curriculum/${lesson.id}?mode=v2u`}
                                 className="inline-flex items-center rounded-xl bg-blue-600 px-3.5 py-2 min-h-[44px] text-xs font-bold text-white hover:bg-blue-700"
                               >
                                 เริ่มเรียนตามแผน

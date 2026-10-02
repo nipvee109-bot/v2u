@@ -1,3 +1,4 @@
+import { learningHubPathFor } from '../../curriculum/engine';
 import { useNavigate, Link } from 'react-router-dom';
 import { Calculator, Code2, Atom, Brain, Cpu, BookMarked, Search, LayoutGrid, PlayCircle, Route as RouteIcon, ArrowRight, Clock } from 'lucide-react';
 import { useStore } from '../../store/useStore';
@@ -30,9 +31,10 @@ export function LearnHub() {
       : null;
   const liveLesson = liveSession ? lessons.find((l) => l.id === liveSession.lessonId) : undefined;
 
+  const liveHref = liveLesson ? learningHubPathFor(liveLesson, lessons, liveSession?.curriculumLessonId) ?? `/study/${liveLesson.id}` : '';
   // "Continue" card: a live sitting first, otherwise today's curriculum lesson
   const cont = liveLesson
-    ? { to: `/study/${liveLesson.id}`, eyebrow: 'กำลังเรียนอยู่', title: liveLesson.title, meta: 'กลับเข้าห้องเรียน', stage: 'learn' as const }
+    ? { to: liveHref, eyebrow: 'กำลังเรียนอยู่', title: liveLesson.title, meta: 'กลับไปเรียนบทนี้', stage: 'learn' as const }
     : step.curriculum
       ? { to: `/learn/curriculum/${step.curriculum.lessonId}`, eyebrow: 'บทถัดไปของคุณ', title: step.curriculum.title, meta: step.minutes ? `วันนี้ ${step.minutes} นาที` : `${step.curriculum.estimatedMinutes} นาที`, stage: 'today' as const }
       : null;
@@ -51,7 +53,7 @@ export function LearnHub() {
 
   const toolLinks: HubLink[] = [
     ...(liveLesson
-      ? [{ to: `/study/${liveLesson.id}`, title: 'ห้องเรียน', description: `เรียนต่อ: ${liveLesson.title}`, icon: PlayCircle }]
+      ? [{ to: liveHref, title: 'กลับไปเรียนบทนี้', description: `เรียนต่อ: ${liveLesson.title}`, icon: PlayCircle }]
       : []),
     { to: '/learn/curriculum', title: 'หลักสูตรวิศวกรรมคอมพิวเตอร์', description: 'วิชา → หัวข้อ → บทเรียน ที่ต้องใช้สอบเข้า', icon: RouteIcon },
     { to: '/resources', title: 'คลังแหล่งเรียนรู้', description: 'วิดีโอ เอกสาร และเว็บไซต์ที่บันทึกไว้', icon: BookMarked },

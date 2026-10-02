@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { HomePage } from './pages/HomePage';
+import { LegacyLessonRoute } from './pages/legacy/LegacyLessonRoute';
 
 // V2U primary section hubs (Phase 41)
 const LearnHub = lazy(() => import('./pages/hubs/LearnHub').then((m) => ({ default: m.LearnHub })));
@@ -22,7 +23,6 @@ const RoadmapPage = lazy(() => import('./pages/RoadmapPage').then((m) => ({ defa
 const GoalsPage = lazy(() => import('./pages/GoalsPage').then((m) => ({ default: m.GoalsPage })));
 const ResourcesPage = lazy(() => import('./pages/ResourcesPage').then((m) => ({ default: m.ResourcesPage })));
 const SubjectPage = lazy(() => import('./pages/SubjectPage').then((m) => ({ default: m.SubjectPage })));
-const LessonDetail = lazy(() => import('./pages/LessonDetail').then((m) => ({ default: m.LessonDetail })));
 const StudyRoom = lazy(() => import('./pages/StudyRoom').then((m) => ({ default: m.StudyRoom })));
 const ReviewRoom = lazy(() => import('./pages/ReviewRoom').then((m) => ({ default: m.ReviewRoom })));
 const NotUnderstoodPage = lazy(() => import('./pages/NotUnderstoodPage').then((m) => ({ default: m.NotUnderstoodPage })));
@@ -74,7 +74,7 @@ function App() {
           <Route path="/goals" element={<GoalsPage />} />
           <Route path="/resources" element={<ResourcesPage />} />
           <Route path="/subjects/:id" element={<SubjectPage />} />
-          <Route path="/lessons/:id" element={<LessonDetail />} />
+          <Route path="/lessons/:id" element={<LegacyLessonRoute />} />
           <Route path="/study/:id" element={<StudyRoom />} />
           <Route path="/study-room/:id" element={<StudyRoom />} />
           <Route path="/review/:id" element={<ReviewRoom />} />

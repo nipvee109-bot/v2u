@@ -117,7 +117,7 @@ await test('getNextStep() points at an actual curriculum lesson and explains why
   assert(s.todayAction.includes(s.curriculum.title));
   assert(s.curriculum.path.startsWith('วิศวกรรมคอมพิวเตอร์ → '));
   assert(s.reason.length > 0 && s.curriculum.estimatedMinutes > 0);
-  assert.strictEqual(s.href, `/lessons/${s.lessonId}`, 'study flow still uses the store lesson route');
+  assert.strictEqual(s.href, `/learn/curriculum/${s.curriculum.lessonId}`, 'next step opens the Learning Hub (Phase 58)');
   assert(store.some((l) => l.id === s.lessonId));
 });
 await test('First step is the foundation lesson with no missing prerequisites', () => {

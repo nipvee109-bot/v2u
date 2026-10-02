@@ -277,3 +277,21 @@ export function validateCurriculum(
 export function skillIdsForTitles(titles: string[], curriculum: Curriculum = CURRICULUM): string[] {
   return titles.map((t) => curriculum.skills.find((s) => s.title === t)?.id).filter((x): x is string => !!x);
 }
+
+/**
+ * Learning Hub path for a store lesson, or null when the lesson is not part of the curriculum.
+ * Prefers the curriculum lesson of an ongoing session, then the curriculum step the data maps to.
+ */
+export function learningHubPathFor(
+  storeLesson: Lesson,
+  storeLessons: Lesson[],
+  sessionCurriculumLessonId?: string | null
+): string | null {
+  const candidates = getCurriculumLessonsForStudyLesson(storeLesson);
+  if (candidates.length === 0) return null;
+  const id =
+    (sessionCurriculumLessonId && candidates.some((c) => c.id === sessionCurriculumLessonId) && sessionCurriculumLessonId) ||
+    resolveCurriculumStep(storeLesson, storeLessons)?.lesson.id ||
+    candidates[0].id;
+  return `/learn/curriculum/${id}`;
+}

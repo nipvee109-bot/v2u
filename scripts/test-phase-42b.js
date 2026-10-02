@@ -191,7 +191,7 @@ await test('Curriculum page shows time picker, resources, why, and plan; continu
   // Phase 43: the time picker became a shared component
   const picker = read('src/components/TimeBudgetPicker.tsx');
   assert(picker.includes('คุณมีเวลาเท่าไหร่?') && picker.includes('role="radiogroup"'));
-  assert(page.includes('to={`/lessons/${studyLesson.id}`}'), 'final action must use the existing lesson/study flow');
+  assert(page.includes('to={`/learn/curriculum/${lesson.id}?mode=v2u`}'), 'final action stays in the Learning Hub (Phase 58)');
   assert(!page.includes('startLearningSession'), 'must not create a second study system');
 });
 await test('Home explains resource choice and outcomes; still one CTA', () => {
