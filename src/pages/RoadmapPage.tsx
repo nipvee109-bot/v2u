@@ -150,7 +150,7 @@ export function RoadmapPage() {
   }, [weeksData, selectedSubjectFilter, selectedMilestoneId, milestonesWithProgress]);
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 sm:space-y-8">
+    <div className="mx-auto w-full max-w-5xl xl:max-w-6xl space-y-6 sm:space-y-8">
       
       <ScreenHeader
         back={{ to: '/route', label: 'เส้นทาง' }}

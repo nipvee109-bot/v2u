@@ -14,9 +14,11 @@ export function MeHub() {
   const completed = lessons.filter((l) => l.status === 'COMPLETED').length;
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 sm:space-y-8">
+    <div className="mx-auto w-full max-w-3xl lg:max-w-6xl space-y-6 sm:space-y-8">
       <ScreenHeader title="ฉัน" subtitle={`เรียนจบ ${completed}/${lessons.length} บท · ความพร้อมดูได้ด้านล่าง`} />
 
+      <div className="space-y-6 sm:space-y-8 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
+        <div className="space-y-6 sm:space-y-8">
       <Surface as="section" aria-label="ข้อมูลของฉัน" className="flex items-center gap-4">
         <ProgressRing value={step.current.progressPercent} size={72} label={`ความคืบหน้าในเส้นทาง ${step.current.progressPercent}%`} />
         <div className="min-w-0 flex-1">
@@ -33,6 +35,8 @@ export function MeHub() {
       </Surface>
 
       <ReadinessCard />
+        </div>
+        <div className="space-y-6 sm:space-y-8">
       <AdmissionStatusCard />
       <HubLinkList
         heading="ความก้าวหน้า"
@@ -49,6 +53,8 @@ export function MeHub() {
           { to: '/settings?section=data', title: 'นำเข้า / ส่งออกข้อมูล', description: 'สำรองหรือย้ายข้อมูลการเรียน', icon: ArrowDownUp },
         ]}
       />
+        </div>
+      </div>
     </div>
   );
 }

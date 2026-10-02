@@ -48,7 +48,7 @@ export function RouteHub() {
   const currentStep = route.steps.find((s) => s.requirement.id === route.currentRequirementId);
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 sm:space-y-8">
+    <div className="mx-auto w-full max-w-3xl lg:max-w-6xl space-y-6 sm:space-y-8">
       {confirmModal}
       <HubHeader title="เส้นทาง" subtitle="จากจุดที่คุณอยู่ → สู่มหาวิทยาลัยที่คุณต้องการ" />
 
@@ -71,67 +71,10 @@ export function RouteHub() {
         </div>
       </section>
 
-      {/* Today's step on the route */}
-      <section aria-labelledby="route-today" className="rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white shadow-lg shadow-brand-900/15 sm:p-6">
-        <LoopStrip current="today" onDark />
-        <h2 id="route-today" className="mt-4 text-xs font-semibold text-brand-100">วันนี้ควรทำอะไร</h2>
-        <div className="mt-1">
-          <p className="text-xl font-bold leading-snug break-words">{today.todayAction}</p>
-          {today.minutes !== undefined && (
-            <p className="mt-1 flex items-center gap-1 text-xs text-white/85">
-              <Clock className="h-3.5 w-3.5" /> {today.minutes} นาที
-            </p>
-          )}
-          <p className="mt-3 flex items-start gap-1.5 text-sm text-white/90">
-            <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
-            <span>
-              <span className="font-bold">เหตุผล: </span>
-              {today.reason}
-            </span>
-          </p>
-          {today.outcome && (
-            <p className="mt-1.5 flex items-start gap-1.5 text-xs text-white/85">
-              <Trophy className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" />
-              <span>
-                <span className="font-bold">ได้อะไร: </span>
-                {today.outcome}
-              </span>
-            </p>
-          )}
-          {today.plan && (
-            <div className="mt-4">
-              <PlanBar onDark segments={today.plan.steps.map((ps) => ({ label: ps.label, minutes: ps.minutes }))} />
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={() => start(today)}
-            className="mt-5 inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-white px-6 text-base font-bold text-brand-800 shadow-md hover:bg-brand-50 sm:w-auto"
-          >
-            {today.ctaLabel} <ArrowRight className="h-4 w-4" />
-          </button>
-        </div>
-      </section>
-
-      {/* What is missing (same list Home uses) */}
-      <section aria-labelledby="route-gaps" className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
-        <h2 id="route-gaps" className="text-base font-bold text-ink">ยังขาดอะไร</h2>
-        {today.missing.length > 0 ? (
-          <ul className="mt-2 divide-y divide-slate-100 text-sm text-slate-800">
-            {today.missing.map((m) => (
-              <li key={m} className="flex min-h-[40px] items-center gap-2.5 py-1.5">
-                <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
-                <span className="break-words">{m}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-1 text-sm text-slate-700">ไม่มีอะไรค้าง</p>
-        )}
-      </section>
-
+      <div className="flex flex-col gap-6 sm:gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-8">
+        <div className="contents lg:flex lg:flex-col lg:gap-8">
       {/* Route stages */}
-      <section aria-labelledby="route-steps">
+      <section aria-labelledby="route-steps" className="order-3 lg:order-none">
         <h2 id="route-steps" className="mb-3 text-base font-bold text-ink">
           เส้นทางทั้งหมด · ผ่านแล้ว {route.completedCount}/{route.steps.length}
         </h2>
@@ -215,8 +158,22 @@ export function RouteHub() {
         </ol>
       </section>
 
+      {/* 6-month overview */}
+      <section aria-labelledby="route-months" className="order-6 lg:order-none rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
+        <h2 id="route-months" className="text-base font-bold text-ink">ภาพรวมเส้นทางของคุณ · {roadmap.horizon.months} เดือน (ประมาณ)</h2>
+        <ol className="mt-2 space-y-1 text-xs lg:flex lg:gap-2 lg:space-y-0 lg:overflow-x-auto lg:pb-1">
+          {roadmap.months.map((m) => (
+            <li key={m.index} className={`flex items-start gap-2.5 rounded-xl px-2.5 py-2 lg:min-w-[150px] lg:flex-1 lg:flex-col lg:gap-1.5 lg:border lg:border-slate-200/80 lg:p-3 ${m.isCurrent ? 'bg-brand-50 font-semibold text-brand-800' : 'text-slate-700'}`}>
+              <span className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${m.isCurrent ? 'bg-brand-600' : 'bg-slate-300'}`} aria-hidden="true" />
+              <span className="w-16 shrink-0">เดือนที่ {m.index}</span>
+              <span className="min-w-0">{m.focus}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
+
       {/* V2U arranges the route */}
-      <section aria-labelledby="route-period" className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
+      <section aria-labelledby="route-period" className="order-4 lg:order-none rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
         <h2 id="route-period" className="text-base font-bold text-ink">V2U จัดเส้นทางให้</h2>
         <p
           className={`mt-1 text-sm ${
@@ -270,7 +227,7 @@ export function RouteHub() {
       </section>
 
       {/* This week */}
-      <section aria-labelledby="route-week" className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
+      <section aria-labelledby="route-week" className="order-5 lg:order-none rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
         <h2 id="route-week" className="text-base font-bold text-ink">
           สัปดาห์นี้ · ประมาณ {roadmap.thisWeek.plannedMinutes} จาก {roadmap.thisWeek.budgetMinutes} นาที
         </h2>
@@ -287,22 +244,69 @@ export function RouteHub() {
         </ol>
       </section>
 
-      {/* 6-month overview */}
-      <section aria-labelledby="route-months" className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
-        <h2 id="route-months" className="text-base font-bold text-ink">ภาพรวมเส้นทางของคุณ · {roadmap.horizon.months} เดือน (ประมาณ)</h2>
-        <ol className="mt-2 space-y-1 text-xs">
-          {roadmap.months.map((m) => (
-            <li key={m.index} className={`flex items-start gap-2.5 rounded-xl px-2.5 py-2 ${m.isCurrent ? 'bg-brand-50 font-semibold text-brand-800' : 'text-slate-700'}`}>
-              <span className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${m.isCurrent ? 'bg-brand-600' : 'bg-slate-300'}`} aria-hidden="true" />
-              <span className="w-16 shrink-0">เดือนที่ {m.index}</span>
-              <span className="min-w-0">{m.focus}</span>
-            </li>
-          ))}
-        </ol>
+        </div>
+        <aside aria-label="วันนี้และการตั้งค่าเส้นทาง" className="contents lg:flex lg:flex-col lg:gap-6">
+      {/* Today's step on the route */}
+      <section aria-labelledby="route-today" className="order-1 lg:order-none rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white shadow-lg shadow-brand-900/15 sm:p-6">
+        <LoopStrip current="today" onDark />
+        <h2 id="route-today" className="mt-4 text-xs font-semibold text-brand-100">วันนี้ควรทำอะไร</h2>
+        <div className="mt-1">
+          <p className="text-xl font-bold leading-snug break-words">{today.todayAction}</p>
+          {today.minutes !== undefined && (
+            <p className="mt-1 flex items-center gap-1 text-xs text-white/85">
+              <Clock className="h-3.5 w-3.5" /> {today.minutes} นาที
+            </p>
+          )}
+          <p className="mt-3 flex items-start gap-1.5 text-sm text-white/90">
+            <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+            <span>
+              <span className="font-bold">เหตุผล: </span>
+              {today.reason}
+            </span>
+          </p>
+          {today.outcome && (
+            <p className="mt-1.5 flex items-start gap-1.5 text-xs text-white/85">
+              <Trophy className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" />
+              <span>
+                <span className="font-bold">ได้อะไร: </span>
+                {today.outcome}
+              </span>
+            </p>
+          )}
+          {today.plan && (
+            <div className="mt-4">
+              <PlanBar onDark segments={today.plan.steps.map((ps) => ({ label: ps.label, minutes: ps.minutes }))} />
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => start(today)}
+            className="mt-5 inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-white px-6 text-base font-bold text-brand-800 shadow-md hover:bg-brand-50 sm:w-auto"
+          >
+            {today.ctaLabel} <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </section>
+
+      {/* What is missing (same list Home uses) */}
+      <section aria-labelledby="route-gaps" className="order-2 lg:order-none rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
+        <h2 id="route-gaps" className="text-base font-bold text-ink">ยังขาดอะไร</h2>
+        {today.missing.length > 0 ? (
+          <ul className="mt-2 divide-y divide-slate-100 text-sm text-slate-800">
+            {today.missing.map((m) => (
+              <li key={m} className="flex min-h-[40px] items-center gap-2.5 py-1.5">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
+                <span className="break-words">{m}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-1 text-sm text-slate-700">ไม่มีอะไรค้าง</p>
+        )}
       </section>
 
       {/* How much time */}
-      <section aria-labelledby="route-time" className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
+      <section aria-labelledby="route-time" className="order-7 lg:order-none rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
         <h2 id="route-time" className="sr-only">มีเวลาเท่าไร</h2>
         <HorizonPicker value={profile.planningHorizon} onChange={(h) => setStudentProfile({ planningHorizon: h })} />
         <p className="mt-1.5 text-xs text-slate-500">
@@ -316,7 +320,7 @@ export function RouteHub() {
       </section>
 
       {/* Starting point → target */}
-      <section aria-labelledby="route-start" className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
+      <section aria-labelledby="route-start" className="order-8 lg:order-none rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
         <h2 id="route-start" className="text-base font-bold text-ink">ฉันอยู่ตรงไหน</h2>
         <p className="text-xs text-slate-500">จุดเริ่มต้นของคุณ — เปลี่ยนได้ตลอด</p>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -356,7 +360,7 @@ export function RouteHub() {
       </section>
 
       {/* Where am I going */}
-      <section aria-labelledby="route-target" className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
+      <section aria-labelledby="route-target" className="order-9 lg:order-none rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
         <h2 id="route-target" className="text-base font-bold text-ink">กำลังไปไหน</h2>
         <p className="mt-1 text-sm text-slate-800">
           {route.target.faculty} · {route.target.title}
@@ -369,6 +373,7 @@ export function RouteHub() {
         </p>
       </section>
 
+      <div className="order-[10] lg:order-none">
       <HubLinkList
         heading="เครื่องมือวางแผน"
         links={[
@@ -377,6 +382,9 @@ export function RouteHub() {
           { to: '/planner', title: 'ตารางเรียน & แผน', description: 'วางแผนเวลาเรียนแต่ละวัน', icon: CalendarDays },
         ]}
       />
+      </div>
+        </aside>
+      </div>
     </div>
   );
 }

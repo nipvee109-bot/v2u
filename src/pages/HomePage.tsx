@@ -43,16 +43,19 @@ export function HomePage() {
   const rec = step.curriculum?.recommendedResource;
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 sm:space-y-8">
+    <div className="mx-auto w-full max-w-3xl lg:max-w-6xl space-y-6 sm:space-y-8">
       <header>
         <p className="text-xs font-semibold text-brand-700">จากจุดที่คุณอยู่ → สู่มหาวิทยาลัยที่คุณต้องการ</p>
         <h1 className="mt-0.5 text-2xl font-bold text-ink sm:text-[28px]">ก้าวต่อไปของคุณ</h1>
       </header>
 
+      {/* Mobile: one column in reading order. Desktop: next step + what is missing | route + progress */}
+      <div className="flex flex-col gap-6 sm:gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-8">
+        <div className="contents lg:flex lg:flex-col lg:gap-8">
       {/* Today's single next step */}
       <section
         aria-labelledby="next-step-today"
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white shadow-lg shadow-brand-900/20 sm:p-7"
+        className="order-1 lg:order-none relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white shadow-lg shadow-brand-900/20 sm:p-7"
       >
         <LoopStrip current="today" onDark />
         <p className="mt-4 text-xs font-semibold text-brand-100">วันนี้ควรทำอะไร</p>
@@ -121,47 +124,7 @@ export function HomePage() {
         </button>
       </section>
 
-      {/* Journey: where I am → where I'm going */}
-      <Surface as="section" aria-label="เส้นทางของคุณ" padded={false} className="p-4">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-3">
-          <div className="min-w-0">
-            <p className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-              <MapPin className="h-3.5 w-3.5 text-brand-600" /> ตอนนี้อยู่ตรงไหน
-            </p>
-            <p id="home-current" className="mt-1 text-sm font-bold text-ink break-words">{step.current.label}</p>
-          </div>
-          <ArrowRight className="mt-5 h-4 w-4 text-slate-300" aria-hidden="true" />
-          <div className="min-w-0 text-right">
-            <p className="flex items-center justify-end gap-1.5 text-xs font-medium text-slate-500">
-              <Flag className="h-3.5 w-3.5 text-emerald-600" /> เป้าหมายคืออะไร
-            </p>
-            <p id="home-goal" className="mt-1 text-sm font-bold text-ink break-words">{step.goal.label}</p>
-          </div>
-        </div>
-        <div className="mt-3">
-          <ProgressBar value={step.current.progressPercent} label={`ความคืบหน้าในเส้นทาง ${step.current.progressPercent}%`} />
-          <p className="mt-1.5 text-xs text-slate-500 break-words">{step.current.detail}</p>
-        </div>
-        {!studentProfile && (
-          <Link to="/route" className="mt-2 inline-flex min-h-[32px] items-center text-xs font-semibold text-brand-700 underline">
-            บอกระดับชั้นและสาขาของคุณ เพื่อให้เส้นทางตรงกับคุณ
-          </Link>
-        )}
-      </Surface>
-
-      <Surface as="section" aria-label="เวลาที่มีวันนี้" padded={false} className="p-4">
-        <TimeBudgetPicker label="วันนี้มีเวลาเท่าไหร่?" value={budget} onChange={(m) => setStudentProfile({ availableMinutes: m })} />
-      </Surface>
-
-      <Section title="ภาพรวมตอนนี้" id="home-status">
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          <Stat icon={Gauge} label="ความคืบหน้า" value={`${step.current.progressPercent}%`} />
-          <Stat icon={CheckCircle2} tone="good" label="เรียนจบ" value={`${completed}/${lessons.length}`} hint="บท" />
-          <Stat icon={RotateCcw} tone={dueCount > 0 ? 'warn' : 'plain'} label="ทบทวนวันนี้" value={dueCount} hint={dueCount > 0 ? 'ถึงรอบแล้ว' : 'ไม่มีค้าง'} />
-        </div>
-      </Section>
-
-      <Section
+      <Section className="order-5 lg:order-none"
         title={
           <span className="flex items-center gap-2">
             <ListChecks className="h-4 w-4 text-amber-600" />
@@ -190,6 +153,50 @@ export function HomePage() {
         )}
       </Section>
 
+        </div>
+        <aside aria-label="เส้นทางและความคืบหน้า" className="contents lg:sticky lg:top-0 lg:flex lg:flex-col lg:gap-6">
+      {/* Journey: where I am → where I'm going */}
+      <Surface as="section" aria-label="เส้นทางของคุณ" padded={false} className="order-2 lg:order-none p-4">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-3">
+          <div className="min-w-0">
+            <p className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+              <MapPin className="h-3.5 w-3.5 text-brand-600" /> ตอนนี้อยู่ตรงไหน
+            </p>
+            <p id="home-current" className="mt-1 text-sm font-bold text-ink break-words">{step.current.label}</p>
+          </div>
+          <ArrowRight className="mt-5 h-4 w-4 text-slate-300" aria-hidden="true" />
+          <div className="min-w-0 text-right">
+            <p className="flex items-center justify-end gap-1.5 text-xs font-medium text-slate-500">
+              <Flag className="h-3.5 w-3.5 text-emerald-600" /> เป้าหมายคืออะไร
+            </p>
+            <p id="home-goal" className="mt-1 text-sm font-bold text-ink break-words">{step.goal.label}</p>
+          </div>
+        </div>
+        <div className="mt-3">
+          <ProgressBar value={step.current.progressPercent} label={`ความคืบหน้าในเส้นทาง ${step.current.progressPercent}%`} />
+          <p className="mt-1.5 text-xs text-slate-500 break-words">{step.current.detail}</p>
+        </div>
+        {!studentProfile && (
+          <Link to="/route" className="mt-2 inline-flex min-h-[32px] items-center text-xs font-semibold text-brand-700 underline">
+            บอกระดับชั้นและสาขาของคุณ เพื่อให้เส้นทางตรงกับคุณ
+          </Link>
+        )}
+      </Surface>
+
+      <Surface as="section" aria-label="เวลาที่มีวันนี้" padded={false} className="order-3 lg:order-none p-4">
+        <TimeBudgetPicker label="วันนี้มีเวลาเท่าไหร่?" value={budget} onChange={(m) => setStudentProfile({ availableMinutes: m })} />
+      </Surface>
+
+      <Section title="ภาพรวมตอนนี้" id="home-status" className="order-4 lg:order-none">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <Stat icon={Gauge} label="ความคืบหน้า" value={`${step.current.progressPercent}%`} />
+          <Stat icon={CheckCircle2} tone="good" label="เรียนจบ" value={`${completed}/${lessons.length}`} hint="บท" />
+          <Stat icon={RotateCcw} tone={dueCount > 0 ? 'warn' : 'plain'} label="ทบทวนวันนี้" value={dueCount} hint={dueCount > 0 ? 'ถึงรอบแล้ว' : 'ไม่มีค้าง'} />
+        </div>
+      </Section>
+
+        </aside>
+      </div>
       <StudyOnboardingModal
         isOpen={isOnboardingOpen}
         onClose={() => setIsOnboardingOpen(false)}

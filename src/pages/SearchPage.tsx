@@ -108,7 +108,7 @@ export function SearchPage() {
   const totalResults = matchedLessons.length + matchedSessions.length + matchedResources.length + matchedUnclear.length;
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 sm:space-y-8">
+    <div className="mx-auto w-full max-w-3xl lg:max-w-6xl space-y-6 sm:space-y-8">
       <ScreenHeader
         back={{ to: '/learn', label: 'เรียน' }}
         title={q ? `ผลการค้นหา “${rawQ}”` : 'ค้นหา'}
@@ -122,7 +122,7 @@ export function SearchPage() {
           const v = (new FormData(e.currentTarget).get('q') as string | null)?.trim() ?? '';
           if (v) navigate(`/search?q=${encodeURIComponent(v)}`);
         }}
-        className="flex gap-2"
+        className="flex max-w-3xl gap-2"
       >
         <div className="relative min-w-0 flex-1">
           <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
@@ -131,8 +131,11 @@ export function SearchPage() {
         <button type="submit" className="min-h-[52px] shrink-0 rounded-2xl bg-brand-600 px-5 text-sm font-bold text-white hover:bg-brand-700">ค้นหา</button>
       </form>
 
+      <div className={q ? "space-y-8 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-8 lg:space-y-0" : "space-y-8"}>
+        <div className="min-w-0">
       <CuratedSearchResults query={rawQ} />
-
+        </div>
+        <div className="min-w-0 space-y-4">
       {q && <h2 className="text-base font-bold text-ink">จากบันทึกการเรียนของคุณ</h2>}
       {!q ? (
         <div>
@@ -342,6 +345,8 @@ export function SearchPage() {
           )}
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

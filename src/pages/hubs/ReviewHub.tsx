@@ -24,15 +24,17 @@ export function ReviewHub() {
   const nothingDue = overdue.length === 0 && dueToday.length === 0 && weakSkills.length === 0;
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 sm:space-y-8">
+    <div className="mx-auto w-full max-w-3xl lg:max-w-6xl space-y-6 sm:space-y-8">
       <HubHeader title="ทบทวน" subtitle="ทบทวนตามจังหวะที่เหมาะสม เพื่อให้จำได้จนถึงวันสอบ" />
 
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
         <Stat icon={AlarmClock} tone={overdue.length ? 'warn' : 'plain'} label="เลยเวลา" value={overdue.length} />
         <Stat icon={RotateCcw} label="ถึงรอบวันนี้" value={dueToday.length} />
         <Stat icon={CalendarClock} tone="good" label="รอบถัดไป" value={upcoming.length} />
       </div>
 
+      <div className="space-y-6 sm:space-y-8 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-8 lg:space-y-0">
+        <div className="space-y-6 sm:space-y-8">
       {overdue.length > 0 && (
         <HubLinkList heading={`เลยเวลาทบทวน (${overdue.length})`} links={overdue.map(toLink(AlarmClock, 'ควรทบทวนก่อน'))} />
       )}
@@ -63,6 +65,8 @@ export function ReviewHub() {
         />
       )}
 
+        </div>
+        <aside aria-label="อื่น ๆ" className="lg:sticky lg:top-0">
       <HubLinkList
         heading="อื่น ๆ"
         links={[
@@ -76,6 +80,8 @@ export function ReviewHub() {
           ...upcoming.slice(0, 5).map(toLink(CalendarClock, 'รอบทบทวนถัดไป')),
         ]}
       />
+        </aside>
+      </div>
     </div>
   );
 }

@@ -310,7 +310,7 @@ export const StudyRoom: React.FC = () => {
   const timestampedNotes = lesson.timestampedNotes || [];
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-5 pb-16 animate-fadeIn">
+    <div className="mx-auto w-full max-w-[1600px] space-y-5 pb-16 animate-fadeIn">
       {/* ═══════════ TOP HEADER & CONTROL BAR ═══════════ */}
       <div className="rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 p-4 sm:p-6 text-white shadow-lg shadow-brand-900/15 flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Left: Breadcrumbs & Title */}
@@ -388,9 +388,9 @@ export const StudyRoom: React.FC = () => {
       </div>
 
       {/* ═══════════ MULTI-PANEL MAIN LEARNING WORKSPACE ═══════════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* LEFT COLUMN: Resource Switcher & Primary Player (lg:col-span-7 or 8) */}
-        <div className="lg:col-span-7 xl:col-span-8 space-y-3">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px] gap-5 lg:gap-6 items-start">
+        {/* LEFT COLUMN: Resource Switcher & Primary Player (all remaining width) */}
+        <div className="min-w-0 space-y-3">
           {/* Multi-source Switcher Bar */}
           <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 scrollbar-none">
             <div className="flex items-center gap-2">
@@ -472,10 +472,10 @@ export const StudyRoom: React.FC = () => {
           )}
         </div>
 
-        {/* RIGHT COLUMN: Notebook, Timestamps & Lesson Hub (lg:col-span-5 or 4) */}
-        <div className="lg:col-span-5 xl:col-span-4 bg-white rounded-3xl border border-slate-200/80 shadow-md overflow-hidden flex flex-col min-h-[540px]">
+        {/* RIGHT COLUMN: Notebook, Timestamps & Lesson Hub (360–400px, sticky) */}
+        <div className="lg:sticky lg:top-0 bg-white rounded-3xl border border-slate-200/80 shadow-md overflow-hidden flex flex-col min-h-[540px]">
           {/* Workspace Tabs Header */}
-          <div className="flex items-center border-b border-slate-100 bg-slate-50/70 p-2 gap-1 overflow-x-auto scrollbar-none">
+          <div className="flex flex-wrap items-center border-b border-slate-100 bg-slate-50/70 p-2 gap-1">
             <button
               onClick={() => setActiveTab('notes')}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${

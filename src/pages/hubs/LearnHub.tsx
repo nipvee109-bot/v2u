@@ -59,32 +59,15 @@ export function LearnHub() {
   ];
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 sm:space-y-8">
+    <div className="mx-auto w-full max-w-3xl lg:max-w-6xl space-y-6 sm:space-y-8">
       <HubHeader title="เรียน" subtitle="เรียนต่อจากตรงที่ค้าง หรือหาเรื่องที่อยากรู้" />
 
-      <form
-        role="search"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const v = (new FormData(e.currentTarget).get('q') as string | null)?.trim();
-          navigate(v ? `/search?q=${encodeURIComponent(v)}` : '/search');
-        }}
-        className="relative"
-      >
-        <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-        <input
-          name="q"
-          type="search"
-          aria-label="ค้นหาบทเรียน คลิป เอกสาร และโจทย์"
-          placeholder="ค้นหาบทเรียน คลิป โจทย์…"
-          className="min-h-[52px] w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-4 text-sm text-ink shadow-xs outline-none placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
-        />
-      </form>
-
+      <div className="flex flex-col gap-6 sm:gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-8">
+        <div className="contents lg:flex lg:flex-col lg:gap-8">
       {cont && (
         <Link
           to={cont.to}
-          className="block rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white shadow-lg shadow-brand-900/15 transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200"
+          className="order-2 lg:order-none block rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white shadow-lg shadow-brand-900/15 transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200"
         >
           <LoopStrip current={cont.stage} onDark />
           <p className="mt-3 text-xs font-semibold text-brand-100">{cont.eyebrow}</p>
@@ -100,16 +83,41 @@ export function LearnHub() {
         </Link>
       )}
 
-      <Section title="วิชา" id="learn-subjects">
+      <Section title="วิชา" id="learn-subjects" className="order-3 lg:order-none">
         <RowGroup label="วิชา" items={subjectItems} />
       </Section>
 
+        </div>
+        <aside aria-label="ค้นหาและเครื่องมือ" className="contents lg:sticky lg:top-0 lg:flex lg:flex-col lg:gap-6">
+      <form
+        role="search"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const v = (new FormData(e.currentTarget).get('q') as string | null)?.trim();
+          navigate(v ? `/search?q=${encodeURIComponent(v)}` : '/search');
+        }}
+        className="relative order-1 lg:order-none"
+      >
+        <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+        <input
+          name="q"
+          type="search"
+          aria-label="ค้นหาบทเรียน คลิป เอกสาร และโจทย์"
+          placeholder="ค้นหาบทเรียน คลิป โจทย์…"
+          className="min-h-[52px] w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-4 text-sm text-ink shadow-xs outline-none placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
+        />
+      </form>
+
+      <div className="order-4 lg:order-none">
       <HubLinkList heading="เครื่องมือการเรียน" links={toolLinks} />
 
-      <Surface tone="muted" className="text-xs text-slate-600">
+      </div>
+      <Surface tone="muted" className="order-5 lg:order-none text-xs text-slate-600">
         ค้นหาได้ทั้งบทเรียนของ V2U คลิป เอกสาร และโจทย์ — ผลจากเว็บภายนอกจะแยกไว้และบอกชัดว่ายังไม่ได้คัด ·{' '}
         <Link to="/search" className="font-semibold text-brand-700 underline">ไปหน้าค้นหา</Link>
       </Surface>
+        </aside>
+      </div>
     </div>
   );
 }

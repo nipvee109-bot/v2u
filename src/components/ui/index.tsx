@@ -174,9 +174,9 @@ export function Stat({ label, value, hint, icon: I, tone = 'plain' }: { label: s
   const ic = tone === 'warn' ? 'text-amber-600' : tone === 'good' ? 'text-emerald-600' : 'text-brand-600';
   return (
     <div className="min-w-0 rounded-2xl border border-slate-200/80 bg-white p-3.5">
-      <p className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+      <p className="flex items-start gap-1.5 text-xs font-medium text-slate-500">
         {I && <I className={cx('h-4 w-4 shrink-0', ic)} />}
-        <span className="truncate">{label}</span>
+        <span className="min-w-0 break-words leading-tight">{label}</span>
       </p>
       <p className="mt-1 text-xl font-bold text-ink">{value}</p>
       {hint && <p className="mt-0.5 text-[11px] text-slate-500 break-words">{hint}</p>}

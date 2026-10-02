@@ -37,32 +37,11 @@ export function CurriculumPage() {
   const skillTitle = (id: string) => CURRICULUM.skills.find((s) => s.id === id)?.title ?? id;
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 sm:space-y-8">
+    <div className="mx-auto w-full max-w-3xl lg:max-w-6xl space-y-6 sm:space-y-8">
       <ScreenHeader back={{ to: '/learn', label: 'เรียน' }} title={`หลักสูตร${CURRICULUM.pathway.title}`} subtitle={CURRICULUM.pathway.description} />
 
-      <section aria-label="ความพร้อมตามข้อกำหนด" className="grid gap-2.5 sm:grid-cols-3">
-        {CURRICULUM.pathway.requirements.map((req) => {
-          const r = readiness.find((x) => x.subjectId === req.subjectId);
-          const subject = CURRICULUM.subjects.find((s) => s.id === req.subjectId);
-          const pct = r?.readinessPercent ?? 0;
-          return (
-            <div key={req.subjectId} className="rounded-2xl border border-slate-200/80 bg-white p-4">
-              <p className="text-sm font-bold text-slate-900">{subject?.title}</p>
-              <p className="mt-0.5 text-xs text-slate-500">ความพร้อม {pct}% · เป้าหมาย {req.targetReadinessPercent}%</p>
-              <div className="mt-2.5">
-                <ProgressBar value={pct} target={req.targetReadinessPercent} label={`${subject?.title} ความพร้อม ${pct}%`} />
-              </div>
-              <p className="mt-2 text-[11px] text-slate-500">{req.exams.join(' · ')}</p>
-            </div>
-          );
-        })}
-      </section>
-
-      <section aria-label="เวลาที่มี" className="sticky top-0 z-[5] -mx-3.5 border-b border-slate-200 bg-canvas/95 px-3.5 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border sm:bg-white sm:px-4">
-        <TimeBudgetPicker value={budget} onChange={(m) => setStudentProfile({ availableMinutes: m })} />
-        <p className="mt-1.5 text-[11px] text-slate-500">เปิดบทเรียนด้านล่างเพื่อดูแผนที่ V2U จัดให้ตามเวลานี้</p>
-      </section>
-
+      <div className="flex flex-col gap-6 sm:gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-8">
+        <div className="order-3 lg:order-none space-y-8">
       {CURRICULUM.subjects.map((subject) => (
         <section key={subject.id} aria-labelledby={`subj-${subject.id}`} className="space-y-3">
           <h2 id={`subj-${subject.id}`} className="text-lg font-bold text-ink">{subject.title}</h2>
@@ -206,6 +185,33 @@ export function CurriculumPage() {
           })}
         </section>
       ))}
+        </div>
+        <aside aria-label="ความพร้อมและเวลา" className="contents lg:sticky lg:top-0 lg:flex lg:flex-col lg:gap-4">
+      <section aria-label="ความพร้อมตามข้อกำหนด" className="order-1 lg:order-none grid gap-2.5 sm:grid-cols-3 lg:grid-cols-1">
+        {CURRICULUM.pathway.requirements.map((req) => {
+          const r = readiness.find((x) => x.subjectId === req.subjectId);
+          const subject = CURRICULUM.subjects.find((s) => s.id === req.subjectId);
+          const pct = r?.readinessPercent ?? 0;
+          return (
+            <div key={req.subjectId} className="rounded-2xl border border-slate-200/80 bg-white p-4">
+              <p className="text-sm font-bold text-slate-900">{subject?.title}</p>
+              <p className="mt-0.5 text-xs text-slate-500">ความพร้อม {pct}% · เป้าหมาย {req.targetReadinessPercent}%</p>
+              <div className="mt-2.5">
+                <ProgressBar value={pct} target={req.targetReadinessPercent} label={`${subject?.title} ความพร้อม ${pct}%`} />
+              </div>
+              <p className="mt-2 text-[11px] text-slate-500">{req.exams.join(' · ')}</p>
+            </div>
+          );
+        })}
+      </section>
+
+      <section aria-label="เวลาที่มี" className="order-2 lg:order-none sticky top-0 z-[5] -mx-3.5 lg:static lg:mx-0 lg:rounded-2xl lg:border lg:bg-white lg:px-4 border-b border-slate-200 bg-canvas/95 px-3.5 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border sm:bg-white sm:px-4">
+        <TimeBudgetPicker value={budget} onChange={(m) => setStudentProfile({ availableMinutes: m })} />
+        <p className="mt-1.5 text-[11px] text-slate-500">เปิดบทเรียนด้านล่างเพื่อดูแผนที่ V2U จัดให้ตามเวลานี้</p>
+      </section>
+
+        </aside>
+      </div>
     </div>
   );
 }
