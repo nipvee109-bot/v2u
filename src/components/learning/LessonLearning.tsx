@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Clock } from 'lucide-react';
 import { MODE_META, READING_SECTION_IDS } from './meta';
 import { CURRICULUM } from '../../curriculum/data';
+import { CRITERION_LABEL, getLessonContentStatus } from '../../content/audit';
 import { getOriginalLesson } from '../../content/originals';
 import { getInteractiveLesson } from '../../interactive/registry';
 import type { LearningMode, UnderstandingSummary } from '../../interactive/types';
@@ -40,6 +41,7 @@ interface Props {
 /** Lesson → "วันนี้คุณอยากเรียนแบบไหน?" → mode → check → completion → next step. */
 export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownResources = [], availableMinutes, weakSkillIds = [], onAddResource, onCheckSubmitted, onNext, nextLabel }: Props) {
   const lesson = CURRICULUM.lessons.find((l) => l.id === curriculumLessonId);
+  const contentStatus = getLessonContentStatus(curriculumLessonId);
   const original = getOriginalLesson(curriculumLessonId);
   const interactive = getInteractiveLesson(curriculumLessonId);
   const [state, dispatch] = useLessonPlayer(curriculumLessonId);
@@ -89,6 +91,16 @@ export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownReso
           คุณอยากเรียนเรื่องนี้แบบไหน?
         </h2>
         <p className="mt-1 text-sm text-slate-600">ทุกแบบจบด้วยการเช็กความเข้าใจ แล้ว V2U จะบอกขั้นต่อไปให้ — ถ้าวิธีหนึ่งไม่เวิร์ก ลองอีกวิธีได้เสมอ</p>
+        {contentStatus && contentStatus.status !== 'ready' ? (
+          <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950" data-testid="content-status" data-status="needs-content">
+            <b className="font-semibold">กำลังเตรียมเนื้อหา</b> — บทนี้ยังขาด: {contentStatus.missing.map((m) => CRITERION_LABEL[m]).join(', ')}
+          </p>
+        ) : contentStatus ? (
+          <p className="mt-3 text-xs text-slate-500" data-testid="content-status" data-status="ready">
+            ✓ เนื้อหาพร้อมเรียน: อธิบาย ตัวอย่าง แบบฝึก {contentStatus.practiceCount} ข้อ และเช็กความเข้าใจ {contentStatus.checkCount} ข้อ
+            {contentStatus.resources.playableInV2U === 0 && ' · บทนี้ยังไม่มีคลิปที่เล่นใน V2U ได้ เริ่มจาก 📖 อ่านกับ V2U ได้เลย'}
+          </p>
+        ) : null}
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           {ORDER.map((m) => {
             const M = MODE_META[m];
@@ -213,7 +225,7 @@ export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownReso
       </div>
     );
   } else if (mode === 'read') {
-    body = <ReadingExperience content={original} outcomes={lesson.learningOutcomes} onDone={() => setStage('check')} />;
+    body = <ReadingExperience content={original} outcomes={lesson.learningOutcomes} subjectId={lesson.subjectId} prerequisites={lesson.prerequisites.map((p) => CURRICULUM.lessons.find((x) => x.id === p)?.title ?? p)} onDone={() => setStage('check')} />;
   } else if (mode === 'v2u') {
     body = <InteractivePlayer lesson={interactive} state={state} dispatch={dispatch} onToCheck={() => setStage('check')} />;
   } else {

@@ -573,6 +573,7 @@ export const CURRICULUM: Curriculum = {
       questions: [
         { prompt: '5x − 4 = 11 แล้ว x เท่ากับเท่าใด', choices: ['1', '3', '5', '7'], correctIndex: 1, explanation: '5x = 15 → x = 3', skillId: 'skill-math-solve-linear' },
         { prompt: 'x = 2 เป็นคำตอบของสมการใด', choices: ['3x + 1 = 8', '2x − 1 = 3', 'x + 5 = 6', '4x = 6'], correctIndex: 1, explanation: '2(2) − 1 = 3', skillId: 'skill-math-check-solution' },
+        { prompt: '2(x + 3) = 14 แล้ว x เท่ากับเท่าใด', choices: ['4', '5', '7', '11'], correctIndex: 0, explanation: '2x + 6 = 14 → 2x = 8 → x = 4 (ตรวจ: 2(4 + 3) = 14)', skillId: 'skill-math-solve-linear' },
       ],
     },
     {
@@ -581,6 +582,8 @@ export const CURRICULUM: Curriculum = {
       title: 'แบบทดสอบ: ระบบสมการ',
       questions: [
         { prompt: 'x + y = 5 และ x − y = 1 แล้ว x เท่ากับเท่าใด', choices: ['2', '3', '4', '5'], correctIndex: 1, explanation: 'บวกสองสมการ 2x = 6 → x = 3', skillId: 'skill-math-linear-system' },
+        { prompt: '2x + y = 8 และ x − y = 1 แล้ว y เท่ากับเท่าใด', choices: ['1', '2', '3', '4'], correctIndex: 1, explanation: 'บวกสองสมการ 3x = 9 → x = 3 แล้ว 3 − y = 1 → y = 2', skillId: 'skill-math-linear-system' },
+        { prompt: 'สองจำนวนรวมกันได้ 20 ต่างกัน 6 จำนวนที่มากกว่าคือ', choices: ['7', '10', '13', '14'], correctIndex: 2, explanation: 'x + y = 20, x − y = 6 บวกกัน 2x = 26 → x = 13', skillId: 'skill-math-word-problem' },
       ],
     },
     {
@@ -589,6 +592,8 @@ export const CURRICULUM: Curriculum = {
       title: 'แบบทดสอบ: อสมการ',
       questions: [
         { prompt: '−2x > 6 คำตอบคือ', choices: ['x > −3', 'x < −3', 'x > 3', 'x < 3'], correctIndex: 1, explanation: 'หารด้วย −2 ต้องกลับเครื่องหมาย', skillId: 'skill-math-solve-inequality' },
+        { prompt: '3x − 2 ≤ 10 คำตอบคือ', choices: ['x ≤ 4', 'x ≥ 4', 'x < 4', 'x ≤ 8/3'], correctIndex: 0, explanation: '3x ≤ 12 → x ≤ 4 (หารด้วยจำนวนบวก ไม่ต้องกลับเครื่องหมาย)', skillId: 'skill-math-solve-inequality' },
+        { prompt: 'ข้อใดเป็นคำตอบของ x > −2', choices: ['−3', '−2', '0', '−5'], correctIndex: 2, explanation: '0 > −2 จริง ส่วน −2 ไม่นับเพราะเป็น > ไม่ใช่ ≥', skillId: 'skill-math-solve-inequality' },
       ],
     },
     {
@@ -598,6 +603,7 @@ export const CURRICULUM: Curriculum = {
       questions: [
         { prompt: 'a⁵ ÷ a² เท่ากับ', choices: ['a³', 'a⁷', 'a¹⁰', 'a^2.5'], correctIndex: 0, explanation: 'ฐานเดียวกันหารกัน เลขชี้กำลังลบกัน', skillId: 'skill-math-exponent-laws' },
         { prompt: '2⁻² เท่ากับ', choices: ['−4', '1/4', '4', '−1/4'], correctIndex: 1, explanation: 'a⁻ⁿ = 1/aⁿ', skillId: 'skill-math-exponent-laws' },
+        { prompt: '(3²)³ เท่ากับ', choices: ['3⁵', '3⁶', '3⁸', '9⁵'], correctIndex: 1, explanation: 'ยกกำลังซ้อนให้คูณเลขชี้กำลัง 2 × 3 = 6', skillId: 'skill-math-exponent-laws' },
       ],
     },
     {
@@ -606,6 +612,8 @@ export const CURRICULUM: Curriculum = {
       title: 'แบบทดสอบ: ฟังก์ชันเชิงเส้น',
       questions: [
         { prompt: 'y = −2x + 4 ตัดแกน y ที่จุดใด', choices: ['(0, −2)', '(0, 4)', '(2, 0)', '(4, 0)'], correctIndex: 1, explanation: 'แทน x = 0 ได้ y = 4', skillId: 'skill-math-slope' },
+        { prompt: 'y = −4x + 1 มีความชันเท่าใด', choices: ['1', '4', '−4', '−1/4'], correctIndex: 2, explanation: 'ในรูป y = mx + c ความชันคือ m = −4', skillId: 'skill-math-slope' },
+        { prompt: 'เส้น y = 2x + 3 ผ่านจุดใด', choices: ['(1, 5)', '(1, 6)', '(0, 2)', '(2, 5)'], correctIndex: 0, explanation: 'แทน x = 1: y = 2(1) + 3 = 5', skillId: 'skill-math-graph-reading' },
       ],
     },
     {
@@ -615,6 +623,7 @@ export const CURRICULUM: Curriculum = {
       questions: [
         { prompt: 'tan 45° เท่ากับ', choices: ['0', '1/2', '1', '√3'], correctIndex: 2, explanation: 'ด้านตรงข้ามเท่ากับด้านประชิด', skillId: 'skill-math-special-angles' },
         { prompt: 'sin θ คืออัตราส่วนของ', choices: ['ประชิด/ฉาก', 'ตรงข้าม/ฉาก', 'ตรงข้าม/ประชิด', 'ฉาก/ตรงข้าม'], correctIndex: 1, explanation: 'sin = ตรงข้าม / ด้านตรงข้ามมุมฉาก', skillId: 'skill-math-trig-ratio' },
+        { prompt: 'ด้านตรงข้ามมุม θ ยาว 5 ด้านตรงข้ามมุมฉากยาว 13 แล้ว cos θ เท่าใด', choices: ['5/13', '12/13', '5/12', '13/12'], correctIndex: 1, explanation: 'ด้านประชิด = √(13² − 5²) = 12 จึงได้ cos θ = 12/13', skillId: 'skill-math-trig-ratio' },
       ],
     },
     {
@@ -624,6 +633,7 @@ export const CURRICULUM: Curriculum = {
       questions: [
         { prompt: 'print(10 / 4) ได้ผลอะไร', choices: ['2', '2.5', '3', 'Error'], correctIndex: 1, explanation: '/ ให้ผลเป็น float เสมอ', skillId: 'skill-prog-operators' },
         { prompt: 'ชนิดข้อมูลของ "5" คือ', choices: ['int', 'float', 'str', 'bool'], correctIndex: 2, explanation: 'อยู่ในเครื่องหมายคำพูดจึงเป็น str', skillId: 'skill-prog-variables' },
+        { prompt: 'ผลของ 17 // 5 คือ', choices: ['3', '3.4', '2', '4'], correctIndex: 0, explanation: '// หารแล้วปัดเศษทิ้ง 17 ÷ 5 = 3 เศษ 2', skillId: 'skill-prog-operators' },
       ],
     },
     {
@@ -632,6 +642,8 @@ export const CURRICULUM: Curriculum = {
       title: 'แบบทดสอบ: รับค่าและแสดงผล',
       questions: [
         { prompt: 'input() คืนค่าชนิดใด', choices: ['int', 'str', 'float', 'ขึ้นกับที่พิมพ์'], correctIndex: 1, explanation: 'input() คืน str เสมอ ต้องแปลงเองถ้าจะคำนวณ', skillId: 'skill-prog-io' },
+        { prompt: 'x = input() ผู้ใช้พิมพ์ 5 แล้ว x * 2 ได้อะไร', choices: ['10', '\'55\'', 'error', '5'], correctIndex: 1, explanation: 'input() ได้ข้อความ "5" ข้อความคูณ 2 คือข้อความซ้ำสองครั้ง "55"', skillId: 'skill-prog-io' },
+        { prompt: 'print(f"{3 + 4}") แสดงอะไร', choices: ['7', '3 + 4', '{3 + 4}', 'f7'], correctIndex: 0, explanation: 'ใน f-string ส่วนใน { } ถูกคำนวณก่อน จึงได้ 7', skillId: 'skill-prog-io' },
       ],
     },
     {
@@ -640,6 +652,8 @@ export const CURRICULUM: Curriculum = {
       title: 'แบบทดสอบ: เงื่อนไข',
       questions: [
         { prompt: 'x = 75 โค้ด if x >= 80: A elif x >= 70: B else: C ได้อะไร', choices: ['A', 'B', 'C', 'ไม่มีผล'], correctIndex: 1, explanation: '75 ไม่ถึง 80 แต่ ≥ 70', skillId: 'skill-prog-conditions' },
+        { prompt: 'x = 4 แล้วโค้ด if x > 5: print("A") else: print("B") แสดงอะไร', choices: ['A', 'B', 'AB', 'ไม่แสดงอะไร'], correctIndex: 1, explanation: '4 > 5 เป็นเท็จ จึงทำส่วน else', skillId: 'skill-prog-conditions' },
+        { prompt: 'บรรทัดใดเขียนผิดไวยากรณ์', choices: ['if x > 3:', 'if x > 3', 'elif x == 2:', 'else:'], correctIndex: 1, explanation: 'if ต้องจบด้วย : เสมอ', skillId: 'skill-prog-conditions' },
       ],
     },
     {
@@ -649,6 +663,7 @@ export const CURRICULUM: Curriculum = {
       questions: [
         { prompt: 'range(2, 6) ให้ค่าอะไรบ้าง', choices: ['2,3,4,5,6', '2,3,4,5', '3,4,5,6', '2,4,6'], correctIndex: 1, explanation: 'ไม่รวมค่าปลาย', skillId: 'skill-prog-loops' },
         { prompt: 'total=0; for i in range(4): total += i แล้ว total เท่ากับ', choices: ['4', '6', '10', '3'], correctIndex: 1, explanation: '0+1+2+3 = 6', skillId: 'skill-prog-trace' },
+        { prompt: 'for i in range(4): print("*") พิมพ์ * กี่ครั้ง', choices: ['3', '4', '5', 'ไม่รู้จบ'], correctIndex: 1, explanation: 'range(4) ได้ 0, 1, 2, 3 รวม 4 รอบ', skillId: 'skill-prog-loops' },
       ],
     },
     {
@@ -658,6 +673,7 @@ export const CURRICULUM: Curriculum = {
       questions: [
         { prompt: 'def f(x): return x * 2 แล้ว f(f(3)) เท่ากับ', choices: ['6', '9', '12', '18'], correctIndex: 2, explanation: 'f(3)=6, f(6)=12', skillId: 'skill-prog-functions' },
         { prompt: 'len([1, 2, 3]) เท่ากับ', choices: ['2', '3', '6', '1'], correctIndex: 1, explanation: 'มีสมาชิก 3 ตัว', skillId: 'skill-prog-collections' },
+        { prompt: 'lst = [10, 20, 30] แล้ว lst[-1] คือ', choices: ['10', '20', '30', 'error'], correctIndex: 2, explanation: 'ตำแหน่ง −1 คือสมาชิกตัวสุดท้าย', skillId: 'skill-prog-collections' },
       ],
     },
     {
@@ -667,6 +683,7 @@ export const CURRICULUM: Curriculum = {
       questions: [
         { prompt: 'หน่วยฐาน SI ของมวลคือ', choices: ['กรัม', 'กิโลกรัม', 'นิวตัน', 'ปอนด์'], correctIndex: 1, explanation: 'kg เป็นหน่วยฐาน', skillId: 'skill-phy-units' },
         { prompt: '36 km/h เท่ากับกี่ m/s', choices: ['3.6', '10', '36', '100'], correctIndex: 1, explanation: 'หารด้วย 3.6', skillId: 'skill-phy-units' },
+        { prompt: '90 km/h เท่ากับกี่ m/s', choices: ['25', '32.4', '15', '90'], correctIndex: 0, explanation: '90 × 1000 ÷ 3600 = 25 m/s (หรือ 90 ÷ 3.6)', skillId: 'skill-phy-units' },
       ],
     },
     {
@@ -675,6 +692,8 @@ export const CURRICULUM: Curriculum = {
       title: 'แบบทดสอบ: เวกเตอร์',
       questions: [
         { prompt: 'ข้อใดเป็นปริมาณเวกเตอร์', choices: ['มวล', 'อัตราเร็ว', 'การกระจัด', 'เวลา'], correctIndex: 2, explanation: 'การกระจัดมีทั้งขนาดและทิศทาง', skillId: 'skill-phy-vector-components' },
+        { prompt: 'แรง 3 N และ 4 N มีทิศตั้งฉากกัน แรงลัพธ์มีขนาดเท่าใด', choices: ['1 N', '5 N', '7 N', '12 N'], correctIndex: 1, explanation: '√(3² + 4²) = 5 N — ห้ามบวกตรง ๆ เพราะทิศต่างกัน', skillId: 'skill-phy-vector-components' },
+        { prompt: 'ข้อใดเป็นปริมาณเวกเตอร์', choices: ['มวล', 'เวลา', 'การกระจัด', 'อุณหภูมิ'], correctIndex: 2, explanation: 'การกระจัดมีทั้งขนาดและทิศ ที่เหลือมีแต่ขนาด', skillId: 'skill-phy-vector-components' },
       ],
     },
     {
@@ -684,6 +703,7 @@ export const CURRICULUM: Curriculum = {
       questions: [
         { prompt: 'u = 4 m/s, a = 3 m/s², t = 2 s ความเร็วปลายคือ', choices: ['6 m/s', '10 m/s', '7 m/s', '12 m/s'], correctIndex: 1, explanation: 'v = 4 + 3×2 = 10', skillId: 'skill-phy-kinematics-equations' },
         { prompt: 'พื้นที่ใต้กราฟความเร็ว–เวลา คือ', choices: ['ความเร่ง', 'การกระจัด', 'แรง', 'มวล'], correctIndex: 1, explanation: 'พื้นที่ใต้กราฟ v–t คือการกระจัด', skillId: 'skill-math-graph-reading' },
+        { prompt: 'u = 5 m/s, a = 2 m/s², t = 3 s ความเร็วปลายเท่าใด', choices: ['6 m/s', '11 m/s', '13 m/s', '30 m/s'], correctIndex: 1, explanation: 'v = u + at = 5 + 2 × 3 = 11 m/s', skillId: 'skill-phy-kinematics-equations' },
       ],
     },
     {
@@ -693,6 +713,7 @@ export const CURRICULUM: Curriculum = {
       questions: [
         { prompt: 'แรงลัพธ์เป็นศูนย์ วัตถุจะ', choices: ['หยุดเสมอ', 'เร่งขึ้น', 'คงสภาพการเคลื่อนที่', 'ช้าลง'], correctIndex: 2, explanation: 'กฎข้อ 1: ความเร็วคงตัว (รวมถึงหยุดนิ่ง)', skillId: 'skill-phy-newton-second' },
         { prompt: 'แผนภาพแรงของกล่องวางนิ่งบนโต๊ะมีแรงใดบ้าง', choices: ['น้ำหนักอย่างเดียว', 'น้ำหนักและแรงปฏิกิริยาตั้งฉาก', 'แรงเสียดทานอย่างเดียว', 'ไม่มีแรง'], correctIndex: 1, explanation: 'mg ลง และ N ขึ้น หักล้างกัน', skillId: 'skill-phy-free-body' },
+        { prompt: 'แรงลัพธ์เท่าเดิม แต่มวลเพิ่มเป็น 2 เท่า ความเร่งจะเป็นอย่างไร', choices: ['เพิ่มเป็น 2 เท่า', 'เท่าเดิม', 'ลดเหลือครึ่งหนึ่ง', 'เป็นศูนย์'], correctIndex: 2, explanation: 'a = ΣF/m มวลเพิ่ม 2 เท่า ความเร่งลดเหลือครึ่ง', skillId: 'skill-phy-newton-second' },
       ],
     },
   ],

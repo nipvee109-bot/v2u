@@ -47,6 +47,51 @@ export interface OriginalLesson {
   check: OriginalTryIt[];
   /** เรียนต่ออะไร */
   next: string;
+  /* ── Phase 59 depth (see depth.ts) ── */
+  /** สิ่งที่ต้องรู้ก่อน — plain words for the prerequisites */
+  prereqNote?: string;
+  /** อธิบายแบบง่าย — everyday picture of the idea */
+  simple?: string;
+  /** หลักคิด — the one way of thinking that makes the lesson work */
+  principle?: string;
+  /** แบบฝึก — practice on exactly what was taught */
+  practice?: OriginalTryIt[];
+  /** Programming: runnable code explained (does / why / what if) */
+  code?: CodeExample[];
+  errorExample?: { code: string; error: string; fix: string };
+  /** Physics: formula, every variable with meaning and unit, and how they relate */
+  formulas?: FormulaCard[];
+}
+
+export interface CodeExample {
+  code: string;
+  /** Exact stdout (verified by running the code in tests) */
+  output: string;
+  /** Input typed by the learner in this example, if any */
+  stdin?: string;
+  does: string;
+  why: string;
+  whatIf: string;
+}
+
+export interface FormulaCard {
+  expr: string;
+  vars: { symbol: string; meaning: string; unit: string }[];
+  relation: string;
+}
+
+/** Depth layer written by V2U for an existing lesson. */
+export interface LessonDepth {
+  prereqNote: string;
+  simple: string;
+  principle: string;
+  moreExamples?: OriginalExample[];
+  moreMistakes?: string[];
+  practice: OriginalTryIt[];
+  code?: CodeExample[];
+  errorExample?: { code: string; error: string; fix: string };
+  formulas?: FormulaCard[];
+
 }
 
 export const ORIGINAL_SECTION_TITLES = {

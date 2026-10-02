@@ -6,6 +6,7 @@ import { checkTyped } from '../../interactive/engine';
 import { ProgressBar } from '../ui';
 import { READING_SECTIONS as SECTIONS } from './meta';
 import { EquationCard } from './InteractivePlayer';
+import { CodeExplained, ErrorExample, FormulaCardView, PracticeItem } from './SubjectBlocks';
 
 /** "x = 5" → typed check; anything else → reveal. Only for answers V2U can check honestly. */
 function TryItem({ prompt, answer }: { prompt: string; answer: string }) {
@@ -75,7 +76,21 @@ function Head({ id, children }: { id: string; children: React.ReactNode }) {
 }
 
 /** "อ่านกับ V2U" — short but real understanding, in 8 small parts. */
-export function ReadingExperience({ content, outcomes, onDone }: { content: OriginalLesson; outcomes: string[]; onDone: () => void }) {
+export function ReadingExperience({
+  content,
+  outcomes,
+  onDone,
+  subjectId,
+  prerequisites = [],
+}: {
+  content: OriginalLesson;
+  outcomes: string[];
+  onDone: () => void;
+  subjectId?: 'math' | 'programming' | 'physics';
+  /** Titles of the lessons to know first (from the curriculum) */
+  prerequisites?: string[];
+}) {
+  const isCode = subjectId === 'programming';
   const [seen, mark] = useReadingProgress(content.lessonId);
   const refs = useRef<Record<string, HTMLElement | null>>({});
   const pct = Math.round((seen.filter((s) => SECTIONS.some((x) => x.id === s)).length / SECTIONS.length) * 100);
@@ -153,15 +168,31 @@ export function ReadingExperience({ content, outcomes, onDone }: { content: Orig
             </span>
           ))}
         </div>
+        {(content.prereqNote || prerequisites.length > 0) && (
+          <div className="mt-4 rounded-2xl bg-slate-50 p-4" data-testid="prereq">
+            <p className="text-xs font-semibold text-slate-500">สิ่งที่ต้องรู้ก่อน</p>
+            {prerequisites.length > 0 ? (
+              <p className="mt-1 text-sm font-semibold text-ink break-words">{prerequisites.join(' · ')}</p>
+            ) : (
+              <p className="mt-1 text-sm font-semibold text-ink">เริ่มบทนี้ได้เลย ไม่ต้องเรียนบทอื่นก่อน</p>
+            )}
+            {content.prereqNote && <p className="mt-1 text-sm text-slate-700 break-words">{content.prereqNote}</p>}
+          </div>
+        )}
       </section>
 
       <section {...sec('principle')} className={card}>
         <Head id="principle">หลักคิด</Head>
         <p className="mt-2 flex items-start gap-2 rounded-2xl border-l-4 border-amber-400 bg-amber-50 px-4 py-3 text-[15px] font-medium text-amber-950">
           <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-          <span className="break-words">{content.summary}</span>
+          <span className="break-words">{content.principle ?? content.summary}</span>
         </p>
-        {content.examples[0] && (
+        {content.formulas?.map((f) => (
+          <div key={f.expr} className="mt-3">
+            <FormulaCardView f={f} />
+          </div>
+        ))}
+        {!isCode && !content.formulas?.length && content.examples[0] && (
           <div className="mt-3">
             <EquationCard lines={[content.examples[0].problem, ...content.examples[0].steps]} caption="ตัวอย่างหลักคิด" />
           </div>
@@ -170,13 +201,20 @@ export function ReadingExperience({ content, outcomes, onDone }: { content: Orig
 
       <section {...sec('simple')} className={card}>
         <Head id="simple">อธิบายแบบง่าย</Head>
-        <p className="mt-2 text-[15px] leading-relaxed text-slate-800 break-words">{content.why}</p>
+        <p className="mt-2 text-[15px] leading-relaxed text-slate-800 break-words">{content.simple ?? content.why}</p>
+        {content.simple && (
+          <p className="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-700 break-words">
+            <b className="font-semibold text-ink">ทำไมต้องรู้:</b> {content.why}
+          </p>
+        )}
       </section>
 
       <section {...sec('example')} className="scroll-mt-28 space-y-3">
         <div className="px-1">
           <Head id="example">ตัวอย่าง</Head>
         </div>
+        {content.code?.map((c, i) => <CodeExplained key={c.code} ex={c} n={i + 1} />)}
+        {content.errorExample && <ErrorExample e={content.errorExample} />}
         {content.examples.map((e, i) => (
           <details key={e.problem} className="group rounded-3xl border border-slate-200/80 bg-white" open={i === 0}>
             <summary className="flex min-h-[56px] cursor-pointer list-none items-center justify-between gap-3 px-5 py-3">
@@ -230,6 +268,17 @@ export function ReadingExperience({ content, outcomes, onDone }: { content: Orig
             <TryItem key={t.prompt} prompt={t.prompt} answer={t.answer} />
           ))}
         </ul>
+        {content.practice && content.practice.length > 0 && (
+          <div className="mt-4 border-t border-slate-100 pt-4" data-testid="practice">
+            <p className="text-sm font-bold text-ink">แบบฝึก</p>
+            <p className="text-xs text-slate-500">ฝึกเรื่องเดียวกับที่เพิ่งเรียน ทำเองก่อนแล้วค่อยเปิดดู</p>
+            <ul className="divide-y divide-slate-100">
+              {content.practice.map((t) => (
+                <PracticeItem key={t.prompt} item={t} code={isCode} />
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
 
       <section {...sec('check')} className={card}>
@@ -247,6 +296,10 @@ export function ReadingExperience({ content, outcomes, onDone }: { content: Orig
             </li>
           ))}
         </ul>
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4" data-testid="reading-summary">
+          <p className="text-xs font-semibold text-slate-500">สรุป</p>
+          <p className="mt-1 text-[15px] text-ink break-words">{content.summary}</p>
+        </div>
         <div className="mt-4 rounded-2xl bg-brand-50 p-4 text-center">
           <p className="text-sm text-brand-900">อ่านจบแล้ว — การอ่านอย่างเดียวยังไม่ได้แปลว่าเข้าใจ</p>
           <button type="button" onClick={onDone} className="mt-3 inline-flex min-h-[52px] items-center gap-2 rounded-2xl bg-brand-600 px-6 text-sm font-bold text-white hover:bg-brand-700">

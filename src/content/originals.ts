@@ -4,13 +4,14 @@
    ========================================================================= */
 
 import type { OriginalLesson } from './types';
+import { LESSON_DEPTH } from './depth';
 
 const META = { author: 'V2U' as const, version: '1.0.0', createdAt: '2026-10-02', updatedAt: '2026-10-02' };
 
 type Body = Omit<OriginalLesson, 'contentId' | 'author' | 'version' | 'createdAt' | 'updatedAt'>;
 const o = (b: Body): OriginalLesson => ({ contentId: `v2u-${b.lessonId}`, ...META, ...b });
 
-export const ORIGINAL_LESSONS: OriginalLesson[] = [
+const BASE_LESSONS: OriginalLesson[] = [
   o({
     lessonId: 'math-alg-linear-eq',
     relatedLessonIds: ['math-alg-linear-system', 'math-alg-linear-ineq'],
@@ -342,6 +343,14 @@ export const ORIGINAL_LESSONS: OriginalLesson[] = [
     next: 'ทบทวนฟิสิกส์ทั้งชุด แล้วลองทำข้อสอบเก่าแบบจับเวลา',
   }),
 ];
+
+/** Base lesson + Phase 59 depth layer (examples/mistakes are appended, never replaced). */
+export const ORIGINAL_LESSONS: OriginalLesson[] = BASE_LESSONS.map((b) => {
+  const d = LESSON_DEPTH[b.lessonId];
+  if (!d) return b;
+  const { moreExamples = [], moreMistakes = [], ...rest } = d;
+  return { ...b, ...rest, version: '1.1.0', updatedAt: '2026-10-02', examples: [...b.examples, ...moreExamples], mistakes: [...b.mistakes, ...moreMistakes] };
+});
 
 export function getOriginalLesson(lessonId: string): OriginalLesson | undefined {
   return ORIGINAL_LESSONS.find((l) => l.lessonId === lessonId);

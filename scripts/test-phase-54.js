@@ -166,7 +166,7 @@ await test('13. Completion: all right → understood + can-do; nothing to review
 });
 await test('14. Final check: a wrong answer → that skill is "ยังสับสน", review lists it, no mastery claimed', () => {
   const s = E.summarize(lesson, answerAll(['fc-2']));
-  assert.strictEqual(s.score, 75);
+  assert.strictEqual(s.score, 80);
   assert(s.confused.includes('ตรวจคำตอบ'));
   assert(s.review.some((x) => x.includes('ตรวจคำตอบ')));
   assert.deepStrictEqual(s.canDo, [], 'outcomes are not claimed without a full check');

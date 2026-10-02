@@ -61,8 +61,17 @@ export function generateInteractiveLesson(lessonId: string): InteractiveLesson |
   };
 }
 
+/** Authored lessons keep their own check, plus any curriculum quiz question they don't already ask. */
+function withQuiz(l: InteractiveLesson): InteractiveLesson {
+  const quiz = CURRICULUM.quizzes.find((q) => q.lessonId === l.lessonId)?.questions ?? [];
+  const missing = quiz.filter((q) => !l.finalCheck.some((f) => f.prompt === q.prompt));
+  if (missing.length === 0) return l;
+  return { ...l, finalCheck: [...l.finalCheck, ...missing.map((q, i) => ({ id: `fc-q${l.finalCheck.length + i + 1}`, ...q }))] };
+}
+const AUTHORED_WITH_QUIZ = AUTHORED_LESSONS.map(withQuiz);
+
 export function getInteractiveLesson(lessonId: string): InteractiveLesson | undefined {
-  return AUTHORED_LESSONS.find((l) => l.lessonId === lessonId) ?? generateInteractiveLesson(lessonId);
+  return AUTHORED_WITH_QUIZ.find((l) => l.lessonId === lessonId) ?? generateInteractiveLesson(lessonId);
 }
 
 export function validateInteractiveLessons(): string[] {

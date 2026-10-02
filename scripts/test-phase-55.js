@@ -192,7 +192,7 @@ await test('15. Reflection: 4 self-report options, stored, and not counted as un
   assert(VL.includes('V2U จะเช็กความเข้าใจอีกครั้งก่อนนับว่าเข้าใจ') && VL.includes('disabled={!reflection}'));
 });
 await test('16. Understanding check (existing quiz) decides — watching alone does not', () => {
-  assert.strictEqual(check.score, 75);
+  assert.strictEqual(check.score, 80);
   assert(LL.includes("state: s.score >= 70 && s.confused.length === 0 ? 'done' : 'checked'"));
   assert(VL.includes('onToCheck') && VL.includes('ลองเช็กความเข้าใจ'));
 });
@@ -211,7 +211,7 @@ await test('17–18. Mastery + review: notes and check flow into the existing fi
   useStore.getState().finishLearningSession(30, check.score, 'Medium');
   const after = useStore.getState();
   const l = after.lessons.find((x) => x.id === studyLesson.id);
-  assert.strictEqual(l.quizScore, 75);
+  assert.strictEqual(l.quizScore, 80);
   assert(l.stillUnclearNotes.includes('ยังไม่เข้าใจการย้ายข้าง'));
   const rv = after.reviewQueue.find((r) => r.lessonId === studyLesson.id && r.status !== 'completed');
   assert(rv && rv.reason === 'unclear_topic', 'existing review queue gets it');

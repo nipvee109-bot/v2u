@@ -220,7 +220,7 @@ await test('21–23. Completion updates learning state: session mode, quiz score
   useStore.getState().finishLearningSession(30, summary.score, 'Medium');
   const after = useStore.getState();
   assert.strictEqual(after.learningSessionsHistory[0].learningMode, 'video');
-  assert.strictEqual(after.lessons.find((l) => l.id === studyLesson.id).quizScore, 75);
+  assert.strictEqual(after.lessons.find((l) => l.id === studyLesson.id).quizScore, 80);
   assert(after.reviewQueue.some((r) => r.lessonId === studyLesson.id && r.reason === 'unclear_topic'));
 });
 await test('24. Next step adapts (existing engine): the confused skill comes back first', () => {
