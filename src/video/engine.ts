@@ -14,7 +14,8 @@ import type { CurriculumLesson } from '../curriculum/types';
 import { getResourcesForLesson, linkStateLabel } from '../resources/engine';
 import type { CuratedResource } from '../resources/types';
 import type { Lesson, Resource } from '../types';
-import { parseYouTubeVideoId } from './youtube';
+import { resolveMedia } from './media';
+import type { MediaSource } from './media';
 
 export type VideoGroup = 'recommended' | 'basics' | 'practice' | 'next';
 export const VIDEO_GROUP_LABEL: Record<VideoGroup, string> = {
@@ -50,7 +51,9 @@ export interface VideoItem {
   /** Plain-Thai link state, e.g. "ยังไม่ได้ตรวจลิงก์" */
   linkState: string;
   checked: boolean;
-  /** Can be played inside V2U (a real YouTube URL with a parseable id). */
+  /** Phase 58: how this clip can be played (provider, official embed, capability) */
+  media: MediaSource;
+  /** Can be played inside V2U (allowlisted provider with a strictly parsed id) */
   embeddable: boolean;
   /** Parsed YouTube id — only from a real URL, never guessed */
   videoId?: string;
@@ -68,9 +71,12 @@ const isVideo = (r: CuratedResource) => r.type === 'video' || r.type === 'course
 
 export function curatedToVideo(r: CuratedResource, lessonId: string): VideoItem {
   const checked = (r.status === 'active' || r.status === 'verified') && !!r.url;
-  // Phase 57: play in V2U only from a real YouTube URL; embedding never changes the status
-  const embedUrl = checked && parseYouTubeVideoId(r.url) ? r.url : parseYouTubeVideoId(r.candidateVideoUrl) ? r.candidateVideoUrl : undefined;
-  const videoId = parseYouTubeVideoId(embedUrl) ?? undefined;
+  // Phase 57/58: play in V2U only from an allowlisted, strictly parsed source; embedding never changes the status
+  const candidates = [checked ? r.url : undefined, r.candidateVideoUrl].filter((x): x is string => !!x);
+  const playable = candidates.map((c) => ({ c, m: resolveMedia(c) })).find((x) => x.m.embedAllowed);
+  const media = playable?.m ?? resolveMedia(checked ? r.url : r.candidateVideoUrl ?? r.candidateUrl);
+  const embedUrl = playable?.c;
+  const videoId = media.videoId;
   return {
     key: `curated:${r.id}`,
     source: 'curated',
@@ -84,9 +90,10 @@ export function curatedToVideo(r: CuratedResource, lessonId: string): VideoItem 
     group: r.role === 'worked-example' ? 'practice' : 'basics',
     linkState: linkStateLabel(r),
     checked,
-    embeddable: !!videoId,
+    media,
+    embeddable: media.embedAllowed,
     videoId,
-    embedUrl: videoId ? embedUrl : undefined,
+    embedUrl,
     url: checked ? r.url : undefined,
     candidateUrl: checked ? undefined : r.candidateUrl,
     locator: r.locator,
@@ -95,8 +102,11 @@ export function curatedToVideo(r: CuratedResource, lessonId: string): VideoItem 
 }
 
 export function ownToVideo(r: Resource, lessonId: string): VideoItem | null {
-  if (r.type !== 'youtube' || !r.url) return null;
-  const videoId = parseYouTubeVideoId(r.url) ?? undefined;
+  if (!r.url) return null;
+  const media = resolveMedia(r.url);
+  // a learner's YouTube link always shows (even if it can't embed); other links only when they really are video
+  if (r.type !== 'youtube' && !media.embedAllowed) return null;
+  const videoId = media.videoId;
   return {
     key: `own:${r.id}`,
     source: 'own',
@@ -108,9 +118,10 @@ export function ownToVideo(r: Resource, lessonId: string): VideoItem | null {
     group: 'basics',
     linkState: 'ลิงก์ที่คุณเพิ่มเอง',
     checked: false,
-    embeddable: !!videoId,
+    media,
+    embeddable: media.embedAllowed,
     videoId,
-    embedUrl: videoId ? r.url : undefined,
+    embedUrl: media.embedAllowed ? r.url : undefined,
     url: r.url,
   };
 }
@@ -254,7 +265,10 @@ export function getRecommendedVideo(input: RecommendInput): Recommendation | nul
 
   // 2) Candidates: not yet watched; deprecated already excluded by the registry engine
   const fresh = seq.filter((v) => !watchedKeys.includes(v.key) && !skippedKeys.includes(v.key));
-  const pool = fresh.length > 0 ? fresh : seq;
+  const unplayed = fresh.length > 0 ? fresh : seq;
+  // Phase 58 embedCapability: don't recommend what is known not to play in V2U, if anything else can
+  const playableHere = unplayed.filter((v) => v.embeddable);
+  const pool = playableHere.length > 0 ? playableHere : unplayed;
   // 3) Ordered preferences: weak → practice first; else basics first; then language; then fits time
   const fits = (v: VideoItem) => availableMinutes === undefined || v.minutes === undefined || v.minutes <= availableMinutes;
   const pref = (v: VideoItem) => [
@@ -290,6 +304,8 @@ export function getRecommendedVideo(input: RecommendInput): Recommendation | nul
         : `ยาว${pick.durationKnown ? '' : 'ประมาณ'} ${pick.minutes} นาที มากกว่าเวลาที่มี — ดูเฉพาะช่วงที่ตรงบทได้`
     );
   }
+  if (pick.embeddable) reasons.push('เล่นใน V2U ได้ จดโน้ตข้างคลิปได้เลย');
+  else reasons.push('คลิปนี้เปิดได้ที่ต้นทางเท่านั้น');
   if (!pick.checked) reasons.push(`${pick.linkState} — V2U ยังไม่ได้เปิดตรวจคลิปนี้`);
 
   return {

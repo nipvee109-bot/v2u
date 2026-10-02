@@ -74,7 +74,7 @@ await test('3. No YouTube before choosing Video: picker, hub and clip list rende
   const picker = LL.slice(LL.indexOf('if (!mode) {'), LL.indexOf('/* ── Explicit mode switch'));
   assert(!/VideoLearning|YouTube|iframe/.test(picker));
   const beforeWorkspace = VL.slice(0, VL.indexOf('/* ── Workspace'));
-  assert(!/<YouTubePlayer|<iframe/.test(beforeWorkspace));
+  assert(!/<YouTubePlayer|<UniversalVideoPlayer|<iframe/.test(beforeWorkspace));
   assert(!/img\.youtube|ytimg|\.thumbnail|thumbnail=|<img/i.test(VL), 'no third-party thumbnails');
 });
 
@@ -128,7 +128,7 @@ await test('10. Watching does not equal mastery: no store mastery change from vi
 console.log('\n4. Video + notes');
 await test('11. Video and notes on the same page (two columns when wide)', () => {
   const ws = VL.slice(VL.indexOf('/* ── Workspace'));
-  assert(ws.includes('<YouTubePlayer') && ws.includes('<NotesPanel'));
+  assert(ws.includes('<UniversalVideoPlayer') && ws.includes('<NotesPanel'));
   assert(ws.includes('@3xl:grid-cols-[minmax(0,1fr)_300px]'));
 });
 await test('12–13. Notes persist with categories (📝 💡 ❓ ⭐ 🗒️)', async () => {
@@ -272,7 +272,7 @@ await test('26. New backup exports/imports skip state, notes, summary, reflectio
 console.log('\n8. Layout');
 await test('27–29. Desktop video|notes, tablet adaptive, mobile stacked (video first)', () => {
   const ws = VL.slice(VL.indexOf('/* ── Workspace'));
-  assert(ws.indexOf('<YouTubePlayer') < ws.indexOf('<NotesPanel'));
+  assert(ws.indexOf('<UniversalVideoPlayer') < ws.indexOf('<NotesPanel'));
   assert(ws.includes('grid gap-4 @3xl:grid-cols-[minmax(0,1fr)_300px] @5xl:grid-cols-[minmax(0,1fr)_360px]'));
   assert(LL.includes('md:grid-cols-3'), 'mode cards side by side from tablet up, stacked on phones');
 });

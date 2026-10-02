@@ -100,8 +100,8 @@ await test('4. Prerequisite ordering: path uses existing prerequisites; waiting 
 });
 await test('5. No external video before a clip is chosen (entry / pick render no player)', () => {
   const entryAndPick = VL.slice(VL.indexOf('/* ── Entry'), VL.indexOf('/* ── Workspace'));
-  assert(!/<YouTubePlayer|<iframe|ResourceViewer/.test(entryAndPick));
-  assert.strictEqual((VL.match(/<YouTubePlayer/g) || []).length, 1);
+  assert(!/<YouTubePlayer|<UniversalVideoPlayer|<iframe|ResourceViewer/.test(entryAndPick));
+  assert.strictEqual((VL.match(/<UniversalVideoPlayer/g) || []).length, 1);
 });
 
 console.log('\n2. Workspace + notes');
@@ -295,7 +295,7 @@ await test('24. Backup/export includes notes, summaries, video progress; checksu
 console.log('\n7. Layout + regression');
 await test('25–27. Mobile stacked (video first, then notes), tablet/desktop two columns by container width', () => {
   const ws = VL.slice(VL.indexOf('/* ── Workspace'));
-  assert(ws.indexOf('<YouTubePlayer') < ws.indexOf('<NotesPanel'), 'video before notes in reading order');
+  assert(ws.indexOf('<UniversalVideoPlayer') < ws.indexOf('<NotesPanel'), 'video before notes in reading order');
   assert(ws.includes('grid gap-4 @3xl:grid-cols-[minmax(0,1fr)_300px] @5xl:grid-cols-[minmax(0,1fr)_360px]'));
 });
 await test('28. No horizontal overflow risks: long Thai text wraps in the new components', () => {

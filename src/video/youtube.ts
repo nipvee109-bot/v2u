@@ -31,6 +31,8 @@ export interface YouTubeInfo {
   currentTime?: number;
   ended?: boolean;
   duration?: number;
+  /** IFrame API error: 2 bad id, 5 html5, 100 removed/private, 101/150 embedding not allowed */
+  error?: number;
 }
 
 export function parseYouTubeMessage(origin: string, data: unknown): YouTubeInfo | null {
@@ -44,7 +46,8 @@ export function parseYouTubeMessage(origin: string, data: unknown): YouTubeInfo 
     }
   }
   if (!msg || typeof msg !== 'object') return null;
-  const m = msg as { event?: string; info?: Record<string, unknown> };
+  const m = msg as { event?: string; info?: Record<string, unknown> | number };
+  if (m.event === 'onError' && typeof m.info === 'number') return { error: m.info };
   if (m.event !== 'infoDelivery' || !m.info || typeof m.info !== 'object') return null;
   const out: YouTubeInfo = {};
   if (typeof m.info.currentTime === 'number' && Number.isFinite(m.info.currentTime)) out.currentTime = m.info.currentTime;

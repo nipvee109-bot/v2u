@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, Eye, Clock, ExternalLink, Check, ArrowRight, ArrowLeft, Plus, CircleDot, CheckCircle2, Circle, Hourglass, ChevronRight } from 'lucide-react';
+import { Sparkles, Eye, Clock, Check, ArrowRight, ArrowLeft, Plus, CircleDot, CheckCircle2, Circle, Hourglass, ChevronRight } from 'lucide-react';
 import { CURRICULUM } from '../../curriculum/data';
 import { useStore } from '../../store/useStore';
 import type { Resource } from '../../types';
@@ -18,7 +18,8 @@ import type { VideoGroup, VideoItem, PathItem } from '../../video/engine';
 import { progressKey, REFLECTION_LABEL } from '../../notes/engine';
 import type { VideoProgress } from '../../notes/types';
 import { useSelectedVideo, useVideoStage } from '../../interactive/usePlayer';
-import { YouTubePlayer } from '../study/YouTubePlayer';
+import { UniversalVideoPlayer } from './UniversalVideoPlayer';
+import { capabilityLabel } from '../../video/media';
 import { NotesPanel } from './NotesPanel';
 
 interface Props {
@@ -47,6 +48,7 @@ function VideoMeta({ v }: { v: VideoItem }) {
       {v.minutes !== undefined && <span>· {v.durationKnown ? '' : 'ประมาณ '}{v.minutes} นาที</span>}
       {v.language && <span>· {v.language === 'th' ? 'ภาษาไทย' : 'ภาษาอังกฤษ'}</span>}
       <span className={v.checked ? 'text-emerald-700' : 'text-amber-700'}>· {v.linkState}</span>
+      <span className={v.embeddable ? 'font-semibold text-emerald-700' : 'font-semibold text-slate-600'} data-capability={v.embeddable ? 'play' : 'source'}>· {capabilityLabel(v.media)}</span>
     </p>
   );
 }
@@ -317,6 +319,7 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
   }
 
   const v = selected!;
+  const markEnded = () => setVideoProgress(v.lessonId, v.key, { state: stateOf(v) === 'learning' || stateOf(v) === 'not-started' ? 'watched' : stateOf(v) });
   const inSeq = seq.findIndex((x) => x.key === v.key);
   const prev = inSeq > 0 ? seq[inSeq - 1] : undefined;
   const next = inSeq >= 0 && inSeq < seq.length - 1 ? seq[inSeq + 1] : undefined;
@@ -370,37 +373,23 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
       <div className="@container">
         <div className="grid gap-4 @3xl:grid-cols-[minmax(0,1fr)_300px] @5xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0 space-y-4">
-            {v.embeddable && v.embedUrl ? (
-              <div className="space-y-2" data-testid="embedded-video">
-                <YouTubePlayer
-                  key={v.key}
-                  url={v.embedUrl}
-                  title={v.title}
-                  onTimeUpdate={setCurrentSeconds}
-                  onTimeSupported={() => undefined}
-                  onEnded={() => setVideoProgress(v.lessonId, v.key, { state: stateOf(v) === 'learning' || stateOf(v) === 'not-started' ? 'watched' : stateOf(v) })}
-                  seekToSeconds={seekTo}
-                />
-                <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
-                  <span className="font-semibold text-slate-700 break-words">{v.title}</span>
-                  <span>· {v.provider} · แหล่งภายนอก เล่นจาก YouTube ภายใน V2U</span>
-                  <span className={v.checked ? 'text-emerald-700' : 'text-amber-700'}>· {v.linkState}</span>
-                </p>
-              </div>
-            ) : (
-              <div className="rounded-3xl border border-slate-200/80 bg-white p-5" data-testid="video-fallback">
-                <p className="text-sm font-bold text-ink">คลิปนี้ยังไม่สามารถเล่นใน V2U ได้</p>
-                <p className="mt-0.5 text-xs text-slate-500">ยังไม่มีลิงก์ YouTube ที่เล่นในหน้านี้ได้ — เปิดต้นทางไว้ข้าง ๆ แล้วจดโน้ตใน V2U ต่อได้</p>
-                <p className="mt-2 text-base font-semibold text-ink break-words">{v.title}</p>
-                <VideoMeta v={v} />
-                {v.url || v.candidateUrl ? (
-                  <a href={v.url ?? v.candidateUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-slate-900 px-4 text-sm font-bold text-white hover:bg-slate-800">
-                    <ExternalLink className="h-4 w-4" /> เปิดต้นทาง
-                  </a>
-                ) : null}
-                {!v.checked && <p className="mt-2 text-xs text-amber-700">ยังไม่ได้ตรวจลิงก์ — ถ้าเปิดไม่ได้ หาได้ที่: {v.locator}</p>}
-              </div>
-            )}
+            {/* Phase 58: one player for every allowlisted source; otherwise an honest "open the source" */}
+            <div className="space-y-2" data-testid={v.embeddable ? 'embedded-video' : undefined}>
+              <UniversalVideoPlayer
+                key={v.key}
+                media={v.media}
+                title={v.title}
+                onTimeUpdate={setCurrentSeconds}
+                onEnded={markEnded}
+                seekToSeconds={seekTo}
+              />
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
+                <span className="font-semibold text-slate-700 break-words">{v.title}</span>
+                <span>· {v.provider}{v.embeddable ? ` · แหล่งภายนอก เล่นผ่านเครื่องเล่นทางการของ ${v.media.providerName ?? 'ต้นทาง'}` : ''}</span>
+                <span className={v.checked ? 'text-emerald-700' : 'text-amber-700'}>· {v.linkState}</span>
+              </p>
+              {!v.embeddable && !v.checked && v.locator && <p className="text-xs text-amber-700">ยังไม่ได้ตรวจลิงก์ — ถ้าเปิดไม่ได้ หาได้ที่: {v.locator}</p>}
+            </div>
             <div className="rounded-3xl border border-slate-200/80 bg-white p-5">
               <p className="text-xs font-semibold text-brand-700">ดูคลิปนี้เพื่อ</p>
               <ul className="mt-1.5 space-y-1 text-sm text-slate-800">
@@ -422,7 +411,7 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
             </div>
           </div>
           <div className="@3xl:sticky @3xl:top-0 self-start">
-            <NotesPanel lessonId={lessonId} videoKey={v.key} currentSeconds={v.embeddable ? currentSeconds : undefined} onSeek={v.embeddable ? (s) => setSeekTo(s) : undefined} />
+            <NotesPanel lessonId={lessonId} videoKey={v.key} currentSeconds={v.embeddable ? currentSeconds : undefined} onSeek={v.embeddable && (v.media.provider === 'youtube' || v.media.provider === 'direct') ? (s) => setSeekTo(s) : undefined} />
           </div>
         </div>
       </div>

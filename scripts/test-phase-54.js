@@ -71,8 +71,8 @@ await test('4. The player is rendered only after a clip is chosen, with outcomes
   const videoBranch = LL.slice(LL.indexOf("} else {\n    // ดูคลิป"), LL.indexOf('return (\n    <div className="space-y-5" data-learning-mode'));
   assert(videoBranch.includes('<VideoLearning'));
   // the only player lives in the workspace, after the entry / pick / reflect early returns
-  assert.strictEqual((VL.match(/<YouTubePlayer/g) || []).length, 1);
-  assert(VL.indexOf('<YouTubePlayer') > VL.indexOf("/* ── Workspace: video + notes"));
+  assert.strictEqual((VL.match(/<UniversalVideoPlayer/g) || []).length, 1);
+  assert(VL.indexOf('<UniversalVideoPlayer') > VL.indexOf("/* ── Workspace: video + notes"));
   for (const x of ['ดูคลิปนี้เพื่อ', 'แหล่งภายนอก', 'ลองเช็กความเข้าใจ', 'ดูคลิปอย่างเดียวยังไม่ได้แปลว่าเข้าใจ']) assert(VL.includes(x), x);
 });
 

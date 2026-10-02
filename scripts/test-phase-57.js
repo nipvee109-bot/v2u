@@ -58,18 +58,19 @@ await test('2. Valid YouTube → embeddable video item (real upload found by sea
   assert(v.embeddable && v.videoId === 'vnXIPsijIRc' && v.embedUrl === 'https://www.youtube.com/watch?v=vnXIPsijIRc');
   const r = R.find((x) => x.id === v.resourceId);
   assert(r.videoProvenance.resultTitle.includes('การแก้ระบบสมการเชิงเส้นสองตัวแปร ตอนที่ 1'));
-  assert(VL.includes('data-testid="embedded-video"') && VL.includes('url={v.embedUrl}'));
+  assert(VL.includes("'embedded-video'") && VL.includes('media={v.media}'));
 });
 await test('3 + 24. No video selected → no iframe: entry/pick/clip list render no player', () => {
   const before = VL.slice(0, VL.indexOf('/* ── Workspace'));
-  assert(!/<YouTubePlayer|<iframe/.test(before));
-  assert.strictEqual((VL.match(/<YouTubePlayer/g) || []).length, 1);
-  assert(VL.indexOf('{v.embeddable && v.embedUrl ? (') > VL.indexOf('/* ── Workspace'));
+  assert(!/<YouTubePlayer|<UniversalVideoPlayer|<iframe/.test(before));
+  assert.strictEqual((VL.match(/<UniversalVideoPlayer/g) || []).length, 1);
+  assert(VL.indexOf('<UniversalVideoPlayer') > VL.indexOf('/* ── Workspace'));
 });
 await test('4. Non-YouTube resource → fallback "คลิปนี้ยังไม่สามารถเล่นใน V2U ได้" + เปิดต้นทาง', () => {
   const v = V.getLessonVideoSequence('math-alg-linear-eq').find((x) => x.resourceId === 'th-p14-m1-linear-eq-solve-2');
   assert(!v.embeddable && !v.videoId && !v.embedUrl, 'proj14 page is not a YouTube embed');
-  assert(VL.includes('data-testid="video-fallback"') && VL.includes('คลิปนี้ยังไม่สามารถเล่นใน V2U ได้') && VL.includes('เปิดต้นทาง'));
+  const UP = read('src/components/video/UniversalVideoPlayer.tsx');
+  assert(UP.includes('data-testid="video-fallback"') && UP.includes('แหล่งนี้ยังไม่สามารถเล่นใน V2U ได้') && UP.includes('OPEN_SOURCE'));
 });
 await test('5. Invalid videoId → fallback; registry rejects invalid/non-YouTube candidate videos', () => {
   assert.strictEqual(V.ownToVideo({ id: 'x', type: 'youtube', title: 't', url: 'https://www.youtube.com/watch?v=bad' }, LSYS).embeddable, false);
@@ -88,7 +89,7 @@ await test('Embedding never changes status: embedded clips stay unverified + lab
     const v = V.curatedToVideo(r, r.curriculumLessonIds[0]);
     assert(v.embeddable && !v.checked && !v.url && v.linkState === 'ยังไม่ได้ตรวจลิงก์', r.id);
   }
-  assert(VL.includes('{v.linkState}') && VL.includes('แหล่งภายนอก เล่นจาก YouTube ภายใน V2U'));
+  assert(VL.includes('{v.linkState}') && VL.includes('เล่นผ่านเครื่องเล่นทางการของ'));
 });
 await test('6–7. Watched + skip preserved (unchanged Phase 55/56 behaviour)', () => {
   const s = useStore.getState();
