@@ -5,9 +5,9 @@ import { TYPE_LABEL } from '../../resources/engine';
 export function ResourceLink({ r, heading }: { r: CuratedResource; heading?: string }) {
   const checked = r.url && (r.status === 'active' || r.status === 'verified');
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 text-xs">
-      {heading && <p className="text-[11px] font-bold text-blue-800">{heading}</p>}
-      <p className="font-semibold text-slate-900 break-words">{r.title}</p>
+    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 text-xs">
+      {heading && <p className="text-xs font-semibold text-brand-700">{heading}</p>}
+      <p className="mt-0.5 text-sm font-semibold text-ink break-words">{r.title}</p>
       <p className="mt-0.5 flex flex-wrap gap-x-2 text-[11px] text-slate-500">
         <span>{r.provider}</span>
         <span>{TYPE_LABEL[r.type]}</span>

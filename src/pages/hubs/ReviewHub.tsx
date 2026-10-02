@@ -1,9 +1,10 @@
-import { AlarmClock, CalendarClock, HelpCircle, RotateCcw, Target } from 'lucide-react';
+import { AlarmClock, CalendarClock, HelpCircle, RotateCcw, Target, CheckCircle2, ArrowRight } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { HubHeader, HubLinkList, CountBadge } from '../../components/navigation/HubLinkList';
 import type { HubLink } from '../../components/navigation/HubLinkList';
 import { useLearningRecords } from '../../hooks/useLearningRecords';
 import { getSkillGaps } from '../../skills/engine';
+import { ButtonLink, EmptyState, Stat } from '../../components/ui';
 
 /** ทบทวน — due reviews, review questions (inside each review room) and not-understood topics. */
 export function ReviewHub() {
@@ -20,10 +21,18 @@ export function ReviewHub() {
   });
 
   const unclearCount = unclearTopics.filter((t) => t.status !== 'Understood').length;
+  const nothingDue = overdue.length === 0 && dueToday.length === 0 && weakSkills.length === 0;
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto w-full max-w-3xl space-y-6 sm:space-y-8">
       <HubHeader title="ทบทวน" subtitle="ทบทวนตามจังหวะที่เหมาะสม เพื่อให้จำได้จนถึงวันสอบ" />
+
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <Stat icon={AlarmClock} tone={overdue.length ? 'warn' : 'plain'} label="เลยเวลา" value={overdue.length} />
+        <Stat icon={RotateCcw} label="ถึงรอบวันนี้" value={dueToday.length} />
+        <Stat icon={CalendarClock} tone="good" label="รอบถัดไป" value={upcoming.length} />
+      </div>
+
       {overdue.length > 0 && (
         <HubLinkList heading={`เลยเวลาทบทวน (${overdue.length})`} links={overdue.map(toLink(AlarmClock, 'ควรทบทวนก่อน'))} />
       )}
@@ -38,14 +47,22 @@ export function ReviewHub() {
           }))}
         />
       )}
-      <HubLinkList
-        heading={`ถึงรอบวันนี้ (${dueToday.length})`}
-        links={
-          dueToday.length > 0
-            ? dueToday.map(toLink(RotateCcw, 'ทบทวนพร้อมคำถามทบทวน'))
-            : [{ to: '/', title: 'วันนี้ไม่มีเรื่องที่ถึงรอบ', description: 'กลับไปดูก้าวต่อไปของคุณ', icon: RotateCcw }]
-        }
-      />
+      {dueToday.length > 0 && (
+        <HubLinkList heading={`ถึงรอบวันนี้ (${dueToday.length})`} links={dueToday.map(toLink(RotateCcw, 'ทบทวนพร้อมคำถามทบทวน'))} />
+      )}
+      {nothingDue && (
+        <EmptyState
+          icon={CheckCircle2}
+          title="วันนี้ไม่มีเรื่องที่ถึงรอบ"
+          body="เมื่อเรียนจบแต่ละบท V2U จะนัดรอบทบทวนให้เอง ระหว่างนี้ไปทำก้าวต่อไปได้เลย"
+          action={
+            <ButtonLink to="/">
+              กลับไปดูก้าวต่อไปของคุณ <ArrowRight className="h-4 w-4" />
+            </ButtonLink>
+          }
+        />
+      )}
+
       <HubLinkList
         heading="อื่น ๆ"
         links={[

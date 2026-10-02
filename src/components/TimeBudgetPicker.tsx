@@ -24,8 +24,8 @@ export function TimeBudgetPicker({ value, onChange, label = 'คุณมีเ�
             role="radio"
             aria-checked={value === b.minutes}
             onClick={() => onChange(b.minutes)}
-            className={`rounded-xl border px-2 py-2 min-h-[44px] text-xs font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-              value === b.minutes ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300'
+            className={`rounded-xl border px-2 py-2 min-h-[44px] text-xs font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${
+              value === b.minutes ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-brand-300'
             }`}
           >
             {b.label}

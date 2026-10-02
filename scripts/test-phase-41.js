@@ -80,7 +80,7 @@ await test('Layout no longer uses Sidebar drawer as primary navigation', () => {
   assert(!layout.includes('mobile-sidebar'), 'mobile drawer must be removed');
 });
 await test('Main content reserves space for BottomNav on mobile', () => {
-  assert(layout.includes('pb-24') && layout.includes('md:pb-6'));
+  assert(layout.includes('pb-28') && layout.includes('md:pb-10')) // Phase 52: taller nav (68px);
 });
 await test('Layout keeps skip link and main landmark', () => {
   assert(layout.includes('href="#main-content"'));

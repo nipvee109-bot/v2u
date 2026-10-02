@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Search, Bell, GraduationCap } from 'lucide-react';
+import { Search, Bell, GraduationCap, UserRound } from 'lucide-react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { BottomNav } from './BottomNav';
@@ -37,7 +37,7 @@ export function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#EFF3F8]">
+    <div className="flex h-screen overflow-hidden bg-canvas">
       {/* Keyboard Accessible Skip Link */}
       <a
         href="#main-content"
@@ -50,16 +50,16 @@ export function Layout({ children }: LayoutProps) {
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <OfflineIndicator />
         {/* Header */}
-        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between border-b border-slate-200/60 bg-white/90 px-3.5 sm:px-4 lg:px-6 backdrop-blur-xl">
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between border-b border-slate-200/70 bg-white/95 px-3.5 sm:px-4 lg:px-6 backdrop-blur-xl">
           {/* Left section: V2U brand + desktop primary nav */}
           <div className="flex items-center gap-3 lg:gap-5 min-w-0">
-            <Link to="/" aria-label="V2U หน้าหลัก" className="flex items-center gap-2 shrink-0">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
-                <GraduationCap className="h-4.5 w-4.5" />
+            <Link to="/" aria-label="V2U เส้นทางสายอาชีพสู่มหาวิทยาลัย — หน้าหลัก" className="flex items-center gap-2 shrink-0">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-sm shadow-brand-700/30">
+                <GraduationCap className="h-5 w-5" />
               </span>
               <span className="flex flex-col leading-tight">
-                <span className="text-sm font-extrabold text-slate-900">V2U</span>
-                <span className="hidden text-[10px] font-medium text-slate-500 sm:block lg:hidden xl:block">เส้นทางสายอาชีพสู่มหาวิทยาลัย</span>
+                <span className="text-base font-bold tracking-tight text-ink">V2U</span>
+                <span className="text-[10px] font-medium text-slate-500 lg:hidden xl:block">จากจุดที่คุณอยู่ → สู่มหาวิทยาลัย</span>
               </span>
             </Link>
             <TopNav />
@@ -111,7 +111,7 @@ export function Layout({ children }: LayoutProps) {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setSearchFocused(true)}
                   onBlur={() => setSearchFocused(false)}
-                  className={`rounded-xl border border-slate-300 bg-slate-50 py-2 pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition-all duration-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 ${
+                  className={`rounded-xl border border-slate-300 bg-slate-50 py-2 pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition-all duration-200 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100 ${
                     searchFocused ? 'w-64' : 'w-44'
                   }`}
                 />
@@ -132,9 +132,9 @@ export function Layout({ children }: LayoutProps) {
             <Link
               to="/me"
               aria-label="โปรไฟล์ผู้ใช้งาน"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-xs font-bold text-white shadow-sm transition-transform hover:scale-105 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-600 to-brand-800 text-sm font-bold text-white shadow-sm transition-transform hover:scale-105 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             >
-              S
+              <UserRound className="h-5 w-5" />
             </Link>
           </div>
         </header>
@@ -143,7 +143,7 @@ export function Layout({ children }: LayoutProps) {
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 overflow-y-auto overflow-x-hidden px-3.5 sm:px-4 pt-5 pb-24 sm:pt-6 md:pb-6 lg:px-6 xl:px-8 focus:outline-none"
+          className="flex-1 overflow-y-auto overflow-x-hidden px-3.5 sm:px-4 pt-5 pb-28 sm:pt-8 md:pb-10 lg:px-6 xl:px-8 focus:outline-none"
         >
           {children}
         </main>

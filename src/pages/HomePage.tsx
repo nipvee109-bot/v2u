@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Flag, ListChecks, Sparkles, Lightbulb, ArrowRight, Clock, Trophy } from 'lucide-react';
+import { MapPin, Flag, ListChecks, ArrowRight, Clock, Trophy, RotateCcw, Gauge, CheckCircle2, ChevronRight } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { getNextStep } from '../utils/nextStep';
 import { shouldShowOnboarding } from '../utils/onboardingUtils';
@@ -9,10 +9,12 @@ import { useNextStepParams } from '../hooks/useNextStep';
 import { useStartNextStep } from '../hooks/useStartNextStep';
 import { TimeBudgetPicker } from '../components/TimeBudgetPicker';
 import { normalizeStudentProfile } from '../route/engine';
+import { LoopStrip, PlanBar, ProgressBar, Section, Stat, Surface, Chip } from '../components/ui';
 
 /**
  * V2U Home — "ก้าวต่อไปของคุณ".
  * All decision logic lives in getNextStep(); this component only renders it.
+ * Layout: journey (where → goal) · today's ONE step · time · status · what's missing.
  */
 export function HomePage() {
   const {
@@ -22,8 +24,12 @@ export function HomePage() {
     hasCompletedOnboarding,
     studentProfile,
     setStudentProfile,
+    getDueReviewItems,
   } = useStore();
   const budget = normalizeStudentProfile(studentProfile).availableMinutes;
+  const { overdue, dueToday } = getDueReviewItems();
+  const dueCount = overdue.length + dueToday.length;
+  const completed = lessons.filter((l) => l.status === 'COMPLETED').length;
 
   // Auto-prompt onboarding only for fresh users (state is hydrated synchronously from storage)
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(() =>
@@ -34,140 +40,155 @@ export function HomePage() {
   const step = getNextStep(useNextStepParams());
   const { start, confirmModal } = useStartNextStep();
   const handleStart = () => start(step);
+  const rec = step.curriculum?.recommendedResource;
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <header className="mb-5">
-        <p className="text-xs font-bold text-blue-700">V2U · เส้นทางสายอาชีพสู่มหาวิทยาลัย</p>
-        <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-900">ก้าวต่อไปของคุณ</h1>
-        <p className="mt-1 text-sm text-slate-600">จากจุดที่คุณอยู่ → สู่มหาวิทยาลัยที่คุณต้องการ</p>
+    <div className="mx-auto w-full max-w-3xl space-y-6 sm:space-y-8">
+      <header>
+        <p className="text-xs font-semibold text-brand-700">จากจุดที่คุณอยู่ → สู่มหาวิทยาลัยที่คุณต้องการ</p>
+        <h1 className="mt-0.5 text-2xl font-bold text-ink sm:text-[28px]">ก้าวต่อไปของคุณ</h1>
       </header>
 
       {/* Today's single next step */}
       <section
         aria-labelledby="next-step-today"
-        className="rounded-3xl bg-gradient-to-br from-blue-700 to-indigo-800 p-5 sm:p-6 text-white shadow-lg"
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white shadow-lg shadow-brand-900/20 sm:p-7"
       >
-        <div className="flex items-center gap-2 text-xs font-bold text-blue-100">
-          <Sparkles className="h-4 w-4" />
-          <span>วันนี้ควรทำอะไร</span>
-        </div>
-        <h2 id="next-step-today" className="mt-2 text-lg sm:text-xl font-extrabold leading-snug">
+        <LoopStrip current="today" onDark />
+        <p className="mt-4 text-xs font-semibold text-brand-100">วันนี้ควรทำอะไร</p>
+        <h2 id="next-step-today" className="mt-1 text-xl font-bold leading-snug sm:text-2xl break-words">
           {step.todayAction}
         </h2>
-        <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-medium text-blue-100">
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           {step.minutes !== undefined && (
-            <span className="flex items-center gap-1 font-bold text-white">
+            <Chip tone="onDark">
               <Clock className="h-3.5 w-3.5" /> {step.minutes} นาที
-            </span>
+            </Chip>
           )}
-          {step.curriculum && <span>{step.curriculum.path}</span>}
-        </p>
-        <div className="mt-3 flex items-start gap-2 rounded-2xl bg-white/10 p-3 text-sm text-blue-50">
-          <Lightbulb className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>
-            <span className="font-bold">ทำไม: </span>
-            {step.reason}
-            {step.curriculum?.recommendedResource && (
-              <span className="mt-1 block text-xs text-blue-100">
-                แนะนำ: {step.curriculum.recommendedResource.title} — {step.curriculum.recommendedResource.whyV2USelected}
-              </span>
-            )}
-            {!step.outcome && step.curriculum && step.curriculum.learningOutcomes.length > 0 && (
-              <span className="mt-1 block text-xs text-blue-100">
-                เรียนจบแล้วจะทำได้: {step.curriculum.learningOutcomes.join(' · ')}
-              </span>
-            )}
-            {step.curriculum && step.curriculum.missingPrerequisiteTitles.length > 0 && (
-              <span className="mt-1 block text-xs text-amber-100">
-                ควรปูพื้นก่อน: {step.curriculum.missingPrerequisiteTitles.join(', ')}
-              </span>
-            )}
-          </p>
+          {step.curriculum && <span className="text-xs text-brand-100 break-words">{step.curriculum.path}</span>}
         </div>
+
+        <p className="mt-4 text-sm leading-relaxed text-white/90 break-words">
+          <span className="font-semibold text-white">ทำไม: </span>
+          {step.reason}
+        </p>
         {step.outcome && (
-          <p className="mt-2 flex items-start gap-2 text-sm text-blue-50">
-            <Trophy className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>
-              <span className="font-bold">ได้อะไร: </span>
+          <p className="mt-2 flex items-start gap-2 text-sm text-white/90">
+            <Trophy className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+            <span className="break-words">
+              <span className="font-semibold text-white">ได้อะไร: </span>
               {step.outcome}
             </span>
           </p>
         )}
+
         {step.plan && (
-          <ol className="mt-2 space-y-0.5 text-xs text-blue-100" aria-label="แผนที่ V2U จัดให้">
-            {step.plan.steps.map((ps, i) => (
-              <li key={`${ps.kind}-${i}`}>
-                {i + 1}. {ps.label} — {ps.minutes} นาที
-              </li>
-            ))}
-          </ol>
+          <div className="mt-4" aria-label="แผนที่ V2U จัดให้">
+            <PlanBar onDark segments={step.plan.steps.map((ps) => ({ label: ps.label, minutes: ps.minutes }))} />
+          </div>
         )}
+
+        {(rec || (step.curriculum && (step.curriculum.missingPrerequisiteTitles.length > 0 || (!step.outcome && step.curriculum.learningOutcomes.length > 0)))) && (
+          <details className="group mt-4 rounded-2xl bg-white/10 text-sm">
+            <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between px-3.5 text-xs font-semibold text-white">
+              เรียนจากอะไร และควรรู้อะไรก่อน
+              <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
+            </summary>
+            <div className="space-y-1.5 px-3.5 pb-3.5 text-xs text-white/85">
+              {rec && (
+                <p className="break-words">
+                  <span className="font-semibold text-white">แนะนำ: </span>
+                  {rec.title} — {rec.whyV2USelected}
+                </p>
+              )}
+              {!step.outcome && step.curriculum && step.curriculum.learningOutcomes.length > 0 && (
+                <p className="break-words">เรียนจบแล้วจะทำได้: {step.curriculum.learningOutcomes.join(' · ')}</p>
+              )}
+              {step.curriculum && step.curriculum.missingPrerequisiteTitles.length > 0 && (
+                <p className="text-amber-200 break-words">ควรปูพื้นก่อน: {step.curriculum.missingPrerequisiteTitles.join(', ')}</p>
+              )}
+            </div>
+          </details>
+        )}
+
         <button
           type="button"
           onClick={handleStart}
-          className="mt-4 flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl bg-white px-6 py-3.5 min-h-[48px] text-base font-extrabold text-blue-800 shadow-md transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-4 focus-visible:ring-white/60"
+          className="mt-5 flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-white px-6 text-base font-bold text-brand-800 shadow-md transition-colors hover:bg-brand-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/60 sm:w-auto"
         >
           {step.ctaLabel}
           <ArrowRight className="h-5 w-5" />
         </button>
       </section>
 
-      <section aria-label="เวลาที่มีวันนี้" className="mt-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xs">
-        <TimeBudgetPicker
-          label="วันนี้มีเวลาเท่าไหร่?"
-          value={budget}
-          onChange={(m) => setStudentProfile({ availableMinutes: m })}
-        />
-      </section>
-
-      {/* Where am I / target / what's missing */}
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <section aria-labelledby="home-current" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-            <MapPin className="h-4 w-4 text-blue-600" />
-            <span>ตอนนี้อยู่ตรงไหน</span>
+      {/* Journey: where I am → where I'm going */}
+      <Surface as="section" aria-label="เส้นทางของคุณ" padded={false} className="p-4">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-3">
+          <div className="min-w-0">
+            <p className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+              <MapPin className="h-3.5 w-3.5 text-brand-600" /> ตอนนี้อยู่ตรงไหน
+            </p>
+            <p id="home-current" className="mt-1 text-sm font-bold text-ink break-words">{step.current.label}</p>
           </div>
-          <p id="home-current" className="mt-1.5 text-base font-bold text-slate-900">{step.current.label}</p>
-          <p className="mt-0.5 text-xs text-slate-600">{step.current.detail}</p>
-          {!studentProfile && (
-            <Link to="/route" className="mt-1 inline-block text-xs font-semibold text-blue-700 underline">
-              บอกระดับชั้นและสาขาของคุณ เพื่อให้เส้นทางตรงกับคุณ
-            </Link>
-          )}
-          <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
-            <div className="h-full rounded-full bg-blue-600" style={{ width: `${step.current.progressPercent}%` }} />
+          <ArrowRight className="mt-5 h-4 w-4 text-slate-300" aria-hidden="true" />
+          <div className="min-w-0 text-right">
+            <p className="flex items-center justify-end gap-1.5 text-xs font-medium text-slate-500">
+              <Flag className="h-3.5 w-3.5 text-emerald-600" /> เป้าหมายคืออะไร
+            </p>
+            <p id="home-goal" className="mt-1 text-sm font-bold text-ink break-words">{step.goal.label}</p>
           </div>
-        </section>
+        </div>
+        <div className="mt-3">
+          <ProgressBar value={step.current.progressPercent} label={`ความคืบหน้าในเส้นทาง ${step.current.progressPercent}%`} />
+          <p className="mt-1.5 text-xs text-slate-500 break-words">{step.current.detail}</p>
+        </div>
+        {!studentProfile && (
+          <Link to="/route" className="mt-2 inline-flex min-h-[32px] items-center text-xs font-semibold text-brand-700 underline">
+            บอกระดับชั้นและสาขาของคุณ เพื่อให้เส้นทางตรงกับคุณ
+          </Link>
+        )}
+      </Surface>
 
-        <section aria-labelledby="home-goal" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-            <Flag className="h-4 w-4 text-emerald-600" />
-            <span>เป้าหมายคืออะไร</span>
-          </div>
-          <p id="home-goal" className="mt-1.5 text-base font-bold text-slate-900">{step.goal.label}</p>
-          <p className="mt-0.5 text-xs text-slate-600">{step.goal.detail}</p>
-        </section>
+      <Surface as="section" aria-label="เวลาที่มีวันนี้" padded={false} className="p-4">
+        <TimeBudgetPicker label="วันนี้มีเวลาเท่าไหร่?" value={budget} onChange={(m) => setStudentProfile({ availableMinutes: m })} />
+      </Surface>
 
-        <section aria-labelledby="home-missing" className="sm:col-span-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+      <Section title="ภาพรวมตอนนี้" id="home-status">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <Stat icon={Gauge} label="ความคืบหน้า" value={`${step.current.progressPercent}%`} />
+          <Stat icon={CheckCircle2} tone="good" label="เรียนจบ" value={`${completed}/${lessons.length}`} hint="บท" />
+          <Stat icon={RotateCcw} tone={dueCount > 0 ? 'warn' : 'plain'} label="ทบทวนวันนี้" value={dueCount} hint={dueCount > 0 ? 'ถึงรอบแล้ว' : 'ไม่มีค้าง'} />
+        </div>
+      </Section>
+
+      <Section
+        title={
+          <span className="flex items-center gap-2">
             <ListChecks className="h-4 w-4 text-amber-600" />
             <span id="home-missing">ยังขาดอะไร</span>
-          </div>
-          {step.missing.length > 0 ? (
-            <ul className="mt-2 space-y-1.5">
-              {step.missing.map((m) => (
-                <li key={m} className="flex items-center gap-2 text-sm text-slate-800">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                  {m}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-2 text-sm text-slate-700">ไม่มีอะไรค้าง — คุณอยู่ในเส้นทางที่ดี</p>
-          )}
-        </section>
-      </div>
+          </span>
+        }
+        action={
+          <Link to="/route" className="inline-flex min-h-[44px] items-center text-xs font-semibold text-brand-700">
+            ดูเส้นทางทั้งหมด
+          </Link>
+        }
+      >
+        {step.missing.length > 0 ? (
+          <ul className="divide-y divide-slate-100 rounded-2xl border border-slate-200/80 bg-white">
+            {step.missing.map((m) => (
+              <li key={m} className="flex min-h-[48px] items-center gap-3 px-4 py-2.5 text-sm text-slate-800">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
+                <span className="break-words">{m}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <Surface tone="good">
+            <p className="text-sm text-emerald-900">ไม่มีอะไรค้าง — คุณอยู่ในเส้นทางที่ดี</p>
+          </Surface>
+        )}
+      </Section>
 
       <StudyOnboardingModal
         isOpen={isOnboardingOpen}

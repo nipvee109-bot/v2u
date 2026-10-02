@@ -63,7 +63,7 @@ export function AdmissionStatusCard() {
   );
 
   return (
-    <section aria-labelledby="admission-status" className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+    <section aria-labelledby="admission-status" className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
       <h2 id="admission-status" className="flex items-center gap-2 text-sm font-bold text-slate-900">
         <ClipboardCheck className="h-4 w-4 text-blue-600" /> ข้อมูลของฉันตอนนี้เป็นอย่างไร?
       </h2>

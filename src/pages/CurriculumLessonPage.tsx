@@ -7,6 +7,7 @@ import { getLearningPath, describePlan } from '../content/engine';
 import { normalizeStudentProfile } from '../route/engine';
 import { OriginalLessonView } from '../components/learn/OriginalLessonView';
 import { ResourceLink } from '../components/learn/ResourceLink';
+import { Chip, LoopStrip, PlanBar, ScreenHeader } from '../components/ui';
 
 type Mode = 'video' | 'read' | 'original';
 const MODES: { id: Mode; label: string }[] = [
@@ -42,23 +43,27 @@ export function CurriculumLessonPage() {
   const altVideo = path.alternative && path.alternative.id !== video?.id && (path.alternative.type === 'video' || path.alternative.type === 'course') ? path.alternative : undefined;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
-      <header>
-        <Link to="/learn/curriculum" className="text-xs font-semibold text-blue-700 hover:underline">← หลักสูตร</Link>
-        <p className="mt-1 text-[11px] text-slate-500">{subject?.title}</p>
-        <h1 className="text-xl font-extrabold text-slate-900 break-words">{lesson.title}</h1>
-        <p className="mt-1 text-sm text-slate-600 break-words">{lesson.description}</p>
-        {missing.length > 0 && <p className="mt-1 text-xs text-amber-700">ควรปูพื้นก่อน: {missing.map((x) => x.title).join(', ')}</p>}
-      </header>
+    <div className="mx-auto w-full max-w-3xl space-y-5 pb-20 md:pb-0">
+      <ScreenHeader
+        back={{ to: '/learn/curriculum', label: 'หลักสูตร' }}
+        eyebrow={subject?.title}
+        title={lesson.title}
+        subtitle={lesson.description}
+      />
+      <div className="-mt-3 flex flex-wrap gap-2">
+        <Chip tone="brand">{lesson.estimatedMinutes} นาที</Chip>
+        <Chip>{lesson.learningOutcomes.length} สิ่งที่จะทำได้</Chip>
+        {missing.length > 0 && <Chip tone="warn">ควรปูพื้นก่อน: {missing.map((x) => x.title).join(', ')}</Chip>}
+      </div>
 
-      <div role="tablist" aria-label="วิธีเรียน" className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1">
+      <div role="tablist" aria-label="วิธีเรียน" className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-200/60 p-1">
         {MODES.map((x) => (
           <button
             key={x.id}
             role="tab"
             aria-selected={mode === x.id}
             onClick={() => setParams({ mode: x.id }, { replace: true })}
-            className={`min-h-[44px] rounded-xl px-2 text-xs font-bold ${mode === x.id ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600'}`}
+            className={`min-h-[44px] rounded-xl px-2 text-sm font-semibold transition-colors ${mode === x.id ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-600 hover:text-ink'}`}
           >
             {x.label}
           </button>
@@ -81,15 +86,23 @@ export function CurriculumLessonPage() {
       {mode === 'original' && <OriginalLessonView content={path.original} />}
 
       {plan && (
-        <section aria-label="แผนวันนี้" className="rounded-2xl border border-blue-200 bg-blue-50/60 p-3 text-xs">
-          <p className="font-bold text-blue-900">แผนวันนี้ ({budget} นาที)</p>
-          <p className="mt-1 text-slate-800 break-words" data-testid="plan-summary">{describePlan(plan)}</p>
+        <section aria-label="แผนวันนี้" className="rounded-2xl border border-brand-100 bg-brand-50 p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-bold text-brand-900">แผนวันนี้ · {budget} นาที</p>
+            <LoopStrip current="learn" />
+          </div>
+          <p className="sr-only" data-testid="plan-summary">{describePlan(plan)}</p>
+          <div className="mt-3">
+            <PlanBar segments={plan.steps.map((st) => ({ label: st.label, minutes: st.minutes }))} />
+          </div>
         </section>
       )}
       {studyLesson && (
-        <Link to={`/lessons/${studyLesson.id}`} className="inline-flex min-h-[44px] items-center rounded-xl bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700">
-          เริ่มเรียนตามแผน
-        </Link>
+        <div className="fixed inset-x-0 bottom-[68px] z-30 border-t border-slate-200 bg-white/95 p-3 backdrop-blur md:static md:border-0 md:bg-transparent md:p-0">
+          <Link to={`/lessons/${studyLesson.id}`} className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-6 text-base font-bold text-white shadow-sm hover:bg-brand-700 md:w-auto md:inline-flex">
+            เริ่มเรียนตามแผน
+          </Link>
+        </div>
       )}
     </div>
   );

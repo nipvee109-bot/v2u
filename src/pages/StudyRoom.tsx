@@ -27,6 +27,7 @@ import { formatVideoTime } from '../components/study/YouTubePlayer';
 import { VoiceSummaryInput } from '../components/study/VoiceSummaryInput';
 import { resolveCurriculumStep } from '../curriculum/engine';
 import { LearningPathPanel } from '../components/learn/LearningPathPanel';
+import { LoopStrip } from '../components/ui';
 import { getResourcesForLesson } from '../resources/engine';
 
 type ActiveTab = 'notes' | 'timestamps' | 'resources' | 'info';
@@ -309,21 +310,22 @@ export const StudyRoom: React.FC = () => {
   const timestampedNotes = lesson.timestampedNotes || [];
 
   return (
-    <div className="space-y-4 pb-16 animate-fadeIn">
+    <div className="mx-auto w-full max-w-6xl space-y-5 pb-16 animate-fadeIn">
       {/* ═══════════ TOP HEADER & CONTROL BAR ═══════════ */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-4 sm:p-6 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4 border border-slate-800">
+      <div className="rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 p-4 sm:p-6 text-white shadow-lg shadow-brand-900/15 flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Left: Breadcrumbs & Title */}
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-xs text-slate-400">
+          <LoopStrip current="learn" onDark />
+          <div className="flex flex-wrap items-center gap-2 pt-2 text-xs text-brand-100">
             <Link
               to={`/lessons/${lesson.id}`}
-              className="inline-flex items-center gap-1 hover:text-white transition-colors"
+              className="inline-flex min-h-[32px] items-center gap-1 hover:text-white transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>หน้ารายละเอียดบทเรียน</span>
             </Link>
             <span>&middot;</span>
-            <span className="text-blue-400 font-semibold">{subjectInfo.name}</span>
+            <span className="font-semibold text-white">{subjectInfo.name}</span>
             <span>&middot;</span>
             <span>เดือนที่ {lesson.month}</span>
           </div>
@@ -332,8 +334,8 @@ export const StudyRoom: React.FC = () => {
             <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-white">
               {lesson.title}
             </h1>
-            <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-[11px] font-semibold border border-blue-400/20">
-              Study Room
+            <span className="px-2 py-0.5 rounded-full bg-white/15 text-white text-[11px] font-semibold">
+              ห้องเรียน
             </span>
           </div>
         </div>
@@ -343,7 +345,7 @@ export const StudyRoom: React.FC = () => {
           {/* Real Study Timer Card */}
           <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/15 px-4 py-2 rounded-2xl shadow-inner">
             <div className="space-y-0.5">
-              <div className="flex items-center gap-1.5 text-[11px] text-slate-300">
+              <div className="flex items-center gap-1.5 text-[11px] text-brand-100">
                 <span className={`w-2 h-2 rounded-full ${isTimerActive ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
                 <span className="font-medium">เวลาเรียนจริง</span>
                 <span className="text-white/40">/</span>
@@ -364,7 +366,7 @@ export const StudyRoom: React.FC = () => {
             <button
               onClick={isTimerActive ? pauseLearningSession : resumeLearningSession}
               aria-label={isTimerActive ? 'พักเวลาเรียน' : 'เริ่มจับเวลาเรียนต่อ'}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-md ${
+              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all shadow-md ${
                 isTimerActive
                   ? 'bg-amber-500 hover:bg-amber-600 text-slate-950'
                   : 'bg-emerald-500 hover:bg-emerald-600 text-white'
@@ -377,7 +379,7 @@ export const StudyRoom: React.FC = () => {
           {/* Finish Session Button */}
           <button
             onClick={() => setIsFinishModalOpen(true)}
-            className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs sm:text-sm font-bold shadow-lg shadow-blue-600/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="flex min-h-[48px] items-center gap-2 px-5 rounded-2xl bg-white text-brand-800 hover:bg-brand-50 text-sm font-bold shadow-md transition-colors"
           >
             <CheckCircle2 className="w-4 h-4" />
             <span>เสร็จสิ้นการเรียน</span>
@@ -432,6 +434,10 @@ export const StudyRoom: React.FC = () => {
             </button>
           </div>
 
+          {!selectedResource && (activeLearningSession?.curriculumLessonId ?? curriculumStep?.lesson.id) && (
+            <LearningPathPanel lessonId={(activeLearningSession?.curriculumLessonId ?? curriculumStep?.lesson.id)!} />
+          )}
+
           {/* Primary Embedded Resource Viewer */}
           <ResourceViewer
             resource={selectedResource}
@@ -439,6 +445,10 @@ export const StudyRoom: React.FC = () => {
             onTimeUpdate={(seconds) => setVideoCurrentSeconds(seconds)}
             seekToSeconds={seekTargetSeconds}
           />
+
+          {selectedResource && (activeLearningSession?.curriculumLessonId ?? curriculumStep?.lesson.id) && (
+            <LearningPathPanel lessonId={(activeLearningSession?.curriculumLessonId ?? curriculumStep?.lesson.id)!} />
+          )}
 
           {/* Resource quick meta pill */}
           {selectedResource && (
@@ -459,9 +469,6 @@ export const StudyRoom: React.FC = () => {
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
-          )}
-          {(activeLearningSession?.curriculumLessonId ?? curriculumStep?.lesson.id) && (
-            <LearningPathPanel lessonId={(activeLearningSession?.curriculumLessonId ?? curriculumStep?.lesson.id)!} />
           )}
         </div>
 

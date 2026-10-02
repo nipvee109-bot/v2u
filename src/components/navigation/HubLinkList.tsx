@@ -1,5 +1,4 @@
-import { Link } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { RowGroup, ScreenHeader } from '../ui';
 import type { ComponentType, ReactNode } from 'react';
 
 export interface HubLink {
@@ -12,43 +11,17 @@ export interface HubLink {
 
 /** Shared section-hub header + link list used by เรียน / ทบทวน / เส้นทาง / ฉัน. */
 export function HubHeader({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <header className="mb-5">
-      <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900">{title}</h1>
-      <p className="mt-1 text-sm text-slate-600">{subtitle}</p>
-    </header>
-  );
+  return <ScreenHeader title={title} subtitle={subtitle} />;
 }
 
 export function HubLinkList({ heading, links }: { heading?: string; links: HubLink[] }) {
   return (
-    <section className="mb-6">
-      {heading && <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">{heading}</h2>}
-      <ul className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-        {links.map((link) => {
-          const Icon = link.icon;
-          return (
-            <li key={`${link.to}|${link.title}`}>
-              <Link
-                to={link.to}
-                className="flex h-full items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 min-h-[64px] shadow-xs transition-colors hover:border-blue-300 hover:bg-blue-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-              >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                  <Icon className="h-5 w-5" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2">
-                    <span className="truncate text-sm font-bold text-slate-900">{link.title}</span>
-                    {link.badge}
-                  </span>
-                  <span className="mt-0.5 block text-xs text-slate-500">{link.description}</span>
-                </span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+    <section className="space-y-3">
+      {heading && <h2 className="text-base font-bold text-ink">{heading}</h2>}
+      <RowGroup
+        label={heading}
+        items={links.map((l) => ({ key: `${l.to}|${l.title}`, to: l.to, title: l.title, meta: l.description, icon: l.icon, trailing: l.badge }))}
+      />
     </section>
   );
 }

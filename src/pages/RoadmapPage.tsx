@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
+import { ProgressBar, ScreenHeader } from '../components/ui';
 import { useStore } from '../store/useStore';
 import { SIX_MONTH_ROADMAP } from '../data/roadmapData';
 import { SUBJECTS } from '../types';
 import { Link } from 'react-router-dom';
 import { 
-  Map, 
   Clock, 
   Sparkles,
   ArrowRight,
@@ -150,45 +150,27 @@ export function RoadmapPage() {
   }, [weeksData, selectedSubjectFilter, selectedMilestoneId, milestonesWithProgress]);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-20 font-sans">
+    <div className="mx-auto w-full max-w-5xl space-y-6 sm:space-y-8">
       
-      {/* ═══════════ HEADER: 6-Month Roadmap Engine ═══════════ */}
-      <div className="bg-gradient-to-br from-[#0B1120] via-[#131C31] to-[#0B1120] rounded-2xl p-6 md:p-8 text-white relative overflow-hidden shadow-lg">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-xs font-semibold text-blue-400 uppercase tracking-wider">
-              <Map className="w-4 h-4" /> ลำดับเนื้อหาตามหลักสูตร
-            </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              ลำดับเนื้อหาสู่วิศวกรรมคอมพิวเตอร์ & AI
-            </h1>
-            <p className="text-xs md:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              เชื่อมโยงการอ่านหนังสือในแต่ละวันเข้ากับเป้าหมายระดับเดือนและไมล์สโตนสำคัญ เพื่อให้มั่นใจว่าครอบคลุมเนื้อหาครบถ้วนก่อนสอบ
-            </p>
-          </div>
-
-          {/* Macro Progress Pill */}
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 min-w-[220px] shrink-0 space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-300 font-medium">ความก้าวหน้าตามลำดับเนื้อหา</span>
-              <span className="text-white font-bold">{overallProgressPercent}%</span>
-            </div>
-            <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-blue-500 rounded-full transition-all duration-500" 
-                style={{ width: `${overallProgressPercent}%` }} 
-              />
-            </div>
-            <p className="text-[11px] text-slate-400">
-              เรียนจบแล้ว {totalCompleted} จาก {totalLessons} บทเรียนทั้งหมด
-            </p>
-          </div>
+      <ScreenHeader
+        back={{ to: '/route', label: 'เส้นทาง' }}
+        eyebrow="ลำดับเนื้อหาตามหลักสูตร"
+        title="ลำดับเนื้อหาสู่วิศวกรรมคอมพิวเตอร์ & AI"
+        subtitle="เนื้อหาทั้งหมดเรียงเป็นช่วง ๆ — ระยะเวลาจริงของคุณดูได้ที่หน้าเส้นทาง"
+      />
+      <section aria-label="ความก้าวหน้าตามลำดับเนื้อหา" className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-semibold text-ink">ความก้าวหน้าตามลำดับเนื้อหา</span>
+          <span className="font-bold text-brand-700">{overallProgressPercent}%</span>
         </div>
-      </div>
+        <div className="mt-2.5">
+          <ProgressBar value={overallProgressPercent} label={`ความก้าวหน้า ${overallProgressPercent}%`} />
+        </div>
+        <p className="mt-1.5 text-xs text-slate-500">เรียนจบแล้ว {totalCompleted} จาก {totalLessons} บทเรียนทั้งหมด</p>
+      </section>
 
       {/* ═══════════ 6 MONTHS SELECTOR STRIP ═══════════ */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="-mx-3.5 flex snap-x gap-3 overflow-x-auto px-3.5 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 lg:grid-cols-6">
         {SIX_MONTH_ROADMAP.map((m) => {
           const isSelected = selectedMonth === m.month;
           const mLessons = lessons.filter((l) => l.month === m.month);
@@ -202,19 +184,19 @@ export function RoadmapPage() {
                 setSelectedMonth(m.month);
                 setSelectedMilestoneId(null);
               }}
-              className={`p-4 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between h-32 ${
+              className={`w-40 shrink-0 snap-start p-4 rounded-2xl border text-left transition-colors flex flex-col justify-between h-32 sm:w-auto ${
                 isSelected
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20'
-                  : 'bg-white text-slate-800 border-slate-200/70 hover:border-blue-300 hover:shadow-xs'
+                  ? 'bg-brand-600 text-white border-brand-600 shadow-md shadow-brand-600/20'
+                  : 'bg-white text-slate-800 border-slate-200/80 hover:border-brand-300'
               }`}
             >
               <div className="flex items-center justify-between w-full">
                 <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${
                   isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
                 }`}>
-                  Month {m.month}
+                  เดือนที่ {m.month}
                 </span>
-                <span className={`text-xs font-extrabold ${isSelected ? 'text-white' : 'text-blue-600'}`}>
+                <span className={`text-xs font-extrabold ${isSelected ? 'text-white' : 'text-brand-600'}`}>
                   {mPct}%
                 </span>
               </div>
@@ -224,13 +206,13 @@ export function RoadmapPage() {
                   {m.title.split(':')[1]?.trim() || m.title}
                 </p>
                 <p className={`text-[10px] mt-0.5 ${isSelected ? 'text-white/70' : 'text-slate-400'}`}>
-                  {mDone}/{mLessons.length} บท &middot; {m.targetHours}h
+                  {mDone}/{mLessons.length} บท &middot; {m.targetHours} ชม.
                 </p>
               </div>
 
               <div className={`w-full h-1.5 rounded-full overflow-hidden ${isSelected ? 'bg-white/20' : 'bg-slate-100'}`}>
                 <div 
-                  className={`h-full rounded-full transition-all ${isSelected ? 'bg-white' : 'bg-blue-500'}`}
+                  className={`h-full rounded-full transition-all ${isSelected ? 'bg-white' : 'bg-brand-500'}`}
                   style={{ width: `${mPct}%` }}
                 />
               </div>
@@ -283,10 +265,10 @@ export function RoadmapPage() {
           <div>
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-purple-600" />
-              เป้าหมายสำคัญประจำเดือน (Milestones)
+              เป้าหมายสำคัญประจำเดือน
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              คำนวณความคืบหน้าจากบทเรียนจริงที่เรียนจบแล้ว (คลิกที่ Milestone เพื่อกรองดูบทเรียนที่เกี่ยวข้อง)
+              คำนวณความคืบหน้าจากบทเรียนจริงที่เรียนจบแล้ว (แตะเป้าหมายเพื่อดูบทเรียนที่เกี่ยวข้อง)
             </p>
           </div>
           {selectedMilestoneId && (
@@ -294,7 +276,7 @@ export function RoadmapPage() {
               onClick={() => setSelectedMilestoneId(null)}
               className="text-xs font-semibold text-blue-600 hover:underline"
             >
-              ล้างตัวกรอง Milestone
+              ล้างตัวกรอง
             </button>
           )}
         </div>

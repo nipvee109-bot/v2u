@@ -14,6 +14,7 @@ import type { CurriculumLevel } from '../curriculum/types';
 import { getResourcesForLesson, buildLearningPlan, TYPE_LABEL } from '../resources/engine';
 import type { ResourceLevel } from '../resources/types';
 import { TimeBudgetPicker } from '../components/TimeBudgetPicker';
+import { ProgressBar, ScreenHeader } from '../components/ui';
 import { normalizeStudentProfile } from '../route/engine';
 
 const RESOURCE_LEVEL_LABEL: Record<ResourceLevel, string> = {
@@ -36,27 +37,20 @@ export function CurriculumPage() {
   const skillTitle = (id: string) => CURRICULUM.skills.find((s) => s.id === id)?.title ?? id;
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <header className="mb-5">
-        <Link to="/learn" className="text-xs font-semibold text-blue-700 hover:underline">
-          ← เรียน
-        </Link>
-        <h1 className="mt-1 text-xl sm:text-2xl font-extrabold text-slate-900">หลักสูตร{CURRICULUM.pathway.title}</h1>
-        <p className="mt-1 text-sm text-slate-600">{CURRICULUM.pathway.description}</p>
-      </header>
+    <div className="mx-auto w-full max-w-3xl space-y-6 sm:space-y-8">
+      <ScreenHeader back={{ to: '/learn', label: 'เรียน' }} title={`หลักสูตร${CURRICULUM.pathway.title}`} subtitle={CURRICULUM.pathway.description} />
 
-      <section aria-label="ความพร้อมตามข้อกำหนด" className="mb-6 grid gap-2.5 sm:grid-cols-3">
+      <section aria-label="ความพร้อมตามข้อกำหนด" className="grid gap-2.5 sm:grid-cols-3">
         {CURRICULUM.pathway.requirements.map((req) => {
           const r = readiness.find((x) => x.subjectId === req.subjectId);
           const subject = CURRICULUM.subjects.find((s) => s.id === req.subjectId);
           const pct = r?.readinessPercent ?? 0;
           return (
-            <div key={req.subjectId} className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xs">
+            <div key={req.subjectId} className="rounded-2xl border border-slate-200/80 bg-white p-4">
               <p className="text-sm font-bold text-slate-900">{subject?.title}</p>
               <p className="mt-0.5 text-xs text-slate-500">ความพร้อม {pct}% · เป้าหมาย {req.targetReadinessPercent}%</p>
-              <div className="relative mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full rounded-full bg-blue-600" style={{ width: `${pct}%` }} />
-                <div className="absolute top-0 h-full w-0.5 bg-emerald-600" style={{ left: `${req.targetReadinessPercent}%` }} />
+              <div className="mt-2.5">
+                <ProgressBar value={pct} target={req.targetReadinessPercent} label={`${subject?.title} ความพร้อม ${pct}%`} />
               </div>
               <p className="mt-2 text-[11px] text-slate-500">{req.exams.join(' · ')}</p>
             </div>
@@ -64,24 +58,24 @@ export function CurriculumPage() {
         })}
       </section>
 
-      <section aria-label="เวลาที่มี" className="sticky top-0 z-[5] -mx-3.5 mb-5 border-b border-slate-200 bg-[#EFF3F8]/95 px-3.5 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border sm:bg-white sm:px-4">
+      <section aria-label="เวลาที่มี" className="sticky top-0 z-[5] -mx-3.5 border-b border-slate-200 bg-canvas/95 px-3.5 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border sm:bg-white sm:px-4">
         <TimeBudgetPicker value={budget} onChange={(m) => setStudentProfile({ availableMinutes: m })} />
         <p className="mt-1.5 text-[11px] text-slate-500">เปิดบทเรียนด้านล่างเพื่อดูแผนที่ V2U จัดให้ตามเวลานี้</p>
       </section>
 
       {CURRICULUM.subjects.map((subject) => (
-        <section key={subject.id} aria-labelledby={`subj-${subject.id}`} className="mb-6">
-          <h2 id={`subj-${subject.id}`} className="text-base font-extrabold text-slate-900">{subject.title}</h2>
-          <p className="mb-2 text-xs text-slate-500">{subject.description}</p>
+        <section key={subject.id} aria-labelledby={`subj-${subject.id}`} className="space-y-3">
+          <h2 id={`subj-${subject.id}`} className="text-lg font-bold text-ink">{subject.title}</h2>
+          <p className="-mt-2 text-xs text-slate-500">{subject.description}</p>
 
           {subject.topicIds.map((topicId) => {
             const topic = getCurriculumTopic(topicId);
             if (!topic) return null;
             return (
-              <div key={topic.id} className="mb-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xs">
-                <h3 className="text-sm font-bold text-slate-800">{topic.title}</h3>
+              <div key={topic.id} className="rounded-2xl border border-slate-200/80 bg-white p-4">
+                <h3 className="text-sm font-bold text-ink">{topic.title}</h3>
                 <p className="text-xs text-slate-500">{topic.description}</p>
-                <ol className="mt-2 space-y-2">
+                <ol className="mt-3 divide-y divide-slate-100 border-t border-slate-100">
                   {topic.lessonIds.map((lessonId) => {
                     const lesson = getCurriculumLesson(lessonId);
                     if (!lesson) return null;
@@ -90,15 +84,15 @@ export function CurriculumPage() {
                     const missing = getMissingPrerequisites(lesson, lessons);
                     return (
                       <li key={lesson.id}>
-                        <details className="group rounded-xl border border-slate-100 bg-slate-50/60">
-                          <summary className="flex cursor-pointer list-none items-center gap-2.5 p-2.5 min-h-[44px]">
+                        <details className="group">
+                          <summary className="flex cursor-pointer list-none items-center gap-3 py-3 min-h-[52px]">
                             {done ? (
                               <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" aria-label="เรียนจบแล้ว" />
                             ) : (
                               <Circle className="h-5 w-5 shrink-0 text-slate-300" aria-label="ยังไม่จบ" />
                             )}
                             <span className="min-w-0 flex-1">
-                              <span className="block text-sm font-semibold text-slate-900">{lesson.title}</span>
+                              <span className="block text-sm font-semibold text-ink">{lesson.title}</span>
                               <span className="flex items-center gap-2 text-[11px] text-slate-500">
                                 <span>{LEVEL_LABEL[lesson.level]}</span>
                                 <span className="flex items-center gap-0.5">
@@ -109,7 +103,7 @@ export function CurriculumPage() {
                             </span>
                             <ChevronDown className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
                           </summary>
-                          <div className="space-y-2 px-3 pb-3 text-xs text-slate-700">
+                          <div className="space-y-2.5 pb-4 pl-8 text-xs text-slate-700">
                             <p>{lesson.description}</p>
                             <div>
                               <p className="font-bold text-slate-800">เรียนจบแล้วจะทำได้</p>

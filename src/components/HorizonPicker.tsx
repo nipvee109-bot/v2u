@@ -27,8 +27,8 @@ export function HorizonPicker({ value, onChange }: HorizonPickerProps) {
   };
 
   const btn = (active: boolean) =>
-    `rounded-xl border px-2 py-2 min-h-[44px] text-xs font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-      active ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300'
+    `rounded-xl border px-2 py-2 min-h-[44px] text-xs font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${
+      active ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-brand-300'
     }`;
 
   return (

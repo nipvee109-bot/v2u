@@ -29,7 +29,7 @@ export function ChecklistAnswerControl({ label, status, onChange }: ChecklistAns
             aria-pressed={status === a}
             aria-label={`${label}: ${CHECK_LABEL[a]}`}
             onClick={() => toggle(a)}
-            className={`rounded-lg border px-2.5 min-h-[36px] text-[11px] font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+            className={`rounded-lg border px-2.5 min-h-[36px] text-[11px] font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${
               status === a
                 ? a === 'met'
                   ? 'border-emerald-600 bg-emerald-600 text-white'

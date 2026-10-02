@@ -3,21 +3,21 @@ import { ORIGINAL_SECTION_TITLES as T } from '../../content/types';
 
 /** Reading mode for a V2U original lesson: time, sections, summary, key terms, examples. */
 export function OriginalLessonView({ content, compact = false }: { content: OriginalLesson; compact?: boolean }) {
-  const h = 'mt-4 text-sm font-bold text-slate-900';
+  const h = 'mt-6 text-base font-bold text-ink';
   return (
-    <article aria-label="บทเรียนจาก V2U" className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+    <article aria-label="บทเรียนจาก V2U" className="rounded-2xl border border-slate-200/80 bg-white p-4 text-sm leading-relaxed text-slate-700 sm:p-6">
       <p className="text-[11px] font-semibold text-slate-500">
         อ่านประมาณ {content.readingMinutes} นาที · เขียนโดย V2U · ฉบับ {content.version}
       </p>
       <nav aria-label="หัวข้อในบท" className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
         {Object.entries(T).map(([k, v]) => (
-          <a key={k} href={`#sec-${content.lessonId}-${k}`} className="rounded-lg bg-slate-100 px-2 py-1 text-slate-700 hover:bg-slate-200">
+          <a key={k} href={`#sec-${content.lessonId}-${k}`} className="inline-flex min-h-[32px] items-center rounded-full bg-slate-100 px-3 text-slate-700 hover:bg-slate-200">
             {v}
           </a>
         ))}
       </nav>
-      <div className="mt-3 rounded-xl bg-blue-50 p-3">
-        <p className="text-xs font-bold text-blue-900">สรุปสั้น</p>
+      <div className="mt-4 rounded-xl bg-brand-50 p-4">
+        <p className="text-xs font-bold text-brand-800">สรุปสั้น</p>
         <p className="mt-1 break-words">{content.summary}</p>
       </div>
       <div className="mt-3">

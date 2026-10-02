@@ -8,6 +8,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      // Phase 52: precache the self-hosted Thai font so the app looks the same offline
+      workbox: { globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'] },
       manifest: {
         name: 'V2U — Vocational to University',
         short_name: 'V2U',

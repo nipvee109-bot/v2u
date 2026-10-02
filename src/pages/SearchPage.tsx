@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { CuratedSearchResults } from '../components/search/CuratedSearchResults';
+import { ScreenHeader } from '../components/ui';
 import { useStore } from '../store/useStore';
 import { 
   BookOpen, 
@@ -106,38 +107,13 @@ export function SearchPage() {
 
   const totalResults = matchedLessons.length + matchedSessions.length + matchedResources.length + matchedUnclear.length;
 
-  if (!q) {
-    return (
-      <div className="max-w-4xl mx-auto space-y-6 pb-20">
-        <div className="bg-slate-900 rounded-3xl p-8 text-white shadow-xl flex items-center gap-4">
-          <div className="bg-blue-500/20 p-3 rounded-2xl">
-            <SearchIcon className="w-6 h-6 text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">ค้นหาในระบบความจำ (Search in Memory)</h1>
-            <p className="text-slate-300 text-xs mt-1">พิมพ์คำค้นหาในช่องค้นหาด้านบน เพื่อค้นหาบทเรียน, โน้ตสรุป, แบบทดสอบ, หรือประวัติเซสชัน</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-20">
-      {/* Search Header */}
-      <div className="bg-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="relative z-10 flex items-center gap-4">
-          <div className="bg-blue-500/20 p-3 rounded-2xl">
-            <SearchIcon className="w-6 h-6 text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">ผลการค้นหาสำหรับ "{q}"</h1>
-            <p className="text-slate-300 text-xs mt-1">
-              ในเนื้อหา V2U และบันทึกของคุณ (บันทึก {totalResults} รายการ)
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="mx-auto w-full max-w-3xl space-y-6 sm:space-y-8">
+      <ScreenHeader
+        back={{ to: '/learn', label: 'เรียน' }}
+        title={q ? `ผลการค้นหา “${rawQ}”` : 'ค้นหา'}
+        subtitle={q ? `ในเนื้อหา V2U และบันทึกของคุณ (บันทึก ${totalResults} รายการ)` : 'บทเรียน คลิป เอกสาร และโจทย์ที่ V2U คัดไว้'}
+      />
 
       <form
         role="search"
@@ -148,21 +124,32 @@ export function SearchPage() {
         }}
         className="flex gap-2"
       >
-        <input name="q" defaultValue={rawQ} key={rawQ} aria-label="ค้นหา" placeholder="ค้นหาบทเรียน คลิป โจทย์" className="min-h-[44px] min-w-0 flex-1 rounded-xl border border-slate-300 px-3 text-sm" />
-        <button type="submit" className="min-h-[44px] rounded-xl bg-blue-600 px-4 text-sm font-bold text-white">ค้นหา</button>
+        <div className="relative min-w-0 flex-1">
+          <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+          <input name="q" type="search" defaultValue={rawQ} key={rawQ} aria-label="ค้นหา" placeholder="ค้นหาบทเรียน คลิป โจทย์…" className="min-h-[52px] w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-3 text-sm text-ink outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-100" />
+        </div>
+        <button type="submit" className="min-h-[52px] shrink-0 rounded-2xl bg-brand-600 px-5 text-sm font-bold text-white hover:bg-brand-700">ค้นหา</button>
       </form>
 
       <CuratedSearchResults query={rawQ} />
 
-      <h2 className="text-sm font-bold text-slate-700">จากบันทึกการเรียนของคุณ</h2>
-      {totalResults === 0 ? (
-        <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-slate-200/70 p-8 space-y-3">
-          <Sparkles className="w-10 h-10 text-slate-300 mx-auto" />
-          <h2 className="text-base font-bold text-slate-800">ไม่พบข้อมูลที่ตรงกับคำค้นหา</h2>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            ลองค้นหาด้วยชื่อบทเรียน, คำสำคัญในโน้ต (เช่น สูตร, ฟังก์ชัน), คะแนน Quiz, หรือประเภทของเนื้อหา
-          </p>
+      {q && <h2 className="text-base font-bold text-ink">จากบันทึกการเรียนของคุณ</h2>}
+      {!q ? (
+        <div>
+          <p className="text-sm font-semibold text-slate-700">ลองค้นเรื่องเหล่านี้</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {['สมการ', 'อสมการ', 'ตรีโกณมิติ', 'เวกเตอร์', 'นิวตัน', 'Python', 'ลูป', 'ฟังก์ชัน'].map((t) => (
+              <Link key={t} to={`/search?q=${encodeURIComponent(t)}`} className="inline-flex min-h-[40px] items-center rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:border-brand-300 hover:text-brand-700">
+                {t}
+              </Link>
+            ))}
+          </div>
         </div>
+      ) : totalResults === 0 ? (
+        <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-5 text-center text-sm text-slate-500">
+          <Sparkles className="mx-auto mb-1.5 h-5 w-5 text-slate-300" />
+          ยังไม่มีบันทึกของคุณที่ตรงกับคำนี้
+        </p>
       ) : (
         <div className="space-y-8">
           {/* Lessons & Memory Records */}
