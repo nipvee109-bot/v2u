@@ -2,7 +2,8 @@ import { ArrowLeft, ArrowRight, Sparkles, Target, CheckCircle2 } from 'lucide-re
 import type { InteractiveLesson, InteractiveStep, PlayerState } from '../../interactive/types';
 import { canContinue, EMPTY_RESULT } from '../../interactive/engine';
 import type { PlayerAction } from '../../interactive/engine';
-import { ChoiceQuestion, OrderQuestion, SelfCheck, TypedQuestion } from './Questions';
+import { ChoiceQuestion, CodeQuestion, LabQuestion, OrderQuestion, SelfCheck, TypedQuestion } from './Questions';
+import { ThemeBanner } from './ThemeBanner';
 
 const TYPE_LABEL: Record<InteractiveStep['type'], string> = {
   concept: 'เข้าใจ',
@@ -82,6 +83,7 @@ export function InteractivePlayer({ lesson, state, dispatch, onToCheck }: Player
     onAnswer: (correct: boolean) => dispatch({ type: 'answer', stepId: step.id, correct }),
     onHint: () => dispatch({ type: 'hint', stepId: step.id }),
     onReveal: () => dispatch({ type: 'reveal', stepId: step.id }),
+    successTitle: lesson.theme?.kind === 'battle' ? '⚔️ CRITICAL HIT!' : lesson.theme?.kind === 'mission' && step.id === lesson.steps[0].id ? '🔓 ประตูเปิดแล้ว' : undefined,
   };
 
   return (
@@ -102,6 +104,8 @@ export function InteractivePlayer({ lesson, state, dispatch, onToCheck }: Player
               </span>
             </div>
           </div>
+
+          {lesson.theme && <ThemeBanner lesson={lesson} state={state} />}
 
           {/* Step card */}
           <section key={step.id} aria-labelledby={`step-${step.id}`} className="rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-7 animate-in fade-in slide-in-from-right-2 duration-200">
@@ -129,6 +133,8 @@ export function InteractivePlayer({ lesson, state, dispatch, onToCheck }: Player
                 {step.interaction.kind === 'typed' && <TypedQuestion key={step.id} interaction={step.interaction} {...handlers} />}
                 {step.interaction.kind === 'order' && <OrderQuestion key={step.id} interaction={step.interaction} {...handlers} />}
                 {step.interaction.kind === 'self' && <SelfCheck key={step.id} interaction={step.interaction} {...handlers} />}
+                {step.interaction.kind === 'code' && <CodeQuestion key={step.id} interaction={step.interaction} {...handlers} />}
+                {step.interaction.kind === 'lab' && <LabQuestion key={step.id} interaction={step.interaction} {...handlers} />}
               </div>
             )}
 

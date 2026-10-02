@@ -32,6 +32,32 @@ export interface TypedInteraction {
   /** Worked steps the learner can reveal after trying. */
   workedSteps: string[];
   explanation: string;
+  /** Phase 56: targeted feedback for known wrong answers (what concept is missing). */
+  wrongFeedback?: { answer: string; message: string }[];
+}
+
+/** Phase 56: fill the blank in a code template (programming). */
+export interface CodeInteraction {
+  kind: 'code';
+  prompt: string;
+  /** Code with exactly one "____" blank */
+  template: string;
+  /** Accepted fillings, compared after whitespace normalisation */
+  accept: string[];
+  hint: string;
+  explanation: string;
+  wrongFeedback?: { answer: string; message: string }[];
+}
+
+/** Phase 56: change variables, watch a known formula respond, then answer. */
+export interface LabInteraction {
+  kind: 'lab';
+  prompt: string;
+  /** Known relation computed in code (no eval) */
+  formula: 'newton2';
+  variables: { id: string; label: string; unit: string; min: number; max: number; step: number; initial: number }[];
+  output: { label: string; unit: string };
+  question: { prompt: string; choices: string[]; correctIndex: number; hint: string; explanation: string };
 }
 
 export interface OrderInteraction {
@@ -50,7 +76,7 @@ export interface SelfCheckInteraction {
   answer: string;
 }
 
-export type Interaction = ChoiceInteraction | TypedInteraction | OrderInteraction | SelfCheckInteraction;
+export type Interaction = ChoiceInteraction | TypedInteraction | OrderInteraction | SelfCheckInteraction | CodeInteraction | LabInteraction;
 
 export type StepType = 'concept' | 'example' | 'think' | 'try' | 'challenge';
 
@@ -91,6 +117,11 @@ export interface InteractiveLesson {
   /** Common mistakes (from the original) — used for "ควรทบทวน". */
   mistakes: string[];
   nextLessonId?: string;
+  /** Phase 56: how the lesson is framed — chosen per subject, not one pattern for all */
+  theme?:
+    | { kind: 'mission'; title: string; lockLabel: string; unlockLabel: string }
+    | { kind: 'battle'; enemy: string; hp: number }
+    | { kind: 'lab'; title: string };
 }
 
 /* ── Learner state (pure, serialisable) ───────────────────────────────── */

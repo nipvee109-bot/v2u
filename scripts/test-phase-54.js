@@ -50,11 +50,12 @@ console.log('=== Phase 54: Interactive V2U Learning Experience ===\n');
 
 console.log('1. Mode selection');
 await test('1. Mode selection renders first ("วันนี้คุณอยากเรียนแบบไหน?") when no mode is chosen', () => {
-  assert(LL.includes('วันนี้คุณอยากเรียนแบบไหน?') && LL.includes('if (!mode) {'));
+  assert(LL.includes('คุณอยากเรียนเรื่องนี้แบบไหน?') && LL.includes('if (!mode) {'));
   assert(!/mode: Mode = .*\? 'video'/.test(PAGE), 'lesson page must not default to a mode');
 });
 await test('2. Three modes with the specified titles and descriptions', () => {
-  for (const x of ['อ่าน', 'เรียนจากคำอธิบายและตัวอย่างที่ V2U เรียบเรียงให้', 'ดูคลิป', 'เรียนจากวิดีโอที่ V2U คัดมาให้', 'เรียนกับ V2U', 'ให้ V2U สอนทีละขั้น พร้อมให้คุณลองคิดและตอบ']) assert(META.includes(x), x);
+  // Phase 56 wording: อ่านกับ V2U / ดูคลิป / เรียนกับ V2U
+  for (const x of ['อ่านกับ V2U', 'สรุปให้เข้าใจง่าย แต่เจาะลึก ไม่ต้องอ่านยาว', 'ดูคลิป', 'เรียนจากวิดีโอที่ V2U คัดตามลำดับ', 'เรียนกับ V2U', 'เรียนผ่านภารกิจ เกม การทดลอง และกิจกรรมแบบ Interactive']) assert(META.includes(x), x);
   assert(LL.includes("const ORDER: LearningMode[] = ['read', 'video', 'v2u'];"));
 });
 await test('3. No external video before choosing: the picker renders no viewer, Study Room gates the workspace', () => {
@@ -78,15 +79,18 @@ await test('4. The player is rendered only after a clip is chosen, with outcomes
 console.log('\n2. Modes');
 await test('5. Reading mode: hero, section nav, concept cards, examples, mistakes, mini checks, progress, CTA', () => {
   const r = read('src/components/learning/ReadingExperience.tsx');
-  for (const x of ['อ่านจบแล้วจะ', 'หัวข้อในบท', 'อ่านแล้ว', 'คืออะไร', 'ทำไมต้องรู้', 'ทีละขั้น', 'วิธีทำ', 'จุดที่มักพลาด', 'ลองทำเอง', 'เช็กสั้น ๆ', 'ไปเช็กความเข้าใจ', 'IntersectionObserver']) assert(r.includes(x), x);
+  // Phase 56: 8 short sections (labels live in meta.ts)
+  const meta = read('src/components/learning/meta.ts');
+  for (const x of ['สิ่งที่ต้องเข้าใจ', 'หลักคิด', 'อธิบายแบบง่าย', 'ตัวอย่าง', 'วิธีคิดทีละขั้น', 'จุดที่มักพลาด', 'ลองทำ', 'เช็กความเข้าใจ']) assert(meta.includes(x), x);
+  for (const x of ['อ่านจบแล้วจะ', 'หัวข้อในบท', 'อ่านแล้ว', 'วิธีทำ', 'ตรวจคำตอบ', 'ไปเช็กความเข้าใจ', 'IntersectionObserver']) assert(r.includes(x), x);
 });
 await test('6. V2U mode: every curriculum lesson has an interactive lesson (authored or generated from existing content)', () => {
   assert.deepStrictEqual(R.validateInteractiveLessons(), []);
   assert.strictEqual(lesson.source, 'authored');
   for (const l of C.lessons) assert(R.getInteractiveLesson(l.id), l.id);
-  const gen = R.getInteractiveLesson('phy-dyn-newton');
+  const gen = R.getInteractiveLesson('phy-kin-1d'); // phy-dyn-newton became an authored lab in Phase 56
   assert.strictEqual(gen.source, 'generated');
-  const o = ORIGINAL_LESSONS.find((x) => x.lessonId === 'phy-dyn-newton');
+  const o = ORIGINAL_LESSONS.find((x) => x.lessonId === 'phy-kin-1d');
   assert(gen.steps.some((s) => s.interaction?.kind === 'self' && s.interaction.answer === o.tryIt[0].answer), 'generated from the original');
 });
 await test('7. Video mode exists in the shared flow and the Study Room keeps the curated resources', () => {
@@ -110,12 +114,12 @@ await test('8. Multiple choice — correct answer solves the step', () => {
   const i = step('variable').interaction;
   assert(E.checkChoice(i, 0));
   let st = E.playerReducer(E.initialPlayerState(), { type: 'answer', stepId: 'variable', correct: true });
-  assert(st.results.variable.solved && st.results.variable.attempts === 1 && E.canContinue(lesson, st, 0));
+  assert(st.results.variable.solved && st.results.variable.attempts === 1 && E.canContinue(lesson, st, lesson.steps.findIndex((x) => x.id === 'variable')));
 });
 await test('9. Multiple choice — wrong answer does not solve, does not punish, blocks continue', () => {
   assert(!E.checkChoice(step('variable').interaction, 1));
   const st = E.playerReducer(E.initialPlayerState(), { type: 'answer', stepId: 'variable', correct: false });
-  assert(!st.results.variable.solved && !E.canContinue(lesson, st, 0));
+  assert(!st.results.variable.solved && !E.canContinue(lesson, st, lesson.steps.findIndex((x) => x.id === 'variable')));
 });
 await test('10. Hint appears automatically after a wrong answer (and on request)', () => {
   let st = E.playerReducer(E.initialPlayerState(), { type: 'answer', stepId: 'variable', correct: false });

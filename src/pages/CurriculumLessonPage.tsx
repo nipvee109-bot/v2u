@@ -21,7 +21,9 @@ export function CurriculumLessonPage() {
   const { lessonId = '' } = useParams();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
-  const { lessons, studentProfile, startLearningSession, setLearningMode, recordUnderstandingCheck, updateLearningSessionDraft } = useStore();
+  const { lessons, studentProfile, startLearningSession, setLearningMode, recordUnderstandingCheck, updateLearningSessionDraft, activeLearningSession } = useStore();
+  const fromNext = params.get('from') === 'next';
+  const plannedFromNext = Number(params.get('min')) || undefined;
   const lastCheck = useRef<UnderstandingSummary | null>(null);
   const notes = useStore((st) => st.learningNotes?.notes) ?? [];
   const records = useLearningRecords();
@@ -48,9 +50,19 @@ export function CurriculumLessonPage() {
   const subject = CURRICULUM.subjects.find((s) => s.id === lesson.subjectId);
 
   // Finishing here records the sitting through the normal study flow (mastery, review, next step)
+  const sessionHere = !!studyLesson && activeLearningSession?.lessonId === studyLesson.id && activeLearningSession.status !== 'completed' && activeLearningSession.status !== 'abandoned';
+  /** Choosing a mode from the next step starts the timed sitting (the existing session engine). */
+  const chooseMode = (next: LearningMode) => {
+    setParams({ mode: next, ...(fromNext ? { from: 'next' } : {}), ...(plannedFromNext ? { min: String(plannedFromNext) } : {}) }, { replace: true });
+    if (!studyLesson) return;
+    if (fromNext && !sessionHere) startLearningSession({ lessonId: studyLesson.id, curriculumLessonId: lesson.id, plannedMinutes: plannedFromNext ?? budget });
+    if (fromNext || sessionHere) setLearningMode(next);
+  };
+
   const finishAndRecord = (summary?: UnderstandingSummary) => {
     if (!studyLesson) return navigate('/');
-    startLearningSession({ lessonId: studyLesson.id, curriculumLessonId: lesson.id, plannedMinutes: budget });
+    // keep a sitting that is already running (its timer) — only start one if there is none
+    if (!sessionHere) startLearningSession({ lessonId: studyLesson.id, curriculumLessonId: lesson.id, plannedMinutes: plannedFromNext ?? budget });
     if (mode) setLearningMode(mode);
     const c = summary ?? lastCheck.current;
     if (c) recordUnderstandingCheck({ score: c.score, understood: c.understood, confused: c.confused });
@@ -72,13 +84,27 @@ export function CurriculumLessonPage() {
         <Chip>{lesson.learningOutcomes.length} สิ่งที่จะทำได้</Chip>
         {missing.length > 0 && <Chip tone="warn">ควรปูพื้นก่อน: {missing.map((x) => x.title).join(', ')}</Chip>}
       </div>
+      {(fromNext || sessionHere) && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm" data-testid="learning-hub-context">
+          <span className="text-brand-900">
+            <b>ก้าวต่อไปที่ V2U เลือกให้</b>
+            {plannedFromNext ? ` · วันนี้ ${plannedFromNext} นาที` : ''}
+            {sessionHere ? ' · ⏱ กำลังจับเวลาเรียน' : ' · เริ่มจับเวลาเมื่อคุณเลือกวิธีเรียน'}
+          </span>
+          {sessionHere && studyLesson && (
+            <Link to={`/study/${studyLesson.id}`} className="inline-flex min-h-[40px] items-center text-xs font-semibold text-brand-700">
+              ไปห้องเรียน (ตัวจับเวลา + โน้ต)
+            </Link>
+          )}
+        </div>
+      )}
 
       <div className={mode === 'video' ? 'space-y-5' : 'space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-8 lg:space-y-0'}>
         <div className="min-w-0 space-y-5">
           <LessonLearning
             curriculumLessonId={lesson.id}
             mode={mode}
-            onModeChange={(next) => setParams({ mode: next }, { replace: true })}
+            onModeChange={chooseMode}
             ownResources={studyLesson?.resources ?? []}
             availableMinutes={budget}
             weakSkillIds={weakSkillIds}

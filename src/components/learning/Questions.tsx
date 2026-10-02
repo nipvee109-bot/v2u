@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ArrowDown, ArrowUp, Check, Lightbulb, X, Eye } from 'lucide-react';
-import type { ChoiceInteraction, OrderInteraction, SelfCheckInteraction, StepResult, TypedInteraction } from '../../interactive/types';
-import { checkChoice, checkOrder, checkTyped, scrambled } from '../../interactive/engine';
+import type { ChoiceInteraction, CodeInteraction, LabInteraction, OrderInteraction, SelfCheckInteraction, StepResult, TypedInteraction } from '../../interactive/types';
+import { checkChoice, checkCode, checkOrder, checkTyped, labOutput, normalizeCode, scrambled, wrongFeedbackFor } from '../../interactive/engine';
 
 /* Interaction widgets. Each reports through onAnswer(correct) / onHint() / onReveal();
    the engine owns the state, so a widget can be swapped per subject. */
@@ -9,6 +9,8 @@ import { checkChoice, checkOrder, checkTyped, scrambled } from '../../interactiv
 interface Props<I> {
   interaction: I;
   result: StepResult;
+  /** Theme-specific success line, e.g. "⚔️ CRITICAL HIT!" */
+  successTitle?: string;
   onAnswer: (correct: boolean) => void;
   onHint: () => void;
   onReveal: () => void;
@@ -41,7 +43,7 @@ function HintBox({ text }: { text: string }) {
   );
 }
 
-export function ChoiceQuestion({ interaction: i, result, onAnswer }: Props<ChoiceInteraction>) {
+export function ChoiceQuestion({ interaction: i, result, onAnswer, successTitle }: Props<ChoiceInteraction>) {
   const [picked, setPicked] = useState<number | null>(null);
   const [wrong, setWrong] = useState<number[]>([]);
   const choose = (k: number) => {
@@ -86,7 +88,7 @@ export function ChoiceQuestion({ interaction: i, result, onAnswer }: Props<Choic
           );
         })}
       </div>
-      {result.solved && <Feedback tone="good" title="ถูกต้อง">{i.explanation}</Feedback>}
+      {result.solved && <Feedback tone="good" title={successTitle ?? 'ถูกต้อง'}>{i.explanation}</Feedback>}
       {lastWrong && (
         <Feedback tone="try" title="ยังไม่ใช่ — ลองอีกครั้งได้เลย">
           <HintBox text={i.hint} />
@@ -96,13 +98,15 @@ export function ChoiceQuestion({ interaction: i, result, onAnswer }: Props<Choic
   );
 }
 
-export function TypedQuestion({ interaction: i, result, onAnswer, onReveal }: Props<TypedInteraction>) {
+export function TypedQuestion({ interaction: i, result, onAnswer, onReveal, successTitle }: Props<TypedInteraction>) {
   const [value, setValue] = useState('');
   const [lastWrong, setLastWrong] = useState(false);
+  const [targeted, setTargeted] = useState<string | undefined>();
   const submit = () => {
     if (!value.trim() || result.solved) return;
     const ok = checkTyped(i, value);
     setLastWrong(!ok);
+    setTargeted(ok ? undefined : wrongFeedbackFor(i, value));
     onAnswer(ok);
   };
   const id = `typed-${i.prompt.length}-${i.accept[0]}`;
@@ -141,7 +145,7 @@ export function TypedQuestion({ interaction: i, result, onAnswer, onReveal }: Pr
         </button>
       </form>
       {result.solved && (
-        <Feedback tone="good" title="เยี่ยม ถูกต้อง">
+        <Feedback tone="good" title={successTitle ?? 'เยี่ยม ถูกต้อง'}>
           <p>{i.explanation}</p>
           <ol className="mt-2 space-y-0.5 font-mono text-[13px]">
             {i.workedSteps.map((s) => (
@@ -152,6 +156,7 @@ export function TypedQuestion({ interaction: i, result, onAnswer, onReveal }: Pr
       )}
       {!result.solved && lastWrong && (
         <Feedback tone="try" title="ยังไม่ใช่ — ไม่เป็นไร ลองใหม่ได้">
+          {targeted && <p className="font-medium" data-testid="targeted-feedback">{targeted}</p>}
           <HintBox text={i.hint} />
         </Feedback>
       )}
@@ -262,6 +267,144 @@ export function SelfCheck({ interaction: i, result, onAnswer, onReveal }: Props<
           {result.solved && <p className="mt-2 text-sm font-semibold text-emerald-700">✓ บันทึกว่าทำได้</p>}
           {result.revealed && !result.solved && <p className="mt-2 text-sm text-amber-700">△ V2U จะนับเรื่องนี้ไว้ในสิ่งที่ควรทบทวน</p>}
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Fill the blank in a code template. Shows WHY a wrong answer fails when we know. */
+export function CodeQuestion({ interaction: i, result, onAnswer, successTitle }: Props<CodeInteraction>) {
+  const [value, setValue] = useState('');
+  const [lastWrong, setLastWrong] = useState(false);
+  const [targeted, setTargeted] = useState<string | undefined>();
+  const [before, after] = i.template.split('____');
+  const submit = () => {
+    if (!value.trim() || result.solved) return;
+    const ok = checkCode(i, value);
+    setLastWrong(!ok);
+    setTargeted(ok ? undefined : wrongFeedbackFor(i, value, normalizeCode));
+    onAnswer(ok);
+  };
+  return (
+    <div>
+      <p className="text-base font-semibold text-ink">{i.prompt}</p>
+      <form
+        className="mt-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
+      >
+        <div className="overflow-x-auto rounded-2xl bg-slate-900 p-4 font-mono text-sm leading-relaxed text-slate-100">
+          <pre className="whitespace-pre-wrap break-words">
+            {before}
+            <input
+              value={value}
+              onChange={(e) => {
+                setValue(e.target.value);
+                setLastWrong(false);
+              }}
+              disabled={result.solved}
+              aria-label="เติมโค้ดในช่องว่าง"
+              autoComplete="off"
+              spellCheck={false}
+              className="mx-1 inline-block min-h-[44px] w-40 max-w-full rounded-lg border-2 border-amber-400 bg-slate-800 px-2 font-mono text-amber-200 outline-none focus:border-amber-300 disabled:border-emerald-400 disabled:text-emerald-200"
+            />
+            {after}
+          </pre>
+        </div>
+        <button
+          type="submit"
+          disabled={result.solved || !value.trim()}
+          className="mt-3 min-h-[48px] rounded-2xl bg-brand-600 px-5 text-sm font-bold text-white hover:bg-brand-700 disabled:bg-slate-200 disabled:text-slate-500"
+        >
+          รันโค้ด
+        </button>
+      </form>
+      {result.solved && <Feedback tone="good" title={successTitle ?? 'ถูกต้อง'}>{i.explanation}</Feedback>}
+      {!result.solved && lastWrong && (
+        <Feedback tone="try" title="บั๊กยังรอดอยู่ — ลองแก้อีกครั้ง">
+          {targeted && <p className="font-medium" data-testid="targeted-feedback">{targeted}</p>}
+          <HintBox text={i.hint} />
+        </Feedback>
+      )}
+    </div>
+  );
+}
+
+/** Variables → known formula → observe → answer. Solved only after experimenting AND answering. */
+export function LabQuestion({ interaction: i, result, onAnswer, successTitle }: Props<LabInteraction>) {
+  const [values, setValues] = useState<Record<string, number>>(() => Object.fromEntries(i.variables.map((v) => [v.id, v.initial])));
+  const [tried, setTried] = useState(false);
+  const [picked, setPicked] = useState<number | null>(null);
+  const out = labOutput(i, values);
+  const q = i.question;
+  const wrong = picked !== null && picked !== q.correctIndex && !result.solved;
+  return (
+    <div>
+      <p className="text-base font-semibold text-ink">{i.prompt}</p>
+      <div className="mt-3 grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+        <div className="space-y-4">
+          {i.variables.map((v) => (
+            <label key={v.id} className="block">
+              <span className="flex items-center justify-between text-sm font-semibold text-ink">
+                {v.label}
+                <span className="font-mono text-brand-700">
+                  {values[v.id]} {v.unit}
+                </span>
+              </span>
+              <input
+                type="range"
+                min={v.min}
+                max={v.max}
+                step={v.step}
+                value={values[v.id]}
+                onChange={(e) => {
+                  setValues((prev) => ({ ...prev, [v.id]: Number(e.target.value) }));
+                  setTried(true);
+                }}
+                aria-label={v.label}
+                className="mt-2 h-11 w-full accent-[var(--color-brand-600)]"
+              />
+            </label>
+          ))}
+        </div>
+        <output aria-live="polite" className="rounded-2xl bg-white px-6 py-4 text-center shadow-xs" data-testid="lab-output">
+          <span className="block text-xs font-semibold text-slate-500">{i.output.label}</span>
+          <span className="block font-mono text-3xl font-bold text-ink">{Number.isInteger(out) ? out : out.toFixed(2)}</span>
+          <span className="block text-xs text-slate-500">{i.output.unit}</span>
+          {/* visual: bar grows with the result */}
+          <span className="mt-2 block h-2 w-28 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+            <span className="block h-full rounded-full bg-brand-500 transition-[width]" style={{ width: `${Math.min(100, out * 2.5)}%` }} />
+          </span>
+        </output>
+      </div>
+      {!tried && !result.solved && <p className="mt-2 text-xs text-slate-500">ลองเลื่อนค่าก่อน แล้วค่อยตอบคำถาม</p>}
+      <p className="mt-4 text-base font-semibold text-ink">{q.prompt}</p>
+      <div role="group" aria-label={q.prompt} className="mt-2 grid gap-2 sm:grid-cols-2">
+        {q.choices.map((c, k) => (
+          <button
+            key={c}
+            type="button"
+            disabled={!tried || result.solved}
+            aria-pressed={picked === k}
+            onClick={() => {
+              setPicked(k);
+              onAnswer(k === q.correctIndex);
+            }}
+            className={`min-h-[52px] rounded-2xl border-2 px-4 text-left text-sm font-medium transition-colors disabled:opacity-60 ${
+              result.solved && k === q.correctIndex ? 'border-emerald-500 bg-emerald-50 text-emerald-900' : picked === k && wrong ? 'border-amber-400 bg-amber-50' : 'border-slate-200 bg-white hover:border-brand-300'
+            }`}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+      {result.solved && <Feedback tone="good" title={successTitle ?? 'ถูกต้อง'}>{q.explanation}</Feedback>}
+      {wrong && (
+        <Feedback tone="try" title="ยังไม่ใช่ — ลองเลื่อนค่าแล้วสังเกตอีกครั้ง">
+          <HintBox text={q.hint} />
+        </Feedback>
       )}
     </div>
   );

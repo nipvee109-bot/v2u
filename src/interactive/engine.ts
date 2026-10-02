@@ -5,6 +5,8 @@
 import { CURRICULUM } from '../curriculum/data';
 import type {
   ChoiceInteraction,
+  CodeInteraction,
+  LabInteraction,
   FinalCheckItem,
   InteractiveLesson,
   OrderInteraction,
@@ -47,6 +49,33 @@ export function checkTyped(i: TypedInteraction, input: string): boolean {
     const nb = toNumber(b);
     return na !== undefined && nb !== undefined && Math.abs(na - nb) < 1e-9;
   });
+}
+
+/** Targeted message for a known wrong answer, if one applies. */
+export function wrongFeedbackFor(i: { wrongFeedback?: { answer: string; message: string }[] }, input: string, normalize = normalizeAnswer): string | undefined {
+  const a = normalize(input);
+  return i.wrongFeedback?.find((w) => normalize(w.answer) === a)?.message;
+}
+
+/** Code blanks: whitespace-insensitive, ignores a trailing colon or surrounding parentheses. */
+export function normalizeCode(raw: string): string {
+  return raw.normalize('NFKC').replace(/\s+/g, '').replace(/:$/, '').replace(/^\((.*)\)$/, '$1').replace(/'/g, '"');
+}
+
+export function checkCode(i: CodeInteraction, input: string): boolean {
+  const a = normalizeCode(input);
+  return !!a && i.accept.some((x) => normalizeCode(x) === a);
+}
+
+/** Known formulas only — never evaluated from strings. */
+export function labOutput(i: LabInteraction, values: Record<string, number>): number {
+  switch (i.formula) {
+    case 'newton2': {
+      const F = values.F ?? 0;
+      const m = values.m ?? 0;
+      return m > 0 ? F / m : 0;
+    }
+  }
 }
 
 export function checkChoice(i: ChoiceInteraction | FinalCheckItem, index: number): boolean {
@@ -177,4 +206,14 @@ export function summarize(lesson: InteractiveLesson, state: PlayerState): Unders
 /** Text for the existing "ยังไม่เข้าใจ" note, so the review engine picks it up. */
 export function unclearNoteFrom(summary: UnderstandingSummary): string {
   return summary.confused.length ? `ยังสับสน: ${summary.confused.join(', ')}` : '';
+}
+
+/** Theme progress derived from the same results (no separate scoring). */
+export function themeProgress(lesson: InteractiveLesson, state: PlayerState): { done: number; total: number; enemyHp: number; unlocked: boolean } {
+  const graded = lesson.steps.filter((s) => s.interaction);
+  const done = graded.filter((s) => state.results[s.id]?.solved).length;
+  const hp = lesson.theme?.kind === 'battle' ? lesson.theme.hp : 0;
+  const enemyHp = graded.length ? Math.max(0, Math.round(hp - (hp * done) / graded.length)) : hp;
+  const first = lesson.steps[0];
+  return { done, total: graded.length, enemyHp, unlocked: !!(first && state.results[first.id]?.solved) };
 }

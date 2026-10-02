@@ -37,7 +37,7 @@ import type {
 import type { StudentProfile } from '../route/types';
 import { DEFAULT_STUDENT_PROFILE } from '../route/data';
 import { budgetFromWeeklyHours } from '../route/engine';
-import { creditCurriculumLesson } from '../curriculum/engine';
+import { creditCurriculumLesson, skillIdsForTitles } from '../curriculum/engine';
 import type { StudentAdmissionInputs } from '../admission/types';
 import { EMPTY_ADMISSION_INPUTS, normalizeAdmissionInputs } from '../admission/engine';
 import { 
@@ -392,6 +392,12 @@ export function computeLessonLearningRecord(
     hasUnclearNotes,
   });
 
+  // Phase 56: the latest V2U understanding check names the shaky skills (titles → ids)
+  const lastChecked = [...lessonLearningSessions]
+    .filter((s) => s.understandingCheck)
+    .sort((a, b) => (b.understandingCheck!.checkedAt || '').localeCompare(a.understandingCheck!.checkedAt || ''))[0];
+  const confusedSkillIds = skillIdsForTitles(lastChecked?.understandingCheck?.confused ?? []);
+
   const masteryScore = lesson.masteryScore !== undefined ? lesson.masteryScore : calculatedMasteryScore;
   const calculatedMastery: MasteryLevel = scoreToMasteryLevel(masteryScore);
   const mastery: MasteryLevel = calculatedMastery;
@@ -411,6 +417,7 @@ export function computeLessonLearningRecord(
     masteryScore,
     reviewCount,
     nextReviewAt,
+    ...(confusedSkillIds.length ? { confusedSkillIds } : {}),
   };
 }
 

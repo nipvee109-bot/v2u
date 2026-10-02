@@ -9,8 +9,10 @@ import { CURRICULUM } from '../curriculum/data';
 import { getOriginalLesson } from '../content/originals';
 import type { FinalCheckItem, InteractiveLesson, InteractiveStep } from './types';
 import { LINEAR_EQUATION_LESSON } from './lessons/linearEquation';
+import { CODE_BATTLE_LESSON } from './lessons/codeBattle';
+import { NEWTON_LAB_LESSON } from './lessons/newtonLab';
 
-export const AUTHORED_LESSONS: InteractiveLesson[] = [LINEAR_EQUATION_LESSON];
+export const AUTHORED_LESSONS: InteractiveLesson[] = [LINEAR_EQUATION_LESSON, CODE_BATTLE_LESSON, NEWTON_LAB_LESSON];
 
 const nextOf = (lessonId: string) => {
   const order = CURRICULUM.topics.flatMap((t) => t.lessonIds);
@@ -81,7 +83,9 @@ export function validateInteractiveLessons(): string[] {
       if (s.skillId && !skills.has(s.skillId)) errors.push(`${l.id}: unknown skill ${s.skillId}`);
       const i = s.interaction;
       if (i?.kind === 'choice' && (i.correctIndex < 0 || i.correctIndex >= i.choices.length)) errors.push(`${l.id}/${s.id}: bad correctIndex`);
-      if (i?.kind === 'typed' && i.accept.length === 0) errors.push(`${l.id}/${s.id}: no accepted answer`);
+      if ((i?.kind === 'typed' || i?.kind === 'code') && i.accept.length === 0) errors.push(`${l.id}/${s.id}: no accepted answer`);
+      if (i?.kind === 'code' && (i.template.match(/____/g) || []).length !== 1) errors.push(`${l.id}/${s.id}: code needs exactly one blank`);
+      if (i?.kind === 'lab' && (i.question.correctIndex < 0 || i.question.correctIndex >= i.question.choices.length)) errors.push(`${l.id}/${s.id}: bad lab question`);
     }
     for (const f of il.finalCheck) {
       if (!skills.has(f.skillId)) errors.push(`${l.id}/${f.id}: unknown skill`);

@@ -13,6 +13,7 @@ import { getLessonVideoSequence } from '../../video/engine';
 import { notesForLesson } from '../../notes/engine';
 import { VideoLearning } from '../video/VideoLearning';
 import { PersonalSummaryCard } from '../video/PersonalSummaryCard';
+import { suggestAlternativeModes } from '../../interactive/adapt';
 import { InteractivePlayer } from './InteractivePlayer';
 import { LessonCompletion, UnderstandingCheck } from './UnderstandingCheck';
 import { ReadingExperience } from './ReadingExperience';
@@ -83,15 +84,15 @@ export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownReso
     };
     return (
       <section aria-labelledby="pick-mode" data-testid="mode-picker">
-        <h2 id="pick-mode" className="text-xl font-bold text-ink sm:text-2xl">
-          วันนี้คุณอยากเรียนแบบไหน?
+        <p className="text-sm font-semibold text-brand-700">🎯 {lesson.title}</p>
+        <h2 id="pick-mode" className="mt-0.5 text-xl font-bold text-ink sm:text-2xl">
+          คุณอยากเรียนเรื่องนี้แบบไหน?
         </h2>
-        <p className="mt-1 text-sm text-slate-600">ทุกแบบจบด้วยการเช็กความเข้าใจ แล้ว V2U จะบอกขั้นต่อไปให้</p>
+        <p className="mt-1 text-sm text-slate-600">ทุกแบบจบด้วยการเช็กความเข้าใจ แล้ว V2U จะบอกขั้นต่อไปให้ — ถ้าวิธีหนึ่งไม่เวิร์ก ลองอีกวิธีได้เสมอ</p>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           {ORDER.map((m) => {
             const M = MODE_META[m];
             const Icon = M.icon;
-            const signature = m === 'v2u';
             return (
               <button
                 key={m}
@@ -101,11 +102,9 @@ export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownReso
                   if (stage !== 'learn') setStage('learn');
                   onModeChange(m);
                 }}
-                className={`group flex min-h-[132px] md:min-h-[176px] flex-col rounded-3xl border-2 p-5 text-left transition-all hover:-translate-y-0.5 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200 ${
-                  signature ? 'border-brand-500 bg-brand-50/60 hover:bg-brand-50' : 'border-slate-200 bg-white hover:border-brand-300'
-                }`}
+                className="group flex min-h-[132px] md:min-h-[220px] flex-col rounded-3xl border-2 border-slate-200 bg-white p-5 text-left transition-all hover:-translate-y-0.5 hover:border-brand-400 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200"
               >
-                <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${signature ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700 group-hover:bg-brand-100 group-hover:text-brand-700'}`}>
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-50 text-brand-700 group-hover:bg-brand-600 group-hover:text-white">
                   <Icon className="h-5 w-5" />
                 </span>
                 <span className="mt-3 text-lg font-bold text-ink">{M.title}</span>
@@ -116,6 +115,9 @@ export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownReso
                     <Clock className="h-3.5 w-3.5" /> {meta[m].time}
                   </span>
                   {meta[m].progress && <span className="text-brand-700">{meta[m].progress}</span>}
+                </span>
+                <span className="mt-3 inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl bg-brand-50 px-4 text-sm font-bold text-brand-700 group-hover:bg-brand-600 group-hover:text-white">
+                  {M.cta}
                 </span>
               </button>
             );
@@ -191,7 +193,20 @@ export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownReso
     };
     body = (
       <div className="space-y-5">
-        <LessonCompletion lesson={interactive} state={state} recap={recap} onReviewWeak={reviewWeak} onNext={() => onNext(sum)} nextLabel={nextLabel} />
+        <LessonCompletion
+          lesson={interactive}
+          state={state}
+          recap={recap}
+          alternatives={mode ? suggestAlternativeModes(mode, sum, { hasVideos: videos.length > 0 }) : []}
+          onTryMode={(m) => {
+            dispatch({ type: 'recheck' });
+            setStage('learn');
+            onModeChange(m);
+          }}
+          onReviewWeak={reviewWeak}
+          onNext={() => onNext(sum)}
+          nextLabel={nextLabel}
+        />
         {(mode === 'video' || lessonNotes.length > 0) && (
           <PersonalSummaryCard lessonId={curriculumLessonId} videoTitle={videos.find((v) => v.key === videoKey)?.title} check={sum ? { score: sum.score, understood: sum.understood, confused: sum.confused } : undefined} />
         )}

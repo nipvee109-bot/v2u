@@ -172,7 +172,9 @@ await test('13. Personal summary is built only from my notes + checked result', 
   const text = N.buildPersonalSummary({ lessonId: LEQ, notes: useStore.getState().learningNotes.notes, videoTitle: 'คลิป A', check });
   for (const x of ['🧠 สรุปของฉัน', 'บท: สมการเชิงเส้นตัวแปรเดียว', 'เรียนจาก: คลิป A', 'ฉันได้เรียนรู้:', '- x คือค่าที่ยังไม่รู้', '💡 ทริคที่ฉันจด:', '- ย้ายค่าคงที่ไปอีกข้างก่อน', '⭐ สิ่งสำคัญ:', '- แทนค่ากลับตรวจทุกครั้ง', '❓ สิ่งที่ฉันยังสงสัย:', '- ยังไม่เข้าใจการย้ายข้าง', 'เช็กแล้วยังสับสน: ตรวจคำตอบ']) assert(text.includes(x), x);
   const empty = N.buildPersonalSummary({ lessonId: 'phy-vec-units', notes: [] });
-  assert(empty.includes('- (ยังไม่มี)'), 'nothing invented when there are no notes');
+  assert(empty.startsWith('ยังไม่มีข้อมูลเพียงพอสำหรับสรุป'), 'Phase 56: nothing invented when there is nothing to summarise');
+  const partial = N.buildPersonalSummary({ lessonId: 'phy-vec-units', notes: [{ id: 'q', lessonId: 'phy-vec-units', type: 'trick', text: 't', createdAt: 'x', updatedAt: 'x' }] });
+  assert(partial.includes('- (ยังไม่มี)'), 'empty sections are shown as empty, not filled in');
 });
 await test('14. Summary editing is saved separately and never changes the notes', () => {
   const before = JSON.stringify(useStore.getState().learningNotes.notes);

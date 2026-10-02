@@ -204,6 +204,8 @@ export interface RecommendInput {
   language?: 'th' | 'en';
   /** Video keys the learner already finished */
   watchedKeys?: string[];
+  /** Video keys the learner chose to skip (a choice, not evidence of anything) */
+  skippedKeys?: string[];
   /** Curriculum skill ids that are weak right now */
   weakSkillIds?: string[];
 }
@@ -220,7 +222,7 @@ export interface Recommendation {
 }
 
 export function getRecommendedVideo(input: RecommendInput): Recommendation | null {
-  const { storeLessons, availableMinutes, language = 'th', watchedKeys = [], weakSkillIds = [] } = input;
+  const { storeLessons, availableMinutes, language = 'th', watchedKeys = [], skippedKeys = [], weakSkillIds = [] } = input;
   const lesson = CURRICULUM.lessons.find((l) => l.id === input.lessonId);
   if (!lesson) return null;
   const reasons: string[] = [];
@@ -238,7 +240,7 @@ export function getRecommendedVideo(input: RecommendInput): Recommendation | nul
   const weak = weakSkillIds.some((s) => target.skillIds.includes(s));
 
   // 2) Candidates: not yet watched; deprecated already excluded by the registry engine
-  const fresh = seq.filter((v) => !watchedKeys.includes(v.key));
+  const fresh = seq.filter((v) => !watchedKeys.includes(v.key) && !skippedKeys.includes(v.key));
   const pool = fresh.length > 0 ? fresh : seq;
   // 3) Ordered preferences: weak → practice first; else basics first; then language; then fits time
   const fits = (v: VideoItem) => availableMinutes === undefined || v.minutes === undefined || v.minutes <= availableMinutes;
@@ -266,7 +268,7 @@ export function getRecommendedVideo(input: RecommendInput): Recommendation | nul
   }
   if (weak) reasons.push(pick.group === 'practice' ? 'คุณยังไม่แม่นทักษะในบทนี้ คลิปนี้เน้นฝึกทำโจทย์' : 'คุณยังไม่แม่นทักษะในบทนี้ เริ่มจากพื้นฐานอีกครั้ง');
   else if (pick.group === 'basics') reasons.push('เป็นคลิปพื้นฐาน เหมาะเป็นคลิปแรกของบท');
-  if (watchedKeys.length > 0 && fresh.length > 0) reasons.push('เป็นคลิปที่คุณยังไม่ได้ดู');
+  if ((watchedKeys.length > 0 || skippedKeys.length > 0) && fresh.length > 0) reasons.push('เป็นคลิปที่คุณยังไม่ได้ดูและไม่ได้ข้ามไว้');
   if (pick.language === 'th') reasons.push('เป็นภาษาไทย');
   if (availableMinutes !== undefined && pick.minutes !== undefined) {
     reasons.push(

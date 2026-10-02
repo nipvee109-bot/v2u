@@ -15,7 +15,30 @@ export const LINEAR_EQUATION_LESSON: InteractiveLesson = {
     title: 'ปลดล็อกสมการ',
     goal: 'วันนี้เราจะทำให้สมการที่ดูยุ่งยาก เหลือเพียง x ตัวเดียว',
   },
+  theme: { kind: 'mission', title: 'ประตูสมการ', lockLabel: 'ประตูยังล็อก', unlockLabel: 'ประตูเปิดแล้ว' },
   steps: [
+    {
+      id: 'door',
+      type: 'challenge',
+      title: 'ภารกิจ: ปลดล็อกประตู',
+      body: 'ประตูบานนี้จะเปิดเมื่อคุณหาค่า x ที่ทำให้สองข้างเท่ากัน ลองดูก่อน ถ้ายังไม่แน่ใจ V2U จะบอกว่าขาดตรงไหน',
+      visual: { lines: ['2x + 4 = 14'], caption: 'รหัสประตู = ค่าของ x' },
+      skillId: 'skill-math-solve-linear',
+      interaction: {
+        kind: 'typed',
+        prompt: 'รหัสประตูคือ',
+        inputLabel: 'x =',
+        accept: ['5'],
+        hint: 'ลองกำจัด +4 ก่อน (ลบ 4 ทั้งสองข้าง) แล้วค่อยหารด้วย 2',
+        workedSteps: ['2x + 4 = 14', '2x = 14 − 4 = 10', 'x = 10 ÷ 2 = 5', 'ตรวจ: 2(5) + 4 = 14 ✓'],
+        explanation: 'ย้าย +4 ออกก่อน แล้วหารด้วยตัวเลขหน้า x — ลำดับเดียวกับทุกสมการในบทนี้',
+        wrongFeedback: [
+          { answer: '10', message: 'เกือบแล้ว — 2x = 10 แต่ยังต้องหารด้วย 2 เพื่อให้เหลือ x ตัวเดียว' },
+          { answer: '7', message: 'ลองกำจัด +4 ก่อน — ถ้าหาร 14 ด้วย 2 ทันที +4 จะยังค้างอยู่' },
+          { answer: '9', message: 'ย้าย +4 ไปอีกข้างต้องกลายเป็น −4 (ย้ายข้างแล้วเปลี่ยนเครื่องหมาย)' },
+        ],
+      },
+    },
     {
       id: 'variable',
       type: 'concept',

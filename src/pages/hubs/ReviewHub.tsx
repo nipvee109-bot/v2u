@@ -49,7 +49,7 @@ export function ReviewHub() {
           links={weakSkills.map((g) => ({
             to: `/lessons/${g.studyLessonIds[0]}`,
             title: g.skill.title,
-            description: g.reason === 'overdue-review' ? 'ถึงเวลาทบทวนแล้ว' : g.reason === 'low-quiz' ? 'คะแนนแบบทดสอบยังไม่ผ่าน' : 'ยังไม่แม่น',
+            description: g.reason === 'overdue-review' ? 'ถึงเวลาทบทวนแล้ว' : g.reason === 'low-quiz' ? 'คะแนนแบบทดสอบยังไม่ผ่าน' : g.reason === 'check-confused' ? 'เช็กความเข้าใจล่าสุดยังสับสน' : 'ยังไม่แม่น',
             icon: Target,
           }))}
         />

@@ -51,6 +51,25 @@ function VideoMeta({ v }: { v: VideoItem }) {
   );
 }
 
+/** V2U-generated cover — no third-party thumbnails are fetched or stored. */
+export function VideoCover({ v, index, lessonTitle }: { v: VideoItem; index: number; lessonTitle: string }) {
+  const tone = v.group === 'practice' ? 'from-sky-600 to-brand-800' : 'from-brand-600 to-brand-900';
+  return (
+    <div className={`relative flex aspect-[16/8] flex-col justify-between bg-gradient-to-br ${tone} p-4 text-white`} aria-hidden="true" data-testid="video-cover">
+      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-sm">▶</span>
+      <div>
+        <p className="line-clamp-2 text-sm font-bold leading-snug">{lessonTitle}</p>
+        <p className="mt-0.5 text-[11px] text-white/80">
+          {index} • {sequenceLabel(v)}
+          {v.minutes !== undefined && ` · ${v.durationKnown ? '' : '~'}${v.minutes} นาที`}
+          {v.language && ` · ${v.language === 'th' ? 'ไทย' : 'EN'}`}
+        </p>
+      </div>
+      <span className="absolute right-3 top-3 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold">V2U</span>
+    </div>
+  );
+}
+
 /** Lessons of this topic in order, with honest status (nothing is locked). */
 export function TopicPath({ items, currentId }: { items: PathItem[]; currentId: string }) {
   const icon = (s: PathItem['status']) =>
@@ -126,15 +145,22 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
   const watchedKeys = Object.entries(progress)
     .filter(([k, p]) => k.startsWith(`${lessonId}|`) && p.state !== 'not-started' && p.state !== 'learning')
     .map(([k]) => k.split('|')[1]);
-  const rec = getRecommendedVideo({ lessonId, storeLessons, ownResources, availableMinutes, watchedKeys, weakSkillIds });
+  const skippedKeys = Object.entries(progress)
+    .filter(([k, p]) => k.startsWith(`${lessonId}|`) && p.skipped)
+    .map(([k]) => k.split('|')[1]);
+  const rec = getRecommendedVideo({ lessonId, storeLessons, ownResources, availableMinutes, watchedKeys, skippedKeys, weakSkillIds });
   const groups = groupVideos(lessonId, ownResources, rec?.lessonId === lessonId ? rec.video.key : undefined);
   const recLessonTitle = rec && rec.lessonId !== lessonId ? CURRICULUM.lessons.find((l) => l.id === rec.lessonId)?.title : undefined;
   const allVideos = [...seq, ...(rec && rec.lessonId !== lessonId ? [rec.video] : []), ...groups.next];
   const selected = allVideos.find((v) => v.key === selectedKey);
   const stateOf = (v: VideoItem) => progress[progressKey(v.lessonId, v.key)]?.state ?? 'not-started';
+  const isSkipped = (v: VideoItem) => !!progress[progressKey(v.lessonId, v.key)]?.skipped;
+  /** Skipping only records the choice — it never counts as watched or understood. */
+  const skip = (v: VideoItem) => setVideoProgress(v.lessonId, v.key, { skipped: true });
   const path = getTopicVideoPath(lessonId, storeLessons);
 
   const choose = (v: VideoItem) => {
+    if (isSkipped(v)) setVideoProgress(v.lessonId, v.key, { skipped: false });
     setSelectedKey(v.key);
     setCurrentSeconds(undefined);
     if (stateOf(v) === 'not-started') setVideoProgress(v.lessonId, v.key, { state: 'learning' });
@@ -146,13 +172,22 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
     return (
       <section aria-labelledby="video-entry" className="space-y-5" data-testid="video-entry">
         <div>
-          <h3 id="video-entry" className="text-lg font-bold text-ink sm:text-xl">
+          <p className="text-sm font-semibold text-brand-700">🎬 คลิปสำหรับบทนี้</p>
+          <h3 id="video-entry" className="mt-0.5 text-lg font-bold text-ink sm:text-xl">
             คุณอยากให้ V2U ช่วยเลือกให้ไหม?
           </h3>
           <p className="mt-1 text-sm text-slate-600">
-            {seq.length === 0 ? 'บทนี้ยังไม่มีคลิปที่ V2U คัดไว้' : `ตอนนี้มี ${seq.length} คลิปที่ V2U คัดไว้สำหรับบทนี้`}
+            {seq.length === 0 ? 'ยังไม่มีคลิปที่ V2U คัดไว้สำหรับบทนี้' : `ตอนนี้มี ${seq.length} คลิปที่ V2U คัดไว้สำหรับบทนี้`}
           </p>
         </div>
+        {seq.length === 0 && (
+          <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-5 text-center" data-testid="no-videos">
+            <p className="text-sm text-slate-700">ยังไม่มีคลิปที่ V2U คัดไว้สำหรับบทนี้ — V2U จะไม่สร้างคลิปขึ้นมาเอง</p>
+            <button type="button" onClick={onSwitchToV2U} className="mt-3 min-h-[48px] rounded-2xl bg-brand-600 px-5 text-sm font-bold text-white hover:bg-brand-700">
+              ลองเรียนกับ V2U
+            </button>
+          </div>
+        )}
         <div className="grid gap-3 md:grid-cols-2">
           <button
             type="button"
@@ -200,6 +235,40 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
               ))}
             </ul>
           </details>
+        )}
+        {seq.length > 0 && (
+          <section aria-label="คลิปทั้งหมดของบทนี้" className="space-y-3" data-testid="clip-list">
+            <SequenceHeader lessonTitle={lesson.title} seq={seq} />
+            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {seq.map((v, i) => {
+                const state = stateOf(v);
+                const seenIt = state === 'watched' || state === 'checked' || state === 'done';
+                return (
+                  <li key={v.key} className="flex flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white">
+                    <VideoCover v={v} index={i + 1} lessonTitle={lesson.title} />
+                    <div className="flex flex-1 flex-col p-4">
+                      <p className="text-sm font-semibold text-ink break-words">{v.title}</p>
+                      <VideoMeta v={v} />
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        {seenIt ? <span className="text-xs font-semibold text-emerald-700">✓ ดูแล้ว</span> : <StateChip state={state} />}
+                        {isSkipped(v) && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">ข้ามไว้</span>}
+                      </div>
+                      <div className="mt-auto flex flex-wrap gap-2 pt-3">
+                        <button type="button" onClick={() => choose(v)} className="min-h-[44px] rounded-xl border-2 border-brand-200 px-3 text-sm font-bold text-brand-700 hover:bg-brand-50">
+                          {seenIt ? 'ดูอีกครั้ง' : 'ดูคลิปนี้'}
+                        </button>
+                        {(seenIt || state === 'learning') && !isSkipped(v) && (
+                          <button type="button" onClick={() => skip(v)} className="min-h-[44px] rounded-xl px-3 text-sm font-semibold text-slate-600 hover:bg-slate-100">
+                            ข้ามคลิป →
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         )}
         <TopicPath items={path} currentId={lessonId} />
       </section>

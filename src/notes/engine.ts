@@ -47,6 +47,7 @@ export function buildPersonalSummary({ lessonId, notes, videoTitle, check }: Sum
   const mine = notesForLesson(notes, lessonId);
   const of = (t: NoteType) => mine.filter((n) => n.type === t).map((n) => n.text.trim()).filter(Boolean);
   const list = (xs: string[]) => (xs.length ? xs.map((x) => `- ${x}`).join('\n') : '- (ยังไม่มี)');
+  if (mine.length === 0 && !check) return 'ยังไม่มีข้อมูลเพียงพอสำหรับสรุป — ลองจดโน้ตระหว่างเรียน หรือทำเช็กความเข้าใจก่อน';
   const learned = [...of('understood'), ...of('note'), ...(check?.understood ?? []).map((s) => `เช็กแล้วเข้าใจ: ${s}`)];
   const doubts = [...of('unclear'), ...(check?.confused ?? []).map((s) => `เช็กแล้วยังสับสน: ${s}`)];
   return [
@@ -180,6 +181,7 @@ export function sanitizeNotesData(raw: unknown): LearningNotesData {
         videoProgress[k] = {
           state: p.state as VideoProgress['state'],
           ...(REFLECTIONS.has(p.reflection as string) ? { reflection: p.reflection as VideoProgress['reflection'] } : {}),
+          ...(typeof p.skipped === 'boolean' ? { skipped: p.skipped } : {}),
           updatedAt: typeof p.updatedAt === 'string' ? p.updatedAt : new Date(0).toISOString(),
         };
     }

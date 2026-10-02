@@ -29,6 +29,8 @@ export interface VideoProgress {
   state: 'not-started' | 'learning' | 'watched' | 'checked' | 'done';
   /** Self-report after watching — never proof of understanding */
   reflection?: 'not-yet' | 'somewhat' | 'understood' | 'can-teach';
+  /** Phase 56: the learner chose to skip this clip (never counts as watched or understood) */
+  skipped?: boolean;
   updatedAt: string;
 }
 

@@ -47,7 +47,7 @@ const URGENCY: Record<SkillStatus, number> = {
 export const PASSING_QUIZ_SCORE = 60;
 export const READY_MASTERY_SCORE = 3;
 
-export type SkillReason = 'overdue-review' | 'low-quiz' | 'low-readiness' | 'in-progress' | 'proven' | 'not-started';
+export type SkillReason = 'overdue-review' | 'low-quiz' | 'check-confused' | 'low-readiness' | 'in-progress' | 'proven' | 'not-started';
 
 export interface SkillGap {
   skill: CurriculumSkill;
@@ -108,7 +108,10 @@ export function getSkillGaps(params: SkillGapParams): SkillGap[] {
         if (!study) return null;
         const tracked = study.completedCurriculumLessonIds;
         if (Array.isArray(tracked) && !tracked.includes(cLessons[i].id)) return { status: 'not-learned' as SkillStatus, reason: 'not-started' as SkillReason };
-        return classifyRecord(recordByLesson.get(study.id), referenceDate);
+        const record = recordByLesson.get(study.id);
+        // Phase 56: the latest understanding check named THIS skill as shaky → review it
+        if (record?.confusedSkillIds?.includes(skill.id)) return { status: 'needs-review' as SkillStatus, reason: 'check-confused' as SkillReason };
+        return classifyRecord(record, referenceDate);
       })
       .filter((c): c is { status: SkillStatus; reason: SkillReason } => c !== null);
     const learned = classified.filter((c) => c.status !== 'not-learned');

@@ -17,6 +17,11 @@ export function useStartNextStep(): { start: (step: NextStep) => void; confirmMo
   const confirmingLesson = confirming?.lessonId ? lessons.find((l) => l.id === confirming.lessonId) : undefined;
 
   const start = (step: NextStep) => {
+    // Phase 56: a curriculum step opens the Learning Hub — the learner chooses HOW to learn first
+    if (step.requiresResourceConfirmation && step.lessonId && step.curriculum?.lessonId) {
+      navigate(`/learn/curriculum/${step.curriculum.lessonId}?from=next${step.minutes ? `&min=${step.minutes}` : ''}`);
+      return;
+    }
     if (step.requiresResourceConfirmation && step.lessonId) {
       setConfirming(step);
       return;

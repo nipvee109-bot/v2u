@@ -3,6 +3,8 @@ import { Check, X, ArrowRight, RotateCcw, PartyPopper, ClipboardCheck } from 'lu
 import type { InteractiveLesson, PlayerState, UnderstandingSummary } from '../../interactive/types';
 import { checkChoice, summarize } from '../../interactive/engine';
 import type { PlayerAction } from '../../interactive/engine';
+import type { LearningMode } from '../../interactive/types';
+import { MODE_META } from './meta';
 
 interface CheckProps {
   lesson: InteractiveLesson;
@@ -110,10 +112,13 @@ interface DoneProps {
   nextLabel: string;
   /** What the learner did today and what still needs work (notes + check). */
   recap?: { done: string[]; weak: string[] };
+  /** Phase 56: other ways to learn this when the check shows it didn't land */
+  alternatives?: { mode: LearningMode; reason: string }[];
+  onTryMode?: (m: LearningMode) => void;
 }
 
 /** Completion: what is understood, what can be done, what to review — then the next step. */
-export function LessonCompletion({ lesson, state, onReviewWeak, onNext, nextLabel, recap }: DoneProps) {
+export function LessonCompletion({ lesson, state, onReviewWeak, onNext, nextLabel, recap, alternatives = [], onTryMode }: DoneProps) {
   const s = useMemo(() => summarize(lesson, state), [lesson, state]);
   const passed = s.score >= 70 && s.confused.length === 0;
   return (
@@ -169,6 +174,20 @@ export function LessonCompletion({ lesson, state, onReviewWeak, onNext, nextLabe
               </ul>
             </>
           )}
+        </div>
+      )}
+
+      {alternatives.length > 0 && onTryMode && (
+        <div className="rounded-2xl border border-brand-100 bg-brand-50 p-4" data-testid="try-another-way">
+          <p className="text-sm font-bold text-brand-900">ลองวิธีอื่นไหม? — ถ้าวิธีหนึ่งไม่เวิร์ก ให้ลองอีกวิธีหนึ่ง</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {alternatives.map((a) => (
+              <button key={a.mode} type="button" data-mode={a.mode} onClick={() => onTryMode(a.mode)} className="min-h-[56px] rounded-2xl border-2 border-brand-200 bg-white px-4 py-2 text-left hover:border-brand-400">
+                <span className="block text-sm font-bold text-brand-800">{MODE_META[a.mode].title}</span>
+                <span className="block text-xs text-slate-600 break-words">{a.reason}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

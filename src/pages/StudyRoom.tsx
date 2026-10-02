@@ -822,6 +822,8 @@ export const StudyRoom: React.FC = () => {
       </div>
 
       {/* ═══════════ PHASE 33: POST-LEARNING FLOW (Learn -> Test -> Master) ═══════════ */}
+      {/* Mounted only when open, so it starts from the CURRENT notes (incl. V2U check + personal notes) */}
+      {finishOpen && (
       <PostLearningFlowModal
         isOpen={finishOpen}
         onClose={() => {
@@ -835,14 +837,15 @@ export const StudyRoom: React.FC = () => {
             ? activeLearningSession.resourcesUsed
             : (selectedResource ? [selectedResource] : [])
         }
-        initialLearnedNotes={learnedNotes}
-        initialUnclearNotes={stillUnclearNotes}
-        initialReviewNotes={reviewNotes}
+        initialLearnedNotes={learnedNotes || (isSessionStarted ? activeLearningSession?.notesDraft?.learnedNotes : '') || ''}
+        initialUnclearNotes={stillUnclearNotes || (isSessionStarted ? activeLearningSession?.notesDraft?.stillUnclearNotes : '') || ''}
+        initialReviewNotes={reviewNotes || (isSessionStarted ? activeLearningSession?.notesDraft?.reviewNotes : '') || ''}
         initialConfidence={lesson.confidence || 'Medium'}
         initialQuizScore={isSessionStarted ? activeLearningSession?.understandingCheck?.score : undefined}
         nextLesson={nextLesson}
         onConfirm={handleModalConfirm}
       />
+      )}
 
       {/* Pre-study Learning Resource Confirmation */}
       {isConfirmingResource && lesson && (

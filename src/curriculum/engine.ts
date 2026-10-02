@@ -272,3 +272,8 @@ export function validateCurriculum(
 
   return errors;
 }
+
+/** Phase 56: skill titles (as shown in an understanding check) → curriculum skill ids. Unknown titles are dropped. */
+export function skillIdsForTitles(titles: string[], curriculum: Curriculum = CURRICULUM): string[] {
+  return titles.map((t) => curriculum.skills.find((s) => s.title === t)?.id).filter((x): x is string => !!x);
+}

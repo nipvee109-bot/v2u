@@ -114,6 +114,8 @@ export interface LearningRecord {
   masteryScore?: MasteryScore;
   reviewCount: number;
   nextReviewAt?: string;
+  /** Phase 56: skills the LATEST understanding check found shaky (evidence, not self-report). */
+  confusedSkillIds?: string[];
 }
 
 export interface Lesson {
