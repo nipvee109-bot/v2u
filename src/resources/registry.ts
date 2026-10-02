@@ -595,6 +595,13 @@ export const RESOURCE_REGISTRY: CuratedResource[] = [
   },
     {
     "id": "th-p14-m3-linear-system-solve-1",
+    "candidateVideoUrl": "https://www.youtube.com/watch?v=vnXIPsijIRc",
+    "videoProvenance": {
+      "kind": "search-result",
+      "query": "การแก้ระบบสมการเชิงเส้นสองตัวแปร ตอนที่ 1 Project 14 youtube",
+      "foundAt": "2026-10-02",
+      "resultTitle": "02_การแก้ระบบสมการเชิงเส้นสองตัวแปร ตอนที่ 1 (คณิตศาสตร์ ม.3 เล่ม 2 บทที่ 1) - YouTube"
+    },
     "title": "การแก้ระบบสมการเชิงเส้นสองตัวแปร ตอนที่ 1 (คณิตศาสตร์ ม.3 เล่ม 2)",
     "provider": "Project 14 · สสวท.",
     "type": "video",
@@ -629,6 +636,13 @@ export const RESOURCE_REGISTRY: CuratedResource[] = [
   },
   {
     "id": "th-p14-m3-linear-system-word-1",
+    "candidateVideoUrl": "https://www.youtube.com/watch?v=RvWgjH99IT4",
+    "videoProvenance": {
+      "kind": "search-result",
+      "query": "การแก้ระบบสมการเชิงเส้นสองตัวแปร ตอนที่ 1 Project 14 youtube",
+      "foundAt": "2026-10-02",
+      "resultTitle": "04_โจทย์ปัญหาเกี่ยวกับระบบสมการเชิงเส้นสองตัวแปร ตอนที่ 1 (คณิตศาสตร์ ม.3 เล่ม 2 บทที่ 1) - YouTube"
+    },
     "title": "โจทย์ปัญหาเกี่ยวกับระบบสมการเชิงเส้นสองตัวแปร ตอนที่ 1",
     "provider": "Project 14 · สสวท.",
     "type": "video",
@@ -795,6 +809,13 @@ export const RESOURCE_REGISTRY: CuratedResource[] = [
   },
   {
     "id": "th-p14-m3-trig-meaning-1",
+    "candidateVideoUrl": "https://www.youtube.com/watch?v=qfBl4MLwebU",
+    "videoProvenance": {
+      "kind": "search-result",
+      "query": "ความหมายของอัตราส่วนตรีโกณมิติ ตอนที่ 1 Project 14 youtube",
+      "foundAt": "2026-10-02",
+      "resultTitle": "01_ความหมายของอัตราส่วนตรีโกณมิติ ตอนที่ 1 (คณิตศาสตร์ ม.3 เล่ม 2 บทที่ 5) - YouTube"
+    },
     "title": "ความหมายของอัตราส่วนตรีโกณมิติ ตอนที่ 1 (คณิตศาสตร์ ม.3 เล่ม 2)",
     "provider": "Project 14 · สสวท.",
     "type": "video",
@@ -862,6 +883,13 @@ export const RESOURCE_REGISTRY: CuratedResource[] = [
   },
   {
     "id": "th-p14-m4-phys-freefall",
+    "candidateVideoUrl": "https://www.youtube.com/watch?v=YquvV_KTbYE",
+    "videoProvenance": {
+      "kind": "search-result",
+      "query": "\"การตกแบบเสรี\" ฟิสิกส์ ม.4 เล่ม 1 Project 14",
+      "foundAt": "2026-10-02",
+      "resultTitle": "การตกแบบเสรี (ฟิสิกส์ ม.4 เล่ม 1 บทที่ 2) - YouTube"
+    },
     "title": "การตกแบบเสรี (ฟิสิกส์ ม.4 เล่ม 1)",
     "provider": "Project 14 · สสวท.",
     "type": "video",

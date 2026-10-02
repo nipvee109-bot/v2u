@@ -14,6 +14,7 @@ import type { CurriculumLesson } from '../curriculum/types';
 import { getResourcesForLesson, linkStateLabel } from '../resources/engine';
 import type { CuratedResource } from '../resources/types';
 import type { Lesson, Resource } from '../types';
+import { parseYouTubeVideoId } from './youtube';
 
 export type VideoGroup = 'recommended' | 'basics' | 'practice' | 'next';
 export const VIDEO_GROUP_LABEL: Record<VideoGroup, string> = {
@@ -49,8 +50,13 @@ export interface VideoItem {
   /** Plain-Thai link state, e.g. "ยังไม่ได้ตรวจลิงก์" */
   linkState: string;
   checked: boolean;
-  /** Can be played inside V2U (a real YouTube link). */
+  /** Can be played inside V2U (a real YouTube URL with a parseable id). */
   embeddable: boolean;
+  /** Parsed YouTube id — only from a real URL, never guessed */
+  videoId?: string;
+  /** URL the player embeds (checked url, or the candidate YouTube upload) */
+  embedUrl?: string;
+  /** Checked url only (verified/active) */
   url?: string;
   /** Unchecked link found by search (labelled, never treated as checked). */
   candidateUrl?: string;
@@ -59,10 +65,12 @@ export interface VideoItem {
 }
 
 const isVideo = (r: CuratedResource) => r.type === 'video' || r.type === 'course';
-const isYouTube = (url?: string) => !!url && /(youtube\.com|youtu\.be)\//.test(url);
 
 export function curatedToVideo(r: CuratedResource, lessonId: string): VideoItem {
   const checked = (r.status === 'active' || r.status === 'verified') && !!r.url;
+  // Phase 57: play in V2U only from a real YouTube URL; embedding never changes the status
+  const embedUrl = checked && parseYouTubeVideoId(r.url) ? r.url : parseYouTubeVideoId(r.candidateVideoUrl) ? r.candidateVideoUrl : undefined;
+  const videoId = parseYouTubeVideoId(embedUrl) ?? undefined;
   return {
     key: `curated:${r.id}`,
     source: 'curated',
@@ -76,7 +84,9 @@ export function curatedToVideo(r: CuratedResource, lessonId: string): VideoItem 
     group: r.role === 'worked-example' ? 'practice' : 'basics',
     linkState: linkStateLabel(r),
     checked,
-    embeddable: checked && isYouTube(r.url),
+    embeddable: !!videoId,
+    videoId,
+    embedUrl: videoId ? embedUrl : undefined,
     url: checked ? r.url : undefined,
     candidateUrl: checked ? undefined : r.candidateUrl,
     locator: r.locator,
@@ -86,6 +96,7 @@ export function curatedToVideo(r: CuratedResource, lessonId: string): VideoItem 
 
 export function ownToVideo(r: Resource, lessonId: string): VideoItem | null {
   if (r.type !== 'youtube' || !r.url) return null;
+  const videoId = parseYouTubeVideoId(r.url) ?? undefined;
   return {
     key: `own:${r.id}`,
     source: 'own',
@@ -97,7 +108,9 @@ export function ownToVideo(r: Resource, lessonId: string): VideoItem | null {
     group: 'basics',
     linkState: 'ลิงก์ที่คุณเพิ่มเอง',
     checked: false,
-    embeddable: isYouTube(r.url),
+    embeddable: !!videoId,
+    videoId,
+    embedUrl: videoId ? r.url : undefined,
     url: r.url,
   };
 }

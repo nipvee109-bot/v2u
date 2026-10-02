@@ -4,6 +4,7 @@
    ========================================================================= */
 
 import { getOriginalLesson } from '../content/originals';
+import { parseYouTubeVideoId } from '../video/youtube';
 import type { Curriculum, CurriculumLesson } from '../curriculum/types';
 import { CURRICULUM } from '../curriculum/data';
 import { RESOURCE_REGISTRY } from './registry';
@@ -370,6 +371,15 @@ export function validateResources(
       if (pv?.resultTitle && !sharesPhrase(pv.resultTitle.split(' - ')[0], r.title)) errors.push(`${where}: search result title does not match the resource`);
     }
     if (r.urlProvenance && r.candidateUrl === undefined) errors.push(`${where}: provenance without candidateUrl`);
+    // Phase 57: candidate YouTube upload — real YouTube URL with a parseable id + matching provenance
+    if (r.candidateVideoUrl !== undefined) {
+      if (!parseYouTubeVideoId(r.candidateVideoUrl)) errors.push(`${where}: candidateVideoUrl must be a YouTube URL with a valid video id`);
+      const vp = r.videoProvenance;
+      if (!vp || vp.kind !== 'search-result' || !vp.query?.trim() || !ISO_DATE.test(vp.foundAt) || !vp.resultTitle?.trim()) errors.push(`${where}: candidateVideoUrl needs search provenance`);
+      else if (!sharesPhrase(vp.resultTitle.replace(/^\d+_/, '').split(' (')[0], r.title)) errors.push(`${where}: video search result title does not match the resource`);
+      if (r.type !== 'video') errors.push(`${where}: candidateVideoUrl only for videos`);
+    }
+    if (r.videoProvenance && r.candidateVideoUrl === undefined) errors.push(`${where}: videoProvenance without candidateVideoUrl`);
     if (checked) {
       if (!r.url) errors.push(`${where}: ${r.status} resources need a verified url`);
       const v = r.verification;

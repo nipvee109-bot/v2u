@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Pencil, Trash2, Clock, Check, X } from 'lucide-react';
+import { Pencil, Trash2, Clock, Check, X, Mic, Square } from 'lucide-react';
+import { appendTranscript, SPEECH_MESSAGE } from '../../notes/speech';
+import { useSpeechToText } from '../../notes/useSpeechToText';
 import { useStore } from '../../store/useStore';
 import { NOTE_TYPE_META, NOTE_TYPES, notesForLesson } from '../../notes/engine';
 import type { NoteType, StudyNote } from '../../notes/types';
@@ -24,6 +26,9 @@ export function NotesPanel({ lessonId, videoKey, currentSeconds, onSeek }: Props
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const timeOk = currentSeconds !== undefined;
+  // 🎙️ speech → TEXT into the same box (editable, saved as a normal note; no audio kept)
+  const speech = useSpeechToText((t) => setText((cur) => appendTranscript(cur, t)));
+  const listening = speech.state === 'listening';
 
   const save = () => {
     if (!text.trim()) return;
@@ -76,6 +81,47 @@ export function NotesPanel({ lessonId, videoKey, currentSeconds, onSeek }: Props
         placeholder={`${NOTE_TYPE_META[type].icon} ${NOTE_TYPE_META[type].label}…`}
         className="mt-2 w-full resize-y rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-ink outline-none focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-100"
       />
+      <div className="mt-2" data-testid="voice-notes">
+        {speech.state === 'unsupported' ? (
+          <p className="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600" role="note">
+            {SPEECH_MESSAGE.unsupported}
+          </p>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={listening ? speech.stop : speech.start}
+              disabled={speech.state === 'processing'}
+              aria-label={listening ? 'หยุดฟัง' : 'พูดแทนพิมพ์'}
+              aria-pressed={listening}
+              className={`inline-flex min-h-[44px] items-center gap-2 rounded-xl border-2 px-4 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200 disabled:opacity-60 ${
+                listening ? 'border-rose-400 bg-rose-50 text-rose-800' : 'border-brand-200 bg-white text-brand-700 hover:bg-brand-50'
+              }`}
+            >
+              {listening ? (
+                <>
+                  <Square className="h-4 w-4 fill-current" aria-hidden="true" />
+                  <span>🔴 หยุด</span>
+                </>
+              ) : (
+                <>
+                  <Mic className="h-4 w-4" aria-hidden="true" />
+                  <span>พูดแทนพิมพ์</span>
+                </>
+              )}
+            </button>
+            <span role="status" aria-live="polite" className="min-w-0 flex-1 text-xs text-slate-600 break-words">
+              {listening && <span className="font-semibold text-rose-700">กำลังฟัง... </span>}
+              {listening && <span>หยุดพูดหรือกดปุ่มเพื่อหยุด</span>}
+              {speech.state === 'processing' && SPEECH_MESSAGE.processing}
+              {speech.state === 'error' && <span className="text-amber-800">{SPEECH_MESSAGE.error}</span>}
+              {listening && speech.interim && <span className="block italic text-slate-500">“{speech.interim}”</span>}
+            </span>
+          </div>
+        )}
+        <p className="mt-1 text-[11px] text-slate-500">เสียงจะถูกแปลงเป็นข้อความในช่องด้านบนเท่านั้น — V2U ไม่บันทึกเสียง และการพูดไม่ใช่การเช็กความเข้าใจ</p>
+      </div>
+
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
         {timeOk ? (
           <label className="inline-flex min-h-[40px] cursor-pointer items-center gap-2 text-xs font-semibold text-slate-700">

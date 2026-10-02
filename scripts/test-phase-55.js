@@ -245,11 +245,14 @@ await test('20. Deprecated resources never appear in video lists, paths or recom
     if (r) assert(!dep.has(r.video.resourceId));
   }
 });
-await test('21. Unverified stays labelled "ยังไม่ได้ตรวจลิงก์"; never embedded or given a checked url', () => {
+await test('21. Unverified stays labelled "ยังไม่ได้ตรวจลิงก์"; never given a checked url (Phase 57: may embed only its real YouTube upload)', () => {
   for (const l of C.lessons)
     for (const v of V.getLessonVideos(l.id)) {
       const r = R.find((x) => x.id === v.resourceId);
-      if (r.status === 'unverified') assert(v.linkState === 'ยังไม่ได้ตรวจลิงก์' && !v.checked && !v.embeddable && !v.url, v.resourceId);
+      if (r.status === 'unverified') {
+        assert(v.linkState === 'ยังไม่ได้ตรวจลิงก์' && !v.checked && !v.url, v.resourceId);
+        assert.strictEqual(v.embeddable, !!r.candidateVideoUrl, `${v.resourceId}: embeds only from a candidate YouTube upload`);
+      }
     }
   assert(VL.includes('ยังไม่ได้ตรวจลิงก์ — ถ้าเปิดไม่ได้'));
 });

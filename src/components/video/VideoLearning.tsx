@@ -370,25 +370,32 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
       <div className="@container">
         <div className="grid gap-4 @3xl:grid-cols-[minmax(0,1fr)_300px] @5xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0 space-y-4">
-            {v.embeddable && v.url ? (
-              <YouTubePlayer
-                url={v.url}
-                title={v.title}
-                onTimeUpdate={setCurrentSeconds}
-                onTimeSupported={() => undefined}
-                onEnded={() => setVideoProgress(v.lessonId, v.key, { state: stateOf(v) === 'learning' || stateOf(v) === 'not-started' ? 'watched' : stateOf(v) })}
-                seekToSeconds={seekTo}
-              />
-            ) : (
-              <div className="rounded-3xl border border-slate-200/80 bg-white p-5" data-testid="external-video">
-                <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-                  <ExternalLink className="h-3.5 w-3.5" /> แหล่งภายนอก — เปิดคลิปไว้ข้าง ๆ แล้วจดโน้ตใน V2U ได้เลย
+            {v.embeddable && v.embedUrl ? (
+              <div className="space-y-2" data-testid="embedded-video">
+                <YouTubePlayer
+                  key={v.key}
+                  url={v.embedUrl}
+                  title={v.title}
+                  onTimeUpdate={setCurrentSeconds}
+                  onTimeSupported={() => undefined}
+                  onEnded={() => setVideoProgress(v.lessonId, v.key, { state: stateOf(v) === 'learning' || stateOf(v) === 'not-started' ? 'watched' : stateOf(v) })}
+                  seekToSeconds={seekTo}
+                />
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
+                  <span className="font-semibold text-slate-700 break-words">{v.title}</span>
+                  <span>· {v.provider} · แหล่งภายนอก เล่นจาก YouTube ภายใน V2U</span>
+                  <span className={v.checked ? 'text-emerald-700' : 'text-amber-700'}>· {v.linkState}</span>
                 </p>
-                <p className="mt-1 text-base font-bold text-ink break-words">{v.title}</p>
+              </div>
+            ) : (
+              <div className="rounded-3xl border border-slate-200/80 bg-white p-5" data-testid="video-fallback">
+                <p className="text-sm font-bold text-ink">คลิปนี้ยังไม่สามารถเล่นใน V2U ได้</p>
+                <p className="mt-0.5 text-xs text-slate-500">ยังไม่มีลิงก์ YouTube ที่เล่นในหน้านี้ได้ — เปิดต้นทางไว้ข้าง ๆ แล้วจดโน้ตใน V2U ต่อได้</p>
+                <p className="mt-2 text-base font-semibold text-ink break-words">{v.title}</p>
                 <VideoMeta v={v} />
                 {v.url || v.candidateUrl ? (
                   <a href={v.url ?? v.candidateUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-slate-900 px-4 text-sm font-bold text-white hover:bg-slate-800">
-                    <ExternalLink className="h-4 w-4" /> เปิดคลิปในแท็บใหม่
+                    <ExternalLink className="h-4 w-4" /> เปิดต้นทาง
                   </a>
                 ) : null}
                 {!v.checked && <p className="mt-2 text-xs text-amber-700">ยังไม่ได้ตรวจลิงก์ — ถ้าเปิดไม่ได้ หาได้ที่: {v.locator}</p>}

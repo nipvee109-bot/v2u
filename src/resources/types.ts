@@ -87,6 +87,12 @@ export interface CuratedResource {
   candidateUrl?: string;
   /** Where candidateUrl came from — never invented. */
   urlProvenance?: { kind: 'search-result'; query: string; foundAt: string; resultTitle: string };
+  /**
+   * Phase 57: the clip's real YouTube upload, found by web search (NOT verified).
+   * Lets V2U play it in-page; status stays as-is and it is labelled "ยังไม่ได้ตรวจลิงก์".
+   */
+  candidateVideoUrl?: string;
+  videoProvenance?: { kind: 'search-result'; query: string; foundAt: string; resultTitle: string };
   /** true only when the length was confirmed (e.g. stated on the source page / search snippet). */
   durationKnown?: boolean;
   /** Plain-Thai: who this suits */

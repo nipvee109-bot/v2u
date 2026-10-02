@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ExternalLink, AlertCircle, RefreshCw } from 'lucide-react';
-import { parseYouTubeMessage } from '../../video/youtube';
+import { parseYouTubeMessage, parseYouTubeVideoId } from '../../video/youtube';
 
 interface YouTubePlayerProps {
   url: string;
@@ -49,7 +49,8 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   onTimeSupported,
   onEnded,
 }) => {
-  const videoId = extractYouTubeVideoId(url);
+  // Phase 57: strict parse — a non-YouTube or malformed URL never becomes an embed
+  const videoId = parseYouTubeVideoId(url);
   const [embedError, setEmbedError] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 

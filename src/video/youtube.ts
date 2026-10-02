@@ -1,3 +1,27 @@
+/** Strict YouTube video id from a real YouTube URL — never guessed. */
+const YT_HOSTS = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be', 'www.youtube-nocookie.com', 'youtube-nocookie.com']);
+const ID = /^[A-Za-z0-9_-]{11}$/;
+
+export function parseYouTubeVideoId(url: string | undefined | null): string | null {
+  if (!url) return null;
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+  if (!YT_HOSTS.has(u.hostname.toLowerCase())) return null;
+  let id: string | null = null;
+  if (u.hostname.toLowerCase() === 'youtu.be') id = u.pathname.split('/')[1] ?? null;
+  else if (u.pathname === '/watch') id = u.searchParams.get('v');
+  else {
+    const m = u.pathname.match(/^\/(embed|shorts|v|live)\/([^/?#]+)/);
+    id = m ? m[2] : null;
+  }
+  return id && ID.test(id) ? id : null;
+}
+
 /* YouTube embed messages (iframe "infoDelivery"). Only messages from YouTube
    origins that carry a numeric currentTime count — so V2U never invents time. */
 
