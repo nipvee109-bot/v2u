@@ -1,6 +1,7 @@
 import { TrendingUp, BarChart3, CalendarCheck, Settings as SettingsIcon, ArrowDownUp } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { HubHeader, HubLinkList } from '../../components/navigation/HubLinkList';
+import { AdmissionStatusCard } from '../../components/AdmissionStatusCard';
 
 /** ฉัน — progress, analytics, weekly summary, settings and import/export. */
 export function MeHub() {
@@ -11,6 +12,7 @@ export function MeHub() {
   return (
     <div className="mx-auto max-w-5xl">
       <HubHeader title="ฉัน" subtitle={`ความพร้อมโดยรวม ${readiness}% · เรียนจบ ${completed}/${lessons.length} บท`} />
+      <AdmissionStatusCard />
       <HubLinkList
         heading="ความก้าวหน้า"
         links={[

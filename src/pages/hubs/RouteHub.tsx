@@ -6,6 +6,7 @@ import { EDUCATION_LEVELS } from '../../route/types';
 import type { EducationLevel, RequirementStatus } from '../../route/types';
 import { VOCATIONAL_PROGRAMS } from '../../route/data';
 import { TimeBudgetPicker } from '../../components/TimeBudgetPicker';
+import { ChecklistAnswerControl } from '../../components/ChecklistAnswerControl';
 import { useLearningRecords } from '../../hooks/useLearningRecords';
 import { createSkillReadinessProvider, getSubjectSkillGaps, SKILL_STATUS_LABEL } from '../../skills/engine';
 import type { SkillStatus } from '../../skills/engine';
@@ -28,12 +29,13 @@ const STATUS_UI: Record<RequirementStatus, { label: string; icon: typeof Circle;
 
 /** เส้นทาง — starting point → target → requirements → today's step. */
 export function RouteHub() {
-  const { lessons, studentProfile, setStudentProfile } = useStore();
+  const { lessons, studentProfile, setStudentProfile, admissionInputs, setChecklistAnswer } = useStore();
   const records = useLearningRecords();
   const route = buildStudentRoute({
     profile: studentProfile,
     storeLessons: lessons,
     readiness: createSkillReadinessProvider(records),
+    checklist: admissionInputs?.checklist,
   });
   const subjectGaps = getSubjectSkillGaps({ storeLessons: lessons, records });
   const next = getRouteNextStep(route, lessons);
@@ -196,12 +198,17 @@ export function RouteHub() {
                     </details>
                   );
                 })()}
-                {s.requirement.checklist && (
-                  <ul className="mt-2 ml-7 list-disc text-xs text-slate-600">
-                    {s.requirement.checklist.map((c) => (
-                      <li key={c}>{c}</li>
+                {s.checklist && s.checklist.length > 0 && (
+                  <div className="mt-2 divide-y divide-slate-100 rounded-xl border border-slate-100 bg-slate-50/50 px-2.5">
+                    {s.checklist.map((c) => (
+                      <ChecklistAnswerControl
+                        key={c.key}
+                        label={c.item}
+                        status={c.status}
+                        onChange={(answer) => setChecklistAnswer(c.key, answer)}
+                      />
                     ))}
-                  </ul>
+                  </div>
                 )}
               </li>
             );

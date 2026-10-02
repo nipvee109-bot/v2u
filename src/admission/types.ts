@@ -167,6 +167,24 @@ export interface AdmissionRegistry {
   paths: AdmissionPath[];
 }
 
+/* ── Student-entered admission facts (Phase 46C) ─────────────────────── */
+
+/** A student's own answer for one checklist item. Absent key = ยังไม่ทราบ. */
+export type ChecklistAnswer = 'met' | 'gap';
+
+/**
+ * What the student has told V2U. Nothing here is inferred: a value that was
+ * never entered stays absent/null and evaluates as "unknown".
+ */
+export interface StudentAdmissionInputs {
+  /** 0.00–4.00, or null when not entered */
+  gpax: number | null;
+  /** examId → score (only for exams in verified admission data) */
+  examScores: Record<string, number>;
+  /** `${requirementId}::${item}` → answer */
+  checklist: Record<string, ChecklistAnswer>;
+}
+
 /* ── Evaluation results ─────────────────────────────────────────────── */
 
 export interface StudentAdmissionState {

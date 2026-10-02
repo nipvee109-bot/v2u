@@ -79,9 +79,15 @@ export const completionReadiness: ReadinessProvider = (subjectId, storeLessons) 
 
 /* ── Route ────────────────────────────────────────────────────────────── */
 
+export function checklistKey(requirementId: string, item: string): string {
+  return `${requirementId}::${item}`;
+}
+
 export interface BuildRouteParams {
   profile?: Partial<StudentProfile> | null;
   storeLessons: Lesson[];
+  /** Student answers for exam / portfolio / application checklists (absent = unknown). */
+  checklist?: Record<string, 'met' | 'gap'>;
   readiness?: ReadinessProvider;
   curriculum?: Curriculum;
 }
@@ -121,11 +127,24 @@ export function buildStudentRoute(params: BuildRouteParams): StudentRoute {
         note: program.strengths.includes(subjectId) ? 'ต่อยอดจากสายที่เรียนมา' : undefined,
       });
     } else {
-      // No progress tracking for exams / portfolio / application yet:
-      // they unlock when their dependencies are done.
-      const status: RequirementProgress['status'] = depsDone ? 'not-started' : 'locked';
+      // Exams / portfolio / application: progress comes only from what the
+      // student answered. Unanswered items stay 'unknown' (never inferred).
+      const answers = params.checklist ?? {};
+      const items = (requirement.checklist ?? []).map((item) => {
+        const key = checklistKey(reqId, item);
+        return { item, key, status: (answers[key] ?? 'unknown') as 'met' | 'gap' | 'unknown' };
+      });
+      const allMet = items.length > 0 && items.every((i) => i.status === 'met');
+      const anyMet = items.some((i) => i.status === 'met');
+      const status: RequirementProgress['status'] = allMet
+        ? 'done'
+        : !depsDone
+          ? 'locked'
+          : anyMet
+            ? 'in-progress'
+            : 'not-started';
       statusById.set(reqId, status);
-      steps.push({ requirement, status, remainingLessonIds: [] });
+      steps.push({ requirement, status, remainingLessonIds: [], checklist: items });
     }
   }
 

@@ -29,6 +29,7 @@ export function HomePage() {
     startLearningSession,
     studentProfile,
     setStudentProfile,
+    admissionInputs,
   } = useStore();
   const records = useLearningRecords();
   const budget = normalizeStudentProfile(studentProfile).availableMinutes;
@@ -50,7 +51,7 @@ export function HomePage() {
     knowledgeGaps: getKnowledgeGaps(),
     goals: getCalculatedGoals(),
     // Adaptive, route-aware mode (Phase 45)
-    route: { profile: studentProfile, records, budget },
+    route: { profile: studentProfile, records, budget, checklist: admissionInputs?.checklist },
   });
 
   const confirmingLesson = confirmingLessonId ? lessons.find((l) => l.id === confirmingLessonId) : undefined;

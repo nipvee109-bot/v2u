@@ -34,6 +34,8 @@ import type {
 } from '../types';
 import type { StudentProfile } from '../route/types';
 import { DEFAULT_STUDENT_PROFILE } from '../route/data';
+import type { StudentAdmissionInputs } from '../admission/types';
+import { EMPTY_ADMISSION_INPUTS, normalizeAdmissionInputs } from '../admission/engine';
 import { 
   SUBJECTS,
   MASTERY_SCALE
@@ -517,6 +519,12 @@ interface StoreState {
   // Phase 43: V2U Route — starting point, target and daily time (null until set)
   studentProfile: StudentProfile | null;
   setStudentProfile: (patch: Partial<StudentProfile>) => void;
+
+  // Phase 46C: what the student has told V2U (never inferred)
+  admissionInputs: StudentAdmissionInputs;
+  setGpax: (gpax: number | null) => void;
+  setExamScore: (examId: string, score: number | null) => void;
+  setChecklistAnswer: (key: string, answer: 'met' | 'gap' | null) => void;
   completeOnboarding: (prefs: OnboardingPreferences) => { firstLessonId?: string };
   skipOnboarding: () => void;
   resetOnboarding: () => void;
@@ -544,6 +552,8 @@ interface StoreState {
     hasCompletedOnboarding?: boolean;
     /** v5 backups: restored when present; undefined/null keeps the current profile. */
     studentProfile?: StudentProfile | null;
+    /** v5 backups with admission inputs: restored when present, kept otherwise. */
+    admissionInputs?: StudentAdmissionInputs | null;
   }) => void;
   resetToInitial: () => void;
 }
@@ -554,6 +564,27 @@ export const useStore = create<StoreState>()(
       theme: 'system',
       setTheme: (theme) => set({ theme }),
       hasCompletedOnboarding: false,
+      admissionInputs: EMPTY_ADMISSION_INPUTS,
+      setGpax: (gpax) =>
+        set((state) => ({
+          admissionInputs: normalizeAdmissionInputs({ ...(state.admissionInputs ?? EMPTY_ADMISSION_INPUTS), gpax }),
+        })),
+      setExamScore: (examId, score) =>
+        set((state) => {
+          const current = state.admissionInputs ?? EMPTY_ADMISSION_INPUTS;
+          const examScores = { ...current.examScores };
+          if (score === null) delete examScores[examId];
+          else examScores[examId] = score;
+          return { admissionInputs: normalizeAdmissionInputs({ ...current, examScores }) };
+        }),
+      setChecklistAnswer: (key, answer) =>
+        set((state) => {
+          const current = state.admissionInputs ?? EMPTY_ADMISSION_INPUTS;
+          const checklist = { ...current.checklist };
+          if (answer === null) delete checklist[key];
+          else checklist[key] = answer;
+          return { admissionInputs: normalizeAdmissionInputs({ ...current, checklist }) };
+        }),
       studentProfile: null,
       setStudentProfile: (patch) =>
         set((state) => ({
@@ -2203,11 +2234,13 @@ export const useStore = create<StoreState>()(
           courses: data.courses || initialCourses,
           hasCompletedOnboarding: data.hasCompletedOnboarding ?? true,
           ...(data.studentProfile ? { studentProfile: data.studentProfile } : {}),
+          ...(data.admissionInputs ? { admissionInputs: normalizeAdmissionInputs(data.admissionInputs) } : {}),
         }),
       resetToInitial: () =>
         set({
           hasCompletedOnboarding: false,
           studentProfile: null,
+          admissionInputs: EMPTY_ADMISSION_INPUTS,
           lessons: initialLessons,
           unclearTopics: [],
           sessions: createInitialSessions(),

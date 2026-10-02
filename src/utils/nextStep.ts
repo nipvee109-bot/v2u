@@ -61,6 +61,8 @@ export interface NextStepRouteContext {
   records: LearningRecord[];
   /** Overrides profile.availableMinutes. */
   budget?: TimeBudgetMinutes;
+  /** Student answers for exam / portfolio / application checklists. */
+  checklist?: Record<string, 'met' | 'gap'>;
 }
 
 export interface NextStepGoalInput {
@@ -209,6 +211,7 @@ export function getNextStep(params: NextStepParams): NextStep {
         profile: routeCtx.profile,
         storeLessons: lessons,
         readiness: createSkillReadinessProvider(routeCtx.records, referenceDate),
+        checklist: routeCtx.checklist,
       })
     : null;
   const budget = routeCtx?.budget ?? route?.profile.availableMinutes;

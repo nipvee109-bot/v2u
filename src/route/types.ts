@@ -60,9 +60,13 @@ export interface RouteRequirement {
 
 export type RequirementStatus = 'done' | 'in-progress' | 'not-started' | 'locked';
 
+export type ChecklistItemStatus = 'met' | 'gap' | 'unknown';
+
 export interface RequirementProgress {
   requirement: RouteRequirement;
   status: RequirementStatus;
+  /** For checklist requirements: the student's own answers (Phase 46C). */
+  checklist?: { item: string; key: string; status: ChecklistItemStatus }[];
   readinessPercent?: number;
   targetPercent?: number;
   /** Curriculum lessons still to complete (subject requirements). */

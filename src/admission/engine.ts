@@ -17,7 +17,9 @@ import type {
   AdmissionRequirement,
   ApplicationMilestone,
   AdmissionSource,
+  RequirementCheck,
   RequirementEvaluation,
+  StudentAdmissionInputs,
   StudentAdmissionState,
 } from './types';
 
@@ -169,19 +171,56 @@ export function validateAdmissionRegistry(
   return errors;
 }
 
+/* ── Student inputs (Phase 46C) ───────────────────────────────────────── */
+
+export const EMPTY_ADMISSION_INPUTS: StudentAdmissionInputs = { gpax: null, examScores: {}, checklist: {} };
+
+/** Plain-Thai labels for evaluation results. */
+export const CHECK_LABEL: Record<RequirementCheck, string> = {
+  met: 'ผ่าน',
+  gap: 'ยังขาด',
+  unknown: 'ยังไม่ทราบ',
+};
+
+/** Checklist keys are owned by the Route Engine (route stages hold the checklists). */
+export { checklistKey } from '../route/engine';
+
+export function isValidGpax(value: number): boolean {
+  return Number.isFinite(value) && value >= 0 && value <= 4;
+}
+
+/** Drop anything malformed; never fill in missing values. */
+export function normalizeAdmissionInputs(raw?: Partial<StudentAdmissionInputs> | null): StudentAdmissionInputs {
+  const gpax = typeof raw?.gpax === 'number' && isValidGpax(raw.gpax) ? Math.round(raw.gpax * 100) / 100 : null;
+  const examScores: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw?.examScores ?? {})) {
+    if (typeof v === 'number' && Number.isFinite(v) && v >= 0) examScores[k] = v;
+  }
+  const checklist: Record<string, 'met' | 'gap'> = {};
+  for (const [k, v] of Object.entries(raw?.checklist ?? {})) {
+    if (v === 'met' || v === 'gap') checklist[k] = v;
+  }
+  return { gpax, examScores, checklist };
+}
+
 /* ── Student state ────────────────────────────────────────────────────── */
 
-/** Build evaluation input from the V2U profile + Skill Gap engine output. */
+/** Build evaluation input from the V2U profile + Skill Gap engine output (+ student inputs). */
 export function buildStudentAdmissionState(
   profile: StudentProfile,
   subjectGaps: SubjectSkillGap[],
   skillGaps: SkillGap[],
-  extra: Pick<StudentAdmissionState, 'gpax' | 'examScores' | 'completedPortfolioItems'> = {}
+  extra: Pick<StudentAdmissionState, 'gpax' | 'examScores' | 'completedPortfolioItems'> = {},
+  inputs?: StudentAdmissionInputs
 ): StudentAdmissionState {
+  const fromInputs: Pick<StudentAdmissionState, 'gpax' | 'examScores'> = {};
+  if (inputs?.gpax !== null && inputs?.gpax !== undefined) fromInputs.gpax = inputs.gpax;
+  if (inputs && Object.keys(inputs.examScores).length > 0) fromInputs.examScores = inputs.examScores;
   return {
     educationLevel: profile.educationLevel,
     subjectReadiness: Object.fromEntries(subjectGaps.map((s) => [s.subjectId, s.readinessPercent])),
     readySkillIds: skillGaps.filter((g) => g.status === 'ready').map((g) => g.skill.id),
+    ...fromInputs,
     ...extra,
   };
 }

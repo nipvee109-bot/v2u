@@ -129,7 +129,8 @@ await test('Legacy mode (no route context) keeps Phase 41/42 behaviour', () => {
 });
 await test('Home uses adaptive mode and shows WHAT / WHY / TIME / OUTCOME with one CTA', () => {
   const home = read('src/pages/HomePage.tsx');
-  for (const x of ['route: { profile: studentProfile, records, budget }', 'step.todayAction', 'step.reason', 'step.minutes', 'step.outcome', '<TimeBudgetPicker']) {
+  // Phase 46C added checklist answers to the route context
+  for (const x of ['route: { profile: studentProfile, records, budget', 'step.todayAction', 'step.reason', 'step.minutes', 'step.outcome', '<TimeBudgetPicker']) {
     assert(home.includes(x), x);
   }
   assert.strictEqual((home.match(/<button/g) || []).length, 1);

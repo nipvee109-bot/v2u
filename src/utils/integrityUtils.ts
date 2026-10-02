@@ -13,6 +13,8 @@ import type {
 import { initialWeeklyGoal } from '../data/initialData';
 import type { StudentProfile } from '../route/types';
 import { normalizeStudentProfile } from '../route/engine';
+import type { StudentAdmissionInputs } from '../admission/types';
+import { normalizeAdmissionInputs } from '../admission/engine';
 
 /**
  * Backup schema history:
@@ -48,6 +50,8 @@ export interface FullBackupPayload {
   hasCompletedOnboarding: boolean;
   /** v5+: V2U route profile. null when the student has not set one. */
   studentProfile: StudentProfile | null;
+  /** v5 (Phase 46C, optional): student-entered admission facts. */
+  admissionInputs?: StudentAdmissionInputs;
 }
 
 export interface ValidationStats {
@@ -94,6 +98,20 @@ export function computePayloadChecksum(payload: Partial<FullBackupPayload>): str
   if ((payload.schemaVersion || 0) >= 5) {
     const p = payload.studentProfile;
     str += p ? `_${p.educationLevel}|${p.programId}|${p.targetId}|${p.availableMinutes}` : '_noprofile';
+    // Optional admission inputs: only part of the checksum when present, so
+    // v5 files written before Phase 46C keep verifying.
+    const a = payload.admissionInputs;
+    if (a) {
+      const answers = Object.keys(a.checklist ?? {})
+        .sort()
+        .map((k) => `${k}=${a.checklist[k]}`)
+        .join(',');
+      const scores = Object.keys(a.examScores ?? {})
+        .sort()
+        .map((k) => `${k}=${a.examScores[k]}`)
+        .join(',');
+      str += `_adm:${a.gpax ?? 'na'}|${scores}|${answers}`;
+    }
   }
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -358,6 +376,10 @@ export function migrateToLatestSchema(raw: unknown): {
     rawProfile && typeof rawProfile === 'object' && !Array.isArray(rawProfile)
       ? normalizeStudentProfile(rawProfile as Partial<StudentProfile>)
       : null;
+  const admissionInputs =
+    rawObj.admissionInputs && typeof rawObj.admissionInputs === 'object'
+      ? normalizeAdmissionInputs(rawObj.admissionInputs as Partial<StudentAdmissionInputs>)
+      : undefined;
   if (!studentProfile && !Array.isArray(raw)) {
     warnings.push('ไฟล์นี้ไม่มีข้อมูลเส้นทาง (จุดเริ่มต้น/เป้าหมาย/เวลาเรียน) — จะคงค่าปัจจุบันไว้');
   }
@@ -387,6 +409,7 @@ export function migrateToLatestSchema(raw: unknown): {
     resources,
     hasCompletedOnboarding,
     studentProfile,
+    ...(admissionInputs ? { admissionInputs } : {}),
   };
 
   payload.checksum = computePayloadChecksum(payload);
@@ -665,6 +688,9 @@ export function mergePayloadWithExisting(
     resources: mergedResources,
     hasCompletedOnboarding: existing.hasCompletedOnboarding || imported.hasCompletedOnboarding,
     studentProfile: imported.studentProfile ?? existing.studentProfile ?? null,
+    ...((imported.admissionInputs ?? existing.admissionInputs)
+      ? { admissionInputs: imported.admissionInputs ?? existing.admissionInputs }
+      : {}),
   };
 
   mergedPayload.checksum = computePayloadChecksum(mergedPayload);
@@ -685,6 +711,7 @@ export function createExportPayload(state: {
   resources: Resource[];
   hasCompletedOnboarding?: boolean;
   studentProfile?: StudentProfile | null;
+  admissionInputs?: StudentAdmissionInputs | null;
 }): FullBackupPayload {
   const completedLessons = (state.lessons || []).filter((l) => l.status === 'COMPLETED').length;
   const totalMinutes = (state.lessons || []).reduce((acc, l) => acc + (l.actualStudyMinutes || 0), 0);
@@ -711,6 +738,7 @@ export function createExportPayload(state: {
     resources: state.resources || [],
     hasCompletedOnboarding: !!state.hasCompletedOnboarding,
     studentProfile: state.studentProfile ? normalizeStudentProfile(state.studentProfile) : null,
+    ...(state.admissionInputs ? { admissionInputs: normalizeAdmissionInputs(state.admissionInputs) } : {}),
   };
 
   payload.checksum = computePayloadChecksum(payload);

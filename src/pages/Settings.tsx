@@ -46,6 +46,7 @@ export function Settings() {
     resources,
     hasCompletedOnboarding,
     studentProfile,
+    admissionInputs,
     importData,
     resetToInitial,
   } = useStore();
@@ -88,6 +89,7 @@ export function Settings() {
       goals,
       resources,
       hasCompletedOnboarding,
+      admissionInputs,
       studentProfile,
     });
   };
@@ -163,6 +165,7 @@ export function Settings() {
         resources: finalPayload.resources,
         hasCompletedOnboarding: finalPayload.hasCompletedOnboarding,
         studentProfile: finalPayload.studentProfile,
+        admissionInputs: finalPayload.admissionInputs,
       });
 
       // 3. Close modal & refresh snapshot list
@@ -235,6 +238,7 @@ export function Settings() {
         hasCompletedOnboarding: p.hasCompletedOnboarding,
         // Snapshots taken before v5 have no profile → current profile is kept
         studentProfile: p.studentProfile,
+        admissionInputs: p.admissionInputs,
       });
 
       refreshSnapshots();
