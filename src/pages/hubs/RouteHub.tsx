@@ -6,7 +6,18 @@ import { EDUCATION_LEVELS } from '../../route/types';
 import type { EducationLevel, RequirementStatus } from '../../route/types';
 import { VOCATIONAL_PROGRAMS } from '../../route/data';
 import { TimeBudgetPicker } from '../../components/TimeBudgetPicker';
+import { useLearningRecords } from '../../hooks/useLearningRecords';
+import { createSkillReadinessProvider, getSubjectSkillGaps, SKILL_STATUS_LABEL } from '../../skills/engine';
+import type { SkillStatus } from '../../skills/engine';
 import { HubHeader, HubLinkList } from '../../components/navigation/HubLinkList';
+
+const SKILL_STATUS_ORDER: SkillStatus[] = ['ready', 'developing', 'needs-review', 'not-learned'];
+const SKILL_DOT: Record<SkillStatus, string> = {
+  ready: 'bg-emerald-500',
+  developing: 'bg-blue-500',
+  'needs-review': 'bg-amber-500',
+  'not-learned': 'bg-slate-300',
+};
 
 const STATUS_UI: Record<RequirementStatus, { label: string; icon: typeof Circle; cls: string }> = {
   done: { label: 'ผ่านแล้ว', icon: CheckCircle2, cls: 'text-emerald-600' },
@@ -18,7 +29,13 @@ const STATUS_UI: Record<RequirementStatus, { label: string; icon: typeof Circle;
 /** เส้นทาง — starting point → target → requirements → today's step. */
 export function RouteHub() {
   const { lessons, studentProfile, setStudentProfile } = useStore();
-  const route = buildStudentRoute({ profile: studentProfile, storeLessons: lessons });
+  const records = useLearningRecords();
+  const route = buildStudentRoute({
+    profile: studentProfile,
+    storeLessons: lessons,
+    readiness: createSkillReadinessProvider(records),
+  });
+  const subjectGaps = getSubjectSkillGaps({ storeLessons: lessons, records });
   const next = getRouteNextStep(route, lessons);
   const { profile } = route;
 
@@ -151,6 +168,34 @@ export function RouteHub() {
                     <div className="absolute top-0 h-full w-0.5 bg-emerald-600" style={{ left: `${s.targetPercent}%` }} />
                   </div>
                 )}
+                {(() => {
+                  const gap = subjectGaps.find((g) => g.subjectId === s.requirement.subjectId);
+                  if (!gap) return null;
+                  return (
+                    <details className="mt-2">
+                      <summary className="flex cursor-pointer list-none flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-600 min-h-[32px] items-center">
+                        {SKILL_STATUS_ORDER.map((st) => (
+                          <span key={st} className="flex items-center gap-1">
+                            <span className={`h-2 w-2 rounded-full ${SKILL_DOT[st]}`} aria-hidden="true" />
+                            {SKILL_STATUS_LABEL[st]} {gap.counts[st]}
+                          </span>
+                        ))}
+                        <span className="font-semibold text-blue-700">ดูทักษะ</span>
+                      </summary>
+                      <ul className="mt-1.5 space-y-1">
+                        {gap.skills.map((g) => (
+                          <li key={g.skill.id} className="flex items-center justify-between gap-2 text-xs">
+                            <span className="text-slate-800">{g.skill.title}</span>
+                            <span className="flex shrink-0 items-center gap-1 text-slate-600">
+                              <span className={`h-2 w-2 rounded-full ${SKILL_DOT[g.status]}`} aria-hidden="true" />
+                              {SKILL_STATUS_LABEL[g.status]}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  );
+                })()}
                 {s.requirement.checklist && (
                   <ul className="mt-2 ml-7 list-disc text-xs text-slate-600">
                     {s.requirement.checklist.map((c) => (

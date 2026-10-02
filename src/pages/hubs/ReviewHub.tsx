@@ -1,11 +1,15 @@
-import { AlarmClock, CalendarClock, HelpCircle, RotateCcw } from 'lucide-react';
+import { AlarmClock, CalendarClock, HelpCircle, RotateCcw, Target } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { HubHeader, HubLinkList, CountBadge } from '../../components/navigation/HubLinkList';
 import type { HubLink } from '../../components/navigation/HubLinkList';
+import { useLearningRecords } from '../../hooks/useLearningRecords';
+import { getSkillGaps } from '../../skills/engine';
 
 /** ทบทวน — due reviews, review questions (inside each review room) and not-understood topics. */
 export function ReviewHub() {
-  const { getDueReviewItems, unclearTopics = [] } = useStore();
+  const { getDueReviewItems, unclearTopics = [], lessons } = useStore();
+  const records = useLearningRecords();
+  const weakSkills = getSkillGaps({ storeLessons: lessons, records }).filter((g) => g.status === 'needs-review' && g.studyLessonIds.length > 0);
   const { overdue, dueToday, upcoming } = getDueReviewItems();
 
   const toLink = (icon: HubLink['icon'], description: string) => (item: { id: string; topic: string }): HubLink => ({
@@ -22,6 +26,17 @@ export function ReviewHub() {
       <HubHeader title="ทบทวน" subtitle="ทบทวนตามจังหวะที่เหมาะสม เพื่อให้จำได้จนถึงวันสอบ" />
       {overdue.length > 0 && (
         <HubLinkList heading={`เลยเวลาทบทวน (${overdue.length})`} links={overdue.map(toLink(AlarmClock, 'ควรทบทวนก่อน'))} />
+      )}
+      {weakSkills.length > 0 && (
+        <HubLinkList
+          heading={`ทักษะที่ต้องทบทวน (${weakSkills.length})`}
+          links={weakSkills.map((g) => ({
+            to: `/lessons/${g.studyLessonIds[0]}`,
+            title: g.skill.title,
+            description: g.reason === 'overdue-review' ? 'ถึงเวลาทบทวนแล้ว' : g.reason === 'low-quiz' ? 'คะแนนแบบทดสอบยังไม่ผ่าน' : 'ยังไม่แม่น',
+            icon: Target,
+          }))}
+        />
       )}
       <HubLinkList
         heading={`ถึงรอบวันนี้ (${dueToday.length})`}

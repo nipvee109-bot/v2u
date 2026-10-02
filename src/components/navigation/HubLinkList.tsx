@@ -28,7 +28,7 @@ export function HubLinkList({ heading, links }: { heading?: string; links: HubLi
         {links.map((link) => {
           const Icon = link.icon;
           return (
-            <li key={link.to}>
+            <li key={`${link.to}|${link.title}`}>
               <Link
                 to={link.to}
                 className="flex h-full items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 min-h-[64px] shadow-xs transition-colors hover:border-blue-300 hover:bg-blue-50/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
