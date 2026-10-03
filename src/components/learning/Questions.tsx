@@ -22,7 +22,7 @@ export function Feedback({ tone, title, children }: { tone: 'good' | 'try'; titl
       role="status"
       aria-live="polite"
       className={`mt-4 rounded-2xl border p-4 text-sm animate-in fade-in slide-in-from-bottom-1 duration-200 ${
-        tone === 'good' ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-amber-200 bg-amber-50 text-amber-900'
+        tone === 'good' ? 'border-[var(--ok-soft)] bg-[var(--ok-soft)] text-[var(--ink)]' : 'border-[var(--rev-soft)] bg-[var(--rev-soft)] text-[var(--ink)]'
       }`}
     >
       <p className="flex items-center gap-2 font-bold">
@@ -36,8 +36,8 @@ export function Feedback({ tone, title, children }: { tone: 'good' | 'try'; titl
 
 function HintBox({ text }: { text: string }) {
   return (
-    <p className="mt-2 flex items-start gap-2 rounded-xl bg-white/70 p-2.5 text-sm text-amber-900">
-      <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+    <p className="mt-2 flex items-start gap-2 rounded-xl bg-white/70 p-2.5 text-sm text-[var(--ink)]">
+      <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-[var(--rev)]" />
       <span>{text}</span>
     </p>
   );
@@ -70,15 +70,15 @@ export function ChoiceQuestion({ interaction: i, result, onAnswer, successTitle 
               aria-pressed={picked === k}
               className={`flex min-h-[52px] items-center gap-3 rounded-2xl border-2 px-4 text-left text-sm font-medium transition-colors focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200 ${
                 isRight
-                  ? 'border-emerald-500 bg-emerald-50 text-emerald-900'
+                  ? 'border-emerald-500 bg-[var(--ok-soft)] text-[var(--ink)]'
                   : isWrong
-                    ? 'border-slate-200 bg-slate-50 text-slate-400 line-through'
-                    : 'border-slate-200 bg-white text-ink hover:border-brand-300 hover:bg-brand-50'
+                    ? 'border-[var(--line-2)] bg-[var(--surface-2)] text-[var(--ink-3)] line-through'
+                    : 'border-[var(--line-2)] bg-[var(--surface)] text-ink hover:border-brand-300 hover:bg-[var(--brand-soft)]'
               }`}
             >
               <span
                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                  isRight ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-600'
+                  isRight ? 'bg-[var(--ok-soft)]0 text-white' : 'bg-[var(--surface-3)] text-[var(--ink-2)]'
                 }`}
               >
                 {isRight ? <Check className="h-4 w-4" /> : String.fromCharCode(65 + k)}
@@ -134,12 +134,12 @@ export function TypedQuestion({ interaction: i, result, onAnswer, onReveal, succ
           inputMode="text"
           autoComplete="off"
           aria-label={i.inputLabel ? `${i.prompt} ${i.inputLabel}` : i.prompt}
-          className="min-h-[52px] w-32 rounded-2xl border-2 border-slate-200 bg-white px-4 font-mono text-lg text-ink outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-100 disabled:bg-emerald-50"
+          className="min-h-[52px] w-32 rounded-2xl border-2 border-[var(--line-2)] bg-[var(--surface)] px-4 font-mono text-lg text-ink outline-none focus:border-[var(--brand)] focus:ring-4 focus:ring-brand-100 disabled:bg-[var(--ok-soft)]"
         />
         <button
           type="submit"
           disabled={result.solved || !value.trim()}
-          className="min-h-[52px] rounded-2xl bg-brand-600 px-5 text-sm font-bold text-white hover:bg-brand-700 disabled:bg-slate-200 disabled:text-slate-500"
+          className="min-h-[52px] rounded-2xl bg-[var(--brand)] px-5 text-sm font-bold text-white hover:bg-[var(--brand-hi)] disabled:bg-[var(--surface-3)] disabled:text-[var(--ink-3)]"
         >
           ตรวจคำตอบ
         </button>
@@ -163,17 +163,17 @@ export function TypedQuestion({ interaction: i, result, onAnswer, onReveal, succ
       {!result.solved && result.attempts > 0 && (
         <div className="mt-3">
           {result.revealed ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
+            <div className="rounded-2xl border border-[var(--line-2)] bg-[var(--surface-2)] p-4 text-sm">
               <p className="font-semibold text-ink">วิธีทำทีละขั้น</p>
-              <ol className="mt-1.5 space-y-0.5 font-mono text-[13px] text-slate-700">
+              <ol className="mt-1.5 space-y-0.5 font-mono text-[13px] text-[var(--ink-2)]">
                 {i.workedSteps.map((s) => (
                   <li key={s}>{s}</li>
                 ))}
               </ol>
-              <p className="mt-2 text-xs text-slate-500">ลองพิมพ์คำตอบอีกครั้ง หรือไปต่อแล้ว V2U จะนับจุดนี้เป็นเรื่องที่ควรทบทวน</p>
+              <p className="mt-2 text-xs text-[var(--ink-3)]">ลองพิมพ์คำตอบอีกครั้ง หรือไปต่อแล้ว V2U จะนับจุดนี้เป็นเรื่องที่ควรทบทวน</p>
             </div>
           ) : (
-            <button type="button" onClick={onReveal} className="inline-flex min-h-[44px] items-center gap-1.5 text-sm font-semibold text-brand-700">
+            <button type="button" onClick={onReveal} className="inline-flex min-h-[44px] items-center gap-1.5 text-sm font-semibold text-[var(--brand-ink)]">
               <Eye className="h-4 w-4" /> ดูวิธีทำทีละขั้น
             </button>
           )}
@@ -208,17 +208,17 @@ export function OrderQuestion({ interaction: i, result, onAnswer }: Props<OrderI
           <li
             key={item}
             className={`flex min-h-[52px] items-center gap-3 rounded-2xl border-2 px-3 ${
-              result.solved ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white'
+              result.solved ? 'border-emerald-300 bg-[var(--ok-soft)]' : 'border-[var(--line-2)] bg-[var(--surface)]'
             }`}
           >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">{k + 1}</span>
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--surface-3)] text-xs font-bold text-[var(--ink-2)]">{k + 1}</span>
             <span className="min-w-0 flex-1 font-mono text-sm text-ink break-words">{item}</span>
             {!result.solved && (
               <span className="flex shrink-0 gap-1">
-                <button type="button" onClick={() => move(k, -1)} disabled={k === 0} aria-label={`เลื่อน “${item}” ขึ้น`} className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 disabled:opacity-30">
+                <button type="button" onClick={() => move(k, -1)} disabled={k === 0} aria-label={`เลื่อน “${item}” ขึ้น`} className="flex h-11 w-11 items-center justify-center rounded-xl text-[var(--ink-3)] hover:bg-[var(--surface-3)] disabled:opacity-30">
                   <ArrowUp className="h-4 w-4" />
                 </button>
-                <button type="button" onClick={() => move(k, 1)} disabled={k === shown.length - 1} aria-label={`เลื่อน “${item}” ลง`} className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 disabled:opacity-30">
+                <button type="button" onClick={() => move(k, 1)} disabled={k === shown.length - 1} aria-label={`เลื่อน “${item}” ลง`} className="flex h-11 w-11 items-center justify-center rounded-xl text-[var(--ink-3)] hover:bg-[var(--surface-3)] disabled:opacity-30">
                   <ArrowDown className="h-4 w-4" />
                 </button>
               </span>
@@ -227,7 +227,7 @@ export function OrderQuestion({ interaction: i, result, onAnswer }: Props<OrderI
         ))}
       </ol>
       {!result.solved && (
-        <button type="button" onClick={submit} className="mt-3 min-h-[48px] rounded-2xl bg-brand-600 px-5 text-sm font-bold text-white hover:bg-brand-700">
+        <button type="button" onClick={submit} className="mt-3 min-h-[48px] rounded-2xl bg-[var(--brand)] px-5 text-sm font-bold text-white hover:bg-[var(--brand-hi)]">
           ตรวจลำดับ
         </button>
       )}
@@ -247,25 +247,25 @@ export function SelfCheck({ interaction: i, result, onAnswer, onReveal }: Props<
     <div>
       <p className="text-base font-semibold text-ink">{i.prompt}</p>
       {!open ? (
-        <button type="button" onClick={() => setOpen(true)} className="mt-3 inline-flex min-h-[48px] items-center gap-2 rounded-2xl border-2 border-brand-200 bg-white px-5 text-sm font-bold text-brand-700 hover:bg-brand-50">
+        <button type="button" onClick={() => setOpen(true)} className="mt-3 inline-flex min-h-[48px] items-center gap-2 rounded-2xl border-2 border-[var(--line-2)] bg-[var(--surface)] px-5 text-sm font-bold text-[var(--brand-ink)] hover:bg-[var(--brand-soft)]">
           <Eye className="h-4 w-4" /> เปิดเฉลย
         </button>
       ) : (
-        <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-xs font-semibold text-slate-500">เฉลย</p>
+        <div className="mt-3 rounded-2xl border border-[var(--line-2)] bg-[var(--surface-2)] p-4">
+          <p className="text-xs font-semibold text-[var(--ink-3)]">เฉลย</p>
           <p className="mt-1 font-mono text-sm text-ink break-words">{i.answer}</p>
           {!result.solved && !result.revealed && (
             <div className="mt-3 flex flex-wrap gap-2">
               <button type="button" onClick={() => onAnswer(true)} className="min-h-[44px] rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white hover:bg-emerald-700">
                 ฉันทำได้ตรงกัน
               </button>
-              <button type="button" onClick={onReveal} className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              <button type="button" onClick={onReveal} className="min-h-[44px] rounded-xl border border-slate-300 bg-[var(--surface)] px-4 text-sm font-semibold text-[var(--ink-2)] hover:bg-[var(--surface-2)]">
                 ยังไม่ตรง
               </button>
             </div>
           )}
-          {result.solved && <p className="mt-2 text-sm font-semibold text-emerald-700">✓ บันทึกว่าทำได้</p>}
-          {result.revealed && !result.solved && <p className="mt-2 text-sm text-amber-700">△ V2U จะนับเรื่องนี้ไว้ในสิ่งที่ควรทบทวน</p>}
+          {result.solved && <p className="mt-2 text-sm font-semibold text-[var(--ok)]">✓ บันทึกว่าทำได้</p>}
+          {result.revealed && !result.solved && <p className="mt-2 text-sm text-[var(--rev)]">△ V2U จะนับเรื่องนี้ไว้ในสิ่งที่ควรทบทวน</p>}
         </div>
       )}
     </div>
@@ -308,7 +308,7 @@ export function CodeQuestion({ interaction: i, result, onAnswer, successTitle }:
               aria-label="เติมโค้ดในช่องว่าง"
               autoComplete="off"
               spellCheck={false}
-              className="mx-1 inline-block min-h-[44px] w-40 max-w-full rounded-lg border-2 border-amber-400 bg-slate-800 px-2 font-mono text-amber-200 outline-none focus:border-amber-300 disabled:border-emerald-400 disabled:text-emerald-200"
+              className="mx-1 inline-block min-h-[44px] w-40 max-w-full rounded-lg border-2 border-[var(--rev)] bg-slate-800 px-2 font-mono text-amber-200 outline-none focus:border-amber-300 disabled:border-emerald-400 disabled:text-emerald-200"
             />
             {after}
           </pre>
@@ -316,7 +316,7 @@ export function CodeQuestion({ interaction: i, result, onAnswer, successTitle }:
         <button
           type="submit"
           disabled={result.solved || !value.trim()}
-          className="mt-3 min-h-[48px] rounded-2xl bg-brand-600 px-5 text-sm font-bold text-white hover:bg-brand-700 disabled:bg-slate-200 disabled:text-slate-500"
+          className="mt-3 min-h-[48px] rounded-2xl bg-[var(--brand)] px-5 text-sm font-bold text-white hover:bg-[var(--brand-hi)] disabled:bg-[var(--surface-3)] disabled:text-[var(--ink-3)]"
         >
           รันโค้ด
         </button>
@@ -343,13 +343,13 @@ export function LabQuestion({ interaction: i, result, onAnswer, successTitle }: 
   return (
     <div>
       <p className="text-base font-semibold text-ink">{i.prompt}</p>
-      <div className="mt-3 grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+      <div className="mt-3 grid gap-4 rounded-2xl border border-[var(--line-2)] bg-[var(--surface-2)] p-4 sm:grid-cols-[1fr_auto] sm:items-center">
         <div className="space-y-4">
           {i.variables.map((v) => (
             <label key={v.id} className="block">
               <span className="flex items-center justify-between text-sm font-semibold text-ink">
                 {v.label}
-                <span className="font-mono text-brand-700">
+                <span className="font-mono text-[var(--brand-ink)]">
                   {values[v.id]} {v.unit}
                 </span>
               </span>
@@ -369,17 +369,17 @@ export function LabQuestion({ interaction: i, result, onAnswer, successTitle }: 
             </label>
           ))}
         </div>
-        <output aria-live="polite" className="rounded-2xl bg-white px-6 py-4 text-center shadow-xs" data-testid="lab-output">
-          <span className="block text-xs font-semibold text-slate-500">{i.output.label}</span>
+        <output aria-live="polite" className="rounded-2xl bg-[var(--surface)] px-6 py-4 text-center shadow-xs" data-testid="lab-output">
+          <span className="block text-xs font-semibold text-[var(--ink-3)]">{i.output.label}</span>
           <span className="block font-mono text-3xl font-bold text-ink">{Number.isInteger(out) ? out : out.toFixed(2)}</span>
-          <span className="block text-xs text-slate-500">{i.output.unit}</span>
+          <span className="block text-xs text-[var(--ink-3)]">{i.output.unit}</span>
           {/* visual: bar grows with the result */}
-          <span className="mt-2 block h-2 w-28 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
-            <span className="block h-full rounded-full bg-brand-500 transition-[width]" style={{ width: `${Math.min(100, out * 2.5)}%` }} />
+          <span className="mt-2 block h-2 w-28 overflow-hidden rounded-full bg-[var(--surface-3)]" aria-hidden="true">
+            <span className="block h-full rounded-full bg-[var(--brand-soft)]0 transition-[width]" style={{ width: `${Math.min(100, out * 2.5)}%` }} />
           </span>
         </output>
       </div>
-      {!tried && !result.solved && <p className="mt-2 text-xs text-slate-500">ลองเลื่อนค่าก่อน แล้วค่อยตอบคำถาม</p>}
+      {!tried && !result.solved && <p className="mt-2 text-xs text-[var(--ink-3)]">ลองเลื่อนค่าก่อน แล้วค่อยตอบคำถาม</p>}
       <p className="mt-4 text-base font-semibold text-ink">{q.prompt}</p>
       <div role="group" aria-label={q.prompt} className="mt-2 grid gap-2 sm:grid-cols-2">
         {q.choices.map((c, k) => (
@@ -393,7 +393,7 @@ export function LabQuestion({ interaction: i, result, onAnswer, successTitle }: 
               onAnswer(k === q.correctIndex);
             }}
             className={`min-h-[52px] rounded-2xl border-2 px-4 text-left text-sm font-medium transition-colors disabled:opacity-60 ${
-              result.solved && k === q.correctIndex ? 'border-emerald-500 bg-emerald-50 text-emerald-900' : picked === k && wrong ? 'border-amber-400 bg-amber-50' : 'border-slate-200 bg-white hover:border-brand-300'
+              result.solved && k === q.correctIndex ? 'border-emerald-500 bg-[var(--ok-soft)] text-[var(--ink)]' : picked === k && wrong ? 'border-[var(--rev)] bg-[var(--rev-soft)]' : 'border-[var(--line-2)] bg-[var(--surface)] hover:border-brand-300'
             }`}
           >
             {c}

@@ -4,13 +4,17 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { usePathway } from '../../hooks/usePathway';
 import { AutoRecommendation, ManualPicker } from '../../components/pathway/PathwayBits';
 import type { CurriculumSubjectId } from '../../curriculum/types';
-import { Calculator, Code2, Atom, Brain, Cpu, BookMarked, Search, LayoutGrid, PlayCircle, Route as RouteIcon, ArrowRight, Clock } from 'lucide-react';
+import { Calculator, Code2, Atom, Brain, Cpu, BookMarked, LayoutGrid, PlayCircle, Route as RouteIcon } from 'lucide-react';
+import { KIcon, Pill } from '../../components/v2u/kit';
+import { ST, stOf, subOf } from '../../components/v2u/tokens';
+import { SUBJECT_LABEL, SUBJECT_ORDER, getCurriculumMap } from '../../diagnostic/engine';
+import { isCurriculumLessonCompleted } from '../../curriculum/engine';
 import { useStore } from '../../store/useStore';
 import { SUBJECTS } from '../../types';
 import type { SubjectId } from '../../types';
-import { HubHeader, HubLinkList } from '../../components/navigation/HubLinkList';
+import { HubLinkList } from '../../components/navigation/HubLinkList';
 import type { HubLink } from '../../components/navigation/HubLinkList';
-import { RowGroup, Section, Surface, LoopStrip } from '../../components/ui';
+import { RowGroup, Section, LoopStrip } from '../../components/ui';
 
 const SUBJECT_ICONS: Record<SubjectId, HubLink['icon']> = {
   math: Calculator,
@@ -68,84 +72,125 @@ export function LearnHub() {
     { to: '/dashboard', title: 'ภาพรวมการเรียนแบบเต็ม', description: 'แผนวันนี้ บทที่ค้าง และสรุปทั้งหมด', icon: LayoutGrid },
   ];
 
+  const curriculumMap = getCurriculumMap();
+  const subjectCards = SUBJECT_ORDER.map((id) => {
+    const rows = curriculumMap.find((m) => m.subjectId === id)?.topics.flatMap((t) => t.lessons) ?? [];
+    const doneN = rows.filter((r) => isCurriculumLessonCompleted(r.lesson, lessons)).length;
+    const profile = pathway.subjects.find((p) => p.subjectId === id);
+    const rec = pathway.bySubject.find((b) => b.subjectId === id)?.rec;
+    return { id, sub: subOf(id), st: ST[stOf(profile?.status ?? 'not-assessed')], count: rows.length, doneN, rec: rec?.lesson.title };
+  });
+  const h1 = { fontSize: 'clamp(24px,1.6vw + 18px,34px)', color: 'var(--ink)' } as const;
+
   return (
-    <div className="mx-auto w-full max-w-3xl lg:max-w-6xl space-y-6 sm:space-y-8">
-      <HubHeader title="เรียน" subtitle="เรียนต่อจากตรงที่ค้าง หรือหาเรื่องที่อยากรู้" />
-
-      <div className="flex flex-col gap-6 sm:gap-8 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-8">
-        <div className="contents lg:flex lg:flex-col lg:gap-8">
-      {cont && (
-        <Link
-          to={cont.to}
-          className="order-2 lg:order-none block rounded-3xl v2u-hero bg-gradient-to-br from-navy via-navy-2 to-brand-700 p-5 text-white shadow-lg shadow-brand-900/15 transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200"
-        >
-          <LoopStrip current={cont.stage} onDark />
-          <p className="mt-3 text-xs font-semibold text-brand-100">{cont.eyebrow}</p>
-          <p className="mt-0.5 text-lg font-bold break-words">{cont.title}</p>
-          <p className="mt-3 flex items-center justify-between gap-2 text-sm">
-            <span className="flex items-center gap-1.5 text-white/85">
-              <Clock className="h-4 w-4" /> {cont.meta}
-            </span>
-            <span className="flex items-center gap-1 font-bold">
-              เปิดบทเรียน <ArrowRight className="h-4 w-4" />
-            </span>
-          </p>
-        </Link>
-      )}
-
-      {/* Phase 60: two clear ways to start — V2U decides, or I choose */}
-      <section aria-labelledby="learn-how" className="order-2 lg:order-none space-y-4" data-testid="learn-modes">
-        <h2 id="learn-how" className="sr-only">เริ่มเรียนแบบไหน</h2>
-        <div role="tablist" aria-label="วิธีเลือกบทเรียน" className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1">
-          <button type="button" role="tab" aria-selected={!manual} onClick={() => setManual(false)} className={`min-h-[48px] rounded-xl px-3 text-sm font-bold ${!manual ? 'bg-white text-brand-800 shadow-sm' : 'text-slate-600'}`}>
-            ✨ ให้ V2U จัดให้
-          </button>
-          <button type="button" role="tab" aria-selected={manual} onClick={() => setManual(true, manualSubject)} className={`min-h-[48px] rounded-xl px-3 text-sm font-bold ${manual ? 'bg-white text-brand-800 shadow-sm' : 'text-slate-600'}`}>
-            ฉันอยากเลือกเอง
-          </button>
-        </div>
-        {manual ? (
-          <ManualPicker subject={manualSubject} onSubject={(s) => setManual(true, s)} gaps={pathway.gaps} />
-        ) : (
-          <AutoRecommendation rec={pathway.recommendation} onManual={() => setManual(true)} />
-        )}
-      </section>
-
-      <Section title="วิชา" id="learn-subjects" className="order-3 lg:order-none">
-        <RowGroup label="วิชา" items={subjectItems} />
-      </Section>
-
-        </div>
-        <aside aria-label="ค้นหาและเครื่องมือ" className="contents lg:sticky lg:top-0 lg:flex lg:flex-col lg:gap-6">
-      <form
-        role="search"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const v = (new FormData(e.currentTarget).get('q') as string | null)?.trim();
-          navigate(v ? `/search?q=${encodeURIComponent(v)}` : '/search');
-        }}
-        className="relative order-1 lg:order-none"
-      >
-        <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-        <input
-          name="q"
-          type="search"
-          aria-label="ค้นหาบทเรียน คลิป เอกสาร และโจทย์"
-          placeholder="ค้นหาบทเรียน คลิป โจทย์…"
-          className="min-h-[52px] w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-4 text-sm text-ink shadow-xs outline-none placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
+    <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-7 lg:max-w-6xl">
+      {manual && manualSubject ? (
+        <ManualPicker
+          subject={manualSubject}
+          onSubject={(s) => setManual(true, s)}
+          gaps={pathway.gaps}
+          recLessonId={pathway.bySubject.find((b) => b.subjectId === manualSubject)?.rec?.lesson.id}
+          profile={pathway.subjects.find((p) => p.subjectId === manualSubject)}
+          onBack={() => setManual(false)}
         />
-      </form>
+      ) : (
+        <>
+          <header className="flex flex-col gap-1">
+            <span className="text-xs font-semibold" style={{ letterSpacing: '.08em', color: 'var(--brand-ink)' }}>เรียน</span>
+            <h1 className="font-display font-bold leading-tight" style={h1}>วันนี้อยากเรียนแบบไหน</h1>
+          </header>
 
-      <div className="order-4 lg:order-none">
-      <HubLinkList heading="เครื่องมือการเรียน" links={toolLinks} />
+          {cont && (
+            <Link to={cont.to} className="flex flex-wrap items-center gap-4 p-4 transition-transform hover:-translate-y-0.5" style={{ borderRadius: 20, background: 'var(--surface)', border: '1px solid var(--line)', boxShadow: 'var(--shadow)' }}>
+              <span className="grid h-11 w-11 place-items-center rounded-xl" style={{ background: 'var(--ok-soft)', color: 'var(--ok)' }}><KIcon name="play" size={20} /></span>
+              <span className="min-w-0 flex-1">
+                <LoopStrip current={cont.stage} />
+                <span className="mt-1 block text-xs font-semibold" style={{ color: 'var(--ok)' }}>{cont.eyebrow}</span>
+                <span className="block font-semibold break-words" style={{ color: 'var(--ink)' }}>{cont.title}</span>
+              </span>
+              <span className="inline-flex items-center gap-1 text-sm font-bold" style={{ color: 'var(--brand-ink)' }}>{cont.meta} <KIcon name="arrowR" size={16} /></span>
+            </Link>
+          )}
 
-      </div>
-      <Surface tone="muted" className="order-5 lg:order-none text-xs text-slate-600">
-        ค้นหาได้ทั้งบทเรียนของ V2U คลิป เอกสาร และโจทย์ — ผลจากเว็บภายนอกจะแยกไว้และบอกชัดว่ายังไม่ได้คัด ·{' '}
-        <Link to="/search" className="font-semibold text-brand-700 underline">ไปหน้าค้นหา</Link>
-      </Surface>
-        </aside>
-      </div>
+          {/* Two ways to start — V2U decides, or I choose */}
+          <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))]" data-testid="learn-modes">
+            <AutoRecommendation rec={pathway.recommendation} onManual={() => setManual(true)} />
+            <section aria-labelledby="self-h" className="flex flex-col gap-3.5" style={{ padding: 22, borderRadius: 24, background: 'var(--surface)', border: '1px solid var(--line)', boxShadow: 'var(--shadow)' }}>
+              <div className="flex items-center gap-2.5">
+                <span className="grid h-[38px] w-[38px] place-items-center rounded-xl" style={{ background: 'var(--surface-3)', color: 'var(--ink)' }}><KIcon name="target" size={20} /></span>
+                <h2 id="self-h" className="font-display text-[19px] font-bold" style={{ color: 'var(--ink)' }}>ฉันอยากเลือกเอง</h2>
+              </div>
+              <p className="text-sm" style={{ color: 'var(--ink-2)' }}>เลือกวิชา แล้วเลือกบทที่อยากเรียน บทที่มีกุญแจเรียนได้ แต่ควรเรียนบทก่อนหน้าก่อน</p>
+              <ol aria-label="ขั้นการเลือก" className="flex flex-wrap items-center gap-1.5 text-xs font-semibold" style={{ color: 'var(--ink-3)' }}>
+                {['วิชา', 'บทเรียน', 'วิธีเรียน'].map((t, i) => (
+                  <li key={t} className="inline-flex items-center gap-1.5">
+                    {i > 0 && <span aria-hidden="true" className="mr-1.5 h-px w-4" style={{ background: 'var(--line-2)' }} />}
+                    <span className="grid h-5 w-5 place-items-center rounded-full font-mono text-[11px]" style={i === 0 ? { background: 'var(--ink)', color: 'var(--bg)' } : { border: '1px solid var(--line-2)' }}>{i + 1}</span>
+                    {t}
+                  </li>
+                ))}
+              </ol>
+              <div className="mt-auto flex flex-wrap gap-2">
+                {SUBJECT_ORDER.map((id) => (
+                  <button key={id} type="button" data-subject={id} onClick={() => setManual(true, id)} className="inline-flex h-11 items-center gap-2 rounded-xl pl-2.5 pr-3.5 text-sm font-semibold transition-colors hover:bg-[var(--surface-2)]" style={{ border: '1px solid var(--line-2)', color: 'var(--ink)' }}>
+                    <span style={{ color: subOf(id).c }}><KIcon name={subOf(id).k} size={16} /></span>{SUBJECT_LABEL[id]}
+                  </button>
+                ))}
+              </div>
+            </section>
+          </div>
+
+          <section aria-labelledby="subj-h" className="flex flex-col gap-3">
+            <div className="flex items-center gap-2.5">
+              <h2 id="subj-h" className="font-display text-lg font-semibold" style={{ color: 'var(--ink)' }}>วิชาในเส้นทางของคุณ</h2>
+              <span className="h-px flex-1" style={{ background: 'linear-gradient(90deg,var(--line-2),transparent)' }} />
+            </div>
+            <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))]">
+              {subjectCards.map((c) => (
+                <button key={c.id} type="button" data-subject-card={c.id} onClick={() => setManual(true, c.id)} className="relative flex flex-col gap-4 overflow-hidden p-[18px] text-left transition-transform hover:-translate-y-0.5" style={{ borderRadius: 20, background: 'var(--surface)', border: '1px solid var(--line)', boxShadow: 'var(--shadow)' }}>
+                  <span aria-hidden="true" className="absolute -right-10 -top-10 h-[140px] w-[140px] rounded-full" style={{ background: `radial-gradient(circle,${c.sub.soft} 0%,transparent 70%)` }} />
+                  <span className="relative flex items-center justify-between gap-2">
+                    <span className="grid h-[46px] w-[46px] place-items-center rounded-[14px]" style={{ background: c.sub.soft, color: c.sub.c }}><KIcon name={c.sub.k} size={24} /></span>
+                    <Pill c={c.st.c} soft={c.st.soft} icon={c.st.k}>{c.st.label}</Pill>
+                  </span>
+                  <span className="relative"><span className="block font-display text-lg font-semibold" style={{ color: 'var(--ink)' }}>{SUBJECT_LABEL[c.id]}</span><span className="text-xs" style={{ color: 'var(--ink-3)' }}>{c.count} บทเรียน</span></span>
+                  <span className="relative flex flex-col gap-1.5">
+                    <span className="block h-1.5 overflow-hidden rounded-full" style={{ background: 'var(--surface-3)' }}><span className="block h-full rounded-full" style={{ width: `${c.count ? (c.doneN / c.count) * 100 : 0}%`, background: c.sub.c }} /></span>
+                    <span className="text-xs" style={{ color: 'var(--ink-3)' }}>เรียนจบ {c.doneN} จาก {c.count} บท</span>
+                  </span>
+                  <span className="relative flex items-center gap-2 pt-3 text-[13px]" style={{ borderTop: '1px solid var(--line)' }}>
+                    <span style={{ color: 'var(--brand-ink)' }}><KIcon name="sparkle" size={14} /></span>
+                    <span className="min-w-0 flex-1" style={{ color: 'var(--ink-2)' }}>แนะนำตอนนี้: <span className="font-semibold" style={{ color: 'var(--ink)' }}>{c.rec ?? 'ไม่มีบทที่ขาดในวิชานี้'}</span></span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
+            <div className="flex flex-col gap-4">
+              <form
+                role="search"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const v = (new FormData(e.currentTarget).get('q') as string | null)?.trim();
+                  navigate(v ? `/search?q=${encodeURIComponent(v)}` : '/search');
+                }}
+                className="relative"
+              >
+                <KIcon name="search" size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'var(--ink-3)' }} />
+                <input name="q" type="search" aria-label="ค้นหาบทเรียน คลิป เอกสาร และโจทย์" placeholder="ค้นหาบทเรียน คลิป โจทย์…"
+                  className="min-h-[50px] w-full rounded-[14px] pl-11 pr-4 text-sm outline-none focus:ring-4 focus:ring-[var(--brand-soft)]"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--line-2)', color: 'var(--ink)' }} />
+              </form>
+              <HubLinkList heading="เครื่องมือการเรียน" links={toolLinks} />
+            </div>
+            <Section title="คลังวิชาทั้งหมด" id="learn-subjects">
+              <RowGroup label="วิชา" items={subjectItems} />
+            </Section>
+          </div>
+        </>
+      )}
     </div>
   );
 }

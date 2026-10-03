@@ -3,7 +3,7 @@
    Icon paths, logo mark, status + subject identity. No sample data is used:
    every value shown in the app comes from the real engines.
    ========================================================================= */
-import { createElement } from 'react';
+import { useId, createElement } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 
 type Part = string | [string, Record<string, unknown>];
@@ -77,7 +77,7 @@ export function KIcon({ name, size = 20, w = 2, className, style }: { name: Icon
 export function Mark({ size = 40, variant = 'tile' }: { size?: number; variant?: 'tile' | 'mono' | 'light' | 'dark' }) {
   const tile = variant === 'tile';
   const stroke = tile ? '#fff' : variant === 'dark' ? '#eef1ff' : variant === 'light' ? '#16207a' : 'currentColor';
-  const id = `v2u-mark-${variant}`;
+  const id = `v2u-mark-${useId().replace(/:/g, '')}`;
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true" style={{ display: 'block', flexShrink: 0 }}>
       {tile && (

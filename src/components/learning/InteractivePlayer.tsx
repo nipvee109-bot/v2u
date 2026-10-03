@@ -16,19 +16,19 @@ const TYPE_LABEL: Record<InteractiveStep['type'], string> = {
 export function EquationCard({ lines, caption, tone = 'plain' }: { lines: string[]; caption?: string; tone?: 'plain' | 'solved' }) {
   return (
     <figure
-      className={`rounded-2xl border px-4 py-4 sm:px-6 ${tone === 'solved' ? 'border-emerald-200 bg-emerald-50/60' : 'border-brand-100 bg-brand-50/60'}`}
+      className={`rounded-2xl border px-4 py-4 sm:px-6 ${tone === 'solved' ? 'border-[var(--ok-soft)] bg-[var(--ok-soft)]/60' : 'border-[var(--brand-soft)] bg-[var(--brand-soft)]/60'}`}
     >
       <div className="space-y-1">
         {lines.map((l, i) => (
           <p
             key={`${l}-${i}`}
-            className={`font-mono break-words ${i === 0 ? 'text-xl font-semibold text-ink sm:text-2xl' : 'text-base text-slate-700 sm:text-lg'}`}
+            className={`font-mono break-words ${i === 0 ? 'text-xl font-semibold text-ink sm:text-2xl' : 'text-base text-[var(--ink-2)] sm:text-lg'}`}
           >
             {l}
           </p>
         ))}
       </div>
-      {caption && <figcaption className="mt-2 text-xs font-medium text-slate-500">{caption}</figcaption>}
+      {caption && <figcaption className="mt-2 text-xs font-medium text-[var(--ink-3)]">{caption}</figcaption>}
     </figure>
   );
 }
@@ -53,7 +53,7 @@ export function MissionProgress({ lesson, state, onGo }: { lesson: InteractiveLe
               className="flex h-11 min-w-[22px] items-center justify-center disabled:cursor-default"
             >
               <span
-                className={`block h-2.5 rounded-full transition-all ${now ? 'w-7 bg-brand-600' : done ? 'w-2.5 bg-brand-400' : 'w-2.5 bg-slate-200'}`}
+                className={`block h-2.5 rounded-full transition-all ${now ? 'w-7 bg-[var(--brand)]' : done ? 'w-2.5 bg-brand-400' : 'w-2.5 bg-[var(--surface-3)]'}`}
               />
             </button>
           </li>
@@ -91,7 +91,7 @@ export function InteractivePlayer({ lesson, state, dispatch, onToCheck }: Player
       <div className="grid gap-5 @3xl:grid-cols-[minmax(0,1fr)_240px]">
         <div className="min-w-0 space-y-5">
           {/* Mission header */}
-          <div className="rounded-3xl v2u-hero bg-gradient-to-br from-navy via-navy-2 to-brand-700 p-5 text-white sm:p-6">
+          <div className="rounded-[22px] v2u-hero bg-gradient-to-br from-navy via-navy-2 to-brand-700 p-5 text-white sm:p-6">
             <p className="flex items-center gap-1.5 text-xs font-semibold text-brand-100">
               <Sparkles className="h-4 w-4" /> ภารกิจ
             </p>
@@ -108,27 +108,27 @@ export function InteractivePlayer({ lesson, state, dispatch, onToCheck }: Player
           {lesson.theme && <ThemeBanner lesson={lesson} state={state} />}
 
           {/* Step card */}
-          <section key={step.id} aria-labelledby={`step-${step.id}`} className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-5 sm:p-7 animate-in fade-in slide-in-from-right-2 duration-200">
-            <p className="text-xs font-semibold text-brand-700">
+          <section key={step.id} aria-labelledby={`step-${step.id}`} className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)] p-5 sm:p-7 animate-in fade-in slide-in-from-right-2 duration-200">
+            <p className="text-xs font-semibold text-[var(--brand-ink)]">
               ขั้นที่ {idx + 1} · {TYPE_LABEL[step.type]}
             </p>
             <h3 id={`step-${step.id}`} className="mt-0.5 text-lg font-bold text-ink sm:text-xl">
               {step.title}
             </h3>
-            {step.body && <p className="mt-2 text-[15px] leading-relaxed text-slate-700 break-words">{step.body}</p>}
+            {step.body && <p className="mt-2 text-[15px] leading-relaxed text-[var(--ink-2)] break-words">{step.body}</p>}
             {step.visual && (
               <div className="mt-4">
                 <EquationCard lines={step.visual.lines} caption={step.visual.caption} />
               </div>
             )}
             {step.keyIdea && (
-              <p className="mt-4 rounded-2xl border-l-4 border-amber-400 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-950 break-words">
+              <p className="mt-4 rounded-2xl border-l-4 border-[var(--rev)] bg-[var(--rev-soft)] px-4 py-3 text-sm font-medium text-[var(--ink)] break-words">
                 {step.keyIdea}
               </p>
             )}
 
             {step.interaction && (
-              <div className="mt-5 border-t border-slate-100 pt-5">
+              <div className="mt-5 border-t border-[var(--line)] pt-5">
                 {step.interaction.kind === 'choice' && <ChoiceQuestion key={step.id} interaction={step.interaction} {...handlers} />}
                 {step.interaction.kind === 'typed' && <TypedQuestion key={step.id} interaction={step.interaction} {...handlers} />}
                 {step.interaction.kind === 'order' && <OrderQuestion key={step.id} interaction={step.interaction} {...handlers} />}
@@ -149,7 +149,7 @@ export function InteractivePlayer({ lesson, state, dispatch, onToCheck }: Player
                 type="button"
                 onClick={() => dispatch({ type: 'go', index: idx - 1 })}
                 disabled={idx === 0}
-                className="inline-flex min-h-[48px] items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:invisible"
+                className="inline-flex min-h-[48px] items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-[var(--ink-2)] hover:bg-[var(--surface-3)] disabled:invisible"
               >
                 <ArrowLeft className="h-4 w-4" /> ย้อนกลับ
               </button>
@@ -157,19 +157,19 @@ export function InteractivePlayer({ lesson, state, dispatch, onToCheck }: Player
                 type="button"
                 onClick={() => (isLast ? onToCheck() : dispatch({ type: 'go', index: idx + 1 }))}
                 disabled={!ready}
-                className="inline-flex min-h-[52px] items-center gap-2 rounded-2xl bg-brand-600 px-6 text-sm font-bold text-white shadow-sm hover:bg-brand-700 disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
+                className="inline-flex min-h-[52px] items-center gap-2 rounded-2xl bg-[var(--brand)] px-6 text-sm font-bold text-white shadow-sm hover:bg-[var(--brand-hi)] disabled:bg-[var(--surface-3)] disabled:text-[var(--ink-3)] disabled:shadow-none"
               >
                 {isLast ? 'ไปเช็กความเข้าใจ' : 'ต่อไป'} <ArrowRight className="h-4 w-4" />
               </button>
             </div>
-            {!ready && <p className="mt-2 text-right text-xs text-slate-500">ตอบคำถามก่อน แล้วค่อยไปต่อ</p>}
+            {!ready && <p className="mt-2 text-right text-xs text-[var(--ink-3)]">ตอบคำถามก่อน แล้วค่อยไปต่อ</p>}
           </section>
         </div>
 
         {/* Context panel (wide containers only) */}
         <aside aria-label="ภารกิจนี้" className="hidden @3xl:block">
-          <div className="sticky top-0 space-y-3 rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4">
-            <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+          <div className="sticky top-0 space-y-3 rounded-[22px] border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)] p-4">
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-[var(--ink-3)]">
               <Target className="h-4 w-4 text-brand-600" /> ระหว่างทาง
             </p>
             <ol className="space-y-1.5">
@@ -177,9 +177,9 @@ export function InteractivePlayer({ lesson, state, dispatch, onToCheck }: Player
                 const r = state.results[s.id] ?? EMPTY_RESULT;
                 const done = s.interaction ? r.solved || r.revealed : i < state.stepIndex;
                 return (
-                  <li key={s.id} className={`flex items-start gap-2 text-sm ${i === idx ? 'font-semibold text-ink' : 'text-slate-600'}`}>
+                  <li key={s.id} className={`flex items-start gap-2 text-sm ${i === idx ? 'font-semibold text-ink' : 'text-[var(--ink-2)]'}`}>
                     {done ? (
-                      <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${r.revealed && !r.solved ? 'text-amber-500' : 'text-emerald-600'}`} />
+                      <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${r.revealed && !r.solved ? 'text-[var(--rev)]' : 'text-[var(--ok)]'}`} />
                     ) : (
                       <span className={`mt-1 h-3 w-3 shrink-0 rounded-full border-2 ${i === idx ? 'border-brand-600' : 'border-slate-300'}`} />
                     )}
@@ -187,12 +187,12 @@ export function InteractivePlayer({ lesson, state, dispatch, onToCheck }: Player
                   </li>
                 );
               })}
-              <li className="flex items-start gap-2 text-sm text-slate-600">
+              <li className="flex items-start gap-2 text-sm text-[var(--ink-2)]">
                 <span className="mt-1 h-3 w-3 shrink-0 rounded-full border-2 border-dashed border-slate-300" />
                 เช็กความเข้าใจ
               </li>
             </ol>
-            <p className="border-t border-slate-100 pt-3 text-xs text-slate-500">
+            <p className="border-t border-[var(--line)] pt-3 text-xs text-[var(--ink-3)]">
               ทำได้ด้วยตัวเอง {solvedCount}/{lesson.steps.length} ขั้น
             </p>
           </div>

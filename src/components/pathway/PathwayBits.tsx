@@ -1,12 +1,18 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Clock, Sparkles, Shuffle, Hand, ChevronRight, CheckCircle2, Lock } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
+import { KIcon, Pill } from '../v2u/kit';
+import { LST, ST, stOf, subOf } from '../v2u/tokens';
+import type { LstKey } from '../v2u/tokens';
+import { useStore } from '../../store/useStore';
+import { findStudyLesson, isCurriculumLessonCompleted } from '../../curriculum/engine';
+import type { Lesson } from '../../types';
 import type { ProfileStatus, SubjectProfile } from '../../diagnostic/types';
 import { PROFILE_STATUS_LABEL } from '../../diagnostic/types';
-import { SUBJECT_EMOJI, SUBJECT_LABEL, SUBJECT_ORDER, describeCounts, getCurriculumMap, subjectProgress } from '../../diagnostic/engine';
+import { SUBJECT_LABEL, SUBJECT_ORDER, describeCounts, getCurriculumMap, subjectProgress } from '../../diagnostic/engine';
 import type { LessonGap, PathwayRecommendation } from '../../diagnostic/engine';
 import type { CurriculumSubjectId } from '../../curriculum/types';
-import { SubjectMark, SubjectTag } from '../ui/subject';
+import { SubjectMark } from '../ui/subject';
 import { subjectStyle } from '../ui/subjectStyle';
 
 const TONE: Record<ProfileStatus, string> = {
@@ -50,7 +56,7 @@ export function SubjectBar({ p }: { p: SubjectProfile }) {
 
 export function SubjectStatusCard({ p, detailed = false, highlight = false }: { p: SubjectProfile; detailed?: boolean; highlight?: boolean }) {
   return (
-    <div className={`rounded-2xl border bg-white p-4 shadow-card sm:p-5 ${highlight ? 'border-brand-300 ring-2 ring-brand-100' : 'border-ink/[0.08]'}`} data-testid="subject-status" data-subject={p.subjectId}>
+    <div className={`rounded-2xl border bg-[var(--surface)] p-4 shadow-card sm:p-5 ${highlight ? 'border-brand-300 ring-2 ring-brand-100' : 'border-[var(--line)]'}`} data-testid="subject-status" data-subject={p.subjectId}>
       <div className="flex items-center justify-between gap-2">
         <p className="flex min-w-0 items-center gap-2.5 font-display text-base font-bold text-ink">
           <SubjectMark subjectId={p.subjectId} size="sm" />
@@ -59,12 +65,12 @@ export function SubjectStatusCard({ p, detailed = false, highlight = false }: { 
         <StatusPill status={p.status} />
       </div>
       <div className="mt-3"><SubjectBar p={p} /></div>
-      <p className="mt-2 text-xs text-slate-600">{describeCounts(p)}{p.skipped && p.status === 'not-assessed' ? ' · ข้ามการวัดไว้ก่อน' : ''}</p>
+      <p className="mt-2 text-xs text-[var(--ink-2)]">{describeCounts(p)}{p.skipped && p.status === 'not-assessed' ? ' · ข้ามการวัดไว้ก่อน' : ''}</p>
       {detailed && (
         <ul className="mt-3 space-y-1.5">
           {p.skills.map((s) => (
             <li key={s.skillId} className="flex items-center justify-between gap-2 text-sm">
-              <span className="min-w-0 break-words text-slate-800">{s.title}</span>
+              <span className="min-w-0 break-words text-[var(--ink)]">{s.title}</span>
               <StatusPill status={s.status} />
             </li>
           ))}
@@ -74,111 +80,176 @@ export function SubjectStatusCard({ p, detailed = false, highlight = false }: { 
   );
 }
 
-/** "✨ ให้ V2U จัดให้" — subject, lesson, time, why; the learner can still change it. */
+/** "ให้ V2U จัดให้" (design: --hero-2 card) — subject, lesson, time, why; the learner can still change it. */
 export function AutoRecommendation({ rec, onManual }: { rec: PathwayRecommendation | null; onManual: () => void }) {
   const [alt, setAlt] = useState(false);
-  if (!rec) {
-    return (
-      <div className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-5" data-testid="auto-pick">
-        <p className="text-sm text-slate-700">ตอนนี้ไม่มีบทที่ขาดในเส้นทาง — ไปทบทวนหรือวัดระดับซ้ำได้</p>
-      </div>
-    );
-  }
+  const sub = rec ? subOf(rec.subjectId) : null;
   return (
-    <div className="rounded-3xl v2u-hero bg-gradient-to-br from-navy via-navy-2 to-brand-700 p-5 text-white sm:p-6" data-testid="auto-pick" data-subject={rec.subjectId}>
-      <p className="flex items-center gap-1.5 text-xs font-semibold text-brand-100"><Sparkles className="h-4 w-4" /> ก้าวต่อไปที่แนะนำ</p>
-      <p className="mt-2 font-display text-xl font-bold break-words sm:text-2xl">{rec.lesson.title}</p>
-      <p className="mt-2 flex flex-wrap gap-1.5">
-        <SubjectTag subjectId={rec.subjectId} label={SUBJECT_LABEL[rec.subjectId]} onDark />
-        <span className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 text-xs font-semibold"><Clock className="h-3.5 w-3.5" /> ประมาณ {rec.minutes} นาทีวันนี้</span>
-      </p>
-      <p className="mt-3 rounded-2xl bg-white/10 px-4 py-3 text-sm text-white/95 break-words">แนะนำเพราะ {rec.reasons.join(' · ')}</p>
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-        <Link to={`/learn/curriculum/${rec.lesson.id}?from=next&min=${rec.minutes}`} className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-2xl bg-white px-6 text-sm font-bold text-brand-800">
-          เริ่มเรียน <ArrowRight className="h-4 w-4" />
-        </Link>
-        {rec.alternatives.length > 0 && (
-          <button type="button" onClick={() => setAlt((x) => !x)} aria-expanded={alt} className="inline-flex min-h-[48px] items-center justify-center gap-1.5 rounded-2xl border border-white/30 px-4 text-sm font-semibold">
-            <Shuffle className="h-4 w-4" /> เปลี่ยนสิ่งที่แนะนำ
-          </button>
-        )}
-        <button type="button" onClick={onManual} className="inline-flex min-h-[48px] items-center justify-center gap-1.5 rounded-2xl px-4 text-sm font-semibold text-white/90">
-          <Hand className="h-4 w-4" /> เลือกเอง
-        </button>
+    <section
+      aria-labelledby="auto-h"
+      className="relative flex flex-col gap-3.5 overflow-hidden text-white"
+      style={{ padding: 22, borderRadius: 24, background: 'radial-gradient(360px 220px at 100% 0%,rgba(132,150,255,.5),transparent 70%),linear-gradient(140deg,#0b1135 0%,#1a2490 100%)', boxShadow: 'var(--shadow-lg)' }}
+      data-testid="auto-pick"
+      data-subject={rec?.subjectId}
+    >
+      <div className="flex items-center gap-2.5">
+        <span className="grid h-[38px] w-[38px] place-items-center rounded-xl" style={{ background: 'rgba(255,255,255,.12)', color: '#f5c04d' }}><KIcon name="sparkle" size={20} /></span>
+        <h2 id="auto-h" className="font-display text-[19px] font-bold">ให้ V2U จัดให้</h2>
       </div>
-      {rec.suggestDiagnostic && (
-        <Link to={`/me/diagnostic?subject=${rec.subjectId}`} className="mt-3 inline-flex min-h-[44px] items-center text-xs font-semibold text-white underline">
-          หรือวัดพื้นฐาน{SUBJECT_LABEL[rec.subjectId]}ก่อน (ไม่หักคะแนน)
-        </Link>
+      {rec && sub ? (
+        <>
+          <div className="flex flex-col gap-1.5 rounded-2xl p-3.5" style={{ background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.1)' }}>
+            <span className="flex flex-wrap items-center gap-1.5 text-xs" style={{ color: '#c9d1ff' }}>
+              <span style={{ color: '#fff' }}><KIcon name={sub.k} size={14} /></span> {SUBJECT_LABEL[rec.subjectId]} · ก้าวต่อไปที่แนะนำ · ประมาณ {rec.minutes} นาทีวันนี้
+            </span>
+            <span className="font-display text-lg font-semibold leading-snug break-words">{rec.lesson.title}</span>
+            <span className="text-[13px] break-words" style={{ color: '#d5dbff' }}>แนะนำเพราะ {rec.reasons.join(' · ')}</span>
+          </div>
+          <div className="mt-auto flex flex-wrap items-center gap-2">
+            <Link to={`/learn/curriculum/${rec.lesson.id}?from=next&min=${rec.minutes}`} className="inline-flex h-12 items-center gap-2.5 rounded-[14px] bg-[var(--surface)] px-5 font-bold" style={{ color: '#16207a' }}>
+              เริ่มบทนี้ <KIcon name="arrowR" size={18} />
+            </Link>
+            {rec.alternatives.length > 0 && (
+              <button type="button" onClick={() => setAlt((x) => !x)} aria-expanded={alt} className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3.5 text-sm font-semibold" style={{ border: '1px solid rgba(255,255,255,.25)' }}>
+                <KIcon name="refresh" size={16} /> เปลี่ยนสิ่งที่แนะนำ
+              </button>
+            )}
+            <button type="button" onClick={onManual} className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 text-sm font-semibold" style={{ color: '#d5dbff' }}>
+              <KIcon name="target" size={16} /> เลือกเอง
+            </button>
+          </div>
+          {rec.suggestDiagnostic && (
+            <Link to={`/me/diagnostic?subject=${rec.subjectId}`} className="inline-flex min-h-[44px] items-center text-xs font-semibold underline" style={{ color: '#d5dbff' }}>
+              หรือวัดพื้นฐาน{SUBJECT_LABEL[rec.subjectId]}ก่อน (ไม่หักคะแนน)
+            </Link>
+          )}
+          {alt && (
+            <ul className="flex flex-col gap-2" data-testid="alternatives">
+              {rec.alternatives.map((a) => (
+                <li key={a.lesson.id}>
+                  <Link to={`/learn/curriculum/${a.lesson.id}`} className="flex min-h-[56px] items-center justify-between gap-3 rounded-2xl px-4 py-2" style={{ background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.1)' }}>
+                    <span className="min-w-0">
+                      <span className="flex items-center gap-1.5 text-sm font-bold break-words"><KIcon name={subOf(a.lesson.subjectId).k} size={14} /> {a.lesson.title}</span>
+                      <span className="block text-xs break-words" style={{ color: '#d5dbff' }}>{a.reason}</span>
+                    </span>
+                    <KIcon name="chevR" size={16} />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="flex flex-col gap-1.5 rounded-2xl p-3.5" style={{ border: '1px dashed rgba(255,255,255,.25)' }}>
+            <span className="font-semibold">ยังจัดบทให้ไม่ได้</span>
+            <span className="text-[13px]" style={{ color: '#d5dbff' }}>ตอนนี้ไม่มีบทที่ขาดในเส้นทาง — ไปทบทวนหรือวัดระดับซ้ำได้</span>
+          </div>
+          <Link to="/me/diagnostic" className="mt-auto inline-flex h-12 items-center gap-2.5 self-start rounded-[14px] bg-[var(--surface)] px-5 font-bold" style={{ color: '#16207a' }}>
+            วัดระดับซ้ำ <KIcon name="arrowR" size={18} />
+          </Link>
+        </>
       )}
-      {alt && (
-        <ul className="mt-3 space-y-2" data-testid="alternatives">
-          {rec.alternatives.map((a) => (
-            <li key={a.lesson.id}>
-              <Link to={`/learn/curriculum/${a.lesson.id}`} className="flex min-h-[56px] items-center justify-between gap-3 rounded-2xl bg-white/10 px-4 py-2 hover:bg-white/15">
-                <span className="min-w-0">
-                  <span className="block text-sm font-bold break-words">{SUBJECT_EMOJI[a.lesson.subjectId]} {a.lesson.title}</span>
-                  <span className="block text-xs text-white/80 break-words">{a.reason}</span>
-                </span>
-                <ChevronRight className="h-4 w-4 shrink-0" />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    </section>
   );
 }
 
-/** "ฉันอยากเลือกเอง": subject → topic → lesson (only the chosen subject is shown). */
-export function ManualPicker({ subject, onSubject, gaps }: { subject: CurriculumSubjectId | null; onSubject: (s: CurriculumSubjectId | null) => void; gaps: LessonGap[] }) {
+/** Lesson state for the subject list (design LST), from real gaps, store progress and the pathway pick only. */
+function lessonState(gap: LessonGap | undefined, study: Lesson | undefined, done: boolean, isRec: boolean): LstKey {
+  if (gap?.state === 'blocked') return 'locked';
+  if (isRec) return 'rec';
+  if (done && gap?.state === 'gap') return 'review';
+  if (gap?.state === 'known' || done) return 'done';
+  if (study?.status === 'IN PROGRESS') return 'progress';
+  if (gap && gap.missingSkills.length > 0 && gap.missingSkills.every((m) => m.status === 'not-assessed')) return 'none';
+  return 'ready';
+}
+
+/** "ฉันอยากเลือกเอง" — design Subject screen: subject tabs → lesson list with real status (only the chosen subject). */
+export function ManualPicker({ subject, onSubject, gaps, recLessonId, profile, onBack }: {
+  subject: CurriculumSubjectId | null;
+  onSubject: (s: CurriculumSubjectId | null) => void;
+  gaps: LessonGap[];
+  recLessonId?: string;
+  profile?: SubjectProfile;
+  onBack: () => void;
+}) {
+  const storeLessons = useStore((st) => st.lessons);
   const map = getCurriculumMap();
   const s = map.find((x) => x.subjectId === subject);
-  const stateOf = (id: string) => gaps.find((g) => g.lesson.id === id)?.state;
+  const cs = subject ? subOf(subject) : null;
+  const rows = s ? s.topics.flatMap(({ topic, lessons }) => lessons.map((x) => ({ topic, ...x }))) : [];
+  const doneN = rows.filter((r) => isCurriculumLessonCompleted(r.lesson, storeLessons)).length;
+  const st = profile ? ST[stOf(profile.status)] : null;
   return (
-    <div className="space-y-4" data-testid="manual-pick">
-      <div>
-        <p className="font-display text-sm font-bold text-ink">📚 เลือกวิชา</p>
-        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-          {SUBJECT_ORDER.map((id) => (
-            <button key={id} type="button" aria-pressed={subject === id} data-subject={id} onClick={() => onSubject(subject === id ? null : id)}
-              className={`flex min-h-[64px] items-center gap-3 rounded-2xl border-2 px-4 text-left font-display text-sm font-bold shadow-card transition-colors ${subject === id ? 'border-brand-500 bg-brand-50 text-brand-900' : 'border-ink/[0.08] bg-white text-ink hover:border-brand-300'}`}>
-              <SubjectMark subjectId={id} />
-              <span className="min-w-0 break-words">{SUBJECT_LABEL[id]}</span>
+    <div className="flex flex-col gap-[22px]" data-testid="manual-pick">
+      <button type="button" onClick={onBack} className="inline-flex min-h-[44px] items-center gap-1 self-start text-[13px] font-semibold" style={{ color: 'var(--brand-ink)' }}>
+        <KIcon name="chevL" size={16} /> เรียน
+      </button>
+      <div role="tablist" aria-label="เลือกวิชา" className="flex max-w-full gap-1.5 self-start overflow-x-auto rounded-[14px] p-1" style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}>
+        {SUBJECT_ORDER.map((id) => {
+          const a = subject === id;
+          return (
+            <button key={id} type="button" role="tab" aria-selected={a} aria-pressed={a} data-subject={id} onClick={() => onSubject(id)}
+              className="inline-flex min-h-[44px] items-center gap-1.5 whitespace-nowrap rounded-[10px] px-3.5 text-sm font-semibold transition-colors"
+              style={{ background: a ? 'var(--brand)' : 'transparent', color: a ? 'var(--on-brand)' : 'var(--ink-2)' }}>
+              <KIcon name={subOf(id).k} size={16} /> {SUBJECT_LABEL[id]}
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
-      {s && (
-        <div className="space-y-3" data-testid="manual-topics">
-          {s.topics.map(({ topic, lessons }) => (
-            <section key={topic.id} className="rounded-2xl border border-ink/[0.08] bg-white p-4 shadow-card">
-              <p className="text-xs font-semibold text-ink-3">หัวข้อ</p>
-              <p className="font-display text-sm font-bold text-ink">{topic.title}</p>
-              <ul className="mt-2 divide-y divide-ink/[0.06]">
-                {lessons.map(({ lesson, prerequisites }) => {
-                  const st = stateOf(lesson.id);
-                  return (
-                    <li key={lesson.id}>
-                      <Link to={`/learn/curriculum/${lesson.id}`} className="flex min-h-[56px] items-center gap-3 py-2" data-lesson={lesson.id}>
-                        {st === 'known' ? <CheckCircle2 className="h-5 w-5 shrink-0 text-ok" /> : st === 'blocked' ? <Lock className="h-5 w-5 shrink-0 text-none" /> : <span className="h-5 w-5 shrink-0 rounded-full border-2 border-brand-500" />}
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-sm font-semibold text-ink break-words">{lesson.title}</span>
-                          <span className="block text-xs text-slate-500 break-words">
-                            {lesson.estimatedMinutes} นาที
-                            {st === 'known' ? ' · รู้แล้ว' : st === 'blocked' ? ` · ควรเรียนก่อน: ${prerequisites.map((p) => p.title).join(', ')}` : ' · พร้อมเรียน'}
-                          </span>
-                        </span>
-                        <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
-          <p className="text-xs text-slate-500">เลือกบทแล้วเลือกวิธีเรียนได้ในหน้าบท (อ่าน · ดูคลิป · เรียนกับ V2U) — บทที่มีกุญแจเรียนได้ แต่ควรเรียนบทก่อนหน้าก่อน</p>
-        </div>
+      {s && cs && (
+        <>
+          <header className="flex flex-wrap items-center gap-4">
+            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-[18px]" style={{ background: cs.soft, color: cs.c }}><KIcon name={cs.k} size={28} /></span>
+            <div className="min-w-0 flex-[1_1_220px]">
+              <h1 className="font-display font-bold leading-tight" style={{ fontSize: 'clamp(24px,1.6vw + 18px,32px)', color: 'var(--ink)' }}>{SUBJECT_LABEL[s.subjectId]}</h1>
+              <p className="text-[13px]" style={{ color: 'var(--ink-3)' }}>{rows.length} บทเรียน · เรียนจบ {doneN} บท</p>
+            </div>
+            {st && <Pill c={st.c} soft={st.soft} icon={st.k}>{st.label}</Pill>}
+          </header>
+          <ol className="flex flex-col gap-2.5" data-testid="manual-topics">
+            {rows.map(({ topic, lesson, prerequisites }, i) => {
+              const gap = gaps.find((g) => g.lesson.id === lesson.id);
+              const done = isCurriculumLessonCompleted(lesson, storeLessons);
+              const k = lessonState(gap, findStudyLesson(lesson, storeLessons), done, lesson.id === recLessonId);
+              const l = LST[k];
+              const label = k === 'done' && !done ? 'รู้แล้ว' : k === 'locked' ? `ควรเรียนก่อน: ${prerequisites.map((p) => p.title).join(', ')}` : l.label;
+              const rec = k === 'rec', locked = k === 'locked';
+              return (
+                <li key={lesson.id}>
+                  <Link
+                    to={`/learn/curriculum/${lesson.id}`}
+                    data-lesson={lesson.id}
+                    data-state={k}
+                    className="flex w-full flex-wrap items-center gap-3.5 p-4 transition-transform hover:-translate-y-px"
+                    style={{ borderRadius: 18, background: locked ? 'transparent' : 'var(--surface)', border: rec ? '2px solid var(--brand)' : locked ? '1px dashed var(--line-2)' : '1px solid var(--line)', boxShadow: locked ? 'none' : rec ? '0 0 0 5px var(--brand-soft),var(--shadow)' : 'var(--shadow)', opacity: locked ? 0.82 : 1 }}
+                  >
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl font-mono text-[13px] font-semibold" style={{ background: k === 'done' ? 'var(--ok-soft)' : rec ? 'var(--brand)' : cs.soft, color: k === 'done' ? 'var(--ok)' : rec ? 'var(--on-brand)' : cs.c }}>
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <span className="flex min-w-0 flex-[1_1_200px] flex-col gap-1">
+                      {rec && <span className="inline-flex items-center gap-1 text-[11px] font-bold" style={{ letterSpacing: '.06em', color: 'var(--brand-ink)' }}><KIcon name="sparkle" size={12} /> V2U แนะนำบทนี้</span>}
+                      <span className="text-[15px] font-semibold leading-snug break-words" style={{ color: 'var(--ink)' }}>{lesson.title}</span>
+                      <span className="text-xs break-words" style={{ color: 'var(--ink-3)' }}>หัวข้อ {topic.title} · ประมาณ {lesson.estimatedMinutes} นาที</span>
+                    </span>
+                    <span className="ml-auto max-w-full">
+                      <span className="inline-flex min-h-[26px] max-w-full items-center gap-1.5 rounded-full py-0.5 pl-[7px] pr-2.5 text-xs font-semibold" style={{ background: l.soft, color: l.c, border: locked ? '1px solid var(--line-2)' : 'none' }}>
+                        <KIcon name={l.k} size={14} /> <span className="break-words">{label}</span>
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ol>
+          <div className="flex flex-wrap gap-3.5 text-xs" style={{ color: 'var(--ink-3)' }}>
+            {(Object.keys(LST) as LstKey[]).map((k) => (
+              <span key={k} className="inline-flex items-center gap-1.5"><span style={{ color: LST[k].c }}><KIcon name={LST[k].k} size={14} /></span>{LST[k].label}</span>
+            ))}
+          </div>
+          <p className="text-xs" style={{ color: 'var(--ink-3)' }}>เลือกบทแล้วเลือกวิธีเรียนได้ในหน้าบท (อ่าน · ดูคลิป · เรียนกับ V2U) — บทที่มีกุญแจเรียนได้ แต่ควรเรียนบทก่อนหน้าก่อน</p>
+        </>
       )}
     </div>
   );
@@ -195,7 +266,7 @@ export function PathwayOverview({
   goal: string;
 }) {
   return (
-    <section aria-labelledby="route-pathway" className="rounded-3xl border border-ink/[0.08] bg-white p-4 shadow-card sm:p-6" data-testid="pathway-overview">
+    <section aria-labelledby="route-pathway" className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-card sm:p-6" data-testid="pathway-overview">
       <h2 id="route-pathway" className="font-display text-lg font-bold text-ink">เส้นทางแยกตามวิชา</h2>
       <p className="mt-0.5 text-xs text-ink-3 break-words">🎯 {goal} · แถบสีคือสัดส่วนทักษะที่พร้อม (เขียว) กำลังพัฒนา (น้ำเงิน) ต้องทบทวน (เหลือง) ส่วนสีเทาคือยังไม่ได้วัด — คำนวณจากข้อมูลจริงเท่านั้น</p>
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
@@ -204,7 +275,7 @@ export function PathwayOverview({
           const missing = p.skills.filter((s) => s.status !== 'ready');
           const rec = bySubject.find((b) => b.subjectId === p.subjectId)?.rec;
           return (
-            <div key={p.subjectId} className={`relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-ink/[0.06] bg-surface-2 p-4 pt-5`} data-subject={p.subjectId}>
+            <div key={p.subjectId} className={`relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-[var(--line)] bg-surface-2 p-4 pt-5`} data-subject={p.subjectId}>
               <span className={`absolute inset-x-0 top-0 h-1 ${subjectStyle(p.subjectId).fill}`} aria-hidden="true" />
               <div className="flex items-center justify-between gap-2">
                 <p className="flex min-w-0 items-center gap-2.5 font-display font-bold text-ink"><SubjectMark subjectId={p.subjectId} size="sm" /> <span className="break-words">{SUBJECT_LABEL[p.subjectId]}</span></p>
@@ -218,20 +289,20 @@ export function PathwayOverview({
               <div>
                 <p className="text-xs font-semibold text-rev">สิ่งที่ยังขาด</p>
                 <ul className="mt-1 flex flex-wrap gap-1.5">
-                  {missing.length ? missing.map((s) => <StatusPill key={s.skillId} status={s.status} label={`${s.title} · ${PROFILE_STATUS_LABEL[s.status]}`} />) : <li className="text-sm text-slate-600">ครบแล้ว</li>}
+                  {missing.length ? missing.map((s) => <StatusPill key={s.skillId} status={s.status} label={`${s.title} · ${PROFILE_STATUS_LABEL[s.status]}`} />) : <li className="text-sm text-[var(--ink-2)]">ครบแล้ว</li>}
                 </ul>
               </div>
-              <div className="mt-auto border-t border-ink/[0.08] pt-3">
+              <div className="mt-auto border-t border-[var(--line)] pt-3">
                 <p className="text-xs font-semibold text-ink-3">บทที่แนะนำในวิชานี้</p>
                 {rec ? (
-                  <Link to={`/learn/curriculum/${rec.lesson.id}`} className="mt-1 flex min-h-[48px] items-center justify-between gap-2 rounded-xl border border-ink/[0.06] bg-white px-3 py-2 text-sm font-semibold text-brand-800 shadow-card hover:bg-brand-50">
+                  <Link to={`/learn/curriculum/${rec.lesson.id}`} className="mt-1 flex min-h-[48px] items-center justify-between gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--brand-ink)] shadow-card hover:bg-[var(--brand-soft)]">
                     <span className="break-words">{rec.lesson.title}</span> <ChevronRight className="h-4 w-4 shrink-0" />
                   </Link>
                 ) : (
-                  <p className="mt-1 text-sm text-slate-600">ไม่มีบทที่ขาดในวิชานี้</p>
+                  <p className="mt-1 text-sm text-[var(--ink-2)]">ไม่มีบทที่ขาดในวิชานี้</p>
                 )}
                 {p.status === 'not-assessed' && (
-                  <Link to={`/me/diagnostic?subject=${p.subjectId}`} className="mt-1 inline-flex min-h-[44px] items-center text-xs font-semibold text-brand-700">วัดพื้นฐาน{SUBJECT_LABEL[p.subjectId]} (ไม่หักคะแนน)</Link>
+                  <Link to={`/me/diagnostic?subject=${p.subjectId}`} className="mt-1 inline-flex min-h-[44px] items-center text-xs font-semibold text-[var(--brand-ink)]">วัดพื้นฐาน{SUBJECT_LABEL[p.subjectId]} (ไม่หักคะแนน)</Link>
                 )}
               </div>
             </div>

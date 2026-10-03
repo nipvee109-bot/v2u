@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ExternalLink } from 'lucide-react';
+import { KIcon } from '../v2u/kit';
 import type { MediaSource } from '../../video/media';
 import { isSafeFrameSrc, isYouTubeBlockingError, OPEN_SOURCE, parseVimeoError, PLAY_IN_V2U } from '../../video/media';
 import { parseYouTubeMessage } from '../../video/youtube';
@@ -17,16 +18,17 @@ interface Props {
 /** "ทำไม่ได้ → เปิดต้นทาง": honest message + a link to the source, nothing else. */
 export function MediaFallback({ media, title, cause }: { media: MediaSource; title: string; cause: 'error' | 'unsupported' }) {
   return (
-    <div className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-5" data-testid="video-fallback" data-reason={cause === 'error' ? 'provider-error' : media.reason}>
-      <p className="text-sm font-bold text-ink">{media.provider === 'webpage' || media.provider === 'unsupported' ? 'แหล่งนี้ยังไม่สามารถเล่นใน V2U ได้' : 'คลิปนี้ไม่สามารถเล่นใน V2U ได้'}</p>
-      <p className="mt-0.5 text-xs text-slate-500">
+    <div className="flex flex-col gap-1 rounded-[22px] p-5" style={{ background: 'var(--surface)', border: '1px solid var(--line-2)', boxShadow: 'var(--shadow)' }} data-testid="video-fallback" data-reason={cause === 'error' ? 'provider-error' : media.reason}>
+      <span className="mb-2 grid h-11 w-11 place-items-center rounded-[14px]" style={{ background: 'var(--err-soft)', color: 'var(--err)' }}><KIcon name="video" size={20} /></span>
+      <p className="font-display text-base font-bold text-[var(--ink)]">{media.provider === 'webpage' || media.provider === 'unsupported' ? 'แหล่งนี้ยังไม่สามารถเล่นใน V2U ได้' : 'คลิปนี้ไม่สามารถเล่นใน V2U ได้'}</p>
+      <p className="text-[13px] text-[var(--ink-2)]">
         {cause === 'error'
           ? 'ผู้ให้บริการไม่อนุญาตให้เล่นคลิปนี้นอกเว็บของเขา หรือคลิปถูกลบ/ตั้งเป็นส่วนตัว — เปิดต้นทางไว้ข้าง ๆ แล้วจดโน้ตใน V2U ต่อได้'
           : 'V2U เล่นได้เฉพาะแหล่งที่ฝังได้อย่างเป็นทางการ — เปิดต้นทางไว้ข้าง ๆ แล้วจดโน้ตใน V2U ต่อได้'}
       </p>
-      <p className="mt-2 text-base font-semibold text-ink break-words">{title}</p>
+      <p className="mt-2 text-[15px] font-semibold text-[var(--ink)] break-words">{title}</p>
       {media.sourceUrl && (
-        <a href={media.sourceUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-slate-900 px-4 text-sm font-bold text-white hover:bg-slate-800">
+        <a href={media.sourceUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-[44px] items-center gap-1.5 self-start rounded-xl bg-[var(--brand)] px-4 text-sm font-bold text-[var(--on-brand)]">
           <ExternalLink className="h-4 w-4" /> {OPEN_SOURCE.replace('↗ ', '')}
         </a>
       )}

@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  ArrowLeft,
-  RotateCcw,
   Sparkles,
   BookOpen,
   CalendarCheck,
   Check,
   HelpCircle,
-  Clock,
   ChevronRight,
   ExternalLink,
   CheckCircle2,
@@ -23,6 +20,8 @@ import type { NextStep } from '../utils/nextStep';
 import type { SkillChange } from '../diagnostic/engine';
 import { getCurriculumLessonsForStudyLesson } from '../curriculum/engine';
 import { StatusPill } from '../components/pathway/PathwayBits';
+import { KIcon } from '../components/v2u/kit';
+import { subOf } from '../components/v2u/tokens';
 import { th } from 'date-fns/locale';
 
 export const ReviewRoom: React.FC = () => {
@@ -107,11 +106,11 @@ export const ReviewRoom: React.FC = () => {
   if (!lesson || !reviewItem) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center p-6 text-center">
-        <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-3">
+        <div className="w-12 h-12 rounded-2xl bg-[var(--rev-soft)] text-[var(--rev)] flex items-center justify-center mb-3">
           <HelpCircle className="w-6 h-6" />
         </div>
-        <h3 className="text-lg font-bold text-slate-800">ไม่พบรายการทบทวนนี้</h3>
-        <p className="text-xs text-slate-500 mt-1 mb-4">รายการนี้อาจถูกลบหรือทบทวนเสร็จสิ้นแล้ว</p>
+        <h3 className="text-lg font-bold text-[var(--ink)]">ไม่พบรายการทบทวนนี้</h3>
+        <p className="text-xs text-[var(--ink-3)] mt-1 mb-4">รายการนี้อาจถูกลบหรือทบทวนเสร็จสิ้นแล้ว</p>
         <Link
           to="/weekly-review"
           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold transition-colors"
@@ -176,100 +175,68 @@ export const ReviewRoom: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto pb-20 space-y-6">
+    <div className="mx-auto flex w-full max-w-[720px] flex-col gap-5 pb-20">
       {confirmModal}
-      {/* ── Top Bar ── */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={() => navigate(-1)}
-          className="min-h-[44px] flex items-center gap-2 text-slate-600 hover:text-slate-900 bg-white px-4 py-2 rounded-xl shadow-xs border border-slate-200/60 text-xs font-semibold transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" /> ย้อนกลับ
+      {/* ── Top Bar (design: review session) ── */}
+      <div className="flex items-center gap-3">
+        <button type="button" onClick={() => navigate(-1)} aria-label="ออกจากการทบทวน" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl" style={{ border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)' }}>
+          <KIcon name="x" size={20} />
         </button>
+        <div className="flex flex-1 gap-1.5" aria-hidden="true">
+          {[1, 2, 3].map((n) => <span key={n} className="h-1.5 flex-1 rounded-full transition-colors" style={{ background: n <= (stage === 'completed' ? 3 : isRevealed ? 2 : 1) ? 'var(--brand)' : 'var(--line-2)' }} />)}
+        </div>
+        <span className="font-mono text-[13px] font-semibold" style={{ color: 'var(--ink-3)' }}>{Math.min(stage === 'completed' ? 3 : isRevealed ? 2 : 1, 3)}/3</span>
+      </div>
 
-        <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 text-purple-700 border border-purple-200 text-xs font-bold">
-            <RotateCcw className="w-3.5 h-3.5" /> ห้องทบทวน
+      {/* ── Lesson & Review Context ── */}
+      <section className="flex flex-col gap-3" data-testid="review-context" style={{ padding: 'clamp(20px,2.4vw,32px)', borderRadius: 24, background: 'var(--surface)', border: '1px solid var(--line)', boxShadow: 'var(--shadow)' }}>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex h-7 items-center gap-1.5 rounded-full pl-2 pr-3 text-xs font-semibold" style={{ background: subOf(lesson.subjectId).soft, color: subOf(lesson.subjectId).c }}>
+            <KIcon name={subOf(lesson.subjectId).k} size={14} /> {subject.name}
           </span>
+          <span className="text-xs font-semibold" style={{ color: 'var(--ink-3)' }}>ทบทวนรอบที่ {reviewItem.reviewCount + 1}</span>
         </div>
-      </div>
-
-      {/* ── Lesson & Review Context Banner ── */}
-      {/* Phase 49: not using .card here — its white background hid this dark header */}
-      <div className="rounded-2xl p-6 bg-gradient-to-r from-purple-900 via-indigo-900 to-blue-900 text-white shadow-lg space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${subject.color} text-white`}>
-                {subject.name}
-              </span>
-              <span className="text-purple-200 text-xs">
-                ทบทวนรอบที่ {reviewItem.reviewCount + 1}
-              </span>
-            </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-              {lesson.title}
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="bg-white/10 backdrop-blur-xs px-3.5 py-2 rounded-xl border border-white/20 text-center">
-              <span className="text-[10px] text-purple-200 block">เวลาที่ใช้ทบทวน</span>
-              <span className="text-sm font-mono font-bold text-white flex items-center gap-1 justify-center mt-0.5">
-                <Clock className="w-3.5 h-3.5 text-purple-300" />
-                {formatTimer(recallSeconds)}
-              </span>
-            </div>
-
-            <div className="bg-white/10 backdrop-blur-xs px-3.5 py-2 rounded-xl border border-white/20 text-center">
-              <span className="text-[10px] text-purple-200 block">ระดับความเข้าใจ</span>
-              <span className="text-xs font-bold text-emerald-300 block mt-0.5">
-                ระดับ {oldMasteryScore}/4: {oldMasteryMeta.title}
-              </span>
-            </div>
-          </div>
+        <h1 className="font-display font-semibold leading-snug break-words" style={{ fontSize: 'clamp(19px,1vw + 15px,24px)', color: 'var(--ink)' }}>{lesson.title}</h1>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="inline-flex min-h-[28px] items-center gap-1.5 rounded-full px-2.5 font-semibold" style={{ background: 'var(--surface-2)', color: 'var(--ink-2)' }}><KIcon name="clock" size={14} /> เวลาที่ใช้ทบทวน <span className="font-mono">{formatTimer(recallSeconds)}</span></span>
+          <span className="inline-flex min-h-[28px] items-center gap-1.5 rounded-full px-2.5 font-semibold" style={{ background: 'var(--surface-2)', color: 'var(--ink-2)' }}><KIcon name="gauge" size={14} /> ระดับความเข้าใจ {oldMasteryScore}/4: {oldMasteryMeta.title}</span>
         </div>
-
-        {lesson.description && (
-          <p className="text-xs text-purple-100/90 leading-relaxed border-t border-white/10 pt-3">
-            {lesson.description}
-          </p>
-        )}
-      </div>
+        {lesson.description && <p className="flex items-start gap-1.5 text-[13px] break-words" style={{ color: 'var(--ink-2)' }}><span style={{ marginTop: 2 }}><KIcon name="info" size={14} /></span>{lesson.description}</p>}
+      </section>
 
       {/* ── REVIEW WORKSPACE BODY ── */}
       {stage !== 'completed' ? (
         <div className="space-y-6">
           {/* STEP 1: ACTIVE RECALL CHALLENGE */}
-          <div className="card p-6 bg-white border border-slate-200 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="rounded-[24px] p-[clamp(20px,2.4vw,32px)] bg-[var(--surface)] border border-[var(--line)] shadow-[var(--shadow)] space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--line)]">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-[var(--brand-soft)] text-[var(--brand-ink)] flex items-center justify-center">
                   <Sparkles className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">
+                  <h3 className="font-display text-[15px] font-bold text-[var(--ink)]">
                     ขั้นตอนที่ 1: ลองนึกก่อนเปิดโน้ต
                   </h3>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-[var(--ink-3)]">
                     พิมพ์สิ่งที่จำได้ก่อนเปิดสมุดโน้ต ช่วยให้รู้ว่าจุดไหนยังไม่แม่น
                   </p>
                 </div>
               </div>
-              <span className="text-xs font-mono font-bold text-slate-400">
+              <span className="text-xs font-mono font-bold text-[var(--ink-3)]">
                 {activeRecallText.trim().split(/\s+/).filter(Boolean).length} คำ
               </span>
             </div>
 
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-2">
-              <label className="text-xs font-bold text-slate-700 block">
+            <div className="bg-[var(--surface-2)] rounded-2xl p-4 border border-[var(--line)] space-y-2">
+              <label className="text-xs font-bold text-[var(--ink-2)] block">
                 💡 คุณจำอะไรเกี่ยวกับเรื่องนี้ได้บ้าง? (หลักการ, สูตร, ข้อสรุป หรือแนวคิดสำคัญ):
               </label>
               <textarea
                 value={activeRecallText}
                 onChange={(e) => setActiveRecallText(e.target.value)}
                 placeholder="พิมพ์สิ่งที่จำได้ออกมาอย่างอิสระ ไม่ต้องกังวลว่าจะพิมพ์ถูกหรือผิดทั้งหมด..."
-                className="w-full bg-white border border-slate-200 rounded-xl p-3.5 text-xs text-slate-800 min-h-[120px] outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 resize-none leading-relaxed"
+                className="w-full bg-[var(--surface)] border border-[var(--line-2)] rounded-xl p-3.5 text-xs text-[var(--ink)] min-h-[120px] outline-none focus:border-[var(--brand)] resize-none leading-relaxed"
               />
             </div>
 
@@ -278,7 +245,7 @@ export const ReviewRoom: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleRevealNotes}
-                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 transition-all flex items-center gap-2"
+                  className="px-6 py-2.5 bg-[var(--brand)] hover:bg-[var(--brand-hi)] text-white rounded-[14px] text-sm font-bold min-h-[48px] transition-all flex items-center gap-2"
                 >
                   <BookOpen className="w-4 h-4" />
                   <span>เปิดดูสรุป & โน้ตเพื่อตรวจสอบความถูกต้อง</span>
@@ -289,17 +256,17 @@ export const ReviewRoom: React.FC = () => {
 
           {/* STEP 2: REVEALED LESSON KNOWLEDGE & NOTES */}
           {isRevealed && (
-            <div className="card p-6 bg-white border border-slate-200 shadow-xs space-y-4 animate-in fade-in">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="rounded-[24px] p-[clamp(20px,2.4vw,32px)] bg-[var(--surface)] border border-[var(--line)] shadow-[var(--shadow)] space-y-4 animate-in fade-in">
+              <div className="flex items-center justify-between pb-3 border-b border-[var(--line)]">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-xl bg-[var(--ok-soft)] text-[var(--ok)] flex items-center justify-center">
                     <BookOpen className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900">
+                    <h3 className="font-display text-[15px] font-bold text-[var(--ink)]">
                       ขั้นตอนที่ 2: เปรียบเทียบกับบันทึกเดิม (Lesson Notes & Resources)
                     </h3>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-[11px] text-[var(--ink-3)]">
                       ตรวจดูว่าสิ่งที่คุณจำได้ตรงกับโน้ตหรือไม่ มีจุดไหนที่ลืมหรือจำสับสน
                     </p>
                   </div>
@@ -308,21 +275,21 @@ export const ReviewRoom: React.FC = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Learned Notes */}
-                <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100 space-y-2">
-                  <span className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> สิ่งที่ได้เรียนรู้
+                <div className="p-4 rounded-2xl bg-[var(--ok-soft)] border border-transparent space-y-2">
+                  <span className="text-xs font-bold text-[var(--ok)] flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-[var(--ok)]" /> สิ่งที่ได้เรียนรู้
                   </span>
-                  <div className="text-xs text-slate-700 whitespace-pre-line leading-relaxed max-h-48 overflow-y-auto">
+                  <div className="text-xs text-[var(--ink-2)] whitespace-pre-line leading-relaxed max-h-48 overflow-y-auto">
                     {lesson.learnedNotes || 'ยังไม่มีบันทึกสิ่งที่ได้เรียนรู้ในบทนี้'}
                   </div>
                 </div>
 
                 {/* Unclear Notes */}
-                <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-100 space-y-2">
-                  <span className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
-                    <HelpCircle className="w-4 h-4 text-amber-600" /> สิ่งที่เคยติดขัด / จุดที่ไม่เข้าใจ
+                <div className="p-4 rounded-2xl bg-[var(--rev-soft)] border border-transparent space-y-2">
+                  <span className="text-xs font-bold text-[var(--rev)] flex items-center gap-1.5">
+                    <HelpCircle className="w-4 h-4 text-[var(--rev)]" /> สิ่งที่เคยติดขัด / จุดที่ไม่เข้าใจ
                   </span>
-                  <div className="text-xs text-slate-700 whitespace-pre-line leading-relaxed max-h-48 overflow-y-auto">
+                  <div className="text-xs text-[var(--ink-2)] whitespace-pre-line leading-relaxed max-h-48 overflow-y-auto">
                     {lesson.stillUnclearNotes || 'ไม่มีจุดติดขัดที่บันทึกไว้'}
                   </div>
                 </div>
@@ -330,8 +297,8 @@ export const ReviewRoom: React.FC = () => {
 
               {/* Lesson Resources */}
               {lesson.resources && lesson.resources.length > 0 && (
-                <div className="pt-2 border-t border-slate-100">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
+                <div className="pt-2 border-t border-[var(--line)]">
+                  <span className="text-[11px] font-bold text-[var(--ink-3)] uppercase tracking-wider block mb-2">
                     สื่อการเรียนรู้ที่เกี่ยวข้อง:
                   </span>
                   <div className="flex flex-wrap gap-2">
@@ -341,9 +308,9 @@ export const ReviewRoom: React.FC = () => {
                         href={res.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-medium text-slate-700 transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--surface-2)] hover:bg-slate-100 border border-[var(--line-2)] text-xs font-medium text-[var(--ink-2)] transition-colors"
                       >
-                        <ExternalLink className="w-3 h-3 text-slate-400" />
+                        <ExternalLink className="w-3 h-3 text-[var(--ink-3)]" />
                         <span className="max-w-[200px] truncate">{res.title}</span>
                       </a>
                     ))}
@@ -355,17 +322,17 @@ export const ReviewRoom: React.FC = () => {
 
           {/* STEP 3: SELF-ASSESSMENT OUTCOME (4 LEVELS) */}
           {isRevealed && (
-            <div className="card p-6 bg-white border border-slate-200 shadow-xs space-y-4 animate-in fade-in">
-              <div className="pb-3 border-b border-slate-100">
+            <div className="rounded-[24px] p-[clamp(20px,2.4vw,32px)] bg-[var(--surface)] border border-[var(--line)] shadow-[var(--shadow)] space-y-4 animate-in fade-in">
+              <div className="pb-3 border-b border-[var(--line)]">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-xl bg-[var(--brand-soft)] text-[var(--brand-ink)] flex items-center justify-center">
                     <CalendarCheck className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900">
+                    <h3 className="font-display text-[15px] font-bold text-[var(--ink)]">
                       ขั้นตอนที่ 3: ประเมินว่าจำได้แค่ไหน
                     </h3>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-[11px] text-[var(--ink-3)]">
                       เลือกระดับความจำจริงเพื่อให้อัลกอริทึมจัดระยะเวลาทบทวนรอบถัดไปได้อย่างแม่นยำ
                     </p>
                   </div>
@@ -377,22 +344,22 @@ export const ReviewRoom: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleSelectOutcome('remembered')}
-                  className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                  className={`min-h-[56px] p-4 rounded-[14px] border-[1.5px] text-left transition-all ${
                     selectedOutcome === 'remembered'
-                      ? 'border-emerald-600 bg-emerald-50/80 ring-2 ring-emerald-500/20 shadow-xs'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
+                      ? 'border-[var(--ok)] bg-[var(--ok-soft)]'
+                      : 'border-[var(--line-2)] hover:border-[var(--brand)] bg-[var(--surface)]'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-bold text-emerald-800">จำได้แม่นยำ</span>
-                    <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold">
+                    <span className="text-xs font-bold text-[var(--ok)]">จำได้แม่นยำ</span>
+                    <span className="w-5 h-5 rounded-full bg-[var(--ok-soft)] text-[var(--ok)] flex items-center justify-center text-[10px] font-bold">
                       ✓✓
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-600 leading-snug">
+                  <p className="text-[11px] text-[var(--ink-2)] leading-snug">
                     จำหลักการและรายละเอียดได้ดี เข้าใจโครงสร้างชัดเจน
                   </p>
-                  <span className="text-[10px] font-semibold text-emerald-700 mt-2 block">
+                  <span className="text-[10px] font-semibold text-[var(--ok)] mt-2 block">
                     ขยายระยะทบทวน (เช่น 7-14 วัน)
                   </span>
                 </button>
@@ -401,22 +368,22 @@ export const ReviewRoom: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleSelectOutcome('partially')}
-                  className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                  className={`min-h-[56px] p-4 rounded-[14px] border-[1.5px] text-left transition-all ${
                     selectedOutcome === 'partially'
-                      ? 'border-blue-600 bg-blue-50/80 ring-2 ring-blue-500/20 shadow-xs'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
+                      ? 'border-[var(--dev)] bg-[var(--dev-soft)]'
+                      : 'border-[var(--line-2)] hover:border-[var(--brand)] bg-[var(--surface)]'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-bold text-blue-800">พอจำได้</span>
-                    <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-bold">
+                    <span className="text-xs font-bold text-[var(--dev)]">พอจำได้</span>
+                    <span className="w-5 h-5 rounded-full bg-[var(--dev-soft)] text-[var(--dev)] flex items-center justify-center text-[10px] font-bold">
                       ✓
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-600 leading-snug">
+                  <p className="text-[11px] text-[var(--ink-2)] leading-snug">
                     จำประเด็นหลักได้ แต่มีรายละเอียดปลีกย่อยที่ตกหล่น
                   </p>
-                  <span className="text-[10px] font-semibold text-blue-700 mt-2 block">
+                  <span className="text-[10px] font-semibold text-[var(--dev)] mt-2 block">
                     ทบทวนซ้ำใน 2–3 วัน
                   </span>
                 </button>
@@ -425,22 +392,22 @@ export const ReviewRoom: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleSelectOutcome('unsure')}
-                  className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                  className={`min-h-[56px] p-4 rounded-[14px] border-[1.5px] text-left transition-all ${
                     selectedOutcome === 'unsure'
-                      ? 'border-amber-500 bg-amber-50/80 ring-2 ring-amber-500/20 shadow-xs'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
+                      ? 'border-[var(--rev)] bg-[var(--rev-soft)]'
+                      : 'border-[var(--line-2)] hover:border-[var(--brand)] bg-[var(--surface)]'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-bold text-amber-800">ยังไม่แม่น</span>
-                    <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-[10px] font-bold">
+                    <span className="text-xs font-bold text-[var(--rev)]">ยังไม่แม่น</span>
+                    <span className="w-5 h-5 rounded-full bg-[var(--rev-soft)] text-[var(--rev)] flex items-center justify-center text-[10px] font-bold">
                       ?
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-600 leading-snug">
+                  <p className="text-[11px] text-[var(--ink-2)] leading-snug">
                     จำได้เลือนราง ต้องดูเฉลยจึงจะนึกออก
                   </p>
-                  <span className="text-[10px] font-semibold text-amber-700 mt-2 block">
+                  <span className="text-[10px] font-semibold text-[var(--rev)] mt-2 block">
                     ทบทวนซ้ำใน 1 วัน
                   </span>
                 </button>
@@ -449,22 +416,22 @@ export const ReviewRoom: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleSelectOutcome('forgot')}
-                  className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                  className={`min-h-[56px] p-4 rounded-[14px] border-[1.5px] text-left transition-all ${
                     selectedOutcome === 'forgot'
-                      ? 'border-rose-600 bg-rose-50/80 ring-2 ring-rose-500/20 shadow-xs'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
+                      ? 'border-[var(--err)] bg-[var(--err-soft)]'
+                      : 'border-[var(--line-2)] hover:border-[var(--brand)] bg-[var(--surface)]'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-bold text-rose-800">จำไม่ได้เลย</span>
-                    <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center text-[10px] font-bold">
+                    <span className="text-xs font-bold text-[var(--err)]">จำไม่ได้เลย</span>
+                    <span className="w-5 h-5 rounded-full bg-[var(--err-soft)] text-[var(--err)] flex items-center justify-center text-[10px] font-bold">
                       ✕
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-600 leading-snug">
+                  <p className="text-[11px] text-[var(--ink-2)] leading-snug">
                     ลืมแนวคิดหลัก ต้องอ่านทบทวนใหม่อย่างจริงจัง
                   </p>
-                  <span className="text-[10px] font-semibold text-rose-700 mt-2 block">
+                  <span className="text-[10px] font-semibold text-[var(--err)] mt-2 block">
                     รีเซ็ตคิวทบทวนทันทีใน 1 วัน
                   </span>
                 </button>
@@ -472,7 +439,7 @@ export const ReviewRoom: React.FC = () => {
 
               {/* Optional Review Note */}
               <div className="space-y-1.5 pt-2">
-                <label className="text-xs font-bold text-slate-700 block">
+                <label className="text-xs font-bold text-[var(--ink-2)] block">
                   บันทึกข้อสังเกตในการทบทวนรอบนี้ (ตัวเลือกเพิ่มเติม):
                 </label>
                 <input
@@ -480,17 +447,17 @@ export const ReviewRoom: React.FC = () => {
                   value={reviewNote}
                   onChange={(e) => setReviewNote(e.target.value)}
                   placeholder="เช่น จุดที่ยังสับสน, ข้อที่จำได้ดีแล้ว..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-purple-500 focus:bg-white"
+                  className="w-full bg-[var(--surface-2)] border border-[var(--line-2)] rounded-xl px-3.5 py-2.5 text-xs text-[var(--ink)] outline-none focus:border-[var(--brand)] focus:bg-[var(--surface)]"
                 />
               </div>
 
               {/* Action Button */}
-              <div className="flex justify-end pt-3 border-t border-slate-100">
+              <div className="flex justify-end pt-3 border-t border-[var(--line)]">
                 <button
                   type="button"
                   disabled={!selectedOutcome}
                   onClick={handleConfirmReview}
-                  className="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:pointer-events-none text-white text-xs font-bold shadow-md shadow-purple-600/25 transition-all flex items-center gap-2"
+                  className="px-6 py-2.5 rounded-xl bg-[var(--brand)] hover:bg-[var(--brand-hi)] disabled:opacity-40 disabled:pointer-events-none text-white text-xs font-bold min-h-[48px] transition-all flex items-center gap-2"
                 >
                   <Check className="w-4 h-4" />
                   <span>บันทึกผลการทบทวน</span>
@@ -501,16 +468,16 @@ export const ReviewRoom: React.FC = () => {
         </div>
       ) : (
         /* STEP 4: RESULT SUMMARY & NAVIGATION */
-        <div className="card p-8 bg-white border border-slate-200 shadow-md space-y-6 text-center animate-in fade-in">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto border-4 border-emerald-50">
+        <div className="rounded-[26px] p-[clamp(22px,3vw,36px)] bg-[var(--surface)] border border-[var(--line)] shadow-[var(--shadow-lg)] space-y-6 text-center animate-in fade-in">
+          <div className="w-16 h-16 rounded-full bg-[var(--ok-soft)] text-[var(--ok)] flex items-center justify-center mx-auto border-4 border-emerald-50">
             <CheckCircle2 className="w-8 h-8" />
           </div>
 
           <div className="space-y-1">
-            <h2 className="text-xl font-bold text-slate-900">
+            <h2 className="font-display text-2xl font-bold text-[var(--ink)]">
               บันทึกการทบทวนเสร็จสมบูรณ์!
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-[var(--ink-3)]">
               V2U จัดรอบทบทวนครั้งถัดไปให้ตามที่คุณจำได้แล้ว
             </p>
           </div>
@@ -520,9 +487,9 @@ export const ReviewRoom: React.FC = () => {
               {reviewLoop.changes.length > 0 && (
                 <ul className="space-y-2" data-testid="skill-changes">
                   {reviewLoop.changes.map((c) => (
-                    <li key={c.skillId} className="rounded-2xl bg-slate-50 px-4 py-3" data-skill={c.skillId} data-before={c.before} data-after={c.after}>
+                    <li key={c.skillId} className="rounded-2xl bg-[var(--surface-2)] px-4 py-3" data-skill={c.skillId} data-before={c.before} data-after={c.after}>
                       <p className="text-sm font-semibold text-ink">{c.title}</p>
-                      <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-600">
+                      <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-[var(--ink-2)]">
                         {c.before === c.after ? <>สถานะเดิม <StatusPill status={c.after} /></> : <>ก่อนหน้านี้ <StatusPill status={c.before} /> → ตอนนี้ <StatusPill status={c.after} /></>}
                       </p>
                     </li>
@@ -533,7 +500,7 @@ export const ReviewRoom: React.FC = () => {
                 <p className="text-xs font-semibold text-brand-100">ก้าวต่อไปของคุณ (คำนวณใหม่แล้ว)</p>
                 <p className="mt-1 text-base font-bold break-words">{reviewLoop.next.todayAction}</p>
                 <p className="mt-1 text-xs text-white/90 break-words">เพราะ {reviewLoop.next.reason}</p>
-                <button type="button" onClick={() => startNext(reviewLoop.next)} className="mt-3 inline-flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-white px-5 text-sm font-bold text-brand-800">
+                <button type="button" onClick={() => startNext(reviewLoop.next)} className="mt-3 inline-flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-[var(--surface)] px-5 text-sm font-bold text-brand-800">
                   {reviewLoop.next.ctaLabel}
                 </button>
               </div>
@@ -542,26 +509,26 @@ export const ReviewRoom: React.FC = () => {
 
           {resultSummary && (
             <div className="max-w-md mx-auto grid grid-cols-2 gap-3 text-left">
-              <div className="p-4 rounded-2xl bg-purple-50 border border-purple-100">
-                <span className="text-[10px] text-purple-600 font-bold uppercase block mb-1">
+              <div className="p-4 rounded-2xl bg-[var(--brand-soft)]">
+                <span className="text-[10px] text-[var(--brand-ink)] font-bold uppercase block mb-1">
                   รอบทบทวนถัดไป
                 </span>
-                <p className="text-sm font-bold text-purple-950">
+                <p className="text-sm font-bold text-[var(--ink)]">
                   {format(parseISO(resultSummary.nextReviewAt), 'd MMMM yyyy', { locale: th })}
                 </p>
-                <span className="text-[10px] text-purple-700 mt-0.5 block">
+                <span className="text-[10px] text-[var(--brand-ink)] mt-0.5 block">
                   อีก {resultSummary.intervalDays} วันข้างหน้า
                 </span>
               </div>
 
-              <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-100">
-                <span className="text-[10px] text-indigo-600 font-bold uppercase block mb-1">
+              <div className="p-4 rounded-2xl bg-[var(--surface-2)]">
+                <span className="text-[10px] text-[var(--ink-3)] font-bold uppercase block mb-1">
                   สถิติทบทวนสะสม
                 </span>
-                <p className="text-sm font-bold text-indigo-950">
+                <p className="text-sm font-bold text-[var(--ink)]">
                   ทบทวนแล้ว {resultSummary.nextReviewCount} รอบ
                 </p>
-                <span className="text-[10px] text-indigo-700 mt-0.5 block">
+                <span className="text-[10px] text-[var(--ink-3)] mt-0.5 block">
                   ผลล่าสุด: {
                     resultSummary.outcome === 'remembered' ? 'จำได้แม่นยำ' :
                     resultSummary.outcome === 'partially' ? 'พอจำได้' :
@@ -573,12 +540,12 @@ export const ReviewRoom: React.FC = () => {
           )}
 
           {/* Action CTAs */}
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-4 border-t border-slate-100">
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-4 border-t border-[var(--line)]">
             {otherDueItems.length > 0 ? (
               <button
                 type="button"
                 onClick={() => navigate(`/review-room/${otherDueItems[0].id}`)}
-                className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-purple-600/20 flex items-center gap-2"
+                className="px-5 py-2.5 bg-[var(--brand)] hover:bg-[var(--brand-hi)] text-white rounded-[14px] text-sm font-bold transition-all min-h-[48px] flex items-center gap-2"
               >
                 <span>ทบทวนรายการถัดไป ({otherDueItems.length} ค้างอยู่)</span>
                 <ChevronRight className="w-4 h-4" />
@@ -588,7 +555,7 @@ export const ReviewRoom: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate(`/study-room/${lesson.id}`)}
-              className="px-5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-2"
+              className="px-5 py-2.5 bg-blue-50 hover:bg-[var(--dev-soft)] text-[var(--dev)] border border-blue-200 rounded-[14px] text-sm font-bold transition-colors flex items-center gap-2"
             >
               <BookOpen className="w-4 h-4" />
               <span>เข้า Study Room บทนี้</span>
@@ -597,7 +564,7 @@ export const ReviewRoom: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate(`/lessons/${lesson.id}?tab=timeline`)}
-              className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors"
+              className="px-5 py-2.5 min-h-[48px] border border-[var(--line-2)] text-[var(--ink)] rounded-[14px] text-sm font-bold transition-colors"
             >
               ดูประวัติบทเรียน
             </button>
@@ -605,7 +572,7 @@ export const ReviewRoom: React.FC = () => {
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="px-5 py-2.5 text-slate-500 hover:text-slate-800 text-xs font-medium transition-colors"
+              className="px-5 py-2.5 text-[var(--ink-3)] hover:text-[var(--ink)] text-xs font-medium transition-colors"
             >
               กลับหน้าแรก
             </button>

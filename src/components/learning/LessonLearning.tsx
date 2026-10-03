@@ -1,5 +1,9 @@
 import type { ReactNode } from 'react';
-import { ArrowRight, Clock } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { KIcon } from '../v2u/kit';
+import type { IconName } from '../v2u/kit';
+import { ST, stOf, subOf } from '../v2u/tokens';
+import { usePathway } from '../../hooks/usePathway';
 import { MODE_META, READING_SECTION_IDS } from './meta';
 import { CURRICULUM } from '../../curriculum/data';
 import { CRITERION_LABEL, getLessonContentStatus } from '../../content/audit';
@@ -11,7 +15,6 @@ import { useLearningStage, useLessonPlayer, useReadingProgress, useSelectedVideo
 import { useStore } from '../../store/useStore';
 import type { Resource } from '../../types';
 import { SUBJECTS } from '../../types';
-import { SubjectTag } from '../ui/subject';
 import { getLessonVideoSequence } from '../../video/engine';
 import { notesForLesson } from '../../notes/engine';
 import { VideoLearning } from '../video/VideoLearning';
@@ -22,6 +25,8 @@ import { LessonCompletion, UnderstandingCheck } from './UnderstandingCheck';
 import { ReadingExperience } from './ReadingExperience';
 
 const ORDER: LearningMode[] = ['read', 'video', 'v2u'];
+const MODE_ICON: Record<LearningMode, IconName> = { read: 'book', video: 'video', v2u: 'sparkle' };
+const LOOP = ['เรียน', 'ฝึก', 'เช็กความเข้าใจ', 'ผลลัพธ์'];
 
 interface Props {
   curriculumLessonId: string;
@@ -40,10 +45,14 @@ interface Props {
   nextLabel: string;
   /** Phase 61: what the check changed (skills, mastery, review, next step) — shown on completion */
   result?: React.ReactNode;
+  /** Where the top bar's back button goes */
+  backTo?: string;
+  /** Page notices shown under the top bar (prerequisites, next-step context) */
+  notice?: ReactNode;
 }
 
 /** Lesson → "วันนี้คุณอยากเรียนแบบไหน?" → mode → check → completion → next step. */
-export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownResources = [], availableMinutes, weakSkillIds = [], onAddResource, onCheckSubmitted, onNext, nextLabel, result }: Props) {
+export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownResources = [], availableMinutes, weakSkillIds = [], onAddResource, onCheckSubmitted, onNext, nextLabel, result, backTo = '/learn', notice }: Props) {
   const lesson = CURRICULUM.lessons.find((l) => l.id === curriculumLessonId);
   const contentStatus = getLessonContentStatus(curriculumLessonId);
   const original = getOriginalLesson(curriculumLessonId);
@@ -55,6 +64,8 @@ export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownReso
   const [, setVideoStage] = useVideoStage(curriculumLessonId);
   const notes = useStore((st) => st.learningNotes?.notes) ?? [];
   const { setVideoProgress } = useStore();
+  const subjectProfile = usePathway(lesson?.subjectId).subjects.find((p) => p.subjectId === lesson?.subjectId);
+  const skills = subjectProfile?.skills.filter((sk) => lesson?.skillIds.includes(sk.skillId)) ?? [];
   if (!lesson || !original || !interactive) return null;
 
   const videos = getLessonVideoSequence(curriculumLessonId, ownResources);
@@ -73,115 +84,186 @@ export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownReso
     onModeChange('v2u');
   };
 
+  const subjectLessons = CURRICULUM.lessons.filter((l) => l.subjectId === lesson.subjectId);
+  const lessonNo = String(Math.max(0, subjectLessons.findIndex((l) => l.id === lesson.id)) + 1).padStart(2, '0');
+  const sub = subOf(lesson.subjectId);
+  const phase = !mode || stage === 'learn' ? 0 : stage === 'check' ? 2 : 3;
+  // Design top bar: back · subject · lesson · the loop (เรียน → ฝึก → เช็ก → ผลลัพธ์)
+  const topBar = (
+    <div className="flex flex-col gap-2" data-testid="lesson-topbar">
+      <div className="flex min-h-[62px] items-center gap-3">
+        <Link to={backTo} aria-label="กลับ" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl" style={{ border: '1px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-2)' }}>
+          <KIcon name="chevL" size={20} />
+        </Link>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold" style={{ color: sub.c }} data-subject-tag={lesson.subjectId}>
+            <KIcon name={sub.k} size={14} /> {SUBJECTS[lesson.subjectId]?.name ?? lesson.subjectId} · บทที่ {lessonNo}
+          </span>
+          <span className="truncate text-[15px] font-semibold" style={{ color: 'var(--ink)' }}>{lesson.title}</span>
+        </div>
+        <ol aria-label="ขั้นของบทเรียน" className="hidden items-center gap-1 lg:flex">
+          {LOOP.map((label, i) => (
+            <li key={label} className="flex items-center gap-1">
+              <span className="inline-flex h-[30px] items-center gap-1.5 whitespace-nowrap rounded-full pl-1.5 pr-2.5 text-xs font-semibold" style={{ background: i < phase ? 'var(--ok-soft)' : i === phase ? 'var(--brand)' : 'transparent', color: i < phase ? 'var(--ok)' : i === phase ? 'var(--on-brand)' : 'var(--ink-3)' }} aria-current={i === phase ? 'step' : undefined}>
+                <KIcon name={i < phase ? 'check' : i === phase ? 'sDev' : 'sNone'} size={13} w={2.2} /> {label}
+              </span>
+              {i < 3 && <span className="h-0.5 w-3.5" style={{ background: i < phase ? 'var(--ok)' : 'var(--line-2)' }} />}
+            </li>
+          ))}
+        </ol>
+        <span className="whitespace-nowrap text-xs font-semibold lg:hidden" style={{ color: 'var(--ink-3)' }}>{phase + 1}/4 · {LOOP[phase]}</span>
+      </div>
+      <div className="flex gap-[3px]" aria-hidden="true">
+        {LOOP.map((l, i) => <span key={l} className="h-[3px] flex-1 rounded-full" style={{ background: i < phase ? 'var(--ok)' : i === phase ? 'var(--brand)' : 'var(--line-2)' }} />)}
+      </div>
+    </div>
+  );
+
   /* ── Mode picker (nothing external is loaded here) ─────────────────── */
   if (!mode) {
-    const meta: Record<LearningMode, { time: string; detail: string; progress?: string }> = {
-      read: { time: `${original.readingMinutes} นาที`, detail: lesson.learningOutcomes.slice(0, 2).join(' · '), progress: readPct ? `อ่านแล้ว ${readPct}%` : undefined },
+    const meta: Record<LearningMode, { time: string; does: string[]; progress?: string }> = {
+      read: {
+        time: `ประมาณ ${original.readingMinutes} นาที`,
+        does: [`อ่าน ${READING_SECTION_IDS.length} ส่วนสั้น ๆ ตั้งแต่หลักคิดถึงจุดที่มักพลาด`, ...lesson.learningOutcomes.slice(0, 1), 'จบด้วยเช็กความเข้าใจ'],
+        progress: readPct ? `อ่านแล้ว ${readPct}%` : undefined,
+      },
       video: {
         time: videos.length ? `${videos.length} คลิป · ${videos[0].durationKnown ? '' : 'ประมาณ '}${videos[0].minutes ?? '?'} นาที/คลิป` : 'ยังไม่มีคลิป',
-        detail: videos.length ? `V2U ช่วยเลือกคลิปที่เหมาะกับคุณ หรือเลือกเองก็ได้ · แหล่งภายนอก` : 'บทนี้ยังไม่มีคลิปที่ V2U คัดไว้',
+        does: videos.length ? ['V2U ช่วยเลือกคลิปที่เหมาะกับคุณ หรือเลือกเองก็ได้ · แหล่งภายนอก', 'จดโน้ตผูกกับเวลาในคลิป', 'สรุปและสะท้อนคิดก่อนเช็ก'] : ['บทนี้ยังไม่มีคลิปที่ V2U คัดไว้', 'เพิ่มคลิปของคุณเองได้'],
         progress: lessonNotes.length ? `จดโน้ตแล้ว ${lessonNotes.length}` : undefined,
       },
       v2u: {
         time: `${interactive.steps.length} ขั้น + เช็ก ${interactive.finalCheck.length} ข้อ`,
-        detail: interactive.mission.goal,
+        does: [interactive.mission.goal, 'ตอบก่อนไปต่อ มีคำใบ้เมื่อติด', 'ผิดได้ ระบบพาแก้ทันที'],
         progress: answered ? `ทำแล้ว ${answered}/${interactiveTotal}` : undefined,
       },
     };
+    const resumeMode = ORDER.find((m) => meta[m].progress);
     return (
-      <section aria-labelledby="pick-mode" data-testid="mode-picker">
-        <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-brand-700">
-          <SubjectTag subjectId={lesson.subjectId} label={SUBJECTS[lesson.subjectId]?.name ?? lesson.subjectId} />
-          <span className="break-words">🎯 {lesson.title}</span>
-        </p>
-        <h2 id="pick-mode" className="mt-1.5 font-display text-xl font-bold text-ink sm:text-2xl">
-          คุณอยากเรียนเรื่องนี้แบบไหน?
-        </h2>
-        <p className="mt-1 text-sm text-ink-3">ทุกแบบจบด้วยการเช็กความเข้าใจ แล้ว V2U จะบอกขั้นต่อไปให้ — ถ้าวิธีหนึ่งไม่เวิร์ก ลองอีกวิธีได้เสมอ</p>
-        {contentStatus && contentStatus.status !== 'ready' ? (
-          <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950" data-testid="content-status" data-status="needs-content">
-            <b className="font-semibold">กำลังเตรียมเนื้อหา</b> — บทนี้ยังขาด: {contentStatus.missing.map((m) => CRITERION_LABEL[m]).join(', ')}
-          </p>
-        ) : contentStatus ? (
-          <p className="mt-3 text-xs text-slate-500" data-testid="content-status" data-status="ready">
-            ✓ เนื้อหาพร้อมเรียน: อธิบาย ตัวอย่าง แบบฝึก {contentStatus.practiceCount} ข้อ และเช็กความเข้าใจ {contentStatus.checkCount} ข้อ
-            {contentStatus.resources.playableInV2U === 0 && ' · บทนี้ยังไม่มีคลิปที่เล่นใน V2U ได้ เริ่มจาก 📖 อ่านกับ V2U ได้เลย'}
-          </p>
-        ) : null}
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          {ORDER.map((m) => {
-            const M = MODE_META[m];
-            const Icon = M.icon;
-            // Resume = the learner already has progress in this method (real state, not a guess)
-            const resume = !!meta[m].progress;
-            return (
-              <button
-                key={m}
-                type="button"
-                data-mode={m}
-                onClick={() => {
-                  if (stage !== 'learn') setStage('learn');
-                  onModeChange(m);
-                }}
-                data-resume={resume || undefined}
-                className={`group relative flex min-h-[132px] md:min-h-[230px] flex-col rounded-2xl border p-5 text-left transition-all hover:-translate-y-0.5 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200 ${
-                  resume ? 'v2u-hero border-transparent bg-gradient-to-br from-navy via-navy-2 to-brand-800 text-white' : 'border-ink/[0.08] bg-white shadow-card hover:border-brand-300 hover:shadow-lift'
-                }`}
-              >
-                {resume && (
-                  <span className="absolute right-4 top-4 rounded-full bg-dest px-2.5 py-0.5 text-[11px] font-bold text-navy">ทำต่อจากเดิม</span>
-                )}
-                <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${resume ? 'bg-white/10 text-dest' : 'bg-brand-50 text-brand-700'}`}>
-                  <Icon className="h-5 w-5" />
-                </span>
-                <span className={`mt-3 font-display text-lg font-bold ${resume ? 'text-white' : 'text-ink'}`}>{M.title}</span>
-                <span className={`mt-0.5 text-sm ${resume ? 'text-white/80' : 'text-ink-3'}`}>{M.description}</span>
-                <span className={`mt-3 line-clamp-2 text-xs break-words ${resume ? 'text-white/70' : 'text-ink-3'}`}>{meta[m].detail}</span>
-                <span className="mt-auto flex flex-wrap items-center gap-1.5 pt-3 text-xs font-semibold">
-                  <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 ${resume ? 'border-white/15 bg-white/10 text-white' : 'border-ink/[0.08] bg-surface-2 text-ink-2'}`}>
-                    <Clock className="h-3.5 w-3.5" /> {meta[m].time}
+      <div className="flex flex-col gap-6">
+        {topBar}
+        {notice}
+        <section className="relative flex flex-col gap-3.5 overflow-hidden" style={{ padding: 'clamp(20px,2.4vw,32px)', borderRadius: 24, background: 'var(--surface)', border: '1px solid var(--line)', boxShadow: 'var(--shadow)' }}>
+          <span aria-hidden="true" className="absolute -right-[60px] -top-[60px] h-60 w-60 rounded-full" style={{ background: `radial-gradient(circle,${sub.soft} 0%,transparent 70%)` }} />
+          <span className="relative text-xs font-semibold" style={{ letterSpacing: '.08em', color: 'var(--brand-ink)' }}>เลือกวิธีที่เหมาะกับคุณ</span>
+          <h1 className="relative font-display font-bold leading-tight" style={{ fontSize: 'clamp(24px,1.6vw + 18px,34px)', color: 'var(--ink)' }}>{lesson.title}</h1>
+          <p className="relative max-w-[62ch]" style={{ color: 'var(--ink-2)' }}>{lesson.description}</p>
+          <p className="relative text-[13px]" style={{ color: 'var(--ink-3)' }}>{SUBJECTS[lesson.subjectId]?.name} · ประมาณ {lesson.estimatedMinutes} นาที · เรียน ฝึก เช็กความเข้าใจ</p>
+          {skills.length > 0 && (
+            <div className="relative flex flex-wrap gap-2">
+              {skills.map((sk) => {
+                const st = ST[stOf(sk.status)];
+                return (
+                  <span key={sk.skillId} className="inline-flex min-h-[30px] items-center gap-1.5 rounded-[10px] pl-2 pr-3 text-[13px] font-medium" style={{ border: '1px solid var(--line)', background: 'var(--surface-2)', color: 'var(--ink)' }} title={st.label}>
+                    <span style={{ color: st.c }}><KIcon name={st.k} size={16} /></span>{sk.title}<span className="sr-only"> · {st.label}</span>
                   </span>
-                  {meta[m].progress && <span className={`inline-flex rounded-full px-2.5 py-0.5 ${resume ? 'bg-white/10 text-white' : 'bg-brand-50 text-brand-700'}`}>{meta[m].progress}</span>}
-                </span>
-                <span className={`mt-3 inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl px-4 font-display text-sm font-bold ${resume ? 'bg-white text-navy' : 'bg-brand-600 text-white shadow-md shadow-brand-600/25 group-hover:bg-brand-700'}`}>
-                  {resume ? 'ทำต่อ' : M.cta} <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {resumeMode && (
+          <div className="flex flex-wrap items-center gap-3 rounded-[18px] px-4 py-3.5" style={{ background: 'var(--brand-soft)' }} data-testid="resume-banner">
+            <span style={{ color: 'var(--brand-ink)' }}><KIcon name="sDev" size={20} /></span>
+            <div className="min-w-0 flex-[1_1_220px]">
+              <p className="font-semibold" style={{ color: 'var(--ink)' }}>{MODE_META[resumeMode].title}: {meta[resumeMode].progress}</p>
+              <p className="text-[13px]" style={{ color: 'var(--ink-2)' }}>ทำต่อจากเดิม หรือเลือกวิธีอื่นก็ได้ ความคืบหน้าไม่หาย</p>
+            </div>
+          </div>
+        )}
+
+        <section aria-labelledby="pick-mode" data-testid="mode-picker" className="flex flex-col gap-3.5">
+          <div>
+            <h2 id="pick-mode" className="font-display text-xl font-bold" style={{ color: 'var(--ink)' }}>คุณอยากเรียนเรื่องนี้แบบไหน?</h2>
+            <p className="mt-1 text-sm" style={{ color: 'var(--ink-3)' }}>ทุกแบบจบด้วยการเช็กความเข้าใจ แล้ว V2U จะบอกขั้นต่อไปให้ — ถ้าวิธีหนึ่งไม่เวิร์ก ลองอีกวิธีได้เสมอ</p>
+          </div>
+          {contentStatus && contentStatus.status !== 'ready' ? (
+            <p className="flex items-start gap-2 rounded-2xl px-4 py-3 text-sm" style={{ background: 'var(--rev-soft)', color: 'var(--ink)' }} data-testid="content-status" data-status="needs-content">
+              <span style={{ color: 'var(--rev)', marginTop: 2 }}><KIcon name="info" size={16} /></span>
+              <span><b className="font-semibold">กำลังเตรียมเนื้อหา</b> — บทนี้ยังขาด: {contentStatus.missing.map((m) => CRITERION_LABEL[m]).join(', ')}</span>
+            </p>
+          ) : contentStatus ? (
+            <p className="flex items-start gap-2 text-xs" style={{ color: 'var(--ink-3)' }} data-testid="content-status" data-status="ready">
+              <span style={{ color: 'var(--ok)' }}><KIcon name="sOk" size={14} /></span>
+              <span>เนื้อหาพร้อมเรียน: อธิบาย ตัวอย่าง แบบฝึก {contentStatus.practiceCount} ข้อ และเช็กความเข้าใจ {contentStatus.checkCount} ข้อ
+              {contentStatus.resources.playableInV2U === 0 && ' · บทนี้ยังไม่มีคลิปที่เล่นใน V2U ได้ เริ่มจากอ่านกับ V2U ได้เลย'}</span>
+            </p>
+          ) : null}
+          <div className="grid gap-3.5 md:grid-cols-3">
+            {ORDER.map((m) => {
+              const M = MODE_META[m];
+              // Resume = the learner already has progress in this method (real state, not a guess)
+              const resume = !!meta[m].progress;
+              const noClip = m === 'video' && videos.length === 0;
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  data-mode={m}
+                  onClick={() => {
+                    if (stage !== 'learn') setStage('learn');
+                    onModeChange(m);
+                  }}
+                  data-resume={resume || undefined}
+                  className="group relative flex flex-col gap-3.5 p-5 text-left transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand-soft)]"
+                  style={{ borderRadius: 22, background: 'var(--surface)', border: resume ? '2px solid var(--brand)' : '1px solid var(--line)', boxShadow: resume ? '0 0 0 5px var(--brand-soft),var(--shadow)' : 'var(--shadow)', color: 'var(--ink)' }}
+                >
+                  <span className="flex items-center justify-between gap-2.5">
+                    <span className="grid h-[46px] w-[46px] place-items-center rounded-[14px]" style={{ background: 'var(--brand-soft)', color: 'var(--brand-ink)' }}><KIcon name={MODE_ICON[m]} size={22} /></span>
+                    {resume && <span className="inline-flex h-[26px] items-center gap-1 rounded-full pl-[7px] pr-2.5 text-xs font-bold" style={{ background: '#f5c04d', color: '#2b1d00' }}><KIcon name="sparkle" size={13} /> ทำต่อจากเดิม</span>}
+                  </span>
+                  <span className="flex flex-col gap-1">
+                    <span className="font-display text-xl font-bold">{M.title}</span>
+                    <span className="text-sm" style={{ color: 'var(--ink-2)' }}>{M.description}</span>
+                  </span>
+                  <span className="flex flex-wrap gap-1.5">
+                    <span className="inline-flex min-h-[26px] items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold" style={{ background: 'var(--surface-2)' }}><KIcon name="clock" size={14} /> {meta[m].time}</span>
+                    {meta[m].progress && <span className="inline-flex min-h-[26px] items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold" style={{ background: 'var(--brand-soft)', color: 'var(--brand-ink)' }}><KIcon name="sDev" size={14} /> {meta[m].progress}</span>}
+                  </span>
+                  <span className="flex flex-col gap-1.5 text-[13px]">
+                    {meta[m].does.map((d) => <span key={d} className="flex items-start gap-2 break-words"><span style={{ color: 'var(--ok)', marginTop: 3 }}><KIcon name="check" size={13} w={2.2} /></span>{d}</span>)}
+                  </span>
+                  {noClip && <span role="note" className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-[13px] font-semibold" style={{ background: 'var(--err-soft)', color: 'var(--err)' }}><KIcon name="video" size={16} /> ยังไม่มีคลิปที่เหมาะกับบทนี้ ลองอ่านหรือเรียนกับ V2U</span>}
+                  <span className="mt-auto inline-flex h-12 items-center justify-center gap-2 rounded-[14px] font-bold" style={{ background: 'var(--brand)', color: 'var(--on-brand)' }}>
+                    {resume ? 'ทำต่อ' : M.cta} <KIcon name="arrowR" size={16} />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      </div>
     );
   }
 
   /* ── Explicit mode switch (progress is kept) ───────────────────────── */
   const switcher = (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <div role="tablist" aria-label="วิธีเรียน" className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-200/60 p-1">
+      <div role="tablist" aria-label="วิธีเรียน" className="flex max-w-full gap-1.5 overflow-x-auto rounded-[14px] p-1" style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}>
         {ORDER.map((m) => {
-          const Icon = MODE_META[m].icon;
+          const a = mode === m;
           return (
             <button
               key={m}
               type="button"
               role="tab"
-              aria-selected={mode === m}
+              aria-selected={a}
               data-mode={m}
               onClick={() => {
                 if (stage !== 'learn') setStage('learn');
                 onModeChange(m);
               }}
-              className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-semibold transition-colors ${
-                mode === m ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-600 hover:text-ink'
-              }`}
+              className="inline-flex min-h-[44px] items-center justify-center gap-1.5 whitespace-nowrap rounded-[10px] px-3.5 text-sm font-semibold transition-colors"
+              style={{ background: a ? 'var(--brand)' : 'transparent', color: a ? 'var(--on-brand)' : 'var(--ink-2)' }}
             >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span className="whitespace-nowrap">{MODE_META[m].title}</span>
+              <KIcon name={MODE_ICON[m]} size={16} />
+              <span>{MODE_META[m].title}</span>
             </button>
           );
         })}
       </div>
-      <p className="text-xs text-slate-500">สลับวิธีเรียนได้ ความคืบหน้าไม่หาย</p>
+      <p className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--ink-3)' }}><KIcon name="refresh" size={14} /> สลับวิธีเรียนได้ ความคืบหน้าไม่หาย</p>
     </div>
   );
 
@@ -263,6 +345,8 @@ export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownReso
 
   return (
     <div className="space-y-5" data-learning-mode={mode}>
+      {topBar}
+      {notice}
       {switcher}
       {body}
     </div>

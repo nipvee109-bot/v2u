@@ -90,7 +90,7 @@ const SCREENS = {
   Me: 'src/pages/hubs/MeHub.tsx',
 };
 await test('All 10 screens use the shared primitives', () => {
-  for (const [n, f] of Object.entries(SCREENS)) assert(/components\/ui'|HubLinkList'/.test(read(f)), n);
+  for (const [n, f] of Object.entries(SCREENS)) assert(/components\/ui'|HubLinkList'|components\/v2u\/kit'/.test(read(f)), n); // V2U design kit counts as the shared primitives
 });
 await test('No leftover dark "document" banners on main screens', () => {
   for (const [n, f] of Object.entries(SCREENS)) assert(!/from-slate-900|from-\[#0B1120\]|bg-slate-900 rounded-3xl/.test(read(f)), n);
@@ -106,7 +106,8 @@ await test('Home: one primary CTA, today first, empty "missing" state designed',
 });
 await test('Review has a designed empty state with a way forward', () => {
   const r = read(SCREENS.Review);
-  assert(r.includes('<EmptyState') && r.includes('<ButtonLink'));
+  // V2U design: dedicated empty state (ring + check) with a link to the next step
+  assert(r.includes('วันนี้ไม่มีอะไรต้องทบทวน') && r.includes('data-testid="review-empty"') && r.includes('to="/"'));
 });
 await test('Exactly 5 primary nav items; touch targets ≥44px in nav and rows', () => {
   assert.strictEqual([...read('src/components/navigation/primaryNav.ts').matchAll(/\{\s*to: '/g)].length, 5);

@@ -19,10 +19,10 @@ export function PersonalSummaryCard({ lessonId, videoTitle, check }: Omit<Summar
   const count = notesForLesson(notes, lessonId).length;
 
   return (
-    <section aria-labelledby="my-summary" className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-5 sm:p-6" data-testid="personal-summary">
+    <section aria-labelledby="my-summary" className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)] p-5 sm:p-6" data-testid="personal-summary">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 id="my-summary" className="text-base font-bold text-ink">🧠 สรุปของฉัน</h3>
-        <span className="text-xs text-slate-500">จากโน้ต {count} รายการของคุณ{saved?.edited ? ' · แก้ไขแล้ว' : ''}</span>
+        <span className="text-xs text-[var(--ink-3)]">จากโน้ต {count} รายการของคุณ{saved?.edited ? ' · แก้ไขแล้ว' : ''}</span>
       </div>
       {editing ? (
         <>
@@ -32,10 +32,10 @@ export function PersonalSummaryCard({ lessonId, videoTitle, check }: Omit<Summar
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={14}
-            className="mt-3 w-full rounded-2xl border border-brand-300 bg-white p-3 font-sans text-sm leading-relaxed text-ink outline-none focus:ring-4 focus:ring-brand-100"
+            className="mt-3 w-full rounded-2xl border border-brand-300 bg-[var(--surface)] p-3 font-sans text-sm leading-relaxed text-ink outline-none focus:ring-4 focus:ring-brand-100"
           />
           <div className="mt-2 flex flex-wrap justify-end gap-2">
-            <button type="button" onClick={() => { setText(draft); }} className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-slate-600 hover:bg-slate-100">
+            <button type="button" onClick={() => { setText(draft); }} className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-[var(--ink-2)] hover:bg-[var(--surface-3)]">
               <RotateCcw className="h-4 w-4" /> เริ่มจากโน้ตใหม่
             </button>
             <button
@@ -44,7 +44,7 @@ export function PersonalSummaryCard({ lessonId, videoTitle, check }: Omit<Summar
                 savePersonalSummary(lessonId, text);
                 setEditing(false);
               }}
-              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brand-600 px-4 text-sm font-bold text-white hover:bg-brand-700"
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-[var(--brand)] px-4 text-sm font-bold text-white hover:bg-[var(--brand-hi)]"
             >
               <Save className="h-4 w-4" /> บันทึกสรุป
             </button>
@@ -52,18 +52,18 @@ export function PersonalSummaryCard({ lessonId, videoTitle, check }: Omit<Summar
         </>
       ) : (
         <>
-          <pre className="mt-3 whitespace-pre-wrap break-words rounded-2xl bg-slate-50 p-4 font-sans text-sm leading-relaxed text-slate-800">{shown}</pre>
+          <pre className="mt-3 whitespace-pre-wrap break-words rounded-2xl bg-[var(--surface-2)] p-4 font-sans text-sm leading-relaxed text-[var(--ink)]">{shown}</pre>
           <button
             type="button"
             onClick={() => {
               setText(shown);
               setEditing(true);
             }}
-            className="mt-2 inline-flex min-h-[44px] items-center gap-1.5 text-sm font-semibold text-brand-700"
+            className="mt-2 inline-flex min-h-[44px] items-center gap-1.5 text-sm font-semibold text-[var(--brand-ink)]"
           >
             <Pencil className="h-4 w-4" /> แก้สรุปเอง
           </button>
-          <p className="text-[11px] text-slate-500">สรุปนี้รวมจากโน้ตและผลเช็กของคุณเท่านั้น — การแก้สรุปไม่เปลี่ยนโน้ตเดิม</p>
+          <p className="text-[11px] text-[var(--ink-3)]">สรุปนี้รวมจากโน้ตและผลเช็กของคุณเท่านั้น — การแก้สรุปไม่เปลี่ยนโน้ตเดิม</p>
         </>
       )}
     </section>

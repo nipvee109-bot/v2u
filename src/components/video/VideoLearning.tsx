@@ -37,18 +37,18 @@ const GROUP_ORDER: VideoGroup[] = ['recommended', 'basics', 'practice', 'next'];
 
 function StateChip({ state }: { state: VideoProgress['state'] }) {
   const tone =
-    state === 'done' ? 'bg-emerald-100 text-emerald-800' : state === 'checked' || state === 'watched' ? 'bg-brand-50 text-brand-700' : state === 'learning' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600';
+    state === 'done' ? 'bg-emerald-100 text-[var(--ok)]' : state === 'checked' || state === 'watched' ? 'bg-[var(--brand-soft)] text-[var(--brand-ink)]' : state === 'learning' ? 'bg-[var(--rev-soft)] text-[var(--rev)]' : 'bg-[var(--surface-3)] text-[var(--ink-2)]';
   return <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${tone}`}>{VIDEO_STATE_LABEL[state]}</span>;
 }
 
 function VideoMeta({ v }: { v: VideoItem }) {
   return (
-    <p className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-slate-500">
+    <p className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-[var(--ink-3)]">
       <span>{v.provider}</span>
       {v.minutes !== undefined && <span>· {v.durationKnown ? '' : 'ประมาณ '}{v.minutes} นาที</span>}
       {v.language && <span>· {v.language === 'th' ? 'ภาษาไทย' : 'ภาษาอังกฤษ'}</span>}
-      <span className={v.checked ? 'text-emerald-700' : 'text-amber-700'}>· {v.linkState}</span>
-      <span className={v.embeddable ? 'font-semibold text-emerald-700' : 'font-semibold text-slate-600'} data-capability={v.embeddable ? 'play' : 'source'}>· {capabilityLabel(v.media)}</span>
+      <span className={v.checked ? 'text-[var(--ok)]' : 'text-[var(--rev)]'}>· {v.linkState}</span>
+      <span className={v.embeddable ? 'font-semibold text-[var(--ok)]' : 'font-semibold text-[var(--ink-2)]'} data-capability={v.embeddable ? 'play' : 'source'}>· {capabilityLabel(v.media)}</span>
     </p>
   );
 }
@@ -75,9 +75,9 @@ export function VideoCover({ v, index, lessonTitle }: { v: VideoItem; index: num
 /** Lessons of this topic in order, with honest status (nothing is locked). */
 export function TopicPath({ items, currentId }: { items: PathItem[]; currentId: string }) {
   const icon = (s: PathItem['status']) =>
-    s === 'done' ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : s === 'current' ? <CircleDot className="h-5 w-5 text-brand-600" /> : s === 'wait' ? <Hourglass className="h-5 w-5 text-slate-400" /> : <Circle className="h-5 w-5 text-slate-300" />;
+    s === 'done' ? <CheckCircle2 className="h-5 w-5 text-[var(--ok)]" /> : s === 'current' ? <CircleDot className="h-5 w-5 text-brand-600" /> : s === 'wait' ? <Hourglass className="h-5 w-5 text-[var(--ink-3)]" /> : <Circle className="h-5 w-5 text-slate-300" />;
   return (
-    <section aria-label="เส้นทางคลิปในหัวข้อนี้" className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 sm:p-5">
+    <section aria-label="เส้นทางคลิปในหัวข้อนี้" className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)] p-4 sm:p-5">
       <p className="text-sm font-bold text-ink">เส้นทางการเรียนในหัวข้อนี้</p>
       <ol className="mt-3 space-y-1">
         {items.map((it, i) => (
@@ -85,13 +85,13 @@ export function TopicPath({ items, currentId }: { items: PathItem[]; currentId: 
             <Link
               to={`/learn/curriculum/${it.lessonId}?mode=video`}
               aria-current={it.lessonId === currentId ? 'step' : undefined}
-              className={`flex min-h-[52px] items-center gap-3 rounded-2xl px-3 py-2 ${it.lessonId === currentId ? 'bg-brand-50' : 'hover:bg-slate-50'}`}
+              className={`flex min-h-[52px] items-center gap-3 rounded-2xl px-3 py-2 ${it.lessonId === currentId ? 'bg-[var(--brand-soft)]' : 'hover:bg-[var(--surface-2)]'}`}
             >
-              <span className="w-6 shrink-0 font-mono text-xs text-slate-400">{String(i + 1).padStart(2, '0')}</span>
+              <span className="w-6 shrink-0 font-mono text-xs text-[var(--ink-3)]">{String(i + 1).padStart(2, '0')}</span>
               {icon(it.status)}
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold text-ink break-words">{it.title}</span>
-                <span className="block text-xs text-slate-500 break-words">
+                <span className="block text-xs text-[var(--ink-3)] break-words">
                   {it.status === 'wait' ? it.note : `${PATH_STATUS_LABEL[it.status]} · ${it.videoCount ? `${it.videoCount} คลิป` : 'ยังไม่มีคลิปที่คัดไว้'}`}
                 </span>
               </span>
@@ -107,13 +107,13 @@ export function TopicPath({ items, currentId }: { items: PathItem[]; currentId: 
 function SequenceHeader({ lessonTitle, seq, currentKey }: { lessonTitle: string; seq: VideoItem[]; currentKey?: string }) {
   const idx = seq.findIndex((v) => v.key === currentKey);
   return (
-    <div className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 sm:p-5">
+    <div className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)] p-4 sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="min-w-0 text-sm text-slate-500">
+        <p className="min-w-0 text-sm text-[var(--ink-3)]">
           บท: <span className="font-bold text-ink break-words">{lessonTitle}</span>
         </p>
         {idx >= 0 && (
-          <span className="font-mono text-xs font-semibold text-slate-500">
+          <span className="font-mono text-xs font-semibold text-[var(--ink-3)]">
             {String(idx + 1).padStart(2, '0')} / {String(seq.length).padStart(2, '0')}
           </span>
         )}
@@ -121,14 +121,14 @@ function SequenceHeader({ lessonTitle, seq, currentKey }: { lessonTitle: string;
       <ol aria-label="เส้นทางคลิปของบทนี้" className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs font-semibold">
         {seq.map((v, i) => (
           <li key={v.key} className="flex items-center gap-1.5" aria-current={v.key === currentKey ? 'step' : undefined}>
-            <span className={`rounded-full px-2.5 py-1 ${v.key === currentKey ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+            <span className={`rounded-full px-2.5 py-1 ${v.key === currentKey ? 'bg-[var(--brand)] text-white' : 'bg-[var(--surface-3)] text-[var(--ink-2)]'}`}>
               {i + 1} {sequenceLabel(v)}
             </span>
             {i < seq.length - 1 && <ChevronRight className="h-3.5 w-3.5 text-slate-300" aria-hidden="true" />}
           </li>
         ))}
       </ol>
-      {seq.length === 1 && <p className="mt-2 text-xs text-slate-500">ตอนนี้มี 1 คลิปที่ V2U คัดไว้</p>}
+      {seq.length === 1 && <p className="mt-2 text-xs text-[var(--ink-3)]">ตอนนี้มี 1 คลิปที่ V2U คัดไว้</p>}
     </div>
   );
 }
@@ -174,18 +174,18 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
     return (
       <section aria-labelledby="video-entry" className="space-y-5" data-testid="video-entry">
         <div>
-          <p className="text-sm font-semibold text-brand-700">🎬 คลิปสำหรับบทนี้</p>
+          <p className="text-sm font-semibold text-[var(--brand-ink)]">🎬 คลิปสำหรับบทนี้</p>
           <h3 id="video-entry" className="mt-0.5 text-lg font-bold text-ink sm:text-xl">
             คุณอยากให้ V2U ช่วยเลือกให้ไหม?
           </h3>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-[var(--ink-2)]">
             {seq.length === 0 ? 'ยังไม่มีคลิปที่ V2U คัดไว้สำหรับบทนี้' : `ตอนนี้มี ${seq.length} คลิปที่ V2U คัดไว้สำหรับบทนี้`}
           </p>
         </div>
         {seq.length === 0 && (
-          <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-5 text-center" data-testid="no-videos">
-            <p className="text-sm text-slate-700">ยังไม่มีคลิปที่ V2U คัดไว้สำหรับบทนี้ — V2U จะไม่สร้างคลิปขึ้นมาเอง</p>
-            <button type="button" onClick={onSwitchToV2U} className="mt-3 min-h-[48px] rounded-2xl bg-brand-600 px-5 text-sm font-bold text-white hover:bg-brand-700">
+          <div className="rounded-[22px] border border-dashed border-slate-300 bg-[var(--surface)] p-5 text-center" data-testid="no-videos">
+            <p className="text-sm text-[var(--ink-2)]">ยังไม่มีคลิปที่ V2U คัดไว้สำหรับบทนี้ — V2U จะไม่สร้างคลิปขึ้นมาเอง</p>
+            <button type="button" onClick={onSwitchToV2U} className="mt-3 min-h-[48px] rounded-2xl bg-[var(--brand)] px-5 text-sm font-bold text-white hover:bg-[var(--brand-hi)]">
               ลองเรียนกับ V2U
             </button>
           </div>
@@ -196,7 +196,7 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
             data-choice="recommend"
             disabled={!rec}
             onClick={() => rec && choose(rec.video)}
-            className="flex min-h-[150px] flex-col rounded-3xl border-2 border-brand-500 bg-brand-50/60 p-5 text-left transition-colors hover:bg-brand-50 disabled:border-slate-200 disabled:bg-slate-50 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200"
+            className="flex min-h-[150px] flex-col rounded-[22px] border-2 border-[var(--brand)] bg-[var(--brand-soft)]/60 p-5 text-left transition-colors hover:bg-[var(--brand-soft)] disabled:border-[var(--line-2)] disabled:bg-[var(--surface-2)] focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200"
           >
             <span className="flex items-center gap-2 text-base font-bold text-ink">
               <Sparkles className="h-5 w-5 text-brand-600" /> แนะนำให้ฉัน
@@ -204,34 +204,34 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
             {rec ? (
               <>
                 <span className="mt-2 text-sm font-semibold text-ink break-words">{rec.video.title}</span>
-                {recLessonTitle && <span className="mt-0.5 text-xs font-semibold text-amber-800">จากบทพื้นฐาน “{recLessonTitle}”</span>}
-                <span className="mt-1 text-xs text-slate-600 break-words" data-testid="rec-reason">
+                {recLessonTitle && <span className="mt-0.5 text-xs font-semibold text-[var(--rev)]">จากบทพื้นฐาน “{recLessonTitle}”</span>}
+                <span className="mt-1 text-xs text-[var(--ink-2)] break-words" data-testid="rec-reason">
                   แนะนำคลิปนี้ เพราะ{rec.reasons[0]}
                 </span>
-                <span className="mt-auto pt-2 text-xs font-semibold text-brand-700">
+                <span className="mt-auto pt-2 text-xs font-semibold text-[var(--brand-ink)]">
                   คลิปที่ {rec.position}/{rec.of} ของบท{rec.estimatedMinutes !== undefined && ` · ${rec.video.durationKnown ? '' : 'ประมาณ '}${rec.estimatedMinutes} นาที`}
                 </span>
               </>
             ) : (
-              <span className="mt-2 text-sm text-slate-500">ยังไม่มีคลิปให้แนะนำ — ลองเรียนแบบ “อ่าน” หรือ “เรียนกับ V2U”</span>
+              <span className="mt-2 text-sm text-[var(--ink-3)]">ยังไม่มีคลิปให้แนะนำ — ลองเรียนแบบ “อ่าน” หรือ “เรียนกับ V2U”</span>
             )}
           </button>
           <button
             type="button"
             data-choice="manual"
             onClick={() => setStage('pick')}
-            className="flex min-h-[150px] flex-col rounded-3xl border-2 border-slate-200 bg-white p-5 text-left transition-colors hover:border-brand-300 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200"
+            className="flex min-h-[150px] flex-col rounded-[22px] border-2 border-[var(--line-2)] bg-[var(--surface)] p-5 text-left transition-colors hover:border-brand-300 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200"
           >
             <span className="flex items-center gap-2 text-base font-bold text-ink">
-              <Eye className="h-5 w-5 text-slate-600" /> เลือกเอง
+              <Eye className="h-5 w-5 text-[var(--ink-2)]" /> เลือกเอง
             </span>
-            <span className="mt-2 text-sm text-slate-600">ดูทุกคลิปที่ V2U คัดไว้ แยกตามพื้นฐาน ฝึกทำโจทย์ และบทต่อไป</span>
+            <span className="mt-2 text-sm text-[var(--ink-2)]">ดูทุกคลิปที่ V2U คัดไว้ แยกตามพื้นฐาน ฝึกทำโจทย์ และบทต่อไป</span>
           </button>
         </div>
         {rec && rec.reasons.length > 1 && (
-          <details className="rounded-2xl bg-slate-50 px-4 py-2 text-sm">
-            <summary className="flex min-h-[40px] cursor-pointer items-center font-semibold text-slate-700">ทำไม V2U แนะนำคลิปนี้</summary>
-            <ul className="space-y-1 pb-2 text-slate-600">
+          <details className="rounded-2xl bg-[var(--surface-2)] px-4 py-2 text-sm">
+            <summary className="flex min-h-[40px] cursor-pointer items-center font-semibold text-[var(--ink-2)]">ทำไม V2U แนะนำคลิปนี้</summary>
+            <ul className="space-y-1 pb-2 text-[var(--ink-2)]">
               {rec.reasons.map((r) => (
                 <li key={r} className="break-words">• {r}</li>
               ))}
@@ -246,21 +246,21 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
                 const state = stateOf(v);
                 const seenIt = state === 'watched' || state === 'checked' || state === 'done';
                 return (
-                  <li key={v.key} className="flex flex-col overflow-hidden rounded-2xl border border-ink/[0.08] bg-white shadow-card">
+                  <li key={v.key} className="flex flex-col overflow-hidden rounded-[22px] border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)]">
                     <VideoCover v={v} index={i + 1} lessonTitle={lesson.title} />
                     <div className="flex flex-1 flex-col p-4">
                       <p className="text-sm font-semibold text-ink break-words">{v.title}</p>
                       <VideoMeta v={v} />
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        {seenIt ? <span className="text-xs font-semibold text-emerald-700">✓ ดูแล้ว</span> : <StateChip state={state} />}
-                        {isSkipped(v) && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">ข้ามไว้</span>}
+                        {seenIt ? <span className="text-xs font-semibold text-[var(--ok)]">✓ ดูแล้ว</span> : <StateChip state={state} />}
+                        {isSkipped(v) && <span className="rounded-full bg-[var(--surface-3)] px-2 py-0.5 text-[11px] font-semibold text-[var(--ink-2)]">ข้ามไว้</span>}
                       </div>
                       <div className="mt-auto flex flex-wrap gap-2 pt-3">
-                        <button type="button" onClick={() => choose(v)} className="min-h-[44px] rounded-xl border-2 border-brand-200 px-3 text-sm font-bold text-brand-700 hover:bg-brand-50">
+                        <button type="button" onClick={() => choose(v)} className="min-h-[44px] rounded-xl border-2 border-[var(--line-2)] px-3 text-sm font-bold text-[var(--brand-ink)] hover:bg-[var(--brand-soft)]">
                           {seenIt ? 'ดูอีกครั้ง' : 'ดูคลิปนี้'}
                         </button>
                         {(seenIt || state === 'learning') && !isSkipped(v) && (
-                          <button type="button" onClick={() => skip(v)} className="min-h-[44px] rounded-xl px-3 text-sm font-semibold text-slate-600 hover:bg-slate-100">
+                          <button type="button" onClick={() => skip(v)} className="min-h-[44px] rounded-xl px-3 text-sm font-semibold text-[var(--ink-2)] hover:bg-[var(--surface-3)]">
                             ข้ามคลิป →
                           </button>
                         )}
@@ -284,24 +284,24 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
       <section aria-labelledby="video-pick" className="space-y-5" data-testid="video-pick">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 id="video-pick" className="text-lg font-bold text-ink">เลือกคลิปเอง</h3>
-          <button type="button" onClick={() => setStage('entry')} className="inline-flex min-h-[44px] items-center gap-1 text-sm font-semibold text-brand-700">
+          <button type="button" onClick={() => setStage('entry')} className="inline-flex min-h-[44px] items-center gap-1 text-sm font-semibold text-[var(--brand-ink)]">
             <ArrowLeft className="h-4 w-4" /> ให้ V2U แนะนำ
           </button>
         </div>
-        {shown.length === 0 && <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">บทนี้ยังไม่มีคลิปที่ V2U คัดไว้</p>}
+        {shown.length === 0 && <p className="rounded-2xl border border-dashed border-slate-300 bg-[var(--surface)] p-4 text-sm text-[var(--ink-2)]">บทนี้ยังไม่มีคลิปที่ V2U คัดไว้</p>}
         {shown.map((g) => (
           <div key={g} data-group={g}>
-            <p className="mb-2 text-xs font-semibold text-slate-500">{VIDEO_GROUP_LABEL[g]}{g === 'next' ? ' — บทถัดไปในเส้นทาง' : ''}</p>
-            <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-ink/[0.08] bg-white shadow-card">
+            <p className="mb-2 text-xs font-semibold text-[var(--ink-3)]">{VIDEO_GROUP_LABEL[g]}{g === 'next' ? ' — บทถัดไปในเส้นทาง' : ''}</p>
+            <ul className="divide-y divide-[var(--line)] overflow-hidden rounded-[22px] border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)]">
               {groups[g].map((v) => (
                 <li key={v.key} className="flex flex-wrap items-center gap-3 p-4">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-ink break-words">{v.title}</p>
                     <VideoMeta v={v} />
-                    {v.why && <p className="mt-1 text-xs text-slate-600 break-words">{v.why}</p>}
+                    {v.why && <p className="mt-1 text-xs text-[var(--ink-2)] break-words">{v.why}</p>}
                   </div>
                   <StateChip state={stateOf(v)} />
-                  <button type="button" onClick={() => choose(v)} className="min-h-[44px] rounded-xl border-2 border-brand-200 bg-white px-4 text-sm font-bold text-brand-700 hover:bg-brand-50">
+                  <button type="button" onClick={() => choose(v)} className="min-h-[44px] rounded-xl border-2 border-[var(--line-2)] bg-[var(--surface)] px-4 text-sm font-bold text-[var(--brand-ink)] hover:bg-[var(--brand-soft)]">
                     เลือกคลิปนี้
                   </button>
                 </li>
@@ -310,7 +310,7 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
           </div>
         ))}
         {onAddResource && (
-          <button type="button" onClick={onAddResource} className="inline-flex min-h-[44px] items-center gap-1.5 text-sm font-semibold text-brand-700">
+          <button type="button" onClick={onAddResource} className="inline-flex min-h-[44px] items-center gap-1.5 text-sm font-semibold text-[var(--brand-ink)]">
             <Plus className="h-4 w-4" /> เพิ่มคลิปของคุณเอง
           </button>
         )}
@@ -329,9 +329,9 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
   if (stage === 'reflect') {
     return (
       <section aria-labelledby="reflect" className="space-y-4" data-testid="video-reflect">
-        <div className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-5 sm:p-7">
+        <div className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)] p-5 sm:p-7">
           <h3 id="reflect" className="text-lg font-bold text-ink">หลังจากดูคลิปนี้ คุณคิดว่าตัวเองเข้าใจแค่ไหน?</h3>
-          <p className="mt-1 text-xs text-slate-500">นี่คือความรู้สึกของคุณ — V2U จะเช็กความเข้าใจอีกครั้งก่อนนับว่าเข้าใจ</p>
+          <p className="mt-1 text-xs text-[var(--ink-3)]">นี่คือความรู้สึกของคุณ — V2U จะเช็กความเข้าใจอีกครั้งก่อนนับว่าเข้าใจ</p>
           <div role="radiogroup" aria-label="ระดับความเข้าใจ" className="mt-4 grid gap-2 sm:grid-cols-2">
             {(Object.keys(REFLECTION_LABEL) as NonNullable<VideoProgress['reflection']>[]).map((r) => (
               <button
@@ -340,25 +340,25 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
                 role="radio"
                 aria-checked={reflection === r}
                 onClick={() => setVideoProgress(v.lessonId, v.key, { reflection: r })}
-                className={`flex min-h-[52px] items-center gap-3 rounded-2xl border-2 px-4 text-left text-sm font-medium ${reflection === r ? 'border-brand-500 bg-brand-50 text-brand-900' : 'border-slate-200 bg-white text-ink hover:border-brand-300'}`}
+                className={`flex min-h-[52px] items-center gap-3 rounded-2xl border-2 px-4 text-left text-sm font-medium ${reflection === r ? 'border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-ink)]' : 'border-[var(--line-2)] bg-[var(--surface)] text-ink hover:border-brand-300'}`}
               >
-                <span className={`h-4 w-4 shrink-0 rounded-full border-2 ${reflection === r ? 'border-brand-600 bg-brand-600' : 'border-slate-300'}`} aria-hidden="true" />
+                <span className={`h-4 w-4 shrink-0 rounded-full border-2 ${reflection === r ? 'border-brand-600 bg-[var(--brand)]' : 'border-slate-300'}`} aria-hidden="true" />
                 {REFLECTION_LABEL[r]}
               </button>
             ))}
           </div>
         </div>
-        <div className="rounded-3xl bg-brand-50 p-5 text-center">
-          <p className="text-sm text-brand-900">ดูจบแล้ว — ดูคลิปอย่างเดียวยังไม่ได้แปลว่าเข้าใจ</p>
+        <div className="rounded-[22px] bg-[var(--brand-soft)] p-5 text-center">
+          <p className="text-sm text-[var(--brand-ink)]">ดูจบแล้ว — ดูคลิปอย่างเดียวยังไม่ได้แปลว่าเข้าใจ</p>
           <div className="mt-3 flex flex-wrap justify-center gap-2">
-            <button type="button" onClick={onToCheck} disabled={!reflection} className="inline-flex min-h-[52px] items-center gap-2 rounded-2xl bg-brand-600 px-6 text-sm font-bold text-white hover:bg-brand-700 disabled:bg-slate-200 disabled:text-slate-500">
+            <button type="button" onClick={onToCheck} disabled={!reflection} className="inline-flex min-h-[52px] items-center gap-2 rounded-2xl bg-[var(--brand)] px-6 text-sm font-bold text-white hover:bg-[var(--brand-hi)] disabled:bg-[var(--surface-3)] disabled:text-[var(--ink-3)]">
               ลองเช็กความเข้าใจ <ArrowRight className="h-4 w-4" />
             </button>
-            <button type="button" onClick={onSwitchToV2U} className="min-h-[52px] rounded-2xl border-2 border-brand-200 bg-white px-5 text-sm font-bold text-brand-700 hover:bg-brand-50">
+            <button type="button" onClick={onSwitchToV2U} className="min-h-[52px] rounded-2xl border-2 border-[var(--line-2)] bg-[var(--surface)] px-5 text-sm font-bold text-[var(--brand-ink)] hover:bg-[var(--brand-soft)]">
               ยังไม่เข้าใจ — เรียนกับ V2U
             </button>
           </div>
-          <button type="button" onClick={() => setStage('watch')} className="mt-2 min-h-[44px] text-sm font-semibold text-slate-600">
+          <button type="button" onClick={() => setStage('watch')} className="mt-2 min-h-[44px] text-sm font-semibold text-[var(--ink-2)]">
             ← กลับไปดูคลิปต่อ
           </button>
         </div>
@@ -383,16 +383,16 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
                 onEnded={markEnded}
                 seekToSeconds={seekTo}
               />
-              <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
-                <span className="font-semibold text-slate-700 break-words">{v.title}</span>
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[var(--ink-3)]">
+                <span className="font-semibold text-[var(--ink-2)] break-words">{v.title}</span>
                 <span>· {v.provider}{v.embeddable ? ` · แหล่งภายนอก เล่นผ่านเครื่องเล่นทางการของ ${v.media.providerName ?? 'ต้นทาง'}` : ''}</span>
-                <span className={v.checked ? 'text-emerald-700' : 'text-amber-700'}>· {v.linkState}</span>
+                <span className={v.checked ? 'text-[var(--ok)]' : 'text-[var(--rev)]'}>· {v.linkState}</span>
               </p>
-              {!v.embeddable && !v.checked && v.locator && <p className="text-xs text-amber-700">ยังไม่ได้ตรวจลิงก์ — ถ้าเปิดไม่ได้ หาได้ที่: {v.locator}</p>}
+              {!v.embeddable && !v.checked && v.locator && <p className="text-xs text-[var(--rev)]">ยังไม่ได้ตรวจลิงก์ — ถ้าเปิดไม่ได้ หาได้ที่: {v.locator}</p>}
             </div>
-            <div className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-5">
-              <p className="text-xs font-semibold text-brand-700">ดูคลิปนี้เพื่อ</p>
-              <ul className="mt-1.5 space-y-1 text-sm text-slate-800">
+            <div className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)] p-5">
+              <p className="text-xs font-semibold text-[var(--brand-ink)]">ดูคลิปนี้เพื่อ</p>
+              <ul className="mt-1.5 space-y-1 text-sm text-[var(--ink)]">
                 {lesson.learningOutcomes.map((o) => (
                   <li key={o} className="flex gap-2 break-words">
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
@@ -400,7 +400,7 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-xs text-slate-500">
+              <p className="mt-3 flex flex-wrap items-center gap-2 border-t border-[var(--line)] pt-3 text-xs text-[var(--ink-3)]">
                 สถานะ: <StateChip state={stateOf(v)} />
                 {v.minutes !== undefined && (
                   <span className="flex items-center gap-1">
@@ -415,13 +415,13 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
           </div>
         </div>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-ink/[0.08] bg-white shadow-card p-3">
-        <button type="button" onClick={() => (prev ? choose(prev) : setStage('pick'))} className="inline-flex min-h-[48px] items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-slate-600 hover:bg-slate-100">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-[22px] border border-[var(--line)] bg-[var(--surface)] shadow-[var(--shadow)] p-3">
+        <button type="button" onClick={() => (prev ? choose(prev) : setStage('pick'))} className="inline-flex min-h-[48px] items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-[var(--ink-2)] hover:bg-[var(--surface-3)]">
           <ArrowLeft className="h-4 w-4" /> {prev ? 'คลิปก่อนหน้า' : 'เลือกคลิปอื่น'}
         </button>
         <div className="flex flex-wrap gap-2">
           {next && (
-            <button type="button" onClick={() => choose(next)} className="inline-flex min-h-[48px] items-center gap-1.5 rounded-xl border-2 border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:border-brand-300">
+            <button type="button" onClick={() => choose(next)} className="inline-flex min-h-[48px] items-center gap-1.5 rounded-xl border-2 border-[var(--line-2)] px-4 text-sm font-semibold text-[var(--ink-2)] hover:border-brand-300">
               คลิปถัดไป <ArrowRight className="h-4 w-4" />
             </button>
           )}
@@ -431,7 +431,7 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
               if (stateOf(v) === 'learning' || stateOf(v) === 'not-started') setVideoProgress(v.lessonId, v.key, { state: 'watched' });
               setStage('reflect');
             }}
-            className="inline-flex min-h-[48px] items-center gap-2 rounded-2xl bg-brand-600 px-5 text-sm font-bold text-white hover:bg-brand-700"
+            className="inline-flex min-h-[48px] items-center gap-2 rounded-2xl bg-[var(--brand)] px-5 text-sm font-bold text-white hover:bg-[var(--brand-hi)]"
           >
             <Check className="h-4 w-4" /> ฉันดูจบแล้ว
           </button>

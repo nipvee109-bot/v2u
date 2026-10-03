@@ -47,7 +47,7 @@ await test('Sidebar keeps the one next step in view (same source of truth)', () 
 console.log('\n2. Each screen has its own desktop layout');
 const SCREENS = {
   Home: ['src/pages/HomePage.tsx', /md:grid-cols-2 xl:grid-cols-3/], // V2U design: full-width hero, then a card grid
-  Learn: ['src/pages/hubs/LearnHub.tsx', /lg:grid-cols-\[minmax\(0,1fr\)_340px\]/],
+  Learn: ['src/pages/hubs/LearnHub.tsx', /minmax\(min\(100%,340px\),1fr\)/], // V2U design: two mode cards side by side
   Review: ['src/pages/hubs/ReviewHub.tsx', /lg:grid-cols-\[minmax\(0,1fr\)_340px\]/],
   Route: ['src/pages/hubs/RouteHub.tsx', /lg:grid-cols-\[minmax\(0,1fr\)_380px\]/],
   Roadmap: ['src/pages/RoadmapPage.tsx', /lg:grid-cols-6/],
@@ -70,7 +70,7 @@ await test('Home desktop: next step + missing | route + time + progress (aside)'
   assert(h.indexOf('next-step-today') < h.indexOf('<aside') && h.indexOf('เส้นทางของคุณ') > h.indexOf('<aside'));
 });
 await test('Mobile reading order preserved via order-* + contents (Phase 52 UI kept)', () => {
-  for (const f of ['src/pages/hubs/LearnHub.tsx', 'src/pages/hubs/RouteHub.tsx', 'src/pages/CurriculumPage.tsx']) {
+  for (const f of ['src/pages/hubs/RouteHub.tsx', 'src/pages/CurriculumPage.tsx']) {
     const s = read(f);
     assert(s.includes('contents lg:') && s.includes('order-1 lg:order-none'), f);
   }

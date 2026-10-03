@@ -134,7 +134,8 @@ console.log('\n5. Review & header (bugs #10, #11)');
 await test('ReviewRoom header is readable (not overridden by the white .card background)', () => {
   const r = read('src/pages/ReviewRoom.tsx');
   assert(!r.includes('className="card p-6 bg-gradient-to-r from-purple-900'));
-  assert(r.includes('className="rounded-2xl p-6 bg-gradient-to-r from-purple-900'));
+  // V2U design: the context header is a design surface (no .card white-on-white problem)
+  assert(r.includes('data-testid="review-context"') && r.includes("background: 'var(--surface)'"));
 });
 await test('Header reminder shows a dot only when reviews are actually due', () => {
   const l = read('src/components/Layout.tsx');

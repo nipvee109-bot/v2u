@@ -191,7 +191,7 @@ await test('10. Manual subject selection: V2U picks inside the chosen subject on
   const LH = read('src/pages/hubs/LearnHub.tsx');
   assert(LH.includes("pick: 'manual'") && LH.includes('<ManualPicker') && LH.includes('ฉันอยากเลือกเอง'));
   const PB = read('src/components/pathway/PathwayBits.tsx');
-  assert(PB.includes('📚 เลือกวิชา') && PB.includes('หัวข้อ') && PB.includes('/learn/curriculum/${lesson.id}'));
+  assert(PB.includes('เลือกวิชา') && PB.includes('หัวข้อ') && PB.includes('/learn/curriculum/${lesson.id}'));
 });
 await test('11. Auto “ให้ V2U จัดให้”: same engine as Home’s next step; switching back to auto is one tap', () => {
   const d = diag(sit('math', { '*': 1 }), sit('programming', { '*': 2 }));
@@ -200,9 +200,10 @@ await test('11. Auto “ให้ V2U จัดให้”: same engine as Home
   assert.strictEqual(s.pathway.subjectId, 'physics');
   assert.strictEqual(s.curriculum.lessonId, rec({ diagnostic: d }).lesson.id);
   const LH = read('src/pages/hubs/LearnHub.tsx');
-  assert(LH.includes('✨ ให้ V2U จัดให้') && LH.includes('onClick={() => setManual(false)}') && LH.includes('<AutoRecommendation'));
+  // V2U design: auto card heading lives in AutoRecommendation; back to auto is the subject screen's back link
+  assert(read('src/components/pathway/PathwayBits.tsx').includes('ให้ V2U จัดให้') && LH.includes('onBack={() => setManual(false)}') && LH.includes('<AutoRecommendation'));
   const PB = read('src/components/pathway/PathwayBits.tsx');
-  for (const x of ['ก้าวต่อไปที่แนะนำ', 'เปลี่ยนสิ่งที่แนะนำ', 'เลือกเอง', 'เริ่มเรียน', 'แนะนำเพราะ']) assert(PB.includes(x), x);
+  for (const x of ['ก้าวต่อไปที่แนะนำ', 'เปลี่ยนสิ่งที่แนะนำ', 'เลือกเอง', 'เริ่มบทนี้', 'แนะนำเพราะ']) assert(PB.includes(x), x);
 });
 await test('13. Next step is recalculated after new evidence (not locked to the old route)', () => {
   const before = getNextStep({ lessons, referenceDate: NOW, route: { profile, records: [] } });
