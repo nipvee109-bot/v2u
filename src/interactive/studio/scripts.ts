@@ -2,7 +2,9 @@
    Tutor lines are V2U's voice (short, friendly, explain why); every fact comes
    from the knowledge layer or the authored interactive lesson they point to. */
 
-import type { StudioScript } from './types';
+import type { StudioChunk, StudioScript } from './types';
+import { getLessonKnowledge } from '../../content/knowledge';
+import { getInteractiveLesson } from '../registry';
 
 const MATH: StudioScript = {
   lessonId: 'math-alg-linear-eq',
@@ -21,6 +23,7 @@ const MATH: StudioScript = {
     { id: 'recover', phase: 'try', kind: 'mistakes', title: 'จุดที่คนส่วนใหญ่พลาด', stepId: 'spot-mistake', tutor: 'เจอบ่อยมาก ไม่ต้องกังวล — ดูว่าพลาดเพราะอะไร แล้วแก้ยังไง' },
     { id: 'solo-1', phase: 'practice', kind: 'step', stepId: 'try-1', tutor: 'ข้อนี้ลองเองเลย ถ้าติดค่อยขอคำใบ้' },
     { id: 'solo-2', phase: 'practice', kind: 'step', stepId: 'try-2' },
+    { id: 'drill', phase: 'practice', kind: 'practice', title: 'ฝึกเพิ่มอีกนิด', practiceIds: ['i-4', 'i-5', 'i-6'], tutor: 'ตอบผิดไม่เป็นไร V2U จะบอกว่าพลาดตรงไหน' },
     { id: 'summary', phase: 'practice', kind: 'summary', tutor: 'จำแค่นี้พอ ที่เหลือคือฝึกให้คล่อง' },
   ],
 };
@@ -41,6 +44,7 @@ const PHYSICS: StudioScript = {
     { id: 'example', phase: 'try', kind: 'example', exampleId: 'we-2' },
     { id: 'friction', phase: 'practice', kind: 'step', stepId: 'calc-friction', tutor: 'มีแรงสองแรงคนละทิศ — หาแรงลัพธ์ก่อนเสมอ' },
     { id: 'recover', phase: 'practice', kind: 'mistakes', title: 'จุดที่มักพลาด' },
+    { id: 'drill', phase: 'practice', kind: 'practice', title: 'ฝึกคำนวณเพิ่ม', practiceIds: ['g-1', 'g-2', 'g-3'], tutor: 'หาแรงลัพธ์ก่อน แล้วค่อยหาร' },
     { id: 'summary', phase: 'practice', kind: 'summary' },
   ],
 };
@@ -60,9 +64,41 @@ const PROGRAMMING: StudioScript = {
     { id: 'order', phase: 'practice', kind: 'step', stepId: 'order-branches' },
     { id: 'predict', phase: 'practice', kind: 'step', stepId: 'predict', tutor: 'ไล่ในหัวก่อนว่าบรรทัดไหนจริง แล้วค่อยพิมพ์คำตอบ' },
     { id: 'recover', phase: 'practice', kind: 'mistakes', title: 'จุดที่มักพลาด' },
+    { id: 'drill', phase: 'practice', kind: 'practice', title: 'อ่านโค้ดแล้วบอกผลลัพธ์', practiceIds: ['g-1', 'g-2', 'g-3'], tutor: 'ไล่ทีละบรรทัดเหมือนหุ่นเมื่อกี้ แล้วพิมพ์สิ่งที่โปรแกรมจะแสดง' },
     { id: 'summary', phase: 'practice', kind: 'summary' },
   ],
 };
 
 export const STUDIO_SCRIPTS: StudioScript[] = [MATH, PHYSICS, PROGRAMMING];
-export const getStudioScript = (lessonId: string) => STUDIO_SCRIPTS.find((s) => s.lessonId === lessonId);
+
+const SUBJECT: Record<string, { subject: StudioScript['subject']; principle: string; hook: string; practice: string }> = {
+  math: { subject: 'math', principle: 'ทำให้เรื่องยากมองเห็นได้', hook: 'ดูภาพรวมก่อนว่าบทนี้ช่วยให้ทำอะไรได้ แล้วค่อยลงมือทีละขั้น', practice: 'ทำบนกระดาษก่อน แล้วพิมพ์คำตอบ — ถ้าผิด V2U จะใบ้ให้' },
+  phy: { subject: 'physics', principle: 'ทำให้สูตรทดลองได้', hook: 'ไม่ต้องจำสูตรก่อน ลองนึกภาพสถานการณ์ แล้วสูตรจะตามมาเอง', practice: 'เขียนสิ่งที่โจทย์ให้มาก่อน แล้วเลือกสูตรที่มีตัวแปรครบ' },
+  prog: { subject: 'programming', principle: 'ทำให้โค้ดมีชีวิต', hook: 'โค้ดทุกบรรทัดทำงานตามลำดับ ลองไล่ตามดูว่าคอมพิวเตอร์คิดยังไง', practice: 'ไล่โค้ดทีละบรรทัดในหัว แล้วพิมพ์สิ่งที่โปรแกรมจะแสดง' },
+};
+
+/** "เรียนกับ V2U" for every other lesson — built only from that lesson's knowledge and generated steps. */
+export function buildStudioScript(lessonId: string): StudioScript | undefined {
+  const k = getLessonKnowledge(lessonId);
+  const lesson = getInteractiveLesson(lessonId);
+  const sub = SUBJECT[lessonId.split('-')[0]];
+  if (!k || !lesson || !sub) return undefined;
+  const steps = lesson.steps.filter((s) => s.interaction);
+  const [ex1, ex2] = k.workedExamples;
+  const chunks: StudioChunk[] = [
+    { id: 'hook', phase: 'understand', kind: 'hook', tutor: sub.hook },
+    { id: 'idea', phase: 'understand', kind: 'explain', title: 'แนวคิดหลัก', concepts: k.concepts.map((c) => c.id), analogy: !!k.analogy },
+    { id: 'rules', phase: 'understand', kind: 'explain', title: sub.subject === 'programming' ? 'รูปแบบคำสั่งที่ใช้' : 'หลักและสูตรที่ใช้', rules: k.rules.map((r) => r.id), diagram: k.diagrams?.[0]?.id, tutor: 'ไม่ต้องท่องทั้งหมด ดูว่าแต่ละข้อใช้ตอนไหน' },
+    ...(ex1 ? [{ id: 'example-a', phase: 'understand', kind: 'example', exampleId: ex1.id, tutor: 'ลองเดาขั้นต่อไปก่อนกดดู' } as StudioChunk] : []),
+    ...steps.map<StudioChunk>((s) => ({ id: `step-${s.id}`, phase: 'try', kind: 'step', stepId: s.id })),
+    { id: 'guided', phase: 'try', kind: 'practice', title: 'ลองทำ (มีคำใบ้)', practiceIds: k.guided.map((p) => p.id), tutor: sub.practice },
+    ...(k.debugging?.[0] ? [{ id: 'debug', phase: 'practice', kind: 'debug', title: 'หาจุดผิดในโค้ด', debugId: k.debugging[0].id, tutor: 'โค้ดนี้มีปัญหา ทายก่อนว่าเพราะอะไร แล้วค่อยดูวิธีแก้' } as StudioChunk] : []),
+    ...(ex2 ? [{ id: 'example-b', phase: 'practice', kind: 'example', exampleId: ex2.id } as StudioChunk] : []),
+    { id: 'solo', phase: 'practice', kind: 'practice', title: 'ลองทำเอง', practiceIds: [...k.independent].sort((a, b) => a.level - b.level).map((p) => p.id), tutor: 'ข้อนี้ลองเองก่อน ถ้าติดค่อยขอคำใบ้' },
+    { id: 'recover', phase: 'practice', kind: 'mistakes', title: 'จุดที่มักพลาด' },
+    { id: 'summary', phase: 'practice', kind: 'summary' },
+  ];
+  return { lessonId, subject: sub.subject, principle: sub.principle, experience: 'B', chunks };
+}
+
+export const getStudioScript = (lessonId: string): StudioScript | undefined => STUDIO_SCRIPTS.find((s) => s.lessonId === lessonId) ?? buildStudioScript(lessonId);

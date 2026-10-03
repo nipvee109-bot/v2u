@@ -26,7 +26,11 @@ export type StudioChunk =
   | { id: string; phase: StudioPhase; kind: 'step'; stepId: string; tutor?: string }
   | { id: string; phase: StudioPhase; kind: 'example'; exampleId: string; tutor?: string }
   | { id: string; phase: StudioPhase; kind: 'mistakes'; title: string; tutor?: string; stepId?: string }
-  | { id: string; phase: StudioPhase; kind: 'summary'; tutor?: string };
+  | { id: string; phase: StudioPhase; kind: 'summary'; tutor?: string }
+  /** Knowledge practice (guided / independent), checked against the item's verified answer. Practice only — no mastery evidence. */
+  | { id: string; phase: StudioPhase; kind: 'practice'; title: string; tutor?: string; practiceIds: string[] }
+  /** Knowledge debugging case: buggy code → symptom → predict → fix (programming) */
+  | { id: string; phase: StudioPhase; kind: 'debug'; title: string; tutor?: string; debugId: string };
 
 export interface StudioScript {
   lessonId: string;

@@ -24,13 +24,14 @@ export function TutorBubble({ children, tone = 'plain' }: { children: ReactNode;
   );
 }
 
-export type HelpKind = 'simpler' | 'visual' | 'example' | 'hint' | 'other' | 'back';
+export type HelpKind = 'simpler' | 'visual' | 'example' | 'hint' | 'confused' | 'other' | 'back';
 
 const HELP: { kind: HelpKind; label: string }[] = [
   { kind: 'simpler', label: 'อธิบายให้ง่ายกว่านี้' },
   { kind: 'visual', label: 'ดูเป็นภาพ' },
   { kind: 'example', label: 'ดูตัวอย่าง' },
   { kind: 'hint', label: 'ขอคำใบ้' },
+  { kind: 'confused', label: 'ยังไม่เข้าใจ' },
   { kind: 'other', label: 'ลองอีกวิธี' },
   { kind: 'back', label: 'กลับไปแนวคิดก่อนหน้า' },
 ];
@@ -110,6 +111,20 @@ export function AdaptiveHelp({ k, simple, hint, onHint, onVisual, onBack, onMode
               </div>
             )}
             {kind === 'hint' && <p data-testid="help-hint">{hint ?? 'ขั้นนี้ยังไม่มีคำถาม ลองทำตามที่ V2U ชวนไว้ด้านบนได้เลย'}</p>}
+            {kind === 'confused' && (
+              <div data-testid="help-confused">
+                <p>ไม่เป็นไร ลองเช็กว่าติดตรงไหนในนี้ — คนส่วนใหญ่พลาดตรงนี้:</p>
+                <ul className="mt-2 space-y-2">
+                  {k.mistakes.slice(0, 2).map((m) => (
+                    <li key={m.mistake} className="rounded-xl bg-[var(--surface-3)] px-3 py-2">
+                      <b>{m.mistake}</b>
+                      <span className="block text-[var(--ink-2)]">แก้: {m.fix}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2">ถ้ายังไม่ชัด ลอง “อธิบายให้ง่ายกว่านี้” หรือ “ดูตัวอย่าง”</p>
+              </div>
+            )}
             {kind === 'other' && (
               <div className="flex flex-wrap gap-2">
                 <p className="w-full">เปลี่ยนวิธีเรียนได้ ความคืบหน้าในบทนี้ยังอยู่ครบ</p>

@@ -424,3 +424,6 @@ export function validateResources(
   }
   return errors;
 }
+
+/** Read-only access to the whole registry (content audit / registry view). */
+export const allResources = (): readonly CuratedResource[] => RESOURCE_REGISTRY;

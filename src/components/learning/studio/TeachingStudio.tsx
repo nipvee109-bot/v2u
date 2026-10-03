@@ -6,7 +6,9 @@ import { canContinue, EMPTY_RESULT } from '../../../interactive/engine';
 import type { InteractiveLesson, InteractiveStep, LearningMode, PlayerState } from '../../../interactive/types';
 import type { StudioChunk, StudioPhase, StudioScript } from '../../../interactive/studio/types';
 import { getLessonKnowledge } from '../../../content/knowledge';
-import type { LessonKnowledge } from '../../../content/knowledge';
+import type { KnowledgeDebug, KnowledgePractice, LessonKnowledge } from '../../../content/knowledge';
+import { checkPractice, INEQ_OPS, practiceFields } from '../../../interactive/studio/practiceCheck';
+import { Feedback } from '../Questions';
 import { getOriginalLesson } from '../../../content/originals';
 import { DiagramView } from '../Diagrams';
 import { EquationCard } from '../InteractivePlayer';
@@ -82,7 +84,7 @@ export function TeachingStudio({ script, lesson, state, dispatch, onToCheck, onM
     const i = lesson.steps.findIndex((s) => s.id === id);
     return i < 0 || canContinue(lesson, state, i);
   };
-  const chunkReady = (c: StudioChunk) => (c.kind === 'widget' ? saved.done.includes(c.id) || (stepIdOf(c) !== undefined && stepReady(stepIdOf(c))) : stepReady(stepIdOf(c)));
+  const chunkReady = (c: StudioChunk) => (c.kind === 'practice' || c.kind === 'debug' ? saved.done.includes(c.id) : c.kind === 'widget' ? saved.done.includes(c.id) || (stepIdOf(c) !== undefined && stepReady(stepIdOf(c))) : stepReady(stepIdOf(c)));
   const ready = chunkReady(chunk);
   const current = stepOf(stepIdOf(chunk));
   const prevExplain = [...chunks.slice(0, idx)].reverse().findIndex((c) => c.kind === 'explain');
@@ -153,7 +155,7 @@ export function TeachingStudio({ script, lesson, state, dispatch, onToCheck, onM
                 {isLast ? 'ไปเช็กความเข้าใจ' : chunk.kind === 'hook' ? 'เริ่มเลย' : 'ต่อไป'} <ArrowRight className="h-4 w-4" />
               </button>
             </div>
-            {!ready && <p className="mt-2 text-right text-xs text-[var(--ink-3)]">{chunk.kind === 'widget' ? 'ลองทำให้ครบก่อน แล้วค่อยไปต่อ' : 'ตอบคำถามก่อน แล้วค่อยไปต่อ'}</p>}
+            {!ready && <p className="mt-2 text-right text-xs text-[var(--ink-3)]">{chunk.kind === 'widget' || chunk.kind === 'practice' || chunk.kind === 'debug' ? 'ลองทำให้ครบก่อน แล้วค่อยไปต่อ' : 'ตอบคำถามก่อน แล้วค่อยไปต่อ'}</p>}
           </section>
         </div>
 
@@ -223,6 +225,12 @@ function ChunkBody({ chunk, k, lesson, state, dispatch, subject, step, onWidgetD
           <li className="pt-2 text-sm text-[var(--ink-2)]">ต่อไปคือเช็กความเข้าใจสั้น ๆ — ผลจากตรงนั้นจะบอกว่าควรทบทวนอะไร</li>
         </ul>
       );
+    case 'practice':
+      return <PracticeBody key={chunk.id} items={chunk.practiceIds.map((id) => [...k.guided, ...k.independent].find((p) => p.id === id)).filter((p): p is KnowledgePractice => !!p)} code={subject === 'programming'} onDone={onWidgetDone} />;
+    case 'debug': {
+      const d = k.debugging?.find((x) => x.id === chunk.debugId);
+      return d ? <DebugBody key={chunk.id} d={d} onDone={onWidgetDone} /> : null;
+    }
     case 'mistakes':
       return (
         <div className="space-y-3">
@@ -338,6 +346,123 @@ function StepBody({ step, state, dispatch }: { step: InteractiveStep; state: Pla
         </div>
       )}
       {step.afterVisual && (result.solved || result.revealed) && <div className="mt-3"><EquationCard lines={step.afterVisual.lines} caption={step.afterVisual.caption} tone="solved" /></div>}
+    </div>
+  );
+}
+
+const CODE_STYLE = { fontVariantLigatures: 'none' } as const;
+const SMALL_BTN = 'inline-flex min-h-[44px] items-center rounded-xl px-4 text-sm font-semibold';
+
+function PracticeBody({ items, code, onDone }: { items: KnowledgePractice[]; code: boolean; onDone: () => void }) {
+  const [settled, setSettled] = useState<string[]>([]);
+  const settle = (id: string) =>
+    setSettled((s) => {
+      if (s.includes(id)) return s;
+      const next = [...s, id];
+      if (next.length >= items.length) onDone();
+      return next;
+    });
+  return (
+    <div className="space-y-4" data-testid="studio-practice">
+      <p className="text-xs text-[var(--ink-3)]">ทำแล้ว {settled.length}/{items.length} ข้อ · การฝึกตรงนี้ไม่นับเป็นคะแนน</p>
+      {items.map((p, i) => (
+        <PracticeItem key={p.id} p={p} n={i + 1} code={code} onSettled={() => settle(p.id)} />
+      ))}
+    </div>
+  );
+}
+
+function PracticeItem({ p, n, code, onSettled }: { p: KnowledgePractice; n: number; code: boolean; onSettled: () => void }) {
+  const fields = practiceFields(p);
+  const [input, setInput] = useState<Record<string, string>>(() => (fields.some((f) => f.kind === 'op') ? { op: '<' } : {}) as Record<string, string>);
+  const [wrong, setWrong] = useState(0);
+  const [state, setState] = useState<'open' | 'correct' | 'revealed'>('open');
+  const [hint, setHint] = useState(false);
+  const done = state !== 'open';
+  const submit = () => {
+    const v = checkPractice(p, input);
+    if (v === 'correct') { setState('correct'); onSettled(); }
+    else { setWrong((w) => w + 1); setHint(true); }
+  };
+  const reveal = () => { setState('revealed'); onSettled(); };
+  const fid = (k: string) => `pr-${p.id}-${k}`;
+  return (
+    <article className="rounded-2xl border border-[var(--line)] p-4" data-testid="practice-item" data-practice={p.id} data-state={state}>
+      <p className="text-xs font-semibold text-[var(--brand-ink)]">ข้อ {n} · ระดับ {p.level}</p>
+      <p className="mt-1 text-[15px] font-semibold text-ink break-words">{p.prompt}</p>
+      {p.code && <pre style={CODE_STYLE} className="mt-2 overflow-x-auto rounded-xl bg-[#0f172a] p-3 font-mono text-[13px] text-slate-100">{p.code}</pre>}
+      {fields.length > 0 && !done && (
+        <form className="mt-3 flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+          {fields.map((f) =>
+            f.kind === 'op' ? (
+              <label key={f.key} className="text-sm">
+                <span className="block text-[var(--ink-2)]">เครื่องหมาย</span>
+                <select id={fid(f.key)} value={input.op} onChange={(e) => setInput((s) => ({ ...s, op: e.target.value }))} className="mt-1 min-h-[44px] rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 font-mono">
+                  {INEQ_OPS.map((o) => <option key={o} value={o}>x {o}</option>)}
+                </select>
+              </label>
+            ) : f.kind === 'text' ? (
+              <label key={f.key} className="w-full text-sm">
+                <span className="block text-[var(--ink-2)]">{f.label} (หลายบรรทัดได้)</span>
+                <textarea id={fid(f.key)} rows={2} value={input[f.key] ?? ''} onChange={(e) => setInput((s) => ({ ...s, [f.key]: e.target.value }))} className="mt-1 min-h-[44px] w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2 font-mono" style={CODE_STYLE} />
+              </label>
+            ) : (
+              <label key={f.key} className="text-sm">
+                <span className="block font-mono text-[var(--ink-2)]">{f.label}</span>
+                <input id={fid(f.key)} inputMode="decimal" value={input[f.key] ?? ''} onChange={(e) => setInput((s) => ({ ...s, [f.key]: e.target.value }))} className="mt-1 min-h-[44px] w-32 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 font-mono" />
+              </label>
+            ),
+          )}
+          <button type="submit" className={`${SMALL_BTN} bg-[var(--brand)] text-white hover:bg-[var(--brand-hi)]`}>ตรวจคำตอบ</button>
+        </form>
+      )}
+      {!done && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {p.hint && !hint && <button type="button" onClick={() => setHint(true)} className={`${SMALL_BTN} border border-[var(--line)]`}>ขอคำใบ้</button>}
+          {(fields.length === 0 || wrong >= 2) && <button type="button" onClick={reveal} className={`${SMALL_BTN} border border-[var(--line)]`}>{code ? 'ดูผลลัพธ์และเหตุผล' : 'ดูเฉลยและเหตุผล'}</button>}
+        </div>
+      )}
+      {!done && wrong > 0 && (
+        <Feedback tone="try" title="เกือบถูกแล้ว — ลองดูอีกที">
+          {p.hint ?? 'ย้อนดูหลักในบทนี้ แล้วทำทีละขั้น'}
+          {wrong >= 2 && <span className="block mt-1">ถ้ายังติด เปิดดูเฉลยพร้อมเหตุผลได้ ไม่เสียคะแนน</span>}
+        </Feedback>
+      )}
+      {!done && wrong === 0 && hint && p.hint && <p className="mt-2 rounded-xl bg-[var(--rev-soft)] px-3 py-2 text-sm">คำใบ้: {p.hint}</p>}
+      {done && (
+        <Feedback tone={state === 'correct' ? 'good' : 'try'} title={state === 'correct' ? 'ถูกต้อง' : 'เฉลย'}>
+          <span className="block font-mono whitespace-pre-line">{p.answer}</span>
+          <span className="mt-1 block">{p.explanation}</span>
+        </Feedback>
+      )}
+    </article>
+  );
+}
+
+function DebugBody({ d, onDone }: { d: KnowledgeDebug; onDone: () => void }) {
+  const [stage, setStage] = useState(0);
+  return (
+    <div className="space-y-3" data-testid="studio-debug">
+      <pre style={CODE_STYLE} className="overflow-x-auto rounded-xl bg-[#0f172a] p-3 font-mono text-[13px] text-slate-100" aria-label="โค้ดที่มีปัญหา">{d.buggy}</pre>
+      {stage === 0 && <button type="button" onClick={() => setStage(1)} className={`${SMALL_BTN} bg-[var(--brand)] text-white`}>Run — ดูว่าเกิดอะไรขึ้น</button>}
+      {stage >= 1 && (
+        <div className="rounded-xl border border-[var(--err)] bg-[var(--surface-3)] px-3 py-2 font-mono text-sm" role="status">
+          <span className="text-[var(--ink-3)]">ผลที่ได้ &gt; </span>{d.symptom}
+        </div>
+      )}
+      {stage === 1 && (
+        <>
+          <p className="text-sm text-[var(--ink-2)]">ลองคิดก่อน: บรรทัดไหนทำให้เกิดผลนี้ และควรแก้ยังไง?</p>
+          <button type="button" onClick={() => { setStage(2); onDone(); }} className={`${SMALL_BTN} border border-[var(--line)]`}>ดูวิธีแก้</button>
+        </>
+      )}
+      {stage >= 2 && (
+        <>
+          <pre style={CODE_STYLE} className="overflow-x-auto rounded-xl bg-[#0f172a] p-3 font-mono text-[13px] text-slate-100" aria-label="โค้ดที่แก้แล้ว">{d.fixed}</pre>
+          <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-3)] px-3 py-2 font-mono text-sm whitespace-pre-line"><span className="text-[var(--ink-3)]">ผลลัพธ์ &gt; </span>{d.output}</div>
+          <Feedback tone="good" title="ทำไมถึงแก้แบบนี้">{d.explanation}</Feedback>
+        </>
+      )}
     </div>
   );
 }
