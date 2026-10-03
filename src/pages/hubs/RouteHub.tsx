@@ -357,7 +357,7 @@ export function RouteHub() {
           <ul className="mt-2 divide-y divide-[var(--line)] text-sm text-[var(--ink)]">
             {today.missing.map((m) => (
               <li key={m} className="flex min-h-[40px] items-center gap-2.5 py-1.5">
-                <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--rev-soft)]0" aria-hidden="true" />
+                <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--rev)]" aria-hidden="true" />
                 <span className="break-words">{m}</span>
               </li>
             ))}

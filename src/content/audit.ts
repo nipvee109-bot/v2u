@@ -14,8 +14,9 @@ import type { CurriculumLesson, CurriculumSubjectId } from '../curriculum/types'
 import { getOriginalLesson, ORIGINAL_LESSONS } from './originals';
 import { getInteractiveLesson } from '../interactive/registry';
 import { getLessonVideos } from '../video/engine';
+import { getLessonKnowledge } from './knowledge';
 
-export type CriterionId = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'SUBJECT';
+export type CriterionId = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'SUBJECT' | 'KNOWLEDGE';
 
 export const CRITERION_LABEL: Record<CriterionId, string> = {
   A: 'เป้าหมายการเรียน',
@@ -32,6 +33,7 @@ export const CRITERION_LABEL: Record<CriterionId, string> = {
   L: 'สรุป',
   M: 'สิ่งที่ต้องเรียนต่อ',
   SUBJECT: 'ส่วนเฉพาะวิชา (โค้ด / สูตรและหน่วย)',
+  KNOWLEDGE: 'เนื้อหาเชิงลึกที่ตรวจคำตอบแล้ว (ขอบเขต กฎ แบบฝึก 3 ระดับ แหล่งอ้างอิง)',
 };
 
 export type LessonContentStatus = 'ready' | 'needs-content';
@@ -90,6 +92,19 @@ export function auditLesson(l: CurriculumLesson, dup = duplicatedTexts()): Lesso
   need(checkValid.length >= 3 && (o?.check.length ?? 0) >= 1, 'K');
   need(len(o?.summary) >= 40 && !dup.has(o?.summary ?? ''), 'L');
   need(len(o?.next) >= 5, 'M');
+  // Phase 62: the researched knowledge layer (boundary, rules, levelled practice, checks, sources)
+  const kn = getLessonKnowledge(l.id);
+  need(
+    !!kn &&
+      kn.allowedKnowledge.length > 0 &&
+      kn.notYetAllowed.length > 0 &&
+      kn.rules.length >= 3 &&
+      kn.guided.length >= 3 &&
+      [1, 2, 3].every((lv) => kn.independent.some((p) => p.level === lv)) &&
+      kn.checks.length >= 4 &&
+      kn.provenance.length > 0,
+    'KNOWLEDGE'
+  );
   if (l.subjectId === 'programming') {
     need(!!o?.code?.length && o.code.every((c) => len(c.code) && c.output !== undefined && len(c.does) && len(c.why) && len(c.whatIf)) && !!o.errorExample, 'SUBJECT');
   } else if (l.subjectId === 'physics') {

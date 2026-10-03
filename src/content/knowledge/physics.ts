@@ -1,0 +1,331 @@
+/* V2U lesson knowledge — Physics (Phase 62). Original V2U writing.
+   Every calculation has a `verify` (value + unit) that the test suite recomputes. */
+
+import type { LessonKnowledge } from './types';
+
+const UNITS = 'skill-phy-units';
+const VEC = 'skill-phy-vector-components';
+const KIN = 'skill-phy-kinematics-equations';
+const GRAPH = 'skill-math-graph-reading';
+const FBD = 'skill-phy-free-body';
+const N2 = 'skill-phy-newton-second';
+const deg = (d: number) => `Math.PI*${d}/180`;
+
+export const PHYSICS_KNOWLEDGE: LessonKnowledge[] = [
+  // ───────────────────────────────────────────────────────────────────
+  {
+    lessonId: 'phy-vec-units',
+    skills: [UNITS],
+    prerequisites: [],
+    whyItMatters: 'ตัวเลขในฟิสิกส์ไม่มีความหมายถ้าไม่มีหน่วย และสูตรทุกสูตรใช้ได้ถูกต้องเมื่อทุกปริมาณอยู่ในหน่วย SI เดียวกัน การแปลงหน่วยผิดคือสาเหตุอันดับต้น ๆ ที่ทำให้คำตอบผิดทั้งที่ใช้สูตรถูก',
+    allowedKnowledge: [
+      'หน่วยฐาน SI 7 หน่วย (เน้น เมตร m, กิโลกรัม kg, วินาที s)',
+      'หน่วยอนุพัทธ์ที่สร้างจากหน่วยฐาน เช่น m/s',
+      'คำนำหน้าหน่วย G (10⁹) M (10⁶) k (10³) c (10⁻²) m (10⁻³) μ (10⁻⁶) n (10⁻⁹)',
+      'การแปลงหน่วยด้วยตัวประกอบการแปลง (คูณด้วย 1 ในรูปเศษส่วน)',
+      'การแปลง km/h ↔ m/s',
+      'เขียนผลลัพธ์ด้วยเลขยกกำลังสิบ',
+    ],
+    notYetAllowed: ['การวิเคราะห์มิติเชิงลึก', 'เลขนัยสำคัญและความไม่แน่นอนอย่างละเอียด', 'นิยามหน่วยฐานด้วยค่าคงตัวทางฟิสิกส์', 'หน่วยไฟฟ้าและความร้อนเชิงคำนวณ'],
+    concepts: [
+      { id: 'c-quantity', term: 'ปริมาณทางฟิสิกส์', meaning: 'สิ่งที่วัดได้ เขียนเป็น ตัวเลข × หน่วย เช่น 5 m', skillId: UNITS },
+      { id: 'c-base', term: 'หน่วยฐาน SI', meaning: 'm (ความยาว) kg (มวล) s (เวลา) A (กระแสไฟฟ้า) K (อุณหภูมิ) mol (ปริมาณสาร) cd (ความเข้มการส่องสว่าง)', skillId: UNITS },
+      { id: 'c-prefix', term: 'คำนำหน้าหน่วย', meaning: 'ตัวคูณสิบยกกำลังที่เติมหน้าหน่วย เช่น k = 10³ จึง 1 km = 10³ m', skillId: UNITS },
+      { id: 'c-factor', term: 'ตัวประกอบการแปลง', meaning: 'เศษส่วนที่มีค่าเท่ากับ 1 เช่น (1000 m / 1 km) คูณแล้วค่าปริมาณไม่เปลี่ยน แค่หน่วยเปลี่ยน', skillId: UNITS },
+    ],
+    rules: [
+      { id: 'r-prefix', name: 'ค่าคำนำหน้าหน่วย', statement: 'G = 10⁹, M = 10⁶, k = 10³, c = 10⁻², m = 10⁻³, μ = 10⁻⁶, n = 10⁻⁹', skillId: UNITS },
+      { id: 'r-factor', name: 'แปลงด้วยตัวประกอบ', statement: 'ค่าใหม่ = ค่าเดิม × (หน่วยใหม่ / หน่วยเดิม) โดยให้หน่วยเดิมตัดกัน', skillId: UNITS },
+      { id: 'r-kmh', name: 'km/h ↔ m/s', statement: '1 km/h = 1000 m / 3600 s = 1/3.6 m/s จึง km/h ÷ 3.6 = m/s และ m/s × 3.6 = km/h', skillId: UNITS },
+    ],
+    detailed: [
+      'การแปลงหน่วยคือการคูณด้วย 1 ที่เขียนในรูปเศษส่วน เช่น 1000 m กับ 1 km มีค่าเท่ากัน เศษส่วน (1000 m / 1 km) จึงเท่ากับ 1 คูณเข้าไปแล้วตัวเลขเปลี่ยนแต่ปริมาณจริงไม่เปลี่ยน',
+      'วางตัวประกอบให้หน่วยที่ไม่ต้องการ "ตัดกัน" หน่วยเดิมอยู่ตัวส่วนถ้าเดิมอยู่ตัวเศษ ถ้าเหลือหน่วยแปลก ๆ แสดงว่าวางกลับด้าน',
+      'ตรวจด้วยสามัญสำนึก: แปลงเป็นหน่วยที่เล็กกว่า ตัวเลขต้องใหญ่ขึ้น (5 km = 5000 m) แปลงเป็นหน่วยที่ใหญ่กว่า ตัวเลขต้องเล็กลง',
+    ],
+    analogy: 'แลกเงินบาทเป็นเหรียญ 10 บาท: มูลค่าเท่าเดิม แค่จำนวนชิ้นเปลี่ยน',
+    workedExamples: [
+      { id: 'we-1', skillId: UNITS, problem: 'รถวิ่ง 72 km/h คิดเป็นกี่ m/s', steps: ['72 km/h × (1000 m / 1 km) × (1 h / 3600 s)', '= 72 × 1000 / 3600 m/s', '= 20 m/s (หรือ 72 ÷ 3.6 = 20)'], answer: '20 m/s', verify: { kind: 'value', expr: '72*1000/3600', expected: 20, unit: 'm/s' } },
+      { id: 'we-2', skillId: UNITS, problem: 'มวล 0.75 kg คิดเป็นกี่กรัม', steps: ['k = 10³ จึง 1 kg = 1000 g', '0.75 kg × (1000 g / 1 kg) = 750 g'], answer: '750 g', verify: { kind: 'value', expr: '0.75*1000', expected: 750, unit: 'g' } },
+    ],
+    guided: [
+      { id: 'g-1', skillId: UNITS, level: 1, prompt: '5 km เท่ากับกี่เมตร', hint: 'k = 10³', answer: '5000 m', explanation: '5 × 10³ m = 5000 m', verify: { kind: 'value', expr: '5*1e3', expected: 5000, unit: 'm' } },
+      { id: 'g-2', skillId: UNITS, level: 1, prompt: '250 mA เท่ากับกี่แอมแปร์', hint: 'm = 10⁻³', answer: '0.25 A', explanation: '250 × 10⁻³ A = 0.25 A', verify: { kind: 'value', expr: '250*1e-3', expected: 0.25, unit: 'A' } },
+      { id: 'g-3', skillId: UNITS, level: 2, prompt: '15 m/s เท่ากับกี่ km/h', hint: 'm/s × 3.6', answer: '54 km/h', explanation: '15 × 3600/1000 = 54', verify: { kind: 'value', expr: '15*3600/1000', expected: 54, unit: 'km/h' } },
+    ],
+    independent: [
+      { id: 'i-1', skillId: UNITS, level: 1, prompt: '2.3 kg เท่ากับกี่กรัม', answer: '2300 g', explanation: '2.3 × 1000 = 2300', verify: { kind: 'value', expr: '2.3*1000', expected: 2300, unit: 'g' } },
+      { id: 'i-2', skillId: UNITS, level: 1, prompt: '4500 ms เท่ากับกี่วินาที', answer: '4.5 s', explanation: '4500 × 10⁻³ = 4.5', verify: { kind: 'value', expr: '4500*1e-3', expected: 4.5, unit: 's' } },
+      { id: 'i-3', skillId: UNITS, level: 2, prompt: '108 km/h เท่ากับกี่ m/s', answer: '30 m/s', explanation: '108 ÷ 3.6 = 30', verify: { kind: 'value', expr: '108*1000/3600', expected: 30, unit: 'm/s' } },
+      { id: 'i-4', skillId: UNITS, level: 2, prompt: '3 μm เท่ากับกี่เมตร (เขียนด้วยเลขยกกำลังสิบ)', answer: '3 × 10⁻⁶ m', explanation: 'μ = 10⁻⁶', verify: { kind: 'value', expr: '3*1e-6', expected: 0.000003, unit: 'm' } },
+      { id: 'i-5', skillId: UNITS, level: 3, prompt: '1.2 km/min เท่ากับกี่ m/s', answer: '20 m/s', explanation: '1.2 × 1000 m ÷ 60 s = 20 m/s', verify: { kind: 'value', expr: '1.2*1000/60', expected: 20, unit: 'm/s' } },
+      { id: 'i-6', skillId: UNITS, level: 3, prompt: '900 m/min เท่ากับกี่ km/h', answer: '54 km/h', explanation: '900 m/min × 60 min/h = 54000 m/h = 54 km/h', verify: { kind: 'value', expr: '900*60/1000', expected: 54, unit: 'km/h' } },
+    ],
+    checks: [
+      { id: 'k-1', skillId: UNITS, prompt: 'หน่วยฐาน SI ของมวลคือข้อใด', choices: ['กรัม (g)', 'กิโลกรัม (kg)', 'นิวตัน (N)', 'ปอนด์'], correctIndex: 1, explanation: 'หน่วยฐานของมวลคือ kg — หน่วยฐานเดียวที่มีคำนำหน้าหน่วยอยู่ในชื่อ ส่วน N เป็นหน่วยของแรง' },
+      { id: 'k-2', skillId: UNITS, prompt: '36 km/h เท่ากับกี่ m/s', choices: ['3.6 m/s', '10 m/s', '36 m/s', '129.6 m/s'], correctIndex: 1, explanation: '36 ÷ 3.6 = 10', verify: { kind: 'value', expr: '36*1000/3600', expected: 10, unit: 'm/s' } },
+      { id: 'k-3', skillId: UNITS, prompt: 'คำนำหน้า "m" (มิลลิ) มีค่าเท่าใด', choices: ['10⁶', '10³', '10⁻³', '10⁻⁶'], correctIndex: 2, explanation: 'มิลลิ = 10⁻³ อย่าสับสนกับ M (เมกะ) = 10⁶', verify: { kind: 'value', expr: '1e-3', expected: 0.001 } },
+      { id: 'k-4', skillId: UNITS, prompt: 'ข้อใด "ไม่ใช่" หน่วยฐาน SI', choices: ['เมตร', 'วินาที', 'นิวตัน', 'แอมแปร์'], correctIndex: 2, explanation: 'นิวตันเป็นหน่วยอนุพัทธ์ 1 N = 1 kg·m/s²' },
+    ],
+    mistakes: [
+      { mistake: 'คูณแทนที่จะหาร เช่น 72 km/h × 3.6 = 259.2 m/s', why: 'จำตัวเลข 3.6 ได้แต่จำทิศการแปลงไม่ได้', fix: 'เขียนตัวประกอบพร้อมหน่วยและตัดหน่วยให้เห็น หรือตรวจด้วยสามัญสำนึก: m/s ต้องเป็นตัวเลขที่เล็กกว่า km/h' },
+      { mistake: 'สับสน m (มิลลิ) กับ M (เมกะ)', why: 'ตัวอักษรเดียวกันต่างกันแค่ตัวพิมพ์', fix: 'ตัวเล็กเป็นของเล็ก: m = 10⁻³ ตัวใหญ่เป็นของใหญ่: M = 10⁶' },
+      { mistake: 'แทนค่าในสูตรโดยหน่วยไม่เหมือนกัน เช่น ใช้ km กับ s ปนกัน', why: 'รีบแทนตัวเลขตามโจทย์', fix: 'แปลงทุกปริมาณเป็น SI (m, kg, s) ก่อนแทนในสูตรเสมอ' },
+    ],
+    summary: ['ปริมาณ = ตัวเลข × หน่วย', 'แปลงหน่วยด้วยการคูณตัวประกอบที่มีค่าเท่ากับ 1', 'km/h ÷ 3.6 = m/s'],
+    afterLesson: ['บอกหน่วยฐาน SI ได้', 'แปลงหน่วยด้วยคำนำหน้า G M k c m μ n ได้', 'แปลง km/h ↔ m/s ได้และตรวจคำตอบด้วยสามัญสำนึก'],
+    next: ['phy-vec-vectors'],
+    provenance: [
+      { sourceId: 'bipm-si-brochure-9', usedFor: 'หน่วยฐาน SI และคำนำหน้าหน่วย', crossChecked: true },
+      { sourceId: 'nist-si-prefixes', usedFor: 'ตรวจข้ามค่าคำนำหน้าหน่วย', crossChecked: true },
+      { sourceId: 'openstax-cp-1-2', usedFor: 'วิธีแปลงหน่วยด้วยตัวประกอบการแปลง', crossChecked: true },
+      { sourceId: 'ipst-physics-m4-v1', usedFor: 'ลำดับเนื้อหาตามหนังสือเรียนไทย', crossChecked: false },
+    ],
+    audit: {
+      sourcesFound: ['bipm-si-brochure-9', 'nist-si-prefixes', 'openstax-cp-1-2', 'ipst-physics-m4-v1', 'เว็บตารางคำนำหน้าหน่วยที่ไม่ทราบผู้จัดทำ'],
+      sourcesSelected: ['bipm-si-brochure-9', 'nist-si-prefixes', 'openstax-cp-1-2', 'ipst-physics-m4-v1'],
+      sourcesRejected: [{ source: 'เว็บตารางคำนำหน้าหน่วยทั่วไป', reason: 'ไม่ทราบผู้จัดทำ มีแหล่งทางการ (BIPM, NIST) แล้ว' }],
+      knowledgeCovered: ['หน่วยฐาน 7 หน่วย', 'คำนำหน้าหน่วย', 'ตัวประกอบการแปลง', 'km/h ↔ m/s'],
+      knowledgeMissing: [],
+      externalResourcesVerified: 0,
+      limitations: ['ยังไม่มีคลิปภายนอกสำหรับบทนี้'],
+      readiness: 'READY_WITH_LIMITATIONS',
+    },
+  },
+  // ───────────────────────────────────────────────────────────────────
+  {
+    lessonId: 'phy-vec-vectors',
+    skills: [VEC],
+    prerequisites: ['phy-vec-units', 'math-trig-ratios'],
+    whyItMatters: 'แรง ความเร็ว และการกระจัดมีทิศทาง ถ้าบวกกันแบบตัวเลขธรรมดาจะได้คำตอบผิด การแยกเวกเตอร์เป็นองค์ประกอบ x และ y เป็นเครื่องมือที่ใช้ในบทการเคลื่อนที่และกฎของนิวตัน',
+    allowedKnowledge: [
+      'ปริมาณสเกลาร์ (ขนาดอย่างเดียว) และปริมาณเวกเตอร์ (ขนาดและทิศทาง)',
+      'การรวมเวกเตอร์ในแนวเดียวกัน (ทิศเดียวกันบวก ทิศตรงข้ามลบ)',
+      'แยกเวกเตอร์เป็นองค์ประกอบ Aₓ = A cos θ, Aᵧ = A sin θ (θ วัดจากแกน x)',
+      'รวมเวกเตอร์ด้วยการบวกองค์ประกอบ',
+      'ขนาดผลรวมของเวกเตอร์ที่ตั้งฉากกัน R = √(Rₓ² + Rᵧ²) และทิศ tan θ = Rᵧ/Rₓ',
+    ],
+    notYetAllowed: ['ผลคูณเชิงสเกลาร์และเชิงเวกเตอร์', 'เวกเตอร์สามมิติ', 'ความเร็วสัมพัทธ์', 'การเคลื่อนที่แบบโพรเจกไทล์', 'กฎของโคไซน์สำหรับเวกเตอร์ที่ไม่ตั้งฉาก'],
+    concepts: [
+      { id: 'c-scalar', term: 'ปริมาณสเกลาร์', meaning: 'มีแต่ขนาด เช่น มวล เวลา ระยะทาง อุณหภูมิ', skillId: VEC },
+      { id: 'c-vector', term: 'ปริมาณเวกเตอร์', meaning: 'มีทั้งขนาดและทิศทาง เช่น การกระจัด ความเร็ว ความเร่ง แรง', skillId: VEC },
+      { id: 'c-component', term: 'องค์ประกอบของเวกเตอร์', meaning: 'เวกเตอร์ย่อยแนวแกน x และ y ที่รวมกันแล้วได้เวกเตอร์เดิม', skillId: VEC },
+      { id: 'c-resultant', term: 'เวกเตอร์ลัพธ์', meaning: 'ผลรวมของเวกเตอร์หลายตัว ให้ผลเหมือนเวกเตอร์เหล่านั้นรวมกัน', skillId: VEC },
+    ],
+    rules: [
+      { id: 'r-comp', name: 'องค์ประกอบ', statement: 'Aₓ = A cos θ, Aᵧ = A sin θ', notation: 'A = ขนาดเวกเตอร์, θ = มุมจากแกน +x', skillId: VEC },
+      { id: 'r-sum', name: 'บวกเวกเตอร์ด้วยองค์ประกอบ', statement: 'Rₓ = Aₓ + Bₓ, Rᵧ = Aᵧ + Bᵧ', skillId: VEC },
+      { id: 'r-mag', name: 'ขนาดและทิศของผลลัพธ์', statement: 'R = √(Rₓ² + Rᵧ²), tan θ = Rᵧ / Rₓ', skillId: VEC },
+    ],
+    detailed: [
+      'เวกเตอร์แนวเดียวกันรวมแบบมีเครื่องหมาย: เลือกทิศหนึ่งเป็นบวก ทิศตรงข้ามเป็นลบ เดินไปทางตะวันออก 8 m แล้วกลับทางตะวันตก 6 m การกระจัดคือ +8 − 6 = 2 m ไปทางตะวันออก แม้ระยะทางจะเป็น 14 m',
+      'เวกเตอร์ที่เอียงทำมุม θ กับแกน x แยกได้เป็นสองส่วนตั้งฉากกัน ส่วนที่ติดมุม (ชิด) ใช้ cos ส่วนตรงข้ามมุม (ข้าม) ใช้ sin — เป็นอัตราส่วนตรีโกณมิติจากบทคณิตศาสตร์โดยตรง',
+      'เมื่อเวกเตอร์หลายตัวไม่อยู่แนวเดียวกัน ให้แยกทุกตัวเป็น x และ y บวก x กับ x บวก y กับ y แล้วรวมกลับด้วยพีทาโกรัส วิธีนี้ใช้ได้เสมอและแม่นกว่าการวาดรูปวัด',
+    ],
+    analogy: 'เดินในเมืองที่ถนนเป็นตาราง: จะไปจุดหมายแบบเฉียง ก็คือเดินไปทางตะวันออกส่วนหนึ่งและทางเหนือส่วนหนึ่ง',
+    workedExamples: [
+      { id: 'we-1', skillId: VEC, problem: 'แรง 10 N ทำมุม 30° กับแนวราบ หาองค์ประกอบแนวราบและแนวดิ่ง', steps: ['Fₓ = 10 cos 30° = 10 × √3/2 = 5√3 ≈ 8.66 N', 'Fᵧ = 10 sin 30° = 10 × 1/2 = 5 N'], answer: 'Fₓ ≈ 8.66 N, Fᵧ = 5 N', verify: { kind: 'value', expr: `10*Math.cos(${deg(30)})`, expected: 8.6603, tol: 1e-3, unit: 'N' } },
+      { id: 'we-2', skillId: VEC, problem: 'เดินไปทางตะวันออก 3 m แล้วไปทางเหนือ 4 m การกระจัดลัพธ์มีขนาดเท่าใด', steps: ['สองเวกเตอร์ตั้งฉากกัน: Rₓ = 3, Rᵧ = 4', 'R = √(3² + 4²) = √25 = 5 m', 'ทิศ: tan θ = 4/3 วัดจากทิศตะวันออกไปทางเหนือ'], answer: '5 m', verify: { kind: 'value', expr: 'Math.hypot(3,4)', expected: 5, unit: 'm' } },
+    ],
+    guided: [
+      { id: 'g-1', skillId: VEC, level: 1, prompt: 'ความเร็ว 20 m/s ทำมุม 60° กับแนวราบ หาองค์ประกอบแนวราบ', hint: 'แนวราบติดมุม ใช้ cos', answer: '10 m/s', explanation: '20 cos 60° = 20 × 1/2 = 10 m/s', verify: { kind: 'value', expr: `20*Math.cos(${deg(60)})`, expected: 10, tol: 1e-9, unit: 'm/s' } },
+      { id: 'g-2', skillId: VEC, level: 1, prompt: 'เวกเตอร์ 6 N และ 8 N ตั้งฉากกัน ผลรวมมีขนาดเท่าใด', hint: 'พีทาโกรัส', answer: '10 N', explanation: '√(36 + 64) = √100 = 10 N', verify: { kind: 'value', expr: 'Math.hypot(6,8)', expected: 10, unit: 'N' } },
+      { id: 'g-3', skillId: VEC, level: 2, prompt: 'A = (3, 4) และ B = (1, 2) (หน่วย m) หาขนาดของ A + B', hint: 'บวก x กับ x และ y กับ y ก่อน', answer: '√52 ≈ 7.21 m', explanation: 'A + B = (4, 6) ขนาด √(16 + 36) = √52 ≈ 7.21 m', verify: { kind: 'value', expr: 'Math.hypot(3+1, 4+2)', expected: 7.2111, tol: 1e-3, unit: 'm' } },
+    ],
+    independent: [
+      { id: 'i-1', skillId: VEC, level: 1, prompt: 'มวลและความเร็ว ข้อใดเป็นเวกเตอร์', answer: 'ความเร็ว', explanation: 'ความเร็วต้องบอกทิศ (เช่น 10 m/s ไปทางเหนือ) ส่วนมวลมีแต่ขนาด' },
+      { id: 'i-2', skillId: VEC, level: 1, prompt: 'เดินไปทางตะวันออก 5 m และทางเหนือ 12 m การกระจัดมีขนาดเท่าใด', answer: '13 m', explanation: '√(25 + 144) = 13', verify: { kind: 'value', expr: 'Math.hypot(5,12)', expected: 13, unit: 'm' } },
+      { id: 'i-3', skillId: VEC, level: 2, prompt: 'แรง 50 N ทำมุม 45° กับแนวราบ หาองค์ประกอบแต่ละแนว', answer: 'ประมาณ 35.36 N เท่ากันทั้งสองแนว', explanation: '50 × √2/2 = 25√2 ≈ 35.36 N', verify: { kind: 'value', expr: `50*Math.sin(${deg(45)})`, expected: 35.3553, tol: 1e-3, unit: 'N' } },
+      { id: 'i-4', skillId: VEC, level: 2, prompt: 'เดินไปทางตะวันออก 8 m แล้วกลับทางตะวันตก 6 m การกระจัดและระยะทางเป็นเท่าใด', answer: 'การกระจัด 2 m ทางตะวันออก ระยะทาง 14 m', explanation: 'ให้ตะวันออกเป็นบวก: +8 − 6 = +2 ส่วนระยะทางรวม 8 + 6 = 14 (สเกลาร์)', verify: { kind: 'value', expr: '8-6', expected: 2, unit: 'm' } },
+      { id: 'i-5', skillId: VEC, level: 3, prompt: 'A = 4 หน่วยตามแกน x และ B = 3 หน่วยตามแกน y หาขนาดและ tan ของมุมผลลัพธ์', answer: 'ขนาด 5 หน่วย, tan θ = 3/4', explanation: 'R = √(16 + 9) = 5 และ tan θ = Rᵧ/Rₓ = 3/4', verify: { kind: 'value', expr: 'Math.hypot(4,3)', expected: 5 } },
+      { id: 'i-6', skillId: VEC, level: 3, prompt: 'ลากกล่องด้วยแรง 100 N ทำมุม 60° กับพื้น แรงส่วนที่ลากกล่องไปข้างหน้าเป็นเท่าใด', answer: '50 N', explanation: 'ส่วนที่ขนานพื้นคือองค์ประกอบแนวราบ 100 cos 60° = 50 N', verify: { kind: 'value', expr: `100*Math.cos(${deg(60)})`, expected: 50, tol: 1e-9, unit: 'N' } },
+    ],
+    checks: [
+      { id: 'k-1', skillId: VEC, prompt: 'ข้อใดเป็นปริมาณเวกเตอร์', choices: ['เวลา', 'มวล', 'ความเร็ว', 'อุณหภูมิ'], correctIndex: 2, explanation: 'ความเร็วมีทั้งขนาดและทิศทาง ข้ออื่นมีแต่ขนาด' },
+      { id: 'k-2', skillId: VEC, prompt: 'เวกเตอร์ขนาด A ทำมุม θ กับแกน x องค์ประกอบแกน x คือข้อใด', choices: ['A sin θ', 'A cos θ', 'A tan θ', 'A/cos θ'], correctIndex: 1, explanation: 'องค์ประกอบแกน x ติดมุม θ (ชิด) จึงใช้ cos' },
+      { id: 'k-3', skillId: VEC, prompt: 'เวกเตอร์ 9 N และ 12 N ตั้งฉากกัน ผลรวมมีขนาดเท่าใด', choices: ['3 N', '15 N', '21 N', '108 N'], correctIndex: 1, explanation: '√(81 + 144) = √225 = 15 N (บวกตรง ๆ ได้ 21 ซึ่งใช้ได้เฉพาะทิศเดียวกัน)', verify: { kind: 'value', expr: 'Math.hypot(9,12)', expected: 15, unit: 'N' } },
+      { id: 'k-4', skillId: VEC, prompt: 'แรง 5 N สองแรงกระทำในทิศตรงข้ามกัน แรงลัพธ์เป็นเท่าใด', choices: ['0 N', '5 N', '10 N', '25 N'], correctIndex: 0, explanation: '+5 − 5 = 0 แรงหักล้างกัน', verify: { kind: 'value', expr: '5-5', expected: 0, unit: 'N' } },
+    ],
+    mistakes: [
+      { mistake: 'บวกขนาดเวกเตอร์ตรง ๆ เช่น 3 m + 4 m = 7 m ทั้งที่ตั้งฉากกัน', why: 'ชินกับการบวกตัวเลขแบบสเกลาร์', fix: 'ถามก่อนว่าทิศเดียวกันไหม ถ้าไม่ใช่ ให้แยกองค์ประกอบหรือใช้พีทาโกรัสเมื่อตั้งฉาก' },
+      { mistake: 'สลับ sin กับ cos ตอนแยกองค์ประกอบ', why: 'จำสูตร Aₓ = A cos θ โดยไม่ดูว่า θ วัดจากแกนไหน', fix: 'ดูว่าองค์ประกอบนั้น "ติดมุม" (cos) หรือ "ตรงข้ามมุม" (sin) — ถ้ามุมวัดจากแนวดิ่ง หน้าที่ของ sin/cos จะสลับกัน' },
+      { mistake: 'ตอบระยะทางเมื่อโจทย์ถามการกระจัด', why: 'สองคำฟังคล้ายกัน', fix: 'การกระจัดคือเวกเตอร์จากจุดเริ่มถึงจุดสุดท้าย ส่วนระยะทางคือความยาวเส้นทางทั้งหมด' },
+    ],
+    summary: ['เวกเตอร์มีขนาดและทิศ — บวกแบบมีทิศ', 'Aₓ = A cos θ, Aᵧ = A sin θ เมื่อ θ วัดจากแกน x', 'ผลรวม: บวกองค์ประกอบแล้ว R = √(Rₓ² + Rᵧ²)'],
+    afterLesson: ['แยกปริมาณสเกลาร์และเวกเตอร์ได้', 'แยกเวกเตอร์เป็นองค์ประกอบ x, y ได้', 'หาขนาดผลรวมของเวกเตอร์ตั้งฉากได้'],
+    next: ['phy-kin-1d'],
+    provenance: [
+      { sourceId: 'openstax-cp2e-3-3', usedFor: 'องค์ประกอบเวกเตอร์และการรวมแบบวิเคราะห์', crossChecked: true },
+      { sourceId: 'ipst-physics-m4-v1', usedFor: 'นิยามปริมาณสเกลาร์และเวกเตอร์ตามหนังสือไทย', crossChecked: true },
+    ],
+    audit: {
+      sourcesFound: ['openstax-cp2e-3-3', 'ipst-physics-m4-v1', 'OpenStax Physics 5.2', 'เอกสารประกอบการสอนของมหาวิทยาลัยไทย (หลายแห่ง)'],
+      sourcesSelected: ['openstax-cp2e-3-3', 'ipst-physics-m4-v1'],
+      sourcesRejected: [{ source: 'เอกสารประกอบการสอนของมหาวิทยาลัย', reason: 'ระดับมหาวิทยาลัย มีเนื้อหาเกินขอบเขต (ผลคูณเวกเตอร์ สามมิติ)' }],
+      knowledgeCovered: ['สเกลาร์/เวกเตอร์', 'การรวมแนวเดียวกัน', 'องค์ประกอบ', 'ผลรวมตั้งฉาก'],
+      knowledgeMissing: ['ยังไม่มีแผนภาพลูกศรประกอบ (อธิบายด้วยข้อความ)'],
+      externalResourcesVerified: 0,
+      limitations: ['ยังไม่มีคลิปภายนอกที่ผ่านการตรวจลิงก์', 'ยังไม่มีแผนภาพเวกเตอร์'],
+      readiness: 'READY_WITH_LIMITATIONS',
+    },
+  },
+  // ───────────────────────────────────────────────────────────────────
+  {
+    lessonId: 'phy-kin-1d',
+    skills: [KIN, GRAPH],
+    prerequisites: ['phy-vec-vectors', 'math-alg-linear-eq'],
+    whyItMatters: 'การเคลื่อนที่ด้วยความเร่งคงตัวอธิบายรถเบรก ของตกอย่างอิสระ และการออกตัว เป็นพื้นฐานของกฎนิวตันในบทถัดไป ซึ่งใช้ความเร่งที่หาได้จากบทนี้',
+    allowedKnowledge: [
+      'การกระจัด ความเร็ว ความเร่ง และเครื่องหมายบอกทิศ',
+      'สมการเมื่อความเร่งคงตัว: v = u + at, s = ut + ½at², v² = u² + 2as, s = (u + v)t/2',
+      'การเลือกสมการจากปริมาณที่รู้และที่ต้องหา',
+      'การตกอย่างอิสระด้วย g ≈ 9.8 m/s²',
+      'กราฟความเร็ว–เวลา: ความชันคือความเร่ง พื้นที่ใต้กราฟคือการกระจัด',
+    ],
+    notYetAllowed: ['การเคลื่อนที่สองมิติและโพรเจกไทล์', 'การหาสมการด้วยแคลคูลัส', 'ความเร่งที่ไม่คงตัว', 'แรงต้านอากาศ', 'ความเร็วสัมพัทธ์'],
+    concepts: [
+      { id: 'c-velocity', term: 'ความเร็ว (u, v)', meaning: 'อัตราการเปลี่ยนการกระจัด u คือความเร็วต้น v คือความเร็วปลาย หน่วย m/s', skillId: KIN },
+      { id: 'c-accel', term: 'ความเร่ง (a)', meaning: 'อัตราการเปลี่ยนความเร็ว หน่วย m/s² ติดลบเมื่อทิศตรงข้ามกับทิศที่ให้เป็นบวก (เช่น เบรก)', skillId: KIN },
+      { id: 'c-displacement', term: 'การกระจัด (s)', meaning: 'ตำแหน่งที่เปลี่ยนไปพร้อมทิศ หน่วย m', skillId: KIN },
+      { id: 'c-vt', term: 'กราฟ v–t', meaning: 'กราฟความเร็วกับเวลา เส้นตรงหมายถึงความเร่งคงตัว', skillId: GRAPH },
+    ],
+    rules: [
+      { id: 'r-1', name: 'ไม่มี s', statement: 'v = u + at', notation: 'u ความเร็วต้น (m/s), v ความเร็วปลาย (m/s), a ความเร่ง (m/s²), t เวลา (s)', skillId: KIN },
+      { id: 'r-2', name: 'ไม่มี v', statement: 's = ut + ½at²', notation: 's การกระจัด (m)', skillId: KIN },
+      { id: 'r-3', name: 'ไม่มี t', statement: 'v² = u² + 2as', skillId: KIN },
+      { id: 'r-4', name: 'ไม่มี a', statement: 's = (u + v)t / 2', skillId: KIN },
+      { id: 'r-graph', name: 'อ่านกราฟ v–t', statement: 'ความชัน = a, พื้นที่ใต้กราฟ = s', skillId: GRAPH },
+    ],
+    detailed: [
+      'ทุกสมการมีปริมาณ 4 จาก 5 ตัว (u, v, a, t, s) เขียนรายการว่ารู้อะไร 3 ตัว และต้องการหาตัวไหน แล้วเลือกสมการที่ "ไม่มี" ตัวที่ไม่รู้และไม่ได้ถาม',
+      'เลือกทิศหนึ่งเป็นบวกตั้งแต่ต้น ปริมาณที่ทิศตรงข้ามให้ใส่เครื่องหมายลบ เช่น รถวิ่งไปข้างหน้าแล้วเบรก u เป็นบวก a เป็นลบ',
+      'สมการเหล่านี้ใช้ได้เฉพาะเมื่อความเร่งคงตัว บนกราฟ v–t คือช่วงที่เป็นเส้นตรง ความชันของเส้นคือความเร่ง และพื้นที่ใต้เส้น (สามเหลี่ยม/สี่เหลี่ยมคางหมู) คือการกระจัด',
+    ],
+    analogy: 'ความเร่งเหมือน "ความเร็วที่เพิ่มขึ้นทุกวินาที" — a = 2 m/s² แปลว่าทุกวินาทีความเร็วเพิ่ม 2 m/s',
+    workedExamples: [
+      { id: 'we-1', skillId: KIN, problem: 'รถออกตัวจากหยุดนิ่ง ความเร่ง 2 m/s² นาน 5 s หาความเร็วและระยะทาง', steps: ['รู้ u = 0, a = 2, t = 5', 'v = u + at = 0 + 2(5) = 10 m/s', 's = ut + ½at² = 0 + ½(2)(25) = 25 m'], answer: 'v = 10 m/s, s = 25 m', verify: { kind: 'value', expr: '0*5 + 0.5*2*5**2', expected: 25, unit: 'm' } },
+      { id: 'we-2', skillId: KIN, problem: 'รถวิ่ง 20 m/s เบรกด้วยความหน่วง 4 m/s² จนหยุด ใช้ระยะทางและเวลาเท่าใด', steps: ['ทิศเดินหน้าเป็นบวก: u = 20, v = 0, a = −4', 'ไม่รู้ t และไม่ได้ถาม t ก่อน → v² = u² + 2as: 0 = 400 + 2(−4)s', 's = 400/8 = 50 m', 'เวลา: v = u + at → 0 = 20 − 4t → t = 5 s'], answer: 's = 50 m, t = 5 s', verify: { kind: 'value', expr: '(0 - 20**2)/(2*-4)', expected: 50, unit: 'm' } },
+    ],
+    guided: [
+      { id: 'g-1', skillId: KIN, level: 1, prompt: 'u = 5 m/s, a = 3 m/s², t = 4 s หา v', hint: 'ไม่มี s ใช้ v = u + at', answer: '17 m/s', explanation: '5 + 3(4) = 17', verify: { kind: 'value', expr: '5+3*4', expected: 17, unit: 'm/s' } },
+      { id: 'g-2', skillId: KIN, level: 1, prompt: 'วัตถุเริ่มจากหยุดนิ่ง a = 4 m/s² นาน 3 s เคลื่อนที่ได้ไกลเท่าใด', hint: 's = ut + ½at² โดย u = 0', answer: '18 m', explanation: '½(4)(9) = 18', verify: { kind: 'value', expr: '0.5*4*3**2', expected: 18, unit: 'm' } },
+      { id: 'g-3', skillId: KIN, level: 2, prompt: 'u = 10 m/s เร่งจนได้ v = 30 m/s ด้วย a = 5 m/s² ระยะทางเท่าใด', hint: 'ไม่มี t ใช้ v² = u² + 2as', answer: '80 m', explanation: '900 = 100 + 10s → s = 80', verify: { kind: 'value', expr: '(30**2-10**2)/(2*5)', expected: 80, unit: 'm' } },
+    ],
+    independent: [
+      { id: 'i-1', skillId: KIN, level: 1, prompt: 'u = 2 m/s, a = 1.5 m/s², t = 6 s หา v', answer: '11 m/s', explanation: '2 + 1.5(6) = 11', verify: { kind: 'value', expr: '2+1.5*6', expected: 11, unit: 'm/s' } },
+      { id: 'i-2', skillId: KIN, level: 1, prompt: 'ความเร็วเปลี่ยนจาก 4 m/s เป็น 12 m/s ในเวลา 5 s (ความเร่งคงตัว) เคลื่อนที่ได้กี่เมตร', answer: '40 m', explanation: 's = (u + v)t/2 = (16)(5)/2 = 40', verify: { kind: 'value', expr: '(4+12)*5/2', expected: 40, unit: 'm' } },
+      { id: 'i-3', skillId: KIN, level: 2, prompt: 'รถวิ่ง 15 m/s เบรกด้วยความหน่วง 3 m/s² ใช้เวลากี่วินาทีจึงหยุด', answer: '5 s', explanation: '0 = 15 + (−3)t → t = 5', verify: { kind: 'value', expr: '(0-15)/-3', expected: 5, unit: 's' } },
+      { id: 'i-4', skillId: KIN, level: 2, prompt: 'ปล่อยลูกบอลจากหยุดนิ่งให้ตกอย่างอิสระ (g = 9.8 m/s²) นาน 2 s ความเร็วและระยะที่ตกเป็นเท่าใด', answer: 'v = 19.6 m/s, s = 19.6 m', explanation: 'v = 9.8(2) = 19.6 และ s = ½(9.8)(4) = 19.6 (ค่าบังเอิญเท่ากันที่ t = 2 s)', verify: { kind: 'value', expr: '0.5*9.8*2**2', expected: 19.6, tol: 1e-9, unit: 'm' } },
+      { id: 'i-5', skillId: GRAPH, level: 3, prompt: 'กราฟ v–t เป็นเส้นตรงจาก (0 s, 0 m/s) ถึง (4 s, 8 m/s) หาความเร่งและการกระจัด', answer: 'a = 2 m/s², s = 16 m', explanation: 'ความชัน 8/4 = 2 และพื้นที่สามเหลี่ยม ½ × 4 × 8 = 16', verify: { kind: 'value', expr: '0.5*4*8', expected: 16, unit: 'm' } },
+      { id: 'i-6', skillId: KIN, level: 3, prompt: 'เริ่มจากหยุดนิ่ง a = 2 m/s² ต้องใช้เวลากี่วินาทีจึงไปได้ 64 m', answer: '8 s', explanation: '64 = ½(2)t² → t² = 64 → t = 8 (เวลาติดลบไม่มีความหมาย)', verify: { kind: 'value', expr: 'Math.sqrt(2*64/2)', expected: 8, unit: 's' } },
+    ],
+    checks: [
+      { id: 'k-1', skillId: KIN, prompt: 'u = 0, a = 3 m/s², t = 4 s ความเร็วปลายเท่าใด', choices: ['7 m/s', '12 m/s', '24 m/s', '48 m/s'], correctIndex: 1, explanation: 'v = 0 + 3(4) = 12 m/s', verify: { kind: 'value', expr: '0+3*4', expected: 12, unit: 'm/s' } },
+      { id: 'k-2', skillId: GRAPH, prompt: 'ความชันของกราฟความเร็ว–เวลาคือปริมาณใด', choices: ['การกระจัด', 'ความเร็ว', 'ความเร่ง', 'แรง'], correctIndex: 2, explanation: 'ความชัน = Δv/Δt = ความเร่ง ส่วนพื้นที่ใต้กราฟคือการกระจัด' },
+      { id: 'k-3', skillId: KIN, prompt: 'รู้ u, a, s และต้องการ v โดยไม่รู้เวลา ควรใช้สมการใด', choices: ['v = u + at', 's = ut + ½at²', 'v² = u² + 2as', 's = (u + v)t/2'], correctIndex: 2, explanation: 'สมการที่ไม่มี t คือ v² = u² + 2as' },
+      { id: 'k-4', skillId: KIN, prompt: 'รถวิ่ง 10 m/s เร่ง 2 m/s² นาน 3 s เคลื่อนที่ได้กี่เมตร', choices: ['30 m', '36 m', '39 m', '48 m'], correctIndex: 2, explanation: 's = 10(3) + ½(2)(9) = 30 + 9 = 39 m', verify: { kind: 'value', expr: '10*3+0.5*2*3**2', expected: 39, unit: 'm' } },
+    ],
+    mistakes: [
+      { mistake: 'ลืมใส่เครื่องหมายลบให้ความเร่งตอนเบรก', why: 'คิดว่า "ความหน่วง 4 m/s²" ให้ใส่ +4', fix: 'กำหนดทิศบวกก่อน ถ้าความเร็วลดลงในทิศบวก a ต้องเป็นลบ' },
+      { mistake: 'ใช้สมการนี้กับความเร่งที่ไม่คงตัว', why: 'เห็นตัวแปร u v a t s ก็แทนสูตรทันที', fix: 'ตรวจว่าโจทย์บอกความเร่งคงตัว หรือกราฟ v–t เป็นเส้นตรงช่วงนั้น' },
+      { mistake: 'แทนค่าหน่วยปนกัน เช่น ใช้ km/h กับ s', why: 'แทนตัวเลขจากโจทย์ตรง ๆ', fix: 'แปลงเป็น m, s, m/s, m/s² ก่อน (km/h ÷ 3.6)' },
+    ],
+    summary: ['สี่สมการใช้ได้เมื่อความเร่งคงตัว แต่ละสมการขาดปริมาณหนึ่งตัว', 'กำหนดทิศบวกก่อน ความเร่งตอนเบรกเป็นลบ', 'กราฟ v–t: ความชัน = a, พื้นที่ = s'],
+    afterLesson: ['เลือกสมการการเคลื่อนที่ได้ตรงกับข้อมูล', 'คำนวณความเร็ว ระยะทาง และเวลาได้', 'อ่านความเร่งและการกระจัดจากกราฟ v–t ได้'],
+    next: ['phy-dyn-newton'],
+    provenance: [
+      { sourceId: 'openstax-cp2e-2-5', usedFor: 'สมการการเคลื่อนที่เมื่อความเร่งคงตัว', crossChecked: true },
+      { sourceId: 'openstax-cp2e-2-8', usedFor: 'ความชันและพื้นที่ของกราฟ v–t', crossChecked: true },
+      { sourceId: 'ipst-physics-m4-v1', usedFor: 'สัญลักษณ์ u v a t s และหัวข้อการตกอย่างอิสระตามหนังสือไทย', crossChecked: true },
+    ],
+    audit: {
+      sourcesFound: ['openstax-cp2e-2-5', 'openstax-cp2e-2-8', 'ipst-physics-m4-v1', 'เอกสาร worksheet ของมหาวิทยาลัยต่างประเทศ'],
+      sourcesSelected: ['openstax-cp2e-2-5', 'openstax-cp2e-2-8', 'ipst-physics-m4-v1'],
+      sourcesRejected: [{ source: 'worksheet / เฉลยการบ้านจากเว็บอื่น', reason: 'ไม่ใช่ผู้จัดพิมพ์ต้นฉบับ และบางแหล่งเป็นเฉลยเชิงพาณิชย์' }],
+      knowledgeCovered: ['4 สมการความเร่งคงตัว', 'การเลือกสมการ', 'การตกอย่างอิสระ', 'กราฟ v–t'],
+      knowledgeMissing: ['ยังไม่มีภาพกราฟ v–t (อธิบายด้วยพิกัด)'],
+      externalResourcesVerified: 0,
+      limitations: ['ยังไม่มีคลิปภายนอกที่ผ่านการตรวจลิงก์ครบ', 'ยังไม่มีภาพกราฟ'],
+      readiness: 'READY_WITH_LIMITATIONS',
+    },
+  },
+  // ───────────────────────────────────────────────────────────────────
+  {
+    lessonId: 'phy-dyn-newton',
+    skills: [FBD, N2],
+    prerequisites: ['phy-kin-1d'],
+    whyItMatters: 'กฎของนิวตันอธิบายว่าทำไมวัตถุเคลื่อนที่อย่างที่เห็น เชื่อมแรงที่กระทำกับความเร่งที่คำนวณได้จากบทก่อน และเป็นพื้นฐานของงาน พลังงาน และวิศวกรรมแทบทุกสาขา',
+    allowedKnowledge: [
+      'กฎข้อ 1: แรงลัพธ์เป็นศูนย์ วัตถุหยุดนิ่งหรือเคลื่อนที่ด้วยความเร็วคงตัว',
+      'กฎข้อ 2: ΣF = ma (แรงลัพธ์ในแนวเดียว)',
+      'กฎข้อ 3: แรงกิริยาและปฏิกิริยา ขนาดเท่ากัน ทิศตรงข้าม กระทำต่อวัตถุคนละก้อน',
+      'แผนภาพแรง (free-body diagram) ของวัตถุก้อนเดียว',
+      'น้ำหนัก W = mg (g ≈ 9.8 m/s²), แรงตั้งฉากบนพื้นราบ, แรงเสียดทานจลน์ f = μN บนพื้นราบ',
+    ],
+    notYetAllowed: ['พื้นเอียงและการแยกน้ำหนักเป็นองค์ประกอบ', 'ระบบหลายวัตถุที่ต่อกันด้วยเชือกหรือรอก', 'การเคลื่อนที่แบบวงกลม', 'โมเมนตัมและการดล', 'งานและพลังงาน', 'แรงเสียดทานสถิตสูงสุดอย่างละเอียด'],
+    concepts: [
+      { id: 'c-force', term: 'แรง (N)', meaning: 'การผลักหรือดึงที่ทำให้สภาพการเคลื่อนที่เปลี่ยน เป็นเวกเตอร์ หน่วยนิวตัน 1 N = 1 kg·m/s²', skillId: N2 },
+      { id: 'c-net', term: 'แรงลัพธ์ (ΣF)', meaning: 'ผลรวมเวกเตอร์ของแรงทุกแรงที่กระทำต่อวัตถุ', skillId: N2 },
+      { id: 'c-inertia', term: 'ความเฉื่อยและมวล', meaning: 'มวลยิ่งมาก ยิ่งเปลี่ยนสภาพการเคลื่อนที่ยาก', skillId: N2 },
+      { id: 'c-fbd', term: 'แผนภาพแรง', meaning: 'รูปวัตถุก้อนเดียวพร้อมลูกศรแรงภายนอกทุกแรงที่กระทำต่อมัน (ไม่วาดแรงที่วัตถุกระทำต่อสิ่งอื่น)', skillId: FBD },
+    ],
+    rules: [
+      { id: 'r-n1', name: 'กฎข้อ 1', statement: 'ΣF = 0 ⇔ a = 0 (หยุดนิ่ง หรือความเร็วคงตัว)', skillId: N2 },
+      { id: 'r-n2', name: 'กฎข้อ 2', statement: 'ΣF = ma', notation: 'ΣF แรงลัพธ์ (N), m มวล (kg), a ความเร่ง (m/s²)', skillId: N2 },
+      { id: 'r-n3', name: 'กฎข้อ 3', statement: 'F(A กระทำต่อ B) = −F(B กระทำต่อ A)', skillId: FBD },
+      { id: 'r-w', name: 'น้ำหนัก', statement: 'W = mg, g ≈ 9.8 m/s² ทิศลงสู่พื้นโลก', skillId: FBD },
+      { id: 'r-f', name: 'แรงเสียดทานจลน์ (พื้นราบ)', statement: 'f = μN และบนพื้นราบที่ไม่มีแรงแนวดิ่งอื่น N = mg', notation: 'μ สัมประสิทธิ์แรงเสียดทาน (ไม่มีหน่วย)', skillId: FBD },
+    ],
+    detailed: [
+      'เริ่มทุกโจทย์ด้วยแผนภาพแรง: วาดวัตถุก้อนเดียว ใส่น้ำหนักลง แรงตั้งฉากจากพื้นขึ้น แรงที่ผลัก/ดึง และแรงเสียดทานสวนทิศการเคลื่อนที่ ถ้าแผนภาพครบ สมการจะเขียนได้เอง',
+      'เลือกทิศบวก (มักเป็นทิศที่วัตถุเคลื่อนที่) รวมแรงในแนวนั้นแบบมีเครื่องหมายเป็น ΣF แล้วใช้ ΣF = ma แนวดิ่งบนพื้นราบที่วัตถุไม่ลอยขึ้น แรงลัพธ์เป็นศูนย์ จึงได้ N = mg',
+      'กฎข้อ 3 พูดถึงแรงคู่ที่กระทำต่อ "วัตถุคนละก้อน" จึงไม่หักล้างกันในแผนภาพแรงของก้อนเดียว เช่น เราดันผนัง ผนังดันเรากลับ — แรงหนึ่งอยู่บนผนัง อีกแรงอยู่บนตัวเรา',
+    ],
+    analogy: 'เข็นรถเข็นเปล่ากับรถเข็นที่มีของเต็ม: ออกแรงเท่ากัน รถที่มวลมากเร่งได้น้อยกว่า — นั่นคือ a = ΣF/m',
+    workedExamples: [
+      { id: 'we-1', skillId: N2, problem: 'ผลักกล่อง 2 kg บนพื้นลื่น (ไม่มีแรงเสียดทาน) ด้วยแรง 10 N หาความเร่ง', steps: ['แผนภาพแรง: แรงผลัก 10 N ไปทางขวา น้ำหนักลง แรงตั้งฉากขึ้น (หักล้างกัน)', 'ΣF แนวราบ = 10 N', 'a = ΣF/m = 10/2 = 5 m/s² ไปทางขวา'], answer: '5 m/s²', verify: { kind: 'value', expr: '10/2', expected: 5, unit: 'm/s²' } },
+      { id: 'we-2', skillId: N2, problem: 'ลากกล่อง 5 kg ด้วยแรง 30 N มีแรงเสียดทาน 10 N หาความเร่ง', steps: ['ทิศการลากเป็นบวก', 'ΣF = 30 − 10 = 20 N', 'a = 20/5 = 4 m/s²'], answer: '4 m/s²', verify: { kind: 'value', expr: '(30-10)/5', expected: 4, unit: 'm/s²' } },
+    ],
+    guided: [
+      { id: 'g-1', skillId: N2, level: 1, prompt: 'วัตถุมวล 4 kg มีความเร่ง 3 m/s² แรงลัพธ์เป็นเท่าใด', hint: 'ΣF = ma', answer: '12 N', explanation: '4 × 3 = 12 N', verify: { kind: 'value', expr: '4*3', expected: 12, unit: 'N' } },
+      { id: 'g-2', skillId: FBD, level: 1, prompt: 'คนมวล 60 kg มีน้ำหนักเท่าใด (g = 9.8 m/s²)', hint: 'W = mg', answer: '588 N', explanation: '60 × 9.8 = 588 N (มวลเป็น kg น้ำหนักเป็นแรง หน่วย N)', verify: { kind: 'value', expr: '60*9.8', expected: 588, tol: 1e-9, unit: 'N' } },
+      { id: 'g-3', skillId: FBD, level: 2, prompt: 'กล่อง 10 kg เลื่อนบนพื้นราบ μ = 0.2 แรงเสียดทานเท่าใด', hint: 'หา N = mg ก่อน แล้ว f = μN', answer: '19.6 N', explanation: 'N = 10 × 9.8 = 98 N จึง f = 0.2 × 98 = 19.6 N', verify: { kind: 'value', expr: '0.2*10*9.8', expected: 19.6, tol: 1e-9, unit: 'N' } },
+    ],
+    independent: [
+      { id: 'i-1', skillId: N2, level: 1, prompt: 'แรงลัพธ์ 20 N กระทำต่อมวล 5 kg ความเร่งเท่าใด', answer: '4 m/s²', explanation: 'a = 20/5 = 4', verify: { kind: 'value', expr: '20/5', expected: 4, unit: 'm/s²' } },
+      { id: 'i-2', skillId: FBD, level: 1, prompt: 'หนังสือวางนิ่งบนโต๊ะ แรงคู่กิริยา–ปฏิกิริยาของ "น้ำหนักหนังสือ (โลกดึงหนังสือ)" คืออะไร', answer: 'หนังสือดึงโลกขึ้นด้วยแรงขนาดเท่ากัน', explanation: 'คู่ของกฎข้อ 3 ต้องเป็นสองวัตถุเดียวกันสลับกัน (โลก–หนังสือ) แรงตั้งฉากจากโต๊ะไม่ใช่คู่ของน้ำหนัก' },
+      { id: 'i-3', skillId: N2, level: 2, prompt: 'มวล 3 kg มีแรง 15 N ไปทางขวา และ 6 N ไปทางซ้าย ความเร่งเท่าใด', answer: '3 m/s² ไปทางขวา', explanation: 'ΣF = 15 − 6 = 9 N ไปทางขวา a = 9/3 = 3', verify: { kind: 'value', expr: '(15-6)/3', expected: 3, unit: 'm/s²' } },
+      { id: 'i-4', skillId: N2, level: 2, prompt: 'กล่อง 8 kg ถูกลากด้วยแรง 40 N มีแรงเสียดทาน 16 N ความเร่งเท่าใด', answer: '3 m/s²', explanation: '(40 − 16)/8 = 3', verify: { kind: 'value', expr: '(40-16)/8', expected: 3, unit: 'm/s²' } },
+      { id: 'i-5', skillId: N2, level: 3, prompt: 'กล่อง 4 kg บนพื้นราบ μ = 0.25 ลากด้วยแรงแนวราบ 20 N ความเร่งเท่าใด (g = 9.8)', answer: '2.55 m/s²', explanation: 'N = 39.2 N, f = 0.25 × 39.2 = 9.8 N, ΣF = 20 − 9.8 = 10.2 N, a = 10.2/4 = 2.55', verify: { kind: 'value', expr: '(20-0.25*4*9.8)/4', expected: 2.55, tol: 1e-9, unit: 'm/s²' } },
+      { id: 'i-6', skillId: N2, level: 3, prompt: 'ต้องใช้แรงลัพธ์เท่าใดให้รถ 1,200 kg เร่ง 2.5 m/s²', answer: '3000 N', explanation: '1200 × 2.5 = 3000 N', verify: { kind: 'value', expr: '1200*2.5', expected: 3000, unit: 'N' } },
+    ],
+    checks: [
+      { id: 'k-1', skillId: N2, prompt: 'ถ้าแรงลัพธ์ที่กระทำต่อวัตถุเป็นศูนย์ ข้อใดถูก', choices: ['วัตถุต้องหยุดนิ่งเท่านั้น', 'วัตถุหยุดนิ่งหรือเคลื่อนที่ด้วยความเร็วคงตัว', 'วัตถุต้องช้าลงจนหยุด', 'วัตถุมีความเร่งคงตัว'], correctIndex: 1, explanation: 'กฎข้อ 1: ΣF = 0 แปลว่า a = 0 ความเร็วไม่เปลี่ยน (อาจเป็นศูนย์หรือไม่ก็ได้)' },
+      { id: 'k-2', skillId: N2, prompt: 'แรงลัพธ์ 8 N กระทำต่อมวล 2 kg ความเร่งเท่าใด', choices: ['4 m/s²', '6 m/s²', '10 m/s²', '16 m/s²'], correctIndex: 0, explanation: 'a = ΣF/m = 8/2 = 4 m/s²', verify: { kind: 'value', expr: '8/2', expected: 4, unit: 'm/s²' } },
+      { id: 'k-3', skillId: FBD, prompt: 'ทำไมแรงกิริยาและปฏิกิริยาจึงไม่หักล้างกัน', choices: ['เพราะขนาดไม่เท่ากัน', 'เพราะกระทำต่อวัตถุคนละก้อน', 'เพราะทิศเดียวกัน', 'จริง ๆ หักล้างกันเสมอ'], correctIndex: 1, explanation: 'สองแรงนี้อยู่บนวัตถุคนละก้อน จึงไม่ปรากฏในแผนภาพแรงของวัตถุเดียวกัน' },
+      { id: 'k-4', skillId: FBD, prompt: 'วัตถุมวล 10 kg มีน้ำหนักเท่าใด (g = 9.8 m/s²)', choices: ['10 N', '9.8 N', '98 N', '980 N'], correctIndex: 2, explanation: 'W = mg = 10 × 9.8 = 98 N', verify: { kind: 'value', expr: '10*9.8', expected: 98, tol: 1e-9, unit: 'N' } },
+    ],
+    mistakes: [
+      { mistake: 'ใช้แรงตัวใดตัวหนึ่งแทนแรงลัพธ์ใน F = ma', why: 'เห็นแรงในโจทย์แล้วแทนทันที ลืมแรงเสียดทานหรือแรงทิศตรงข้าม', fix: 'วาดแผนภาพแรงก่อน รวมทุกแรงในแนวเดียวกันแบบมีเครื่องหมายเป็น ΣF' },
+      { mistake: 'สับสนมวล (kg) กับน้ำหนัก (N)', why: 'ชีวิตประจำวันพูดว่า "หนัก 60 กิโล"', fix: 'มวลคือปริมาณเนื้อสาร (kg) น้ำหนักคือแรงที่โลกดึง W = mg (N)' },
+      { mistake: 'จับคู่กฎข้อ 3 ผิด เช่น บอกว่าแรงตั้งฉากจากโต๊ะเป็นปฏิกิริยาของน้ำหนัก', why: 'สองแรงนี้ขนาดเท่ากันและทิศตรงข้ามเมื่อวัตถุนิ่ง', fix: 'คู่ของกฎข้อ 3 ต้องสลับวัตถุ: "A กระทำต่อ B" คู่กับ "B กระทำต่อ A" เสมอ' },
+    ],
+    summary: ['วาดแผนภาพแรงก่อนเขียนสมการ', 'ΣF = ma ใช้แรงลัพธ์ ไม่ใช่แรงเดี่ยว', 'คู่กิริยา–ปฏิกิริยากระทำต่อวัตถุคนละก้อน'],
+    afterLesson: ['เขียนแผนภาพแรงของวัตถุก้อนเดียวได้ถูกต้อง', 'ใช้ ΣF = ma หาความเร่งหรือแรงได้', 'อธิบายกฎข้อ 3 ด้วยตัวอย่างที่ถูกต้อง'],
+    next: [],
+    provenance: [
+      { sourceId: 'openstax-up1-5-3', usedFor: 'กฎข้อ 2 และแผนภาพแรง', crossChecked: true },
+      { sourceId: 'ipst-physics-m4-v1', usedFor: 'ขอบเขตแรงและกฎการเคลื่อนที่ตามหนังสือไทย', crossChecked: true },
+    ],
+    audit: {
+      sourcesFound: ['openstax-up1-5-3', 'OpenStax College Physics 4.3 / 4.6', 'ipst-physics-m4-v1', 'เว็บติวและวิดีโอเชิงพาณิชย์'],
+      sourcesSelected: ['openstax-up1-5-3', 'ipst-physics-m4-v1'],
+      sourcesRejected: [{ source: 'เว็บติว/คลิปเชิงพาณิชย์', reason: 'ไม่ใช่ผู้จัดพิมพ์ทางการศึกษา' }],
+      knowledgeCovered: ['กฎ 3 ข้อ', 'แผนภาพแรง', 'น้ำหนัก', 'แรงเสียดทานบนพื้นราบ'],
+      knowledgeMissing: ['ยังไม่มีภาพแผนภาพแรง (อธิบายด้วยข้อความ)'],
+      externalResourcesVerified: 0,
+      limitations: ['ยังไม่มีคลิปภายนอกที่ผ่านการตรวจลิงก์ครบ', 'ยังไม่มีภาพแผนภาพแรง'],
+      readiness: 'READY_WITH_LIMITATIONS',
+    },
+  },
+];

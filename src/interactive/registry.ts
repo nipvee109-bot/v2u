@@ -11,6 +11,7 @@ import type { FinalCheckItem, InteractiveLesson, InteractiveStep } from './types
 import { LINEAR_EQUATION_LESSON } from './lessons/linearEquation';
 import { CODE_BATTLE_LESSON } from './lessons/codeBattle';
 import { NEWTON_LAB_LESSON } from './lessons/newtonLab';
+import { knowledgeFinalChecks } from '../content/knowledge';
 
 export const AUTHORED_LESSONS: InteractiveLesson[] = [LINEAR_EQUATION_LESSON, CODE_BATTLE_LESSON, NEWTON_LAB_LESSON];
 
@@ -48,7 +49,7 @@ export function generateInteractiveLesson(lessonId: string): InteractiveLesson |
     })),
   ];
   const quiz = CURRICULUM.quizzes.find((q) => q.lessonId === lessonId);
-  const finalCheck: FinalCheckItem[] = (quiz?.questions ?? []).map((q, i) => ({ id: `fc-${i + 1}`, ...q }));
+  const finalCheck: FinalCheckItem[] = [...(quiz?.questions ?? []).map((q, i) => ({ id: `fc-${i + 1}`, ...q })), ...knowledgeFinalChecks(lessonId)];
   return {
     lessonId,
     contentId: o.contentId,
@@ -65,8 +66,10 @@ export function generateInteractiveLesson(lessonId: string): InteractiveLesson |
 function withQuiz(l: InteractiveLesson): InteractiveLesson {
   const quiz = CURRICULUM.quizzes.find((q) => q.lessonId === l.lessonId)?.questions ?? [];
   const missing = quiz.filter((q) => !l.finalCheck.some((f) => f.prompt === q.prompt));
-  if (missing.length === 0) return l;
-  return { ...l, finalCheck: [...l.finalCheck, ...missing.map((q, i) => ({ id: `fc-q${l.finalCheck.length + i + 1}`, ...q }))] };
+  // Phase 62: the researched checks for this lesson, unless already asked
+  const knowledge = knowledgeFinalChecks(l.lessonId).filter((k) => !l.finalCheck.some((f) => f.prompt === k.prompt));
+  if (missing.length === 0 && knowledge.length === 0) return l;
+  return { ...l, finalCheck: [...l.finalCheck, ...missing.map((q, i) => ({ id: `fc-q${l.finalCheck.length + i + 1}`, ...q })), ...knowledge] };
 }
 const AUTHORED_WITH_QUIZ = AUTHORED_LESSONS.map(withQuiz);
 

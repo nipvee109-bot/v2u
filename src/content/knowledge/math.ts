@@ -1,0 +1,502 @@
+/* V2U lesson knowledge — Mathematics (Phase 62). Original V2U writing.
+   Every numeric answer has a `verify` that scripts/test-phase-62.js evaluates. */
+
+import type { LessonKnowledge } from './types';
+
+const S1 = 'skill-math-solve-linear';
+const S2 = 'skill-math-check-solution';
+const SYS = 'skill-math-linear-system';
+const WORD = 'skill-math-word-problem';
+const INEQ = 'skill-math-solve-inequality';
+const EXP = 'skill-math-exponent-laws';
+const SLOPE = 'skill-math-slope';
+const GRAPH = 'skill-math-graph-reading';
+const TRIG = 'skill-math-trig-ratio';
+const SPEC = 'skill-math-special-angles';
+
+const deg = (d: number) => `Math.PI*${d}/180`;
+
+export const MATH_KNOWLEDGE: LessonKnowledge[] = [
+  // ───────────────────────────────────────────────────────────────────
+  {
+    lessonId: 'math-alg-linear-eq',
+    skills: [S1, S2],
+    prerequisites: [],
+    whyItMatters: 'เกือบทุกการคำนวณในฟิสิกส์และโปรแกรมที่ต้องหา "ค่าที่ยังไม่รู้" จบลงที่การแก้สมการแบบนี้ ถ้าแก้ได้คล่องและตรวจเองเป็น บทต่อไปจะเหลือแค่เรื่องใหม่ ไม่ต้องกังวลเรื่องคำนวณ',
+    allowedKnowledge: [
+      'ความหมายของสมการ ตัวแปร และคำตอบของสมการ',
+      'สมบัติการเท่ากัน: บวก ลบ คูณ หาร ด้วยจำนวนเดียวกันทั้งสองข้าง (ห้ามหารด้วย 0)',
+      'กระจายวงเล็บ และรวมพจน์ที่คล้ายกัน',
+      'สมการรูป ax + b = c และ ax + b = cx + d',
+      'สมการที่มีเศษส่วน — คูณทั้งสองข้างด้วย ค.ร.น. ของตัวส่วน',
+      'ตรวจคำตอบด้วยการแทนค่ากลับในสมการเดิม',
+    ],
+    notYetAllowed: ['ระบบสมการหลายตัวแปร', 'อสมการ', 'สมการกำลังสอง', 'สมการค่าสัมบูรณ์', 'เมทริกซ์'],
+    concepts: [
+      { id: 'c-equation', term: 'สมการ', meaning: 'ประโยคสัญลักษณ์ที่มีเครื่องหมาย = บอกว่าสองข้างมีค่าเท่ากัน', skillId: S1 },
+      { id: 'c-variable', term: 'ตัวแปร', meaning: 'ตัวอักษร เช่น x แทนจำนวนที่ยังไม่รู้ค่า', skillId: S1 },
+      { id: 'c-solution', term: 'คำตอบของสมการ', meaning: 'จำนวนที่แทน x แล้วทำให้สองข้างเท่ากันจริง', skillId: S2 },
+      { id: 'c-like-terms', term: 'พจน์ที่คล้ายกัน', meaning: 'พจน์ที่มีตัวแปรตัวเดียวกันและกำลังเท่ากัน เช่น 3x กับ −5x จึงรวมกันได้', skillId: S1 },
+    ],
+    rules: [
+      { id: 'r-add', name: 'สมบัติการบวก/ลบของการเท่ากัน', statement: 'ถ้า a = b แล้ว a + c = b + c และ a − c = b − c', notation: 'a, b, c เป็นจำนวนใด ๆ', skillId: S1 },
+      { id: 'r-mul', name: 'สมบัติการคูณ/หารของการเท่ากัน', statement: 'ถ้า a = b แล้ว ac = bc และ a ÷ c = b ÷ c เมื่อ c ≠ 0', skillId: S1 },
+      { id: 'r-dist', name: 'สมบัติการแจกแจง', statement: 'k(a + b) = ka + kb และ −k(a − b) = −ka + kb', skillId: S1 },
+      { id: 'r-check', name: 'การตรวจคำตอบ', statement: 'แทนคำตอบในสมการเดิม (ไม่ใช่สมการที่จัดรูปแล้ว) ถ้าสองข้างเท่ากัน คำตอบถูก', skillId: S2 },
+    ],
+    detailed: [
+      'ให้มองสมการเป็นตาชั่งที่สมดุล สิ่งที่อยู่ข้างซ้ายหนักเท่าข้างขวา ถ้าเราหยิบหรือเติมของเท่ากันทั้งสองข้าง ตาชั่งยังสมดุล นี่คือเหตุผลที่ "ย้ายข้างแล้วเปลี่ยนเครื่องหมาย" ใช้ได้ — จริง ๆ แล้วคือการลบหรือบวกจำนวนเดียวกันทั้งสองข้าง',
+      'เป้าหมายคือทำให้ข้างหนึ่งเหลือ x ตัวเดียวที่สัมประสิทธิ์เป็น 1 ลำดับที่ปลอดภัยคือ (1) กระจายวงเล็บ (2) ถ้ามีเศษส่วน คูณทั้งสองข้างด้วย ค.ร.น. ของตัวส่วน (3) รวมพจน์ที่มี x ไว้ข้างหนึ่ง ค่าคงที่ไว้อีกข้าง (4) หารด้วยสัมประสิทธิ์ของ x',
+      'คำตอบที่ได้ต้องตรวจในสมการ "เดิม" เพราะถ้าเราพลาดตอนจัดรูป สมการที่จัดรูปแล้วก็ผิดไปด้วย การแทนในสมการที่ผิดจะดูเหมือนถูกเสมอ',
+    ],
+    analogy: 'ตาชั่งสองแขน: ทำอะไรกับจานหนึ่ง ต้องทำแบบเดียวกันกับอีกจาน',
+    workedExamples: [
+      {
+        id: 'we-1', skillId: S1, problem: '4(x + 3) = 2x + 18',
+        steps: ['กระจายวงเล็บ: 4x + 12 = 2x + 18', 'ลบ 2x ทั้งสองข้าง: 2x + 12 = 18', 'ลบ 12 ทั้งสองข้าง: 2x = 6', 'หารด้วย 2: x = 3', 'ตรวจ: 4(3 + 3) = 24 และ 2(3) + 18 = 24 ✓'],
+        answer: 'x = 3', verify: { kind: 'holds', vars: { x: 3 }, holds: ['4*(x+3) == 2*x+18'] },
+      },
+      {
+        id: 'we-2', skillId: S1, problem: 'x/3 + x/6 = 5',
+        steps: ['ค.ร.น. ของ 3 และ 6 คือ 6 คูณทุกพจน์ด้วย 6: 2x + x = 30', 'รวมพจน์: 3x = 30', 'หารด้วย 3: x = 10', 'ตรวจ: 10/3 + 10/6 = 20/6 + 10/6 = 30/6 = 5 ✓'],
+        answer: 'x = 10', verify: { kind: 'holds', vars: { x: 10 }, holds: ['Math.abs(x/3 + x/6 - 5) < 1e-9'] },
+      },
+    ],
+    guided: [
+      { id: 'g-1', skillId: S1, level: 1, prompt: '7x − 4 = 31', hint: 'บวก 4 ทั้งสองข้างก่อน แล้วหารด้วย 7', answer: 'x = 5', explanation: '7x = 35 จึงได้ x = 5 ตรวจ: 7(5) − 4 = 31 ✓', verify: { kind: 'holds', vars: { x: 5 }, holds: ['7*x-4 == 31'] } },
+      { id: 'g-2', skillId: S1, level: 2, prompt: '3(x − 2) = x + 8', hint: 'กระจายวงเล็บ แล้วรวม x ไว้ข้างซ้าย', answer: 'x = 7', explanation: '3x − 6 = x + 8 → 2x = 14 → x = 7 ตรวจ: 3(5) = 15 และ 7 + 8 = 15 ✓', verify: { kind: 'holds', vars: { x: 7 }, holds: ['3*(x-2) == x+8'] } },
+      { id: 'g-3', skillId: S1, level: 2, prompt: '(2x + 1)/5 = 3', hint: 'คูณทั้งสองข้างด้วย 5 ก่อน', answer: 'x = 7', explanation: '2x + 1 = 15 → 2x = 14 → x = 7 ตรวจ: (14 + 1)/5 = 3 ✓', verify: { kind: 'holds', vars: { x: 7 }, holds: ['(2*x+1)/5 == 3'] } },
+    ],
+    independent: [
+      { id: 'i-1', skillId: S1, level: 1, prompt: 'x + 9 = 4', answer: 'x = −5', explanation: 'ลบ 9 ทั้งสองข้าง: x = 4 − 9 = −5', verify: { kind: 'holds', vars: { x: -5 }, holds: ['x+9 == 4'] } },
+      { id: 'i-2', skillId: S1, level: 1, prompt: '6x = −42', answer: 'x = −7', explanation: 'หารทั้งสองข้างด้วย 6: x = −42 ÷ 6 = −7', verify: { kind: 'holds', vars: { x: -7 }, holds: ['6*x == -42'] } },
+      { id: 'i-3', skillId: S1, level: 2, prompt: '5x + 3 = 2x − 9', answer: 'x = −4', explanation: 'ลบ 2x และลบ 3 ทั้งสองข้าง: 3x = −12 → x = −4 ตรวจ: −20 + 3 = −17 และ −8 − 9 = −17 ✓', verify: { kind: 'holds', vars: { x: -4 }, holds: ['5*x+3 == 2*x-9'] } },
+      { id: 'i-4', skillId: S1, level: 2, prompt: '2(3x − 1) − 4 = 3x + 3', answer: 'x = 3', explanation: '6x − 2 − 4 = 3x + 3 → 6x − 6 = 3x + 3 → 3x = 9 → x = 3', verify: { kind: 'holds', vars: { x: 3 }, holds: ['2*(3*x-1)-4 == 3*x+3'] } },
+      { id: 'i-5', skillId: S1, level: 3, prompt: 'x/2 − (x − 1)/3 = 2', answer: 'x = 10', explanation: 'คูณด้วย 6: 3x − 2(x − 1) = 12 → 3x − 2x + 2 = 12 → x = 10 (ระวัง −2(x − 1) = −2x + 2)', verify: { kind: 'holds', vars: { x: 10 }, holds: ['Math.abs(x/2 - (x-1)/3 - 2) < 1e-9'] } },
+      { id: 'i-6', skillId: S2, level: 3, prompt: '(x + 2)/4 = (x − 1)/3 แล้วตรวจคำตอบ', answer: 'x = 10', explanation: 'คูณไขว้ (คูณด้วย 12): 3(x + 2) = 4(x − 1) → 3x + 6 = 4x − 4 → x = 10 ตรวจ: 12/4 = 3 และ 9/3 = 3 ✓', verify: { kind: 'holds', vars: { x: 10 }, holds: ['(x+2)/4 == (x-1)/3'] } },
+    ],
+    checks: [
+      { id: 'k-1', skillId: S1, prompt: 'คำตอบของ 2x + 7 = 1 คือข้อใด', choices: ['x = 4', 'x = −3', 'x = 3', 'x = −4'], correctIndex: 1, explanation: '2x = 1 − 7 = −6 จึงได้ x = −3 ตรวจ: 2(−3) + 7 = 1 ✓', verify: { kind: 'holds', vars: { x: -3 }, holds: ['2*x+7 == 1'] } },
+      { id: 'k-2', skillId: S1, prompt: 'นักเรียนแก้ 3(x + 4) = 18 ได้ 3x + 4 = 18 ผิดตรงไหน', choices: ['ควรหารด้วย 3 ก่อน ถึงจะถูก', 'กระจายวงเล็บไม่ครบ ต้องเป็น 3x + 12', 'ต้องย้าย 18 ไปข้างซ้าย', 'ไม่ผิด'], correctIndex: 1, explanation: '3 ต้องคูณทุกพจน์ในวงเล็บ: 3(x + 4) = 3x + 12 แล้วจะได้ x = 2' },
+      { id: 'k-3', skillId: S2, prompt: 'x = 2 เป็นคำตอบของ 4x − 1 = 2x + 3 หรือไม่', choices: ['เป็น เพราะแทนแล้วทั้งสองข้างได้ 7', 'ไม่เป็น เพราะข้างซ้ายได้ 8', 'ไม่เป็น เพราะข้างขวาได้ 5', 'บอกไม่ได้ถ้าไม่แก้สมการก่อน'], correctIndex: 0, explanation: 'ข้างซ้าย 4(2) − 1 = 7 ข้างขวา 2(2) + 3 = 7 เท่ากัน จึงเป็นคำตอบ', verify: { kind: 'holds', vars: { x: 2 }, holds: ['4*x-1 == 2*x+3'] } },
+      { id: 'k-4', skillId: S1, prompt: 'ขั้นแรกที่ดีที่สุดในการแก้ x/4 + 1 = x/2 คืออะไร', choices: ['คูณทุกพจน์ด้วย 4', 'บวก 1 ทั้งสองข้าง', 'หารทั้งสองข้างด้วย x', 'ย้าย x/2 ไปข้างซ้ายโดยไม่เปลี่ยนเครื่องหมาย'], correctIndex: 0, explanation: 'ค.ร.น. ของ 4 และ 2 คือ 4 คูณแล้วได้ x + 4 = 2x → x = 4 (หารด้วย x ห้ามทำ เพราะ x อาจเป็น 0)', verify: { kind: 'holds', vars: { x: 4 }, holds: ['x/4+1 == x/2'] } },
+    ],
+    mistakes: [
+      { mistake: 'ย้ายข้างแต่ลืมเปลี่ยนเครื่องหมาย เช่น x + 5 = 9 → x = 9 + 5', why: 'จำเป็นสูตร "ย้ายข้าง" แต่ไม่ได้คิดว่าจริง ๆ คือการลบ 5 ทั้งสองข้าง', fix: 'เขียนสิ่งที่ทำทั้งสองข้างจริง ๆ: x + 5 − 5 = 9 − 5 จนคล่องแล้วค่อยย่อ' },
+      { mistake: 'คูณกำจัดตัวส่วนแต่คูณไม่ครบทุกพจน์ เช่น x/2 + 3 = 5 → x + 3 = 10', why: 'มองเห็นแต่พจน์ที่เป็นเศษส่วน ลืมว่าตัวเลขเดี่ยวก็ต้องคูณ', fix: 'คูณทีละพจน์ทั้งสองข้าง: x + 6 = 10 แล้วนับว่าคูณครบทุกพจน์หรือยัง' },
+      { mistake: 'ลบหน้าวงเล็บ: −2(x − 1) กลายเป็น −2x − 2', why: 'คูณ −2 กับ x แล้วลืมว่า −2 × (−1) = +2', fix: 'คูณเครื่องหมายทีละพจน์: −2·x = −2x และ −2·(−1) = +2' },
+    ],
+    summary: ['สมการคือตาชั่งที่สมดุล ทำอะไรต้องทำทั้งสองข้าง', 'ลำดับ: กระจายวงเล็บ → กำจัดเศษส่วน → รวม x ข้างหนึ่ง → หารด้วยสัมประสิทธิ์', 'ตรวจคำตอบในสมการเดิมทุกครั้ง'],
+    afterLesson: ['แก้สมการ ax + b = cx + d ได้', 'แก้สมการที่มีวงเล็บและเศษส่วนได้', 'ตรวจคำตอบเองได้โดยไม่ต้องดูเฉลย'],
+    next: ['math-alg-linear-system', 'math-alg-linear-ineq', 'phy-kin-1d'],
+    provenance: [
+      { sourceId: 'ipst-math-indicators-2560', usedFor: 'ขอบเขตเนื้อหาสมการเชิงเส้นตัวแปรเดียว', crossChecked: false },
+      { sourceId: 'openstax-ea2e-2-4', usedFor: 'ลำดับขั้นการแก้สมการและการตรวจคำตอบ', crossChecked: true },
+    ],
+    audit: {
+      sourcesFound: ['ipst-math-indicators-2560', 'openstax-ea2e-2-4', 'งานวิจัย ThaiJO เรื่องการสอนสมการ (หลายชิ้น)'],
+      sourcesSelected: ['ipst-math-indicators-2560', 'openstax-ea2e-2-4'],
+      sourcesRejected: [{ source: 'งานวิจัย ThaiJO เรื่องการสอนสมการ', reason: 'เป็นงานวิจัยวิธีสอน ไม่ใช่เนื้อหาสำหรับนักเรียน' }],
+      knowledgeCovered: ['สมบัติการเท่ากัน', 'การแจกแจง', 'สมการมีเศษส่วน', 'การตรวจคำตอบ'],
+      knowledgeMissing: [],
+      externalResourcesVerified: 0,
+      limitations: ['ยังไม่มีคลิปภายนอกที่ผ่านการตรวจลิงก์ (บทเรียนใน V2U เพียงพอสำหรับเรียนจนจบ)'],
+      readiness: 'READY_WITH_LIMITATIONS',
+    },
+  },
+  // ───────────────────────────────────────────────────────────────────
+  {
+    lessonId: 'math-alg-linear-system',
+    skills: [SYS, WORD],
+    prerequisites: ['math-alg-linear-eq'],
+    whyItMatters: 'โจทย์จริงหลายข้อมีสิ่งที่ไม่รู้สองอย่างพร้อมกัน เช่น ราคาของสองอย่าง หรือแรงสองแรง ระบบสมการทำให้เราแปลงข้อมูลสองประโยคเป็นคำตอบที่แน่นอน',
+    allowedKnowledge: [
+      'ระบบสมการเชิงเส้นสองตัวแปร สองสมการ',
+      'คำตอบของระบบคือคู่ (x, y) ที่ทำให้ทั้งสองสมการเป็นจริงพร้อมกัน',
+      'วิธีแทนค่า',
+      'วิธีกำจัดตัวแปร รวมถึงการคูณสมการด้วยค่าคงที่ก่อนบวก/ลบ',
+      'ตรวจคำตอบกับทั้งสองสมการ',
+      'ตั้งระบบสมการจากโจทย์ปัญหา',
+    ],
+    notYetAllowed: ['ระบบสามตัวแปร', 'เมทริกซ์และดีเทอร์มิแนนต์', 'ระบบสมการไม่เชิงเส้น', 'การวิเคราะห์ระบบที่ไม่มีคำตอบ/มีคำตอบมากมายอย่างละเอียด', 'การแก้ระบบด้วยกราฟ (เรียนในบทฟังก์ชันเชิงเส้น)'],
+    concepts: [
+      { id: 'c-system', term: 'ระบบสมการ', meaning: 'สมการหลายสมการที่ต้องเป็นจริงพร้อมกัน', skillId: SYS },
+      { id: 'c-pair', term: 'คำตอบของระบบ', meaning: 'คู่อันดับ (x, y) หนึ่งคู่ที่แทนแล้วทุกสมการเป็นจริง', skillId: SYS },
+      { id: 'c-sub', term: 'วิธีแทนค่า', meaning: 'เขียนตัวแปรหนึ่งในรูปอีกตัวจากสมการหนึ่ง แล้วแทนในอีกสมการ', skillId: SYS },
+      { id: 'c-elim', term: 'วิธีกำจัดตัวแปร', meaning: 'ทำให้สัมประสิทธิ์ของตัวแปรหนึ่งเท่ากันหรือตรงข้ามกัน แล้วลบหรือบวกสมการ', skillId: SYS },
+    ],
+    rules: [
+      { id: 'r-add-eq', name: 'บวกสมการได้', statement: 'ถ้า A = B และ C = D แล้ว A + C = B + D (และ A − C = B − D)', skillId: SYS },
+      { id: 'r-scale', name: 'คูณสมการทั้งสมการได้', statement: 'คูณทุกพจน์ของสมการด้วย k ≠ 0 แล้วยังเป็นสมการเดิม (คำตอบเดิม)', skillId: SYS },
+      { id: 'r-check2', name: 'ตรวจทั้งสองสมการ', statement: 'คู่ (x, y) เป็นคำตอบเมื่อทำให้ทั้งสองสมการเป็นจริง', skillId: SYS },
+    ],
+    detailed: [
+      'ทั้งสองวิธีมีเป้าหมายเดียวกัน คือเปลี่ยนสองสมการสองตัวแปรให้เหลือหนึ่งสมการหนึ่งตัวแปร ซึ่งแก้ได้แล้วจากบทก่อน',
+      'เลือกวิธีให้งานสั้น: ถ้ามีสมการที่เขียน y = … หรือ x = … อยู่แล้ว ใช้แทนค่า ถ้าสัมประสิทธิ์ตัวแปรเดียวกันเท่ากันหรือเป็นจำนวนตรงข้าม ใช้กำจัด ถ้าไม่เท่ากัน ให้คูณสมการหนึ่ง (หรือทั้งสอง) ให้เท่ากันก่อน',
+      'โจทย์ปัญหา: กำหนดตัวแปรให้ชัด (เช่น a = จำนวนตั๋วผู้ใหญ่) เขียนหนึ่งสมการต่อหนึ่งข้อมูล แล้วตอบเป็นประโยคพร้อมหน่วย',
+    ],
+    workedExamples: [
+      {
+        id: 'we-1', skillId: SYS, problem: '3x + 2y = 16 และ x − y = 2 (วิธีแทนค่า)',
+        steps: ['จากสมการที่สอง x = y + 2', 'แทนในสมการแรก: 3(y + 2) + 2y = 16', '5y + 6 = 16 → y = 2', 'x = 2 + 2 = 4', 'ตรวจ: 3(4) + 2(2) = 16 ✓ และ 4 − 2 = 2 ✓'],
+        answer: 'x = 4, y = 2', verify: { kind: 'holds', vars: { x: 4, y: 2 }, holds: ['3*x+2*y == 16', 'x-y == 2'] },
+      },
+      {
+        id: 'we-2', skillId: WORD, problem: 'ตั๋วผู้ใหญ่ใบละ 60 บาท ตั๋วเด็กใบละ 40 บาท ขายได้ 20 ใบ รวม 1,000 บาท ขายตั๋วผู้ใหญ่กี่ใบ',
+        steps: ['ให้ a = ตั๋วผู้ใหญ่, c = ตั๋วเด็ก', 'a + c = 20 และ 60a + 40c = 1000', 'จากสมการแรก c = 20 − a แทน: 60a + 40(20 − a) = 1000', '20a + 800 = 1000 → a = 10, c = 10', 'ตรวจ: 600 + 400 = 1000 ✓'],
+        answer: 'ตั๋วผู้ใหญ่ 10 ใบ (ตั๋วเด็ก 10 ใบ)', verify: { kind: 'holds', vars: { a: 10, c: 10 }, holds: ['a+c == 20', '60*a+40*c == 1000'] },
+      },
+    ],
+    guided: [
+      { id: 'g-1', skillId: SYS, level: 1, prompt: 'y = 2x และ x + y = 9', hint: 'แทน y ด้วย 2x ในสมการที่สอง', answer: 'x = 3, y = 6', explanation: 'x + 2x = 9 → x = 3 แล้ว y = 6 ตรวจ: 3 + 6 = 9 ✓', verify: { kind: 'holds', vars: { x: 3, y: 6 }, holds: ['y == 2*x', 'x+y == 9'] } },
+      { id: 'g-2', skillId: SYS, level: 2, prompt: '2x + 3y = 13 และ 2x − y = 1', hint: 'สัมประสิทธิ์ของ x เท่ากัน ลบสองสมการ', answer: 'x = 2, y = 3', explanation: 'ลบกัน: 4y = 12 → y = 3 แทน: 2x − 3 = 1 → x = 2', verify: { kind: 'holds', vars: { x: 2, y: 3 }, holds: ['2*x+3*y == 13', '2*x-y == 1'] } },
+      { id: 'g-3', skillId: SYS, level: 2, prompt: 'x + 2y = 7 และ 3x − y = 7', hint: 'คูณสมการที่สองด้วย 2 ให้ y เป็น −2y แล้วบวกกัน', answer: 'x = 3, y = 2', explanation: '6x − 2y = 14 บวกกับ x + 2y = 7: 7x = 21 → x = 3 แล้ว 3 + 2y = 7 → y = 2', verify: { kind: 'holds', vars: { x: 3, y: 2 }, holds: ['x+2*y == 7', '3*x-y == 7'] } },
+    ],
+    independent: [
+      { id: 'i-1', skillId: SYS, level: 1, prompt: 'x + y = 12 และ x − y = 4', answer: 'x = 8, y = 4', explanation: 'บวกกัน 2x = 16 → x = 8 แล้ว y = 4', verify: { kind: 'holds', vars: { x: 8, y: 4 }, holds: ['x+y == 12', 'x-y == 4'] } },
+      { id: 'i-2', skillId: SYS, level: 1, prompt: 'y = x + 1 และ 2x + y = 10', answer: 'x = 3, y = 4', explanation: '2x + x + 1 = 10 → 3x = 9 → x = 3, y = 4', verify: { kind: 'holds', vars: { x: 3, y: 4 }, holds: ['y == x+1', '2*x+y == 10'] } },
+      { id: 'i-3', skillId: SYS, level: 2, prompt: '4x + y = 14 และ 2x − y = 4', answer: 'x = 3, y = 2', explanation: 'บวกกัน 6x = 18 → x = 3 แล้ว 12 + y = 14 → y = 2', verify: { kind: 'holds', vars: { x: 3, y: 2 }, holds: ['4*x+y == 14', '2*x-y == 4'] } },
+      { id: 'i-4', skillId: SYS, level: 2, prompt: '5x + 2y = 1 และ 3x + 2y = −1', answer: 'x = 1, y = −2', explanation: 'ลบกัน 2x = 2 → x = 1 แล้ว 5 + 2y = 1 → y = −2', verify: { kind: 'holds', vars: { x: 1, y: -2 }, holds: ['5*x+2*y == 1', '3*x+2*y == -1'] } },
+      { id: 'i-5', skillId: SYS, level: 3, prompt: '2x + 3y = 12 และ 3x + 2y = 13', answer: 'x = 3, y = 2', explanation: 'คูณสมการแรกด้วย 3 สมการที่สองด้วย 2: 6x + 9y = 36 และ 6x + 4y = 26 ลบกัน 5y = 10 → y = 2 แล้ว x = 3', verify: { kind: 'holds', vars: { x: 3, y: 2 }, holds: ['2*x+3*y == 12', '3*x+2*y == 13'] } },
+      { id: 'i-6', skillId: WORD, level: 3, prompt: 'จำนวนสองจำนวนบวกกันได้ 50 ลบกันได้ 14 จำนวนทั้งสองคืออะไร', answer: '32 และ 18', explanation: 'a + b = 50, a − b = 14 บวกกัน 2a = 64 → a = 32, b = 18', verify: { kind: 'holds', vars: { a: 32, b: 18 }, holds: ['a+b == 50', 'a-b == 14'] } },
+    ],
+    checks: [
+      { id: 'k-1', skillId: SYS, prompt: 'คำตอบของ x + y = 7 และ x − y = 1 คือข้อใด', choices: ['x = 4, y = 3', 'x = 3, y = 4', 'x = 5, y = 2', 'x = 6, y = 1'], correctIndex: 0, explanation: 'บวกกัน 2x = 8 → x = 4 แล้ว y = 3 (ข้อ x = 3, y = 4 ทำให้ x − y = −1 ไม่ใช่ 1)', verify: { kind: 'holds', vars: { x: 4, y: 3 }, holds: ['x+y == 7', 'x-y == 1'] } },
+      { id: 'k-2', skillId: SYS, prompt: 'ระบบ y = 3x − 1 และ 2x + y = 9 ควรใช้วิธีใดจึงสั้นที่สุด', choices: ['แทนค่า เพราะสมการแรกเขียน y ไว้แล้ว', 'กำจัดตัวแปร เพราะต้องบวกสมการเสมอ', 'คูณทั้งสองสมการด้วย 3', 'ใช้เมทริกซ์'], correctIndex: 0, explanation: 'แทน y = 3x − 1 ได้ 2x + 3x − 1 = 9 → x = 2, y = 5', verify: { kind: 'holds', vars: { x: 2, y: 5 }, holds: ['y == 3*x-1', '2*x+y == 9'] } },
+      { id: 'k-3', skillId: SYS, prompt: 'จาก 2x + y = 8 และ 2x − 3y = 0 ถ้านำสมการแรกลบสมการที่สอง จะได้อะไร', choices: ['4y = 8', '−2y = 8', '4x = 8', '4y = −8'], correctIndex: 0, explanation: '(2x + y) − (2x − 3y) = y + 3y = 4y และ 8 − 0 = 8 จึงได้ 4y = 8 → y = 2, x = 3', verify: { kind: 'holds', vars: { x: 3, y: 2 }, holds: ['2*x+y == 8', '2*x-3*y == 0', '4*y == 8'] } },
+      { id: 'k-4', skillId: WORD, prompt: 'ส้ม 2 ผลกับแอปเปิล 1 ผล ราคา 40 บาท ส้ม 1 ผลกับแอปเปิล 1 ผล ราคา 25 บาท ส้มผลละกี่บาท', choices: ['10 บาท', '15 บาท', '20 บาท', '25 บาท'], correctIndex: 1, explanation: '2s + a = 40 ลบ s + a = 25 ได้ s = 15 แล้ว a = 10', verify: { kind: 'holds', vars: { s: 15, a: 10 }, holds: ['2*s+a == 40', 's+a == 25'] } },
+    ],
+    mistakes: [
+      { mistake: 'ลบสมการแต่ลบไม่ครบทุกพจน์ เช่น (2x + y) − (2x − 3y) = −2y', why: 'ลืมว่าเครื่องหมายลบหน้าวงเล็บเปลี่ยนเครื่องหมายทุกพจน์ข้างใน', fix: 'ใส่วงเล็บสมการที่ถูกลบเสมอ แล้วกระจายเครื่องหมาย: −(2x − 3y) = −2x + 3y' },
+      { mistake: 'หาได้ตัวแปรเดียวแล้วหยุด', why: 'รู้สึกว่าแก้สมการเสร็จแล้ว ทั้งที่โจทย์ถามคู่ (x, y)', fix: 'เขียนคำตอบเป็นคู่เสมอ และแทนค่ากลับหาอีกตัวทุกครั้ง' },
+      { mistake: 'ตรวจกับสมการเดียว', why: 'สมการที่ใช้หาค่าจะเป็นจริงเสมอ จึงตรวจไม่เจอข้อผิด', fix: 'ตรวจกับทั้งสองสมการ โดยเฉพาะสมการที่ไม่ได้ใช้แทนค่าครั้งสุดท้าย' },
+    ],
+    summary: ['ระบบสมการคือหลายสมการที่ต้องจริงพร้อมกัน', 'แทนค่าเมื่อมีตัวแปรหนึ่งเขียนแยกไว้แล้ว กำจัดเมื่อสัมประสิทธิ์จัดให้เท่ากันได้ง่าย', 'คำตอบคือคู่ (x, y) และต้องตรวจกับทุกสมการ'],
+    afterLesson: ['แก้ระบบสมการสองตัวแปรได้ทั้งสองวิธี', 'เลือกวิธีที่สั้นกว่าได้', 'ตั้งระบบสมการจากโจทย์และตอบพร้อมหน่วย'],
+    next: ['math-fn-linear'],
+    provenance: [
+      { sourceId: 'ipst-math-indicators-2560', usedFor: 'ขอบเขตระบบสมการเชิงเส้นสองตัวแปร', crossChecked: false },
+      { sourceId: 'openstax-ea-5-systems', usedFor: 'ขั้นตอนวิธีแทนค่าและกำจัดตัวแปร', crossChecked: true },
+    ],
+    audit: {
+      sourcesFound: ['ipst-math-indicators-2560', 'openstax-ea-5-systems', 'LibreTexts (มิเรอร์ OpenStax)'],
+      sourcesSelected: ['ipst-math-indicators-2560', 'openstax-ea-5-systems'],
+      sourcesRejected: [{ source: 'LibreTexts / xyzhomework (มิเรอร์)', reason: 'ใช้หน้าจากผู้จัดพิมพ์ต้นฉบับแทน' }],
+      knowledgeCovered: ['วิธีแทนค่า', 'วิธีกำจัดตัวแปรแบบคูณสมการ', 'การตั้งระบบจากโจทย์', 'การตรวจคำตอบ'],
+      knowledgeMissing: ['กรณีระบบไม่มีคำตอบหรือมีคำตอบมากมาย (อยู่นอกขอบเขตของบทนี้)'],
+      externalResourcesVerified: 0,
+      limitations: ['ยังไม่มีคลิปภายนอกที่ผ่านการตรวจลิงก์ครบ 4 ข้อ'],
+      readiness: 'READY_WITH_LIMITATIONS',
+    },
+  },
+  // ───────────────────────────────────────────────────────────────────
+  {
+    lessonId: 'math-alg-linear-ineq',
+    skills: [INEQ],
+    prerequisites: ['math-alg-linear-eq'],
+    whyItMatters: 'โลกจริงมักถามว่า "อย่างน้อย" หรือ "ไม่เกิน" เช่น ต้องได้คะแนนอย่างน้อยเท่าไรถึงผ่าน อสมการให้คำตอบเป็นช่วงของค่าที่ใช้ได้ ไม่ใช่ค่าเดียว',
+    allowedKnowledge: [
+      'สัญลักษณ์ < > ≤ ≥ และความหมาย',
+      'สมบัติการไม่เท่ากัน: บวก/ลบจำนวนเดียวกันทั้งสองข้างได้',
+      'คูณ/หารด้วยจำนวนบวก เครื่องหมายคงเดิม — ด้วยจำนวนลบ ต้องกลับทิศ',
+      'เขียนคำตอบเป็นช่วง (a, b), [a, b], (−∞, a), [a, ∞) และบนเส้นจำนวน',
+      'ตรวจคำตอบด้วยการลองแทนค่าในช่วงและนอกช่วง',
+    ],
+    notYetAllowed: ['อสมการกำลังสอง', 'อสมการค่าสัมบูรณ์', 'ระบบอสมการและกราฟสองตัวแปร', 'อสมการที่มีตัวแปรในตัวส่วน'],
+    concepts: [
+      { id: 'c-ineq', term: 'อสมการ', meaning: 'ประโยคที่เปรียบเทียบสองข้างด้วย < > ≤ ≥', skillId: INEQ },
+      { id: 'c-solution-set', term: 'เซตคำตอบ', meaning: 'จำนวนทั้งหมดที่ทำให้อสมการเป็นจริง มักมีมากมายนับไม่ถ้วน', skillId: INEQ },
+      { id: 'c-interval', term: 'ช่วง', meaning: 'วิธีเขียนเซตคำตอบ: วงเล็บ ( ) ไม่รวมปลาย วงเล็บ [ ] รวมปลาย ∞ ใช้กับ ( ) เสมอ', skillId: INEQ },
+    ],
+    rules: [
+      { id: 'r-add', name: 'บวก/ลบทั้งสองข้าง', statement: 'ถ้า a < b แล้ว a + c < b + c', skillId: INEQ },
+      { id: 'r-pos', name: 'คูณ/หารด้วยจำนวนบวก', statement: 'ถ้า a < b และ c > 0 แล้ว ac < bc', skillId: INEQ },
+      { id: 'r-neg', name: 'คูณ/หารด้วยจำนวนลบ กลับทิศ', statement: 'ถ้า a < b และ c < 0 แล้ว ac > bc', notation: 'เช่น 1 < 2 คูณ −1 ได้ −1 > −2', skillId: INEQ },
+    ],
+    detailed: [
+      'อสมการแก้เหมือนสมการเกือบทุกขั้น ต่างกันเพียงจุดเดียว: เมื่อคูณหรือหารทั้งสองข้างด้วยจำนวนลบ ต้องกลับทิศเครื่องหมาย',
+      'เหตุผล: จำนวนลบสลับลำดับบนเส้นจำนวน 1 อยู่ทางซ้ายของ 2 แต่ −1 อยู่ทางขวาของ −2 ถ้าไม่กลับทิศ ประโยคจะกลายเป็นเท็จ',
+      'คำตอบมักเป็นช่วง ตรวจได้โดยเลือกค่าหนึ่งในช่วง (ต้องจริง) และค่าหนึ่งนอกช่วง (ต้องเท็จ) แล้วตรวจจุดปลายว่ารวมหรือไม่รวม',
+    ],
+    analogy: 'เส้นจำนวนเหมือนบันได คูณด้วยจำนวนลบเหมือนพลิกบันไดกลับหัว ขั้นที่เคยต่ำกว่ากลายเป็นสูงกว่า',
+    workedExamples: [
+      { id: 'we-1', skillId: INEQ, problem: '3x − 5 < 10', steps: ['บวก 5 ทั้งสองข้าง: 3x < 15', 'หารด้วย 3 (บวก เครื่องหมายคงเดิม): x < 5', 'ช่วงคำตอบ (−∞, 5) — วงเล็บโค้งเพราะไม่รวม 5', 'ตรวจ: x = 0 → −5 < 10 จริง, x = 5 → 10 < 10 เท็จ ✓'], answer: 'x < 5 หรือ (−∞, 5)', verify: { kind: 'inequality', holds: '3*x-5 < 10', op: '<', bound: 5 } },
+      { id: 'we-2', skillId: INEQ, problem: '−2x + 7 ≥ 1', steps: ['ลบ 7 ทั้งสองข้าง: −2x ≥ −6', 'หารด้วย −2 ต้องกลับทิศ: x ≤ 3', 'ช่วงคำตอบ (−∞, 3] — วงเล็บเหลี่ยมเพราะรวม 3', 'ตรวจ: x = 3 → 1 ≥ 1 จริง, x = 4 → −1 ≥ 1 เท็จ ✓'], answer: 'x ≤ 3 หรือ (−∞, 3]', verify: { kind: 'inequality', holds: '-2*x+7 >= 1', op: '<=', bound: 3 } },
+    ],
+    guided: [
+      { id: 'g-1', skillId: INEQ, level: 1, prompt: 'x + 4 > 9', hint: 'ลบ 4 ทั้งสองข้าง', answer: 'x > 5 หรือ (5, ∞)', explanation: 'x > 9 − 4 = 5 ไม่มีการคูณ/หารด้วยจำนวนลบ จึงไม่กลับทิศ', verify: { kind: 'inequality', holds: 'x+4 > 9', op: '>', bound: 5 } },
+      { id: 'g-2', skillId: INEQ, level: 1, prompt: '−3x < 12', hint: 'หารด้วย −3 แล้วอย่าลืมกลับทิศ', answer: 'x > −4 หรือ (−4, ∞)', explanation: '12 ÷ (−3) = −4 และ < กลายเป็น > เพราะหารด้วยจำนวนลบ', verify: { kind: 'inequality', holds: '-3*x < 12', op: '>', bound: -4 } },
+      { id: 'g-3', skillId: INEQ, level: 2, prompt: '2(x − 1) ≤ x + 3', hint: 'กระจายวงเล็บ แล้วรวม x ข้างซ้าย', answer: 'x ≤ 5 หรือ (−∞, 5]', explanation: '2x − 2 ≤ x + 3 → x ≤ 5', verify: { kind: 'inequality', holds: '2*(x-1) <= x+3', op: '<=', bound: 5 } },
+    ],
+    independent: [
+      { id: 'i-1', skillId: INEQ, level: 1, prompt: '5x ≥ 20', answer: 'x ≥ 4 หรือ [4, ∞)', explanation: 'หารด้วย 5 (บวก) เครื่องหมายคงเดิม', verify: { kind: 'inequality', holds: '5*x >= 20', op: '>=', bound: 4 } },
+      { id: 'i-2', skillId: INEQ, level: 1, prompt: 'x − 7 < −2', answer: 'x < 5 หรือ (−∞, 5)', explanation: 'บวก 7 ทั้งสองข้าง: x < 5', verify: { kind: 'inequality', holds: 'x-7 < -2', op: '<', bound: 5 } },
+      { id: 'i-3', skillId: INEQ, level: 2, prompt: '−4x + 2 > 14', answer: 'x < −3 หรือ (−∞, −3)', explanation: '−4x > 12 แล้วหารด้วย −4 กลับทิศ: x < −3', verify: { kind: 'inequality', holds: '-4*x+2 > 14', op: '<', bound: -3 } },
+      { id: 'i-4', skillId: INEQ, level: 2, prompt: '7 − x ≤ 10', answer: 'x ≥ −3 หรือ [−3, ∞)', explanation: '−x ≤ 3 แล้วคูณด้วย −1 กลับทิศ: x ≥ −3', verify: { kind: 'inequality', holds: '7-x <= 10', op: '>=', bound: -3 } },
+      { id: 'i-5', skillId: INEQ, level: 3, prompt: '(x + 1)/2 > x − 3', answer: 'x < 7 หรือ (−∞, 7)', explanation: 'คูณ 2 (บวก): x + 1 > 2x − 6 → −x > −7 → x < 7 (กลับทิศเพราะคูณ −1)', verify: { kind: 'inequality', holds: '(x+1)/2 > x-3', op: '<', bound: 7 } },
+      { id: 'i-6', skillId: INEQ, level: 3, prompt: '3(2 − x) ≥ 2x − 9', answer: 'x ≤ 3 หรือ (−∞, 3]', explanation: '6 − 3x ≥ 2x − 9 → −5x ≥ −15 → x ≤ 3', verify: { kind: 'inequality', holds: '3*(2-x) >= 2*x-9', op: '<=', bound: 3 } },
+    ],
+    checks: [
+      { id: 'k-1', skillId: INEQ, prompt: 'คำตอบของ −5x > 15 คือข้อใด', choices: ['x > −3', 'x < −3', 'x > 3', 'x < 3'], correctIndex: 1, explanation: 'หารด้วย −5 ต้องกลับทิศ: x < −3', verify: { kind: 'inequality', holds: '-5*x > 15', op: '<', bound: -3 } },
+      { id: 'k-2', skillId: INEQ, prompt: 'x ≥ 2 เขียนเป็นช่วงได้อย่างไร', choices: ['(2, ∞)', '[2, ∞)', '[2, ∞]', '(−∞, 2]'], correctIndex: 1, explanation: 'รวม 2 จึงใช้ [ และ ∞ ใช้วงเล็บโค้งเสมอเพราะไม่ใช่จำนวน' },
+      { id: 'k-3', skillId: INEQ, prompt: 'x = 4 อยู่ในเซตคำตอบของ 2x − 1 < 7 หรือไม่', choices: ['อยู่ เพราะ 7 < 7', 'ไม่อยู่ เพราะ 2(4) − 1 = 7 และ 7 < 7 เป็นเท็จ', 'อยู่ เพราะ 4 < 7', 'บอกไม่ได้'], correctIndex: 1, explanation: 'คำตอบของอสมการคือ x < 4 ซึ่งไม่รวม 4', verify: { kind: 'inequality', holds: '2*x-1 < 7', op: '<', bound: 4 } },
+      { id: 'k-4', skillId: INEQ, prompt: 'ทำไมต้องกลับทิศเมื่อคูณด้วยจำนวนลบ', choices: ['เป็นข้อตกลงที่ไม่มีเหตุผล', 'เพราะจำนวนลบสลับลำดับ เช่น 1 < 2 แต่ −1 > −2', 'เพราะต้องย้ายข้าง', 'ไม่ต้องกลับทิศ'], correctIndex: 1, explanation: 'ถ้าไม่กลับทิศ 1 < 2 จะกลายเป็น −1 < −2 ซึ่งเป็นเท็จ' },
+    ],
+    mistakes: [
+      { mistake: 'หารด้วยจำนวนลบแล้วลืมกลับทิศ', why: 'แก้แบบเดียวกับสมการจนเคยมือ', fix: 'ทุกครั้งที่คูณ/หาร ถามตัวเองว่า "จำนวนนี้ลบไหม" ถ้าลบ วงกลมเครื่องหมายแล้วกลับทิศทันที' },
+      { mistake: 'กลับทิศตอนย้ายข้างพจน์ลบ เช่น x − 3 < 5 → x > 8', why: 'สับสนว่า "มีเลขลบ" ต้องกลับทิศ', fix: 'กลับทิศเฉพาะตอนคูณหรือหารด้วยจำนวนลบเท่านั้น การบวก/ลบไม่ทำให้กลับทิศ' },
+      { mistake: 'ใช้วงเล็บผิด เช่น x ≤ 3 เขียนเป็น (−∞, 3)', why: 'ไม่ได้ตรวจว่าจุดปลายรวมหรือไม่', fix: '≤ หรือ ≥ ใช้ [ ] ส่วน < หรือ > ใช้ ( ) แล้วลองแทนจุดปลายตรวจ' },
+    ],
+    summary: ['แก้อสมการเหมือนสมการ แต่คูณ/หารด้วยจำนวนลบต้องกลับทิศ', 'คำตอบเป็นช่วง [ ] รวมปลาย ( ) ไม่รวม', 'ตรวจด้วยค่าในช่วง ค่านอกช่วง และจุดปลาย'],
+    afterLesson: ['แก้อสมการเชิงเส้นได้', 'รู้ว่าเมื่อไรต้องกลับทิศเครื่องหมาย', 'เขียนคำตอบเป็นช่วงและตรวจคำตอบเองได้'],
+    next: [],
+    provenance: [
+      { sourceId: 'ipst-math-indicators-2560', usedFor: 'ขอบเขตอสมการเชิงเส้นตัวแปรเดียว', crossChecked: false },
+      { sourceId: 'openstax-ea2e-2-7', usedFor: 'สมบัติการไม่เท่ากันและการกลับทิศ (ตรวจข้ามกับ Algebra 1 ของ OpenStax)', crossChecked: true },
+    ],
+    audit: {
+      sourcesFound: ['ipst-math-indicators-2560', 'openstax-ea2e-2-7', 'OpenStax Algebra 1 2.10.5', 'mathplanet', 'virtualnerd'],
+      sourcesSelected: ['ipst-math-indicators-2560', 'openstax-ea2e-2-7'],
+      sourcesRejected: [{ source: 'mathplanet / virtualnerd', reason: 'เนื้อหาตรงกับ OpenStax จึงใช้เฉพาะเพื่อยืนยันกฎกลับทิศ ไม่ใช้เป็นแหล่งหลัก' }],
+      knowledgeCovered: ['สมบัติการไม่เท่ากัน', 'การกลับทิศ', 'การเขียนช่วง', 'การตรวจคำตอบด้วยค่าทดสอบ'],
+      knowledgeMissing: [],
+      externalResourcesVerified: 0,
+      limitations: ['ยังไม่มีคลิปภายนอกที่ผ่านการตรวจลิงก์'],
+      readiness: 'READY_WITH_LIMITATIONS',
+    },
+  },
+  // ───────────────────────────────────────────────────────────────────
+  {
+    lessonId: 'math-alg-exponents',
+    skills: [EXP],
+    prerequisites: [],
+    whyItMatters: 'เลขยกกำลังใช้เขียนจำนวนใหญ่มากหรือเล็กมากในฟิสิกส์ (เช่น 10⁻⁶ ในหน่วย μ) และเป็นฐานของรากที่ใช้ในทฤษฎีบทพีทาโกรัสและตรีโกณมิติ',
+    allowedKnowledge: [
+      'ความหมายของ aⁿ: a คูณกัน n ตัว',
+      'สมบัติ: aᵐ·aⁿ = aᵐ⁺ⁿ, aᵐ/aⁿ = aᵐ⁻ⁿ, (aᵐ)ⁿ = aᵐⁿ, (ab)ⁿ = aⁿbⁿ',
+      'เลขชี้กำลังศูนย์และลบ: a⁰ = 1, a⁻ⁿ = 1/aⁿ (a ≠ 0)',
+      'รากที่ n และเลขชี้กำลังเศษส่วน: a^(1/n) = ⁿ√a, a^(m/n) = (ⁿ√a)ᵐ (a > 0)',
+      'จัดรูปนิพจน์ตัวเลขและเอกนามด้วยสมบัติเหล่านี้',
+    ],
+    notYetAllowed: ['ลอการิทึม', 'ฟังก์ชันเอกซ์โพเนนเชียลและกราฟ', 'สมการเลขยกกำลัง', 'รากของจำนวนลบ / จำนวนเชิงซ้อน', 'สัญกรณ์วิทยาศาสตร์อย่างเป็นระบบ'],
+    concepts: [
+      { id: 'c-power', term: 'เลขยกกำลัง aⁿ', meaning: 'a เป็นฐาน n เป็นเลขชี้กำลัง หมายถึงนำ a มาคูณกัน n ตัว', skillId: EXP },
+      { id: 'c-zero-neg', term: 'เลขชี้กำลังศูนย์และลบ', meaning: 'นิยามให้สมบัติการหารยังใช้ได้: a⁰ = 1 และ a⁻ⁿ คือส่วนกลับของ aⁿ', skillId: EXP },
+      { id: 'c-root', term: 'รากที่ n', meaning: 'ⁿ√a คือจำนวนบวกที่ยกกำลัง n แล้วได้ a เขียนเป็น a^(1/n) ได้', skillId: EXP },
+    ],
+    rules: [
+      { id: 'r-mul', name: 'คูณฐานเดียวกัน', statement: 'aᵐ · aⁿ = aᵐ⁺ⁿ', skillId: EXP },
+      { id: 'r-div', name: 'หารฐานเดียวกัน', statement: 'aᵐ ÷ aⁿ = aᵐ⁻ⁿ (a ≠ 0)', skillId: EXP },
+      { id: 'r-pow', name: 'ยกกำลังซ้อน', statement: '(aᵐ)ⁿ = aᵐⁿ', skillId: EXP },
+      { id: 'r-prod', name: 'ผลคูณยกกำลัง', statement: '(ab)ⁿ = aⁿbⁿ', skillId: EXP },
+      { id: 'r-zero', name: 'ศูนย์และลบ', statement: 'a⁰ = 1, a⁻ⁿ = 1/aⁿ (a ≠ 0)', skillId: EXP },
+      { id: 'r-frac', name: 'เลขชี้กำลังเศษส่วน', statement: 'a^(m/n) = (ⁿ√a)ᵐ (a > 0)', skillId: EXP },
+    ],
+    detailed: [
+      'สมบัติทั้งหมดมาจากการนับตัวคูณ เช่น 2³·2² คือ (2·2·2)(2·2) มี 2 ห้าตัว จึงเป็น 2⁵ ถ้าจำสมบัติไม่ได้ ให้กางออกแล้วนับ',
+      'a⁰ = 1 ไม่ได้มาจากความรู้สึก แต่มาจาก aⁿ ÷ aⁿ = 1 และตามสมบัติการหาร = aⁿ⁻ⁿ = a⁰ ทำนองเดียวกัน a² ÷ a⁵ = a⁻³ = 1/a³',
+      'เลขชี้กำลังเศษส่วนอ่านว่า "ตัวส่วนคือราก ตัวเศษคือกำลัง" ถอดรากก่อนจะได้ตัวเลขเล็กและคำนวณง่าย เช่น 27^(2/3) = (∛27)² = 3² = 9',
+    ],
+    workedExamples: [
+      { id: 'we-1', skillId: EXP, problem: '(2³ · 2⁵) ÷ 2⁴', steps: ['คูณฐานเดียวกัน บวกเลขชี้กำลัง: 2³⁺⁵ = 2⁸', 'หาร ลบเลขชี้กำลัง: 2⁸⁻⁴ = 2⁴', '2⁴ = 16'], answer: '16', verify: { kind: 'value', expr: '(2**3 * 2**5) / 2**4', expected: 16 } },
+      { id: 'we-2', skillId: EXP, problem: '27^(2/3)', steps: ['ตัวส่วน 3 คือรากที่สาม: ∛27 = 3', 'ตัวเศษ 2 คือกำลังสอง: 3² = 9'], answer: '9', verify: { kind: 'value', expr: '27 ** (2/3)', expected: 9, tol: 1e-9 } },
+    ],
+    guided: [
+      { id: 'g-1', skillId: EXP, level: 1, prompt: '5² · 5³', hint: 'ฐานเดียวกัน คูณกัน บวกเลขชี้กำลัง', answer: '5⁵ = 3125', explanation: '2 + 3 = 5 จึงเป็น 5⁵ = 3125', verify: { kind: 'value', expr: '5**2 * 5**3', expected: 3125 } },
+      { id: 'g-2', skillId: EXP, level: 1, prompt: '(3²)³', hint: 'ยกกำลังซ้อน คูณเลขชี้กำลัง', answer: '3⁶ = 729', explanation: '2 × 3 = 6 จึงเป็น 3⁶ = 729 (ไม่ใช่ 3⁵)', verify: { kind: 'value', expr: '(3**2)**3', expected: 729 } },
+      { id: 'g-3', skillId: EXP, level: 2, prompt: '2⁻³', hint: 'เลขชี้กำลังลบ = ส่วนกลับ', answer: '1/8', explanation: '2⁻³ = 1/2³ = 1/8 (ไม่ใช่ −8 หรือ −6)', verify: { kind: 'value', expr: '2**-3', expected: 0.125 } },
+    ],
+    independent: [
+      { id: 'i-1', skillId: EXP, level: 1, prompt: '7⁰', answer: '1', explanation: 'ฐานไม่เป็นศูนย์ ยกกำลังศูนย์ได้ 1', verify: { kind: 'value', expr: '7**0', expected: 1 } },
+      { id: 'i-2', skillId: EXP, level: 1, prompt: '10⁵ ÷ 10²', answer: '10³ = 1000', explanation: 'ลบเลขชี้กำลัง 5 − 2 = 3', verify: { kind: 'value', expr: '10**5 / 10**2', expected: 1000 } },
+      { id: 'i-3', skillId: EXP, level: 2, prompt: '(2 · 3)²', answer: '2² · 3² = 36', explanation: 'ยกกำลังทุกตัวในวงเล็บ: 4 × 9 = 36', verify: { kind: 'value', expr: '(2*3)**2', expected: 36 } },
+      { id: 'i-4', skillId: EXP, level: 2, prompt: '16^(1/2) + 8^(1/3)', answer: '4 + 2 = 6', explanation: '√16 = 4 และ ∛8 = 2', verify: { kind: 'value', expr: '16**(1/2) + 8**(1/3)', expected: 6, tol: 1e-9 } },
+      { id: 'i-5', skillId: EXP, level: 3, prompt: '8^(−2/3)', answer: '1/4', explanation: '∛8 = 2, 2² = 4 แล้วเลขชี้กำลังลบให้ส่วนกลับ: 1/4', verify: { kind: 'value', expr: '8**(-2/3)', expected: 0.25, tol: 1e-9 } },
+      { id: 'i-6', skillId: EXP, level: 3, prompt: 'จัดรูป (x³)² · x⁻⁴ (x ≠ 0)', answer: 'x²', explanation: '(x³)² = x⁶ แล้ว x⁶ · x⁻⁴ = x²', verify: { kind: 'value', expr: '(x**3)**2 * x**-4 - x**2', expected: 0, vars: { x: 3 }, tol: 1e-9 } },
+    ],
+    checks: [
+      { id: 'k-1', skillId: EXP, prompt: 'a⁰ เมื่อ a ≠ 0 มีค่าเท่าใด', choices: ['0', '1', 'a', 'ไม่มีค่า'], correctIndex: 1, explanation: 'aⁿ ÷ aⁿ = 1 = a⁰', verify: { kind: 'value', expr: '9**0', expected: 1 } },
+      { id: 'k-2', skillId: EXP, prompt: '2⁻² เท่ากับข้อใด', choices: ['−4', '1/4', '−1/4', '4'], correctIndex: 1, explanation: '2⁻² = 1/2² = 1/4 เลขชี้กำลังลบไม่ได้ทำให้ค่าติดลบ', verify: { kind: 'value', expr: '2**-2', expected: 0.25 } },
+      { id: 'k-3', skillId: EXP, prompt: '(x²)³ จัดรูปได้เป็นข้อใด', choices: ['x⁵', 'x⁶', 'x⁸', '6x'], correctIndex: 1, explanation: 'ยกกำลังซ้อนให้คูณเลขชี้กำลัง 2 × 3 = 6', verify: { kind: 'value', expr: '(x**2)**3 - x**6', expected: 0, vars: { x: 2 } } },
+      { id: 'k-4', skillId: EXP, prompt: '9^(3/2) มีค่าเท่าใด', choices: ['27', '13.5', '18', '81'], correctIndex: 0, explanation: '√9 = 3 แล้วยกกำลัง 3 ได้ 27', verify: { kind: 'value', expr: '9**(3/2)', expected: 27, tol: 1e-9 } },
+    ],
+    mistakes: [
+      { mistake: 'คูณฐานแล้วคูณเลขชี้กำลังด้วย เช่น 2³ · 2² = 4⁶', why: 'สับสนระหว่าง "คูณฐานเดียวกัน" กับ "ยกกำลังซ้อน"', fix: 'ฐานเดิมคงไว้ — คูณฐานเดียวกันให้บวกเลขชี้กำลัง: 2⁵; คูณเลขชี้กำลังเฉพาะ (aᵐ)ⁿ' },
+      { mistake: 'คิดว่า 2⁻³ = −8', why: 'เห็นเครื่องหมายลบแล้วนึกว่าค่าเป็นลบ', fix: 'เลขชี้กำลังลบหมายถึง "ส่วนกลับ" 2⁻³ = 1/8 ซึ่งยังเป็นบวก' },
+      { mistake: '(a + b)² = a² + b²', why: 'ใช้สมบัติ (ab)ⁿ = aⁿbⁿ กับการบวก ซึ่งใช้ไม่ได้', fix: 'สมบัตินี้ใช้กับผลคูณเท่านั้น ลองแทนเลข: (1 + 2)² = 9 แต่ 1² + 2² = 5' },
+    ],
+    summary: ['คูณฐานเดียวกันบวกเลขชี้กำลัง หารลบ ยกกำลังซ้อนคูณ', 'a⁰ = 1 และ a⁻ⁿ = 1/aⁿ', 'a^(m/n): ตัวส่วนคือราก ตัวเศษคือกำลัง'],
+    afterLesson: ['จัดรูปนิพจน์ด้วยสมบัติเลขยกกำลังได้', 'หาค่าเลขชี้กำลังศูนย์ ลบ และเศษส่วนได้', 'แปลงรากเป็นเลขยกกำลังเศษส่วนได้'],
+    next: ['math-trig-ratios'],
+    provenance: [
+      { sourceId: 'ipst-math-indicators-2560', usedFor: 'ขอบเขตเลขยกกำลังและราก', crossChecked: false },
+      { sourceId: 'openstax-exponents', usedFor: 'สมบัติเลขยกกำลัง ศูนย์ และลบ', crossChecked: true },
+    ],
+    audit: {
+      sourcesFound: ['ipst-math-indicators-2560', 'openstax-exponents', 'OpenStax Algebra 1 5.1.x', 'OpenStax Prealgebra 2e 10.4'],
+      sourcesSelected: ['ipst-math-indicators-2560', 'openstax-exponents'],
+      sourcesRejected: [{ source: 'OpenStax Prealgebra 2e 10.4', reason: 'ระดับต่ำกว่าบทนี้ ใช้แค่ยืนยันสมบัติการหาร' }],
+      knowledgeCovered: ['สมบัติการคูณ หาร ยกกำลังซ้อน ผลคูณ', 'เลขชี้กำลังศูนย์และลบ', 'รากและเลขชี้กำลังเศษส่วน'],
+      knowledgeMissing: ['ยังไม่พบหน้าของ OpenStax เรื่องเลขชี้กำลังเศษส่วนจากการค้นหา (ส่วนนี้ยืนยันด้วยการคำนวณในชุดทดสอบแทน)'],
+      externalResourcesVerified: 0,
+      limitations: ['ยังไม่มีคลิปภายนอกที่ผ่านการตรวจลิงก์', 'แหล่งอ้างอิงเลขชี้กำลังเศษส่วนยังไม่ครบ'],
+      readiness: 'READY_WITH_LIMITATIONS',
+    },
+  },
+  // ───────────────────────────────────────────────────────────────────
+  {
+    lessonId: 'math-fn-linear',
+    skills: [SLOPE, GRAPH],
+    prerequisites: ['math-alg-linear-system'],
+    whyItMatters: 'กราฟเส้นตรงคือภาษาที่ฟิสิกส์ใช้บอกความเร็วและความเร่ง (ความชันของกราฟ) และเป็นวิธีอ่านค่าใช้จ่ายหรือการเปลี่ยนแปลงที่คงที่ในชีวิตจริง',
+    allowedKnowledge: [
+      'พิกัด (x, y) บนระนาบ',
+      'ความชัน m = (y₂ − y₁)/(x₂ − x₁) และความหมาย "y เปลี่ยนเท่าไรเมื่อ x เพิ่ม 1"',
+      'สมการ y = mx + c: m คือความชัน c คือจุดตัดแกน y',
+      'จุดตัดแกน x (ให้ y = 0)',
+      'เขียนสมการเส้นตรงจากสองจุด หรือจุดหนึ่งกับความชัน',
+      'ตีความความชันและจุดตัดในโจทย์จริง',
+    ],
+    notYetAllowed: ['ฟังก์ชันกำลังสองและพาราโบลา', 'ความสัมพันธ์ความชันของเส้นขนาน/ตั้งฉาก', 'ระยะทางระหว่างจุด', 'โดเมนและเรนจ์อย่างละเอียด', 'อัตราการเปลี่ยนแปลงขณะหนึ่ง (แคลคูลัส)'],
+    concepts: [
+      { id: 'c-slope', term: 'ความชัน (m)', meaning: 'อัตราการเปลี่ยน y ต่อการเปลี่ยน x ระหว่างสองจุดบนเส้น', skillId: SLOPE },
+      { id: 'c-intercept', term: 'จุดตัดแกน y (c)', meaning: 'ค่า y เมื่อ x = 0 คือจุดที่เส้นตัดแกนตั้ง', skillId: SLOPE },
+      { id: 'c-sign', term: 'เครื่องหมายของความชัน', meaning: 'm > 0 เส้นขึ้นจากซ้ายไปขวา m < 0 ลง m = 0 ขนานแกน x', skillId: GRAPH },
+    ],
+    rules: [
+      { id: 'r-slope', name: 'ความชันจากสองจุด', statement: 'm = (y₂ − y₁) / (x₂ − x₁), x₁ ≠ x₂', skillId: SLOPE },
+      { id: 'r-form', name: 'รูปความชัน–จุดตัด', statement: 'y = mx + c', notation: 'm = ความชัน, c = จุดตัดแกน y', skillId: SLOPE },
+      { id: 'r-c', name: 'หา c จากจุดที่รู้', statement: 'c = y₁ − m·x₁', skillId: SLOPE },
+      { id: 'r-xint', name: 'จุดตัดแกน x', statement: 'แทน y = 0 แล้วแก้หา x', skillId: GRAPH },
+    ],
+    detailed: [
+      'ความชันคือ "ขึ้นเท่าไร ต่อ ไปทางขวาเท่าไร" ลบพิกัดตามลำดับเดียวกันทั้งบนและล่าง (y₂ − y₁ คู่กับ x₂ − x₁) ถ้าสลับลำดับเพียงข้างเดียว เครื่องหมายจะผิด',
+      'เมื่อรู้ความชันแล้ว เขียนสมการได้ด้วยการหา c: แทนจุดที่รู้ลงใน y = mx + c จะเหลือ c ตัวเดียว เป็นสมการตัวแปรเดียวที่แก้ได้จากบทก่อน',
+      'ในโจทย์จริง m มีหน่วยเป็น "หน่วยของ y ต่อหน่วยของ x" เช่น บาทต่อกิโลเมตร และ c คือค่าเริ่มต้นเมื่อ x = 0 การบอกหน่วยทำให้เข้าใจความหมายของกราฟ',
+    ],
+    analogy: 'ความชันเหมือนความชันของถนน: เดินไปข้างหน้า 1 ก้าว สูงขึ้นหรือต่ำลงกี่ขั้น',
+    workedExamples: [
+      { id: 'we-1', skillId: SLOPE, problem: 'เขียนสมการเส้นตรงที่ผ่านจุด (1, 3) และ (4, 9)', steps: ['m = (9 − 3)/(4 − 1) = 6/3 = 2', 'c = y₁ − m·x₁ = 3 − 2(1) = 1', 'y = 2x + 1', 'ตรวจจุดที่สอง: 2(4) + 1 = 9 ✓'], answer: 'y = 2x + 1', verify: { kind: 'holds', vars: { m: 2, c: 1 }, holds: ['m*1+c == 3', 'm*4+c == 9'] } },
+      { id: 'we-2', skillId: GRAPH, problem: 'ค่าบริการ (สมมติ) y = 8x + 35 บาท เมื่อ x คือระยะทางเป็นกิโลเมตร ความชันและจุดตัดหมายถึงอะไร และ 10 กม. จ่ายเท่าไร', steps: ['m = 8 บาท/กม.: ระยะทางเพิ่ม 1 กม. จ่ายเพิ่ม 8 บาท', 'c = 35 บาท: ค่าเริ่มต้นก่อนเดินทาง', 'x = 10: y = 8(10) + 35 = 115'], answer: '115 บาท', verify: { kind: 'value', expr: '8*10+35', expected: 115 } },
+    ],
+    guided: [
+      { id: 'g-1', skillId: SLOPE, level: 1, prompt: 'หาความชันของเส้นผ่าน (2, 1) และ (6, 9)', hint: 'm = (9 − 1)/(6 − 2)', answer: 'm = 2', explanation: '8 ÷ 4 = 2', verify: { kind: 'value', expr: '(9-1)/(6-2)', expected: 2 } },
+      { id: 'g-2', skillId: SLOPE, level: 1, prompt: 'เขียนสมการเส้นที่ผ่าน (0, −3) และมีความชัน 4', hint: 'จุดที่ x = 0 บอก c ทันที', answer: 'y = 4x − 3', explanation: 'c = −3 เพราะเส้นผ่าน (0, −3)', verify: { kind: 'holds', vars: { m: 4, c: -3 }, holds: ['m*0+c == -3'] } },
+      { id: 'g-3', skillId: GRAPH, level: 2, prompt: 'หาจุดตัดแกน x ของ y = 2x − 6', hint: 'ให้ y = 0', answer: '(3, 0)', explanation: '0 = 2x − 6 → x = 3', verify: { kind: 'holds', vars: { x: 3 }, holds: ['2*x-6 == 0'] } },
+    ],
+    independent: [
+      { id: 'i-1', skillId: SLOPE, level: 1, prompt: 'ความชันของเส้นผ่าน (−1, 4) และ (3, −4)', answer: 'm = −2', explanation: '(−4 − 4)/(3 − (−1)) = −8/4 = −2 เส้นลงจากซ้ายไปขวา', verify: { kind: 'value', expr: '(-4-4)/(3-(-1))', expected: -2 } },
+      { id: 'i-2', skillId: GRAPH, level: 1, prompt: 'จุดตัดแกน y ของ y = −3x + 7', answer: '(0, 7)', explanation: 'แทน x = 0 ได้ y = 7', verify: { kind: 'value', expr: '-3*0+7', expected: 7 } },
+      { id: 'i-3', skillId: SLOPE, level: 2, prompt: 'สมการเส้นผ่าน (2, 5) และ (4, 11)', answer: 'y = 3x − 1', explanation: 'm = 6/2 = 3, c = 5 − 3(2) = −1', verify: { kind: 'holds', vars: { m: 3, c: -1 }, holds: ['m*2+c == 5', 'm*4+c == 11'] } },
+      { id: 'i-4', skillId: GRAPH, level: 2, prompt: 'จุดตัดแกน x ของ y = −2x + 10', answer: '(5, 0)', explanation: '0 = −2x + 10 → x = 5', verify: { kind: 'holds', vars: { x: 5 }, holds: ['-2*x+10 == 0'] } },
+      { id: 'i-5', skillId: SLOPE, level: 3, prompt: 'สมการเส้นผ่าน (−2, 1) และมีความชัน 1/2', answer: 'y = x/2 + 2', explanation: 'c = 1 − (1/2)(−2) = 1 + 1 = 2', verify: { kind: 'holds', vars: { m: 0.5, c: 2 }, holds: ['m*(-2)+c == 1'] } },
+      { id: 'i-6', skillId: GRAPH, level: 3, prompt: 'ถังมีน้ำ 50 ลิตร น้ำไหลออกนาทีละ 2 ลิตร เขียนสมการปริมาณน้ำ y เมื่อผ่านไป x นาที และน้ำหมดเมื่อไร', answer: 'y = −2x + 50 และน้ำหมดที่ 25 นาที', explanation: 'ลดลง 2 ลิตร/นาที จึง m = −2 ค่าเริ่มต้น 50 ให้ y = 0: x = 25', verify: { kind: 'holds', vars: { x: 25 }, holds: ['-2*x+50 == 0'] } },
+    ],
+    checks: [
+      { id: 'k-1', skillId: SLOPE, prompt: 'ความชันของเส้นผ่าน (0, 0) และ (2, 6)', choices: ['2', '3', '6', '1/3'], correctIndex: 1, explanation: '(6 − 0)/(2 − 0) = 3', verify: { kind: 'value', expr: '(6-0)/(2-0)', expected: 3 } },
+      { id: 'k-2', skillId: GRAPH, prompt: 'กราฟของ y = −x + 4 เป็นอย่างไรเมื่อ x เพิ่มขึ้น', choices: ['y เพิ่มขึ้น', 'y ลดลง', 'y คงที่', 'ขึ้นแล้วลง'], correctIndex: 1, explanation: 'ความชัน −1 เป็นลบ เส้นลงจากซ้ายไปขวา' },
+      { id: 'k-3', skillId: SLOPE, prompt: 'เส้นที่ผ่าน (0, 2) และมีความชัน −3 คือข้อใด', choices: ['y = 2x − 3', 'y = −3x + 2', 'y = 3x + 2', 'y = −3x − 2'], correctIndex: 1, explanation: 'm = −3 และ c = 2 จึงได้ y = −3x + 2', verify: { kind: 'holds', vars: { m: -3, c: 2 }, holds: ['m*0+c == 2'] } },
+      { id: 'k-4', skillId: GRAPH, prompt: 'ค่าใช้จ่าย y = 15x + 100 บาท (x = จำนวนชิ้น) เลข 100 หมายถึงอะไร', choices: ['ราคาต่อชิ้น', 'ค่าใช้จ่ายเริ่มต้นแม้ยังไม่ซื้อสักชิ้น', 'จำนวนชิ้นสูงสุด', 'ความชัน'], correctIndex: 1, explanation: '100 คือค่า y เมื่อ x = 0 (จุดตัดแกน y) ส่วน 15 คือราคาต่อชิ้น (ความชัน)' },
+    ],
+    mistakes: [
+      { mistake: 'สลับลำดับการลบ เช่น (y₂ − y₁)/(x₁ − x₂)', why: 'หยิบพิกัดมาลบโดยไม่สนว่ามาจากจุดไหน', fix: 'เขียนจุดเป็นคู่ก่อน (x₁, y₁), (x₂, y₂) แล้วลบตามลำดับเดียวกันทั้งบนและล่าง' },
+      { mistake: 'คิดว่า c คือจุดตัดแกน x', why: 'จำว่า "c คือจุดตัด" แต่ไม่ได้จำว่าตัดแกนไหน', fix: 'แทน x = 0 ใน y = mx + c จะได้ y = c จึงเป็นจุดตัดแกน y' },
+      { mistake: 'ใช้ x/y แทน y/x ในความชัน', why: 'จำว่า "ส่วนต่างหารกัน" แต่ลืมว่าอะไรอยู่บน', fix: 'ความชัน = การเปลี่ยนแนวตั้ง (y) ÷ การเปลี่ยนแนวนอน (x) — "ขึ้น ÷ ไป"' },
+    ],
+    summary: ['ความชัน m = (y₂ − y₁)/(x₂ − x₁)', 'y = mx + c: m บอกอัตราการเปลี่ยน c บอกค่าเริ่มต้น', 'จุดตัดแกน x: ให้ y = 0'],
+    afterLesson: ['หาความชันจากสองจุดได้', 'เขียนสมการเส้นตรงจากกราฟหรือข้อมูลได้', 'อธิบายความหมายของความชันและจุดตัดพร้อมหน่วยได้'],
+    next: [],
+    provenance: [
+      { sourceId: 'ipst-math-indicators-2560', usedFor: 'ขอบเขตฟังก์ชันเชิงเส้นและกราฟ', crossChecked: false },
+      { sourceId: 'openstax-slope-intercept', usedFor: 'ความชันและรูปความชัน–จุดตัด', crossChecked: true },
+    ],
+    audit: {
+      sourcesFound: ['ipst-math-indicators-2560', 'openstax-slope-intercept', 'Saylor Academy (สำเนา OpenStax)'],
+      sourcesSelected: ['ipst-math-indicators-2560', 'openstax-slope-intercept'],
+      sourcesRejected: [{ source: 'Saylor Academy', reason: 'เป็นสำเนาเนื้อหา OpenStax' }],
+      knowledgeCovered: ['ความชันจากสองจุด', 'y = mx + c', 'จุดตัดแกน', 'การตีความในบริบท'],
+      knowledgeMissing: ['ยังไม่มีภาพกราฟประกอบในหน้าอ่าน (อธิบายเป็นข้อความและพิกัด)'],
+      externalResourcesVerified: 0,
+      limitations: ['ยังไม่มีคลิปภายนอกที่ผ่านการตรวจลิงก์', 'ยังไม่มีภาพกราฟประกอบ'],
+      readiness: 'READY_WITH_LIMITATIONS',
+    },
+  },
+  // ───────────────────────────────────────────────────────────────────
+  {
+    lessonId: 'math-trig-ratios',
+    skills: [TRIG, SPEC],
+    prerequisites: ['math-alg-exponents'],
+    whyItMatters: 'ตรีโกณมิติคือเครื่องมือหาความยาวที่วัดตรง ๆ ไม่ได้ และเป็นสิ่งที่ฟิสิกส์ใช้แยกเวกเตอร์ (แรง ความเร็ว) เป็นองค์ประกอบแนวนอนและแนวตั้ง',
+    allowedKnowledge: [
+      'สามเหลี่ยมมุมฉาก: ด้านตรงข้ามมุมฉาก (ฉาก) ด้านตรงข้ามมุม (ข้าม) ด้านประชิดมุม (ชิด)',
+      'sin θ = ข้าม/ฉาก, cos θ = ชิด/ฉาก, tan θ = ข้าม/ชิด',
+      'ค่ามุมพิเศษ 30° 45° 60°',
+      'ทฤษฎีบทพีทาโกรัส a² + b² = c²',
+      'หาความยาวด้านที่ไม่รู้ และหามุมพิเศษจากอัตราส่วน',
+    ],
+    notYetAllowed: ['เรเดียน', 'วงกลมหนึ่งหน่วยและมุมเกิน 90°', 'กฎของไซน์และโคไซน์', 'เอกลักษณ์ตรีโกณมิติ', 'กราฟฟังก์ชันตรีโกณมิติ', 'ฟังก์ชันผกผันนอกเหนือมุมพิเศษ'],
+    concepts: [
+      { id: 'c-sides', term: 'ข้าม / ชิด / ฉาก', meaning: 'เรียกตามมุมที่สนใจ: ข้ามอยู่ตรงข้ามมุมนั้น ชิดอยู่ติดมุม (ไม่ใช่ด้านยาวสุด) ฉากคือด้านยาวสุดตรงข้ามมุมฉาก', skillId: TRIG },
+      { id: 'c-ratio', term: 'อัตราส่วนตรีโกณมิติ', meaning: 'สำหรับมุมเดียวกัน อัตราส่วนของด้านคงที่เสมอ ไม่ว่าสามเหลี่ยมจะใหญ่หรือเล็ก (สามเหลี่ยมคล้าย)', skillId: TRIG },
+      { id: 'c-special', term: 'มุมพิเศษ', meaning: '30° 45° 60° มีค่าตรีโกณมิติเป็นเศษส่วนและรากที่จำได้', skillId: SPEC },
+    ],
+    rules: [
+      { id: 'r-sin', name: 'ไซน์', statement: 'sin θ = ข้าม / ฉาก', skillId: TRIG },
+      { id: 'r-cos', name: 'โคไซน์', statement: 'cos θ = ชิด / ฉาก', skillId: TRIG },
+      { id: 'r-tan', name: 'แทนเจนต์', statement: 'tan θ = ข้าม / ชิด = sin θ / cos θ', skillId: TRIG },
+      { id: 'r-special', name: 'มุมพิเศษ', statement: 'sin30° = 1/2, cos30° = √3/2, tan30° = 1/√3 · sin45° = cos45° = √2/2, tan45° = 1 · sin60° = √3/2, cos60° = 1/2, tan60° = √3', skillId: SPEC },
+      { id: 'r-pyth', name: 'พีทาโกรัส', statement: 'ข้าม² + ชิด² = ฉาก²', skillId: TRIG },
+    ],
+    detailed: [
+      'ก่อนเลือกอัตราส่วน ให้ติดป้ายด้านจากมุมที่สนใจทุกครั้ง: ฉากคือด้านยาวสุดเสมอ ส่วนข้ามกับชิดสลับกันได้ถ้าเปลี่ยนมุม',
+      'เลือกอัตราส่วนจาก "รู้อะไร หาอะไร" เช่น รู้ฉากและอยากได้ข้าม → sin; รู้ชิดอยากได้ฉาก → cos; รู้ชิดอยากได้ข้าม → tan แล้วแก้สมการตัวแปรเดียว',
+      'ค่ามุมพิเศษมาจากสามเหลี่ยมสองแบบ: สามเหลี่ยม 45-45-90 ด้าน 1 : 1 : √2 และ สามเหลี่ยม 30-60-90 ด้าน 1 : √3 : 2 จำรูปนี้ได้ จะหาค่าได้เองโดยไม่ต้องท่อง',
+    ],
+    analogy: 'อัตราส่วนตรีโกณมิติเหมือน "สูตรสัดส่วน" ของมุม — ขยายรูปให้ใหญ่ขึ้นเท่าไร สัดส่วนด้านก็เท่าเดิม',
+    workedExamples: [
+      { id: 'we-1', skillId: TRIG, problem: 'สามเหลี่ยมมุมฉาก ด้านข้ามมุม θ ยาว 3 ด้านชิดยาว 4 หา sin θ cos θ tan θ', steps: ['ฉาก = √(3² + 4²) = √25 = 5', 'sin θ = 3/5', 'cos θ = 4/5', 'tan θ = 3/4'], answer: 'sin θ = 3/5, cos θ = 4/5, tan θ = 3/4', verify: { kind: 'value', expr: 'Math.sqrt(3**2+4**2)', expected: 5 } },
+      { id: 'we-2', skillId: SPEC, problem: 'ฉากยาว 10 หน่วย มุม 30° หาด้านตรงข้ามมุม 30°', steps: ['รู้ฉาก อยากได้ข้าม → sin', 'sin 30° = ข้าม/10', 'ข้าม = 10 × 1/2 = 5'], answer: '5 หน่วย', verify: { kind: 'value', expr: `10*Math.sin(${deg(30)})`, expected: 5, tol: 1e-9 } },
+    ],
+    guided: [
+      { id: 'g-1', skillId: TRIG, level: 1, prompt: 'ข้ามยาว 5 ฉากยาว 13 หา cos θ', hint: 'หาด้านชิดด้วยพีทาโกรัสก่อน', answer: 'cos θ = 12/13', explanation: 'ชิด = √(13² − 5²) = √144 = 12 จึง cos θ = 12/13', verify: { kind: 'value', expr: 'Math.sqrt(13**2-5**2)', expected: 12 } },
+      { id: 'g-2', skillId: SPEC, level: 1, prompt: 'มุม 45° ด้านชิดยาว 7 หาด้านข้าม', hint: 'tan 45° = 1', answer: '7', explanation: 'tan 45° = ข้าม/7 = 1 จึงข้าม = 7', verify: { kind: 'value', expr: `7*Math.tan(${deg(45)})`, expected: 7, tol: 1e-9 } },
+      { id: 'g-3', skillId: SPEC, level: 2, prompt: 'มุม 60° ด้านชิดยาว 6 หาด้านฉาก', hint: 'รู้ชิด อยากได้ฉาก ใช้ cos', answer: '12', explanation: 'cos 60° = 6/ฉาก = 1/2 จึงฉาก = 12', verify: { kind: 'value', expr: `6/Math.cos(${deg(60)})`, expected: 12, tol: 1e-9 } },
+    ],
+    independent: [
+      { id: 'i-1', skillId: SPEC, level: 1, prompt: 'sin 30° มีค่าเท่าไร', answer: '1/2', explanation: 'จากสามเหลี่ยม 30-60-90 ด้าน 1 : √3 : 2 ข้ามมุม 30° คือ 1 ฉากคือ 2', verify: { kind: 'value', expr: `Math.sin(${deg(30)})`, expected: 0.5, tol: 1e-9 } },
+      { id: 'i-2', skillId: TRIG, level: 1, prompt: 'ข้าม 8 ชิด 15 ฉาก 17 หา tan θ', answer: '8/15', explanation: 'tan = ข้าม/ชิด (ไม่ใช้ฉาก)', verify: { kind: 'value', expr: '8**2+15**2-17**2', expected: 0 } },
+      { id: 'i-3', skillId: SPEC, level: 2, prompt: 'ฉากยาว 20 มุม 60° หาด้านตรงข้ามมุม 60°', answer: '10√3 ≈ 17.32', explanation: 'ข้าม = 20 sin 60° = 20 × √3/2 = 10√3', verify: { kind: 'value', expr: `20*Math.sin(${deg(60)})`, expected: 17.3205, tol: 1e-3 } },
+      { id: 'i-4', skillId: SPEC, level: 2, prompt: 'บันไดยาว 4 m พิงผนัง ทำมุม 60° กับพื้น ปลายบันไดสูงจากพื้นเท่าไร', answer: '2√3 ≈ 3.46 m', explanation: 'ความสูงเป็นด้านข้ามมุม 60° และบันไดคือฉาก: 4 sin 60° = 2√3', verify: { kind: 'value', expr: `4*Math.sin(${deg(60)})`, expected: 3.4641, tol: 1e-3, unit: 'm' } },
+      { id: 'i-5', skillId: SPEC, level: 3, prompt: 'ข้ามยาว 9 ชิดยาว 9√3 มุม θ เป็นกี่องศา', answer: '30°', explanation: 'tan θ = 9/(9√3) = 1/√3 ซึ่งเป็นค่าของ tan 30°', verify: { kind: 'value', expr: `9/(9*Math.sqrt(3)) - Math.tan(${deg(30)})`, expected: 0, tol: 1e-9 } },
+      { id: 'i-6', skillId: SPEC, level: 3, prompt: 'มุม 45° ด้านชิดยาว 5 หาด้านฉาก', answer: '5√2 ≈ 7.07', explanation: 'cos 45° = 5/ฉาก = √2/2 จึงฉาก = 10/√2 = 5√2', verify: { kind: 'value', expr: `5/Math.cos(${deg(45)})`, expected: 7.0711, tol: 1e-3 } },
+    ],
+    checks: [
+      { id: 'k-1', skillId: SPEC, prompt: 'sin 60° มีค่าเท่าใด', choices: ['1/2', '√2/2', '√3/2', '√3'], correctIndex: 2, explanation: 'สามเหลี่ยม 30-60-90: ข้ามมุม 60° คือ √3 ฉากคือ 2', verify: { kind: 'value', expr: `Math.sin(${deg(60)}) - Math.sqrt(3)/2`, expected: 0, tol: 1e-9 } },
+      { id: 'k-2', skillId: TRIG, prompt: 'สามเหลี่ยมด้าน 6, 8, 10 มุม θ อยู่ตรงข้ามด้านยาว 6 sin θ เท่ากับเท่าใด', choices: ['3/4', '3/5', '4/5', '5/3'], correctIndex: 1, explanation: 'sin = ข้าม/ฉาก = 6/10 = 3/5', verify: { kind: 'value', expr: '6/10', expected: 0.6 } },
+      { id: 'k-3', skillId: SPEC, prompt: 'tan 45° มีค่าเท่าใด', choices: ['0', '1', '√2', '1/2'], correctIndex: 1, explanation: 'สามเหลี่ยม 45-45-90 ข้ามยาวเท่าชิด จึงได้ 1', verify: { kind: 'value', expr: `Math.tan(${deg(45)})`, expected: 1, tol: 1e-9 } },
+      { id: 'k-4', skillId: SPEC, prompt: 'ฉากยาว 12 มุม 30° ด้านตรงข้ามมุม 30° ยาวเท่าใด', choices: ['6', '6√3', '12√3', '24'], correctIndex: 0, explanation: '12 × sin 30° = 12 × 1/2 = 6', verify: { kind: 'value', expr: `12*Math.sin(${deg(30)})`, expected: 6, tol: 1e-9 } },
+    ],
+    mistakes: [
+      { mistake: 'ติดป้ายข้าม/ชิดจากมุมผิด', why: 'มองจากมุมฉากหรืออีกมุมหนึ่ง', fix: 'วางนิ้วที่มุม θ ก่อนทุกครั้ง ด้านที่นิ้วแตะ (ที่ไม่ใช่ฉาก) คือชิด ด้านที่อยู่ไกลคือข้าม' },
+      { mistake: 'ใช้ฉากในการคำนวณ tan', why: 'จำว่าทุกอัตราส่วนต้องมีฉาก', fix: 'tan ใช้เพียงข้ามกับชิด — ท่อง sin = ข้าม/ฉาก, cos = ชิด/ฉาก, tan = ข้าม/ชิด' },
+      { mistake: 'สลับค่า sin 30° กับ sin 60°', why: 'ท่องตัวเลขโดยไม่มีภาพประกอบ', fix: 'นึกภาพ 30-60-90 (1 : √3 : 2): ด้านสั้นสุดอยู่ตรงข้ามมุมเล็กสุด 30° จึง sin 30° = 1/2' },
+    ],
+    summary: ['ติดป้ายข้าม ชิด ฉาก จากมุมที่สนใจก่อน', 'sin = ข้าม/ฉาก, cos = ชิด/ฉาก, tan = ข้าม/ชิด', 'มุมพิเศษมาจากสามเหลี่ยม 1 : 1 : √2 และ 1 : √3 : 2'],
+    afterLesson: ['หา sin cos tan จากด้านของสามเหลี่ยมได้', 'จำและอธิบายค่ามุม 30° 45° 60° ได้', 'หาความยาวด้านที่ไม่รู้ได้'],
+    next: ['phy-vec-vectors'],
+    provenance: [
+      { sourceId: 'ipst-math-indicators-2560', usedFor: 'ขอบเขตอัตราส่วนตรีโกณมิติ', crossChecked: false },
+      { sourceId: 'openstax-at2e-7-2', usedFor: 'นิยาม sin cos tan และค่ามุมพิเศษ (ตรวจด้วยการคำนวณ)', crossChecked: true },
+    ],
+    audit: {
+      sourcesFound: ['ipst-math-indicators-2560', 'openstax-at2e-7-2', 'OpenStax Precalculus 2e 5.4', 'algebralab'],
+      sourcesSelected: ['ipst-math-indicators-2560', 'openstax-at2e-7-2'],
+      sourcesRejected: [{ source: 'algebralab', reason: 'ไม่ใช่ผู้จัดพิมพ์ด้านการศึกษาหลัก ใช้ OpenStax แทน' }],
+      knowledgeCovered: ['ข้าม ชิด ฉาก', 'sin cos tan', 'มุมพิเศษ', 'พีทาโกรัส', 'การหาด้าน'],
+      knowledgeMissing: ['ยังไม่มีรูปสามเหลี่ยมประกอบ (อธิบายด้วยข้อความ)'],
+      externalResourcesVerified: 0,
+      limitations: ['ยังไม่มีคลิปภายนอกที่ผ่านการตรวจลิงก์ครบ', 'ยังไม่มีรูปประกอบ'],
+      readiness: 'READY_WITH_LIMITATIONS',
+    },
+  },
+];

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { KIcon } from '../v2u/kit';
+import { CodeBlock } from './SubjectBlocks';
 import type { InteractiveLesson, PlayerState, UnderstandingSummary } from '../../interactive/types';
 import { checkChoice, summarize } from '../../interactive/engine';
 import type { PlayerAction } from '../../interactive/engine';
@@ -40,6 +41,7 @@ export function UnderstandingCheck({ lesson, state, dispatch, onSubmit, onBack }
               <span className="text-xs font-semibold" style={{ color: 'var(--ink-3)' }}>ข้อ {n + 1}</span>
             </div>
             <p className="font-display font-semibold leading-snug break-words" style={{ fontSize: 'clamp(18px,1vw + 14px,22px)', color: 'var(--ink)' }}>{f.prompt}</p>
+            {f.code && <CodeBlock code={f.code} />}
             <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))]">
               {f.choices.map((c, k) => {
                 const chosen = picked === k;

@@ -11,7 +11,7 @@ export function ThemeBanner({ lesson, state }: { lesson: InteractiveLesson; stat
     return (
       <div className="rounded-[22px] border border-[var(--err-soft)] bg-rose-50 p-4" data-testid="theme-battle">
         <div className="flex items-center gap-3">
-          <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${p.enemyHp === 0 ? 'bg-[var(--ok-soft)]0 text-white' : 'bg-rose-600 text-white'}`}>
+          <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${p.enemyHp === 0 ? 'bg-[var(--ok)] text-white' : 'bg-rose-600 text-white'}`}>
             <Bug className="h-6 w-6" />
           </span>
           <div className="min-w-0 flex-1">
@@ -31,7 +31,7 @@ export function ThemeBanner({ lesson, state }: { lesson: InteractiveLesson; stat
   if (t.kind === 'mission') {
     return (
       <div className={`flex items-center gap-3 rounded-[22px] border p-4 ${p.unlocked ? 'border-[var(--ok-soft)] bg-[var(--ok-soft)]' : 'border-[var(--rev-soft)] bg-[var(--rev-soft)]'}`} data-testid="theme-mission">
-        <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${p.unlocked ? 'bg-[var(--ok-soft)]0 text-white' : 'bg-[var(--rev-soft)]0 text-white'}`}>
+        <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${p.unlocked ? 'bg-[var(--ok)] text-white' : 'bg-[var(--rev)] text-white'}`}>
           {p.unlocked ? <LockOpen className="h-6 w-6" /> : <Lock className="h-6 w-6" />}
         </span>
         <div className="min-w-0">

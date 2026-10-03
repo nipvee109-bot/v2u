@@ -78,7 +78,7 @@ export function ChoiceQuestion({ interaction: i, result, onAnswer, successTitle 
             >
               <span
                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                  isRight ? 'bg-[var(--ok-soft)]0 text-white' : 'bg-[var(--surface-3)] text-[var(--ink-2)]'
+                  isRight ? 'bg-[var(--ok)] text-white' : 'bg-[var(--surface-3)] text-[var(--ink-2)]'
                 }`}
               >
                 {isRight ? <Check className="h-4 w-4" /> : String.fromCharCode(65 + k)}
@@ -375,7 +375,7 @@ export function LabQuestion({ interaction: i, result, onAnswer, successTitle }: 
           <span className="block text-xs text-[var(--ink-3)]">{i.output.unit}</span>
           {/* visual: bar grows with the result */}
           <span className="mt-2 block h-2 w-28 overflow-hidden rounded-full bg-[var(--surface-3)]" aria-hidden="true">
-            <span className="block h-full rounded-full bg-[var(--brand-soft)]0 transition-[width]" style={{ width: `${Math.min(100, out * 2.5)}%` }} />
+            <span className="block h-full rounded-full bg-[var(--brand)] transition-[width]" style={{ width: `${Math.min(100, out * 2.5)}%` }} />
           </span>
         </output>
       </div>

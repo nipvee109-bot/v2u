@@ -7,6 +7,8 @@ import { ProgressBar } from '../ui';
 import { READING_SECTIONS as SECTIONS } from './meta';
 import { EquationCard } from './InteractivePlayer';
 import { CodeExplained, ErrorExample, FormulaCardView, PracticeItem } from './SubjectBlocks';
+import { getLessonKnowledge } from '../../content/knowledge';
+import { KnowledgeBoundary, KnowledgeDetailed, KnowledgeExamples, KnowledgeMistakes, KnowledgePracticeList, KnowledgeRules, KnowledgeSources, KnowledgeSummary } from './KnowledgeBlocks';
 
 /** "x = 5" → typed check; anything else → reveal. Only for answers V2U can check honestly. */
 function TryItem({ prompt, answer }: { prompt: string; answer: string }) {
@@ -91,6 +93,8 @@ export function ReadingExperience({
   prerequisites?: string[];
 }) {
   const isCode = subjectId === 'programming';
+  // Phase 62: researched knowledge for this lesson (same data the understanding check uses)
+  const k = getLessonKnowledge(content.lessonId);
   const [seen, mark] = useReadingProgress(content.lessonId);
   const refs = useRef<Record<string, HTMLElement | null>>({});
   const pct = Math.round((seen.filter((s) => SECTIONS.some((x) => x.id === s)).length / SECTIONS.length) * 100);
@@ -131,7 +135,7 @@ export function ReadingExperience({
             <ul className="mt-1.5 space-y-1 text-sm text-[var(--ink-2)]">
               {outcomes.map((o) => (
                 <li key={o} className="flex gap-2 break-words">
-                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand-soft)]0" />
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand)]" />
                   {o}
                 </li>
               ))}
@@ -179,6 +183,7 @@ export function ReadingExperience({
             {content.prereqNote && <p className="mt-1 text-sm text-[var(--ink-2)] break-words">{content.prereqNote}</p>}
           </div>
         )}
+        {k && <KnowledgeBoundary k={k} />}
       </section>
 
       <section {...sec('principle')} className={card}>
@@ -197,6 +202,7 @@ export function ReadingExperience({
             <EquationCard lines={[content.examples[0].problem, ...content.examples[0].steps]} caption="ตัวอย่างหลักคิด" />
           </div>
         )}
+        {k && <KnowledgeRules k={k} />}
       </section>
 
       <section {...sec('simple')} className={card}>
@@ -207,6 +213,7 @@ export function ReadingExperience({
             <b className="font-semibold text-ink">ทำไมต้องรู้:</b> {content.why}
           </p>
         )}
+        {k && <KnowledgeDetailed k={k} />}
       </section>
 
       <section {...sec('example')} className="scroll-mt-28 space-y-3">
@@ -233,6 +240,7 @@ export function ReadingExperience({
             </ol>
           </details>
         ))}
+        {k && <KnowledgeExamples k={k} />}
       </section>
 
       <section {...sec('steps')} className={card}>
@@ -257,6 +265,7 @@ export function ReadingExperience({
             <li key={m} className="break-words">✕ {m}</li>
           ))}
         </ul>
+        {k && <KnowledgeMistakes k={k} />}
       </section>
 
       <section {...sec('try')} className={card}>
@@ -279,6 +288,7 @@ export function ReadingExperience({
             </ul>
           </div>
         )}
+        {k && <KnowledgePracticeList k={k} code={isCode} />}
       </section>
 
       <section {...sec('check')} className={card}>
@@ -300,6 +310,7 @@ export function ReadingExperience({
           <p className="text-xs font-semibold text-[var(--ink-3)]">สรุป</p>
           <p className="mt-1 text-[15px] text-ink break-words">{content.summary}</p>
         </div>
+        {k && <KnowledgeSummary k={k} />}
         <div className="mt-4 rounded-2xl bg-[var(--brand-soft)] p-4 text-center">
           <p className="text-sm text-[var(--brand-ink)]">อ่านจบแล้ว — การอ่านอย่างเดียวยังไม่ได้แปลว่าเข้าใจ</p>
           <button type="button" onClick={onDone} className="mt-3 inline-flex min-h-[52px] items-center gap-2 rounded-2xl bg-[var(--brand)] px-6 text-sm font-bold text-white hover:bg-[var(--brand-hi)]">
@@ -307,6 +318,7 @@ export function ReadingExperience({
           </button>
         </div>
         <p className="mt-3 text-xs text-[var(--ink-3)]">ต่อไป: {content.next}</p>
+        {k && <KnowledgeSources k={k} />}
       </section>
     </article>
   );

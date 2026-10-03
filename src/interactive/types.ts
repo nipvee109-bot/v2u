@@ -104,6 +104,8 @@ export interface FinalCheckItem {
   correctIndex: number;
   explanation: string;
   skillId: string;
+  /** Code shown with the question (programming) */
+  code?: string;
 }
 
 export interface InteractiveLesson {
