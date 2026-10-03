@@ -11,6 +11,31 @@ import type { KnowledgeSource } from './types';
 const D = '2026-10-03';
 
 export const SOURCES: KnowledgeSource[] = [
+  // ── Opened and read in this environment (Phase 63 verification pass) ──
+  {
+    id: 'python-311-reference-bundled',
+    title: 'The Python Language Reference & Library Reference — topic texts bundled with CPython 3.11.15 (pydoc_data.topics)',
+    publisher: 'Python Software Foundation',
+    type: 'documentation',
+    language: 'en',
+    locator: 'python3 -m pydoc <topic> · หัวข้อ binary, operator-summary, if, while, for, break, function, return, booleans, comparisons, assignment, augassign, formatstrings, typesseq, typesseq-mutable, typesmapping, truth',
+    authoritative: true,
+    checkedAt: '2026-10-03',
+    verification: 'opened-local',
+    notes: 'ข้อความทางการชุดเดียวกับ docs.python.org ที่ติดมากับ Python ทุกข้อความที่อ้างถูกตรวจซ้ำอัตโนมัติใน scripts/test-phase-63.js',
+  },
+  {
+    id: 'python-311-docstrings',
+    title: 'Built-in function docstrings — CPython 3.11.15 (input, print, int, range, len, str, float)',
+    publisher: 'Python Software Foundation',
+    type: 'documentation',
+    language: 'en',
+    locator: 'python3 -c "help(input)" และฟังก์ชันอื่นในทำนองเดียวกัน',
+    authoritative: true,
+    checkedAt: '2026-10-03',
+    verification: 'opened-local',
+    notes: 'คำอธิบายทางการของฟังก์ชันในตัว ตรวจซ้ำอัตโนมัติในชุดทดสอบ',
+  },
   // ── Thai curriculum (scope / boundaries) ──────────────────────────────
   {
     id: 'ipst-math-indicators-2560',
@@ -102,6 +127,19 @@ export const SOURCES: KnowledgeSource[] = [
     checkedAt: D,
     verification: 'search-indexed',
     notes: 'a⁰ = 1 (a ≠ 0), a⁻ⁿ = 1/aⁿ, สมบัติผลหาร; เลขชี้กำลังเศษส่วนตรวจด้วยการคำนวณในชุดทดสอบ',
+  },
+  {
+    id: 'openstax-ia-8-3',
+    title: 'Intermediate Algebra — 8.3 Simplify Rational Exponents',
+    publisher: 'OpenStax (Rice University)',
+    type: 'textbook',
+    language: 'en',
+    foundUrl: 'https://openstax.org/books/intermediate-algebra/pages/8-3-simplify-rational-exponents',
+    locator: 'Intermediate Algebra บทที่ 8 หัวข้อ 8.3',
+    authoritative: true,
+    checkedAt: '2026-10-03',
+    verification: 'search-indexed',
+    notes: 'ผลค้นหา (รอบตรวจสอบ Phase 63): ตัวส่วนของเลขชี้กำลังคือดัชนีของราก และควรถอดรากก่อนยกกำลัง — ตรงกับเนื้อหาบทเรียน แต่ยังไม่ได้เปิดหน้า',
   },
   {
     id: 'openstax-slope-intercept',

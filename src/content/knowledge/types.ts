@@ -92,6 +92,67 @@ export interface KnowledgeDebug {
 
 export type ReadinessStatus = 'READY' | 'READY_WITH_LIMITATIONS' | 'NOT_READY';
 
+/* ── Diagrams (Phase 63): drawn from data, checked against the lesson's numbers ── */
+export type Diagram =
+  | {
+      kind: 'graph';
+      id: string;
+      title: string;
+      xLabel: string;
+      yLabel: string;
+      xRange: [number, number];
+      yRange: [number, number];
+      /** Straight lines y = m·x + c (optionally only between x0 and x1) */
+      lines: { m: number; c: number; label: string; x0?: number; x1?: number; /** x where the label is printed */ labelAt?: number }[];
+      points?: { x: number; y: number; label: string }[];
+      /** Shade the area under the first line between x0 and x1 (v–t graphs) */
+      shadeUnder?: { x0: number; x1: number; label: string };
+      caption: string;
+    }
+  | {
+      kind: 'triangle';
+      id: string;
+      title: string;
+      /** The marked angle θ (degrees), at the bottom-left corner */
+      angleDeg: number;
+      opp: number;
+      adj: number;
+      hyp: number;
+      /** Text printed on each side (may be a symbol or a value) */
+      labels: { opp: string; adj: string; hyp: string };
+      caption: string;
+    }
+  | {
+      kind: 'vectors';
+      id: string;
+      title: string;
+      unit: string;
+      vectors: { x: number; y: number; label: string }[];
+      /** Draw the resultant of all vectors */
+      resultant?: string;
+      /** Draw x/y components of the first vector */
+      components?: boolean;
+      caption: string;
+    }
+  | {
+      kind: 'forces';
+      id: string;
+      title: string;
+      body: string;
+      forces: { dir: 'up' | 'down' | 'left' | 'right'; label: string; newtons: number }[];
+      /** Net force expected from the forces (checked) */
+      net: { x: number; y: number };
+      caption: string;
+    };
+
+/** A sentence of an official document that supports a claim (checked by the test suite). */
+export interface Evidence {
+  /** 'topic:<name>' (Python Language/Library Reference bundled with CPython) or 'doc:<builtin>' (docstring) */
+  ref: string;
+  quote: string;
+  claim: string;
+}
+
 export interface LessonResearchAudit {
   sourcesFound: string[];
   sourcesSelected: string[];
@@ -100,6 +161,10 @@ export interface LessonResearchAudit {
   knowledgeMissing: string[];
   externalResourcesVerified: number;
   limitations: string[];
+  /** Missing extras that do not block learning (e.g. no external video) */
+  nonBlocking?: string[];
+  /** How claims were checked in the verification pass */
+  verification?: string[];
   readiness: ReadinessStatus;
 }
 
@@ -129,11 +194,15 @@ export interface LessonKnowledge {
   /** Curriculum lesson ids that build on this one */
   next: string[];
   /** Source ids from SOURCES, with the claims each one backs */
-  provenance: { sourceId: string; usedFor: string; crossChecked: boolean }[];
+  provenance: { sourceId: string; usedFor: string; crossChecked: boolean; evidence?: Evidence[] }[];
+  /** Phase 63: diagrams for graphs, triangles, vectors and forces */
+  diagrams?: Diagram[];
   audit: LessonResearchAudit;
 }
 
 export type SourceVerification =
+  /** Official document text actually opened and read in this environment (bundled with the installed software) */
+  | 'opened-local'
   /** URL returned by a web search on the check date; the page itself was not opened */
   | 'search-indexed'
   /** No URL kept — locate by title/locator only */

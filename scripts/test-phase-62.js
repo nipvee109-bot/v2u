@@ -192,7 +192,7 @@ await test('No URLs inside lesson content; source URLs only in the source regist
     if (s.foundUrl) {
       assert(/^https:\/\/(www\.)?(openstax\.org|docs\.python\.org|bipm\.org|www\.bipm\.org|nist\.gov|www\.nist\.gov|ipst\.ac\.th|www\.ipst\.ac\.th|scimath\.org|www\.scimath\.org)\//.test(s.foundUrl), `${s.id}: unexpected domain ${s.foundUrl}`);
       assert.strictEqual(s.verification, 'search-indexed', `${s.id}: a URL that was never fetched cannot claim more than search-indexed`);
-    } else assert.strictEqual(s.verification, 'locator-only');
+    } else assert(['locator-only', 'opened-local'].includes(s.verification), s.id); // Phase 63: documents opened locally have no URL
     assert(s.locator.length > 5 && s.checkedAt === '2026-10-03', s.id);
   }
   const ui = ['src/components/learning/ReadingExperience.tsx', 'src/components/learning/KnowledgeBlocks.tsx'].filter((f) => fs.existsSync(path.join(root, f))).map(read).join('\n');

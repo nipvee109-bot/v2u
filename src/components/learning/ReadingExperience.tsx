@@ -8,7 +8,7 @@ import { READING_SECTIONS as SECTIONS } from './meta';
 import { EquationCard } from './InteractivePlayer';
 import { CodeExplained, ErrorExample, FormulaCardView, PracticeItem } from './SubjectBlocks';
 import { getLessonKnowledge } from '../../content/knowledge';
-import { KnowledgeBoundary, KnowledgeDetailed, KnowledgeExamples, KnowledgeMistakes, KnowledgePracticeList, KnowledgeRules, KnowledgeSources, KnowledgeSummary } from './KnowledgeBlocks';
+import { KnowledgeBoundary, KnowledgeDetailed, KnowledgeDiagrams, KnowledgeExamples, KnowledgeMistakes, KnowledgePracticeList, KnowledgeRules, KnowledgeSources, KnowledgeSummary } from './KnowledgeBlocks';
 
 /** "x = 5" → typed check; anything else → reveal. Only for answers V2U can check honestly. */
 function TryItem({ prompt, answer }: { prompt: string; answer: string }) {
@@ -203,6 +203,7 @@ export function ReadingExperience({
           </div>
         )}
         {k && <KnowledgeRules k={k} />}
+        {k && <KnowledgeDiagrams k={k} />}
       </section>
 
       <section {...sec('simple')} className={card}>

@@ -5,6 +5,7 @@ import type { KnowledgeDebug, KnowledgeExample, KnowledgePractice, LessonKnowled
 import { getSource } from '../../content/knowledge';
 import { KIcon } from '../v2u/kit';
 import { CodeBlock } from './SubjectBlocks';
+import { DiagramView } from './Diagrams';
 
 const box = 'rounded-2xl p-4';
 
@@ -231,7 +232,7 @@ export function KnowledgeSummary({ k }: { k: LessonKnowledge }) {
   );
 }
 
-const VERIFY_LABEL = { 'search-indexed': 'พบจากการค้นหา ยังไม่ได้เปิดตรวจหน้า', 'locator-only': 'ระบุตำแหน่งในเอกสาร' } as const;
+const VERIFY_LABEL = { 'opened-local': 'เปิดอ่านเอกสารทางการแล้ว', 'search-indexed': 'พบจากการค้นหา ยังไม่ได้เปิดตรวจหน้า', 'locator-only': 'ระบุตำแหน่งในเอกสาร' } as const;
 
 /** Where the content comes from — names and locations only (no unchecked links). */
 export function KnowledgeSources({ k }: { k: LessonKnowledge }) {
@@ -256,5 +257,15 @@ export function KnowledgeSources({ k }: { k: LessonKnowledge }) {
       </ul>
       <p className="mt-2 text-[11px] text-[var(--ink-3)]">คำตอบตัวเลขทุกข้อตรวจด้วยการคำนวณ และโค้ดทุกตัวอย่างตรวจด้วยการรันจริง</p>
     </details>
+  );
+}
+
+/** Diagrams for graphs, triangles, vectors and forces — drawn from the lesson's own numbers. */
+export function KnowledgeDiagrams({ k }: { k: LessonKnowledge }) {
+  if (!k.diagrams?.length) return null;
+  return (
+    <div className="mt-4 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))]" data-testid="knowledge-diagrams">
+      {k.diagrams.map((d) => <DiagramView key={d.id} d={d} />)}
+    </div>
   );
 }
