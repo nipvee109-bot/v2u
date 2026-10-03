@@ -21,6 +21,8 @@ import { VideoLearning } from '../video/VideoLearning';
 import { PersonalSummaryCard } from '../video/PersonalSummaryCard';
 import { suggestAlternativeModes } from '../../interactive/adapt';
 import { InteractivePlayer } from './InteractivePlayer';
+import { TeachingStudio } from './studio/TeachingStudio';
+import { getStudioScript } from '../../interactive/studio/scripts';
 import { LessonCompletion, UnderstandingCheck } from './UnderstandingCheck';
 import { ReadingExperience } from './ReadingExperience';
 
@@ -325,7 +327,12 @@ export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownReso
   } else if (mode === 'read') {
     body = <ReadingExperience content={original} outcomes={lesson.learningOutcomes} subjectId={lesson.subjectId} prerequisites={lesson.prerequisites.map((p) => CURRICULUM.lessons.find((x) => x.id === p)?.title ?? p)} onDone={() => setStage('check')} />;
   } else if (mode === 'v2u') {
-    body = <InteractivePlayer lesson={interactive} state={state} dispatch={dispatch} onToCheck={() => setStage('check')} />;
+    const script = getStudioScript(curriculumLessonId);
+    body = script ? (
+      <TeachingStudio script={script} lesson={interactive} state={state} dispatch={dispatch} onToCheck={() => setStage('check')} onModeChange={onModeChange} />
+    ) : (
+      <InteractivePlayer lesson={interactive} state={state} dispatch={dispatch} onToCheck={() => setStage('check')} />
+    );
   } else {
     // ดูคลิป: V2U's video workflow — choose → watch + notes → reflect → check
     body = (
