@@ -118,7 +118,7 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
     : null;
 
   return (
-    <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md">
+    <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-ink/[0.08] bg-white shadow-card shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md">
       {/* Thumbnail or Fallback Header */}
       <div className="relative aspect-video w-full overflow-hidden bg-slate-100">
         {resource.thumbnail && !imageError ? (

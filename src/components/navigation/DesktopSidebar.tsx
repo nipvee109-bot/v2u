@@ -83,7 +83,7 @@ export function DesktopSidebar() {
       <div className="mt-auto p-4">
         <Link
           to="/"
-          className="block rounded-2xl bg-gradient-to-br from-brand-700 to-brand-900 p-4 text-white transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200"
+          className="block rounded-2xl v2u-hero bg-gradient-to-br from-navy via-navy-2 to-brand-700 p-4 text-white transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200"
         >
           <p className="text-[11px] font-semibold text-brand-100">ก้าวต่อไป</p>
           <p className="mt-0.5 line-clamp-2 text-sm font-bold">{step.todayAction}</p>

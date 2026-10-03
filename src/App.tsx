@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { PageErrorBoundary, PageSkeleton } from './components/ui/states';
 import { Layout } from './components/Layout';
 import { HomePage } from './pages/HomePage';
 import { LegacyLessonRoute } from './pages/legacy/LegacyLessonRoute';
@@ -31,19 +32,13 @@ const ProgressPage = lazy(() => import('./pages/ProgressPage').then((m) => ({ de
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
 
 function PageLoadingFallback() {
-  return (
-    <div className="flex h-[60vh] w-full items-center justify-center" aria-live="polite" aria-busy="true">
-      <div className="flex flex-col items-center gap-3">
-        <div className="h-9 w-9 animate-spin rounded-full border-3 border-blue-600 border-t-transparent" />
-        <span className="text-xs font-semibold text-slate-500">กำลังโหลดข้อมูล...</span>
-      </div>
-    </div>
-  );
+  return <PageSkeleton />;
 }
 
 function App() {
   return (
     <Layout>
+      <PageErrorBoundary>
       <Suspense fallback={<PageLoadingFallback />}>
         <Routes>
           {/* V2U primary navigation (5 sections) */}
@@ -87,6 +82,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
+      </PageErrorBoundary>
     </Layout>
   );
 }

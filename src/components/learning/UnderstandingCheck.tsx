@@ -20,7 +20,7 @@ export function UnderstandingCheck({ lesson, state, dispatch, onSubmit, onBack }
   const allAnswered = lesson.finalCheck.every((f) => state.finalAnswers[f.id] !== undefined);
   return (
     <section aria-labelledby="final-check" className="space-y-4" data-testid="final-check">
-      <div className="rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-7">
+      <div className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-5 sm:p-7">
         <p className="flex items-center gap-1.5 text-xs font-semibold text-brand-700">
           <ClipboardCheck className="h-4 w-4" /> ก่อนไปต่อ
         </p>
@@ -35,7 +35,7 @@ export function UnderstandingCheck({ lesson, state, dispatch, onSubmit, onBack }
       {lesson.finalCheck.map((f, n) => {
         const picked = state.finalAnswers[f.id];
         return (
-          <fieldset key={f.id} className="rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6">
+          <fieldset key={f.id} className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-5 sm:p-6">
             <legend className="sr-only">ข้อ {n + 1}</legend>
             <p className="text-xs font-semibold text-slate-500">ข้อ {n + 1}</p>
             <p className="mt-0.5 text-base font-semibold text-ink break-words">{f.prompt}</p>
@@ -136,19 +136,19 @@ export function LessonCompletion({ lesson, state, onReviewWeak, onNext, nextLabe
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4">
+        <div className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4">
           <p className="text-sm font-bold text-emerald-700">✓ สิ่งที่เข้าใจ</p>
           <ul className="mt-2 space-y-1 text-sm text-slate-700">
             {s.understood.length ? s.understood.map((x) => <li key={x} className="break-words">{x}</li>) : <li className="text-slate-500">ยังไม่มี — ลองทบทวนแล้วเช็กใหม่</li>}
           </ul>
         </div>
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4">
+        <div className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4">
           <p className="text-sm font-bold text-emerald-700">✓ สิ่งที่ทำได้</p>
           <ul className="mt-2 space-y-1 text-sm text-slate-700">
             {s.canDo.length ? s.canDo.map((x) => <li key={x} className="break-words">{x}</li>) : <li className="text-slate-500">จะนับเมื่อเช็กถูกครบทุกข้อ</li>}
           </ul>
         </div>
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4">
+        <div className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4">
           <p className="text-sm font-bold text-amber-700">△ ควรทบทวน</p>
           <ul className="mt-2 space-y-1 text-sm text-slate-700">
             {s.review.length ? s.review.map((x) => <li key={x} className="break-words">{x}</li>) : <li className="text-slate-500">ไม่มี</li>}
@@ -157,7 +157,7 @@ export function LessonCompletion({ lesson, state, onReviewWeak, onNext, nextLabe
       </div>
 
       {recap && (
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 text-sm" data-testid="session-recap">
+        <div className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 text-sm" data-testid="session-recap">
           <p className="font-bold text-ink">วันนี้คุณเรียน:</p>
           <ul className="mt-1.5 space-y-0.5 text-slate-700">
             {recap.done.map((d) => (

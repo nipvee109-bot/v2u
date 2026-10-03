@@ -1,3 +1,4 @@
+import { JourneyStrip } from '../../components/pathway/JourneyStrip';
 import { usePathway } from '../../hooks/usePathway';
 import { PathwayOverview } from '../../components/pathway/PathwayBits';
 import { Map, Target, CalendarDays, CheckCircle2, CircleDot, Circle, Lock, ArrowRight, Clock, Lightbulb, Trophy } from 'lucide-react';
@@ -56,7 +57,7 @@ export function RouteHub() {
       <HubHeader title="เส้นทาง" subtitle="จากจุดที่คุณอยู่ → สู่มหาวิทยาลัยที่คุณต้องการ" />
 
 {/* Journey summary */}
-      <section aria-label="สรุปเส้นทาง" className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
+      <section aria-label="สรุปเส้นทาง" className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 sm:p-5">
         <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-3">
           <div className="min-w-0">
             <p className="text-xs font-medium text-slate-500">เริ่มจาก</p>
@@ -71,6 +72,9 @@ export function RouteHub() {
         <div className="mt-3">
           <ProgressBar value={route.steps.length ? (route.completedCount / route.steps.length) * 100 : 0} label={`ผ่านแล้ว ${route.completedCount} จาก ${route.steps.length} ขั้น`} />
           <p className="mt-1.5 text-xs text-slate-500">ผ่านแล้ว {route.completedCount}/{route.steps.length} ขั้น · ตอนนี้: {currentStep ? currentStep.requirement.title : 'ครบทุกขั้นแล้ว'}</p>
+        </div>
+              <div className="mt-4 border-t border-ink/[0.06] pt-4">
+          <JourneyStrip route={route} />
         </div>
       </section>
 
@@ -164,7 +168,7 @@ export function RouteHub() {
       </section>
 
       {/* 6-month overview */}
-      <section aria-labelledby="route-months" className="order-6 lg:order-none rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
+      <section aria-labelledby="route-months" className="order-6 lg:order-none rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 sm:p-5">
         <h2 id="route-months" className="text-base font-bold text-ink">ภาพรวมเส้นทางของคุณ · {roadmap.horizon.months} เดือน (ประมาณ)</h2>
         <ol className="mt-2 space-y-1 text-xs lg:flex lg:gap-2 lg:space-y-0 lg:overflow-x-auto lg:pb-1">
           {roadmap.months.map((m) => (
@@ -178,7 +182,7 @@ export function RouteHub() {
       </section>
 
       {/* V2U arranges the route */}
-      <section aria-labelledby="route-period" className="order-4 lg:order-none rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
+      <section aria-labelledby="route-period" className="order-4 lg:order-none rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 sm:p-5">
         <h2 id="route-period" className="text-base font-bold text-ink">V2U จัดเส้นทางให้</h2>
         <p
           className={`mt-1 text-sm ${
@@ -232,7 +236,7 @@ export function RouteHub() {
       </section>
 
       {/* This week */}
-      <section aria-labelledby="route-week" className="order-5 lg:order-none rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
+      <section aria-labelledby="route-week" className="order-5 lg:order-none rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 sm:p-5">
         <h2 id="route-week" className="text-base font-bold text-ink">
           สัปดาห์นี้ · ประมาณ {roadmap.thisWeek.plannedMinutes} จาก {roadmap.thisWeek.budgetMinutes} นาที
         </h2>
@@ -252,7 +256,7 @@ export function RouteHub() {
         </div>
         <aside aria-label="วันนี้และการตั้งค่าเส้นทาง" className="contents lg:flex lg:flex-col lg:gap-6">
       {/* Today's step on the route */}
-      <section aria-labelledby="route-today" className="order-1 lg:order-none rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white shadow-lg shadow-brand-900/15 sm:p-6">
+      <section aria-labelledby="route-today" className="order-1 lg:order-none rounded-3xl v2u-hero bg-gradient-to-br from-navy via-navy-2 to-brand-700 p-5 text-white shadow-lg shadow-brand-900/15 sm:p-6">
         <LoopStrip current="today" onDark />
         <h2 id="route-today" className="mt-4 text-xs font-semibold text-brand-100">วันนี้ควรทำอะไร</h2>
         <div className="mt-1">
@@ -294,7 +298,7 @@ export function RouteHub() {
       </section>
 
       {/* What is missing (same list Home uses) */}
-      <section aria-labelledby="route-gaps" className="order-2 lg:order-none rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
+      <section aria-labelledby="route-gaps" className="order-2 lg:order-none rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 sm:p-5">
         <h2 id="route-gaps" className="text-base font-bold text-ink">ยังขาดอะไร</h2>
         {today.missing.length > 0 ? (
           <ul className="mt-2 divide-y divide-slate-100 text-sm text-slate-800">
@@ -311,7 +315,7 @@ export function RouteHub() {
       </section>
 
       {/* How much time */}
-      <section aria-labelledby="route-time" className="order-7 lg:order-none rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
+      <section aria-labelledby="route-time" className="order-7 lg:order-none rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 sm:p-5">
         <h2 id="route-time" className="sr-only">มีเวลาเท่าไร</h2>
         <HorizonPicker value={profile.planningHorizon} onChange={(h) => setStudentProfile({ planningHorizon: h })} />
         <p className="mt-1.5 text-xs text-slate-500">
@@ -325,7 +329,7 @@ export function RouteHub() {
       </section>
 
       {/* Starting point → target */}
-      <section aria-labelledby="route-start" className="order-8 lg:order-none rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
+      <section aria-labelledby="route-start" className="order-8 lg:order-none rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 sm:p-5">
         <h2 id="route-start" className="text-base font-bold text-ink">ฉันอยู่ตรงไหน</h2>
         <p className="text-xs text-slate-500">จุดเริ่มต้นของคุณ — เปลี่ยนได้ตลอด</p>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -365,7 +369,7 @@ export function RouteHub() {
       </section>
 
       {/* Where am I going */}
-      <section aria-labelledby="route-target" className="order-9 lg:order-none rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
+      <section aria-labelledby="route-target" className="order-9 lg:order-none rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 sm:p-5">
         <h2 id="route-target" className="text-base font-bold text-ink">กำลังไปไหน</h2>
         <p className="mt-1 text-sm text-slate-800">
           {route.target.faculty} · {route.target.title}

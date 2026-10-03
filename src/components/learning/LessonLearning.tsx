@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Clock } from 'lucide-react';
+import { ArrowRight, Clock } from 'lucide-react';
 import { MODE_META, READING_SECTION_IDS } from './meta';
 import { CURRICULUM } from '../../curriculum/data';
 import { CRITERION_LABEL, getLessonContentStatus } from '../../content/audit';
@@ -10,6 +10,8 @@ import { summarize } from '../../interactive/engine';
 import { useLearningStage, useLessonPlayer, useReadingProgress, useSelectedVideo, useVideoStage } from '../../interactive/usePlayer';
 import { useStore } from '../../store/useStore';
 import type { Resource } from '../../types';
+import { SUBJECTS } from '../../types';
+import { SubjectTag } from '../ui/subject';
 import { getLessonVideoSequence } from '../../video/engine';
 import { notesForLesson } from '../../notes/engine';
 import { VideoLearning } from '../video/VideoLearning';
@@ -88,11 +90,14 @@ export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownReso
     };
     return (
       <section aria-labelledby="pick-mode" data-testid="mode-picker">
-        <p className="text-sm font-semibold text-brand-700">🎯 {lesson.title}</p>
-        <h2 id="pick-mode" className="mt-0.5 text-xl font-bold text-ink sm:text-2xl">
+        <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-brand-700">
+          <SubjectTag subjectId={lesson.subjectId} label={SUBJECTS[lesson.subjectId]?.name ?? lesson.subjectId} />
+          <span className="break-words">🎯 {lesson.title}</span>
+        </p>
+        <h2 id="pick-mode" className="mt-1.5 font-display text-xl font-bold text-ink sm:text-2xl">
           คุณอยากเรียนเรื่องนี้แบบไหน?
         </h2>
-        <p className="mt-1 text-sm text-slate-600">ทุกแบบจบด้วยการเช็กความเข้าใจ แล้ว V2U จะบอกขั้นต่อไปให้ — ถ้าวิธีหนึ่งไม่เวิร์ก ลองอีกวิธีได้เสมอ</p>
+        <p className="mt-1 text-sm text-ink-3">ทุกแบบจบด้วยการเช็กความเข้าใจ แล้ว V2U จะบอกขั้นต่อไปให้ — ถ้าวิธีหนึ่งไม่เวิร์ก ลองอีกวิธีได้เสมอ</p>
         {contentStatus && contentStatus.status !== 'ready' ? (
           <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950" data-testid="content-status" data-status="needs-content">
             <b className="font-semibold">กำลังเตรียมเนื้อหา</b> — บทนี้ยังขาด: {contentStatus.missing.map((m) => CRITERION_LABEL[m]).join(', ')}
@@ -107,6 +112,8 @@ export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownReso
           {ORDER.map((m) => {
             const M = MODE_META[m];
             const Icon = M.icon;
+            // Resume = the learner already has progress in this method (real state, not a guess)
+            const resume = !!meta[m].progress;
             return (
               <button
                 key={m}
@@ -116,22 +123,28 @@ export function LessonLearning({ curriculumLessonId, mode, onModeChange, ownReso
                   if (stage !== 'learn') setStage('learn');
                   onModeChange(m);
                 }}
-                className="group flex min-h-[132px] md:min-h-[220px] flex-col rounded-3xl border-2 border-slate-200 bg-white p-5 text-left transition-all hover:-translate-y-0.5 hover:border-brand-400 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200"
+                data-resume={resume || undefined}
+                className={`group relative flex min-h-[132px] md:min-h-[230px] flex-col rounded-2xl border p-5 text-left transition-all hover:-translate-y-0.5 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200 ${
+                  resume ? 'v2u-hero border-transparent bg-gradient-to-br from-navy via-navy-2 to-brand-800 text-white' : 'border-ink/[0.08] bg-white shadow-card hover:border-brand-300 hover:shadow-lift'
+                }`}
               >
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-50 text-brand-700 group-hover:bg-brand-600 group-hover:text-white">
+                {resume && (
+                  <span className="absolute right-4 top-4 rounded-full bg-dest px-2.5 py-0.5 text-[11px] font-bold text-navy">ทำต่อจากเดิม</span>
+                )}
+                <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${resume ? 'bg-white/10 text-dest' : 'bg-brand-50 text-brand-700'}`}>
                   <Icon className="h-5 w-5" />
                 </span>
-                <span className="mt-3 text-lg font-bold text-ink">{M.title}</span>
-                <span className="mt-0.5 text-sm text-slate-600">{M.description}</span>
-                <span className="mt-3 line-clamp-2 text-xs text-slate-500 break-words">{meta[m].detail}</span>
-                <span className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-3 text-xs font-semibold text-slate-600">
-                  <span className="flex items-center gap-1">
+                <span className={`mt-3 font-display text-lg font-bold ${resume ? 'text-white' : 'text-ink'}`}>{M.title}</span>
+                <span className={`mt-0.5 text-sm ${resume ? 'text-white/80' : 'text-ink-3'}`}>{M.description}</span>
+                <span className={`mt-3 line-clamp-2 text-xs break-words ${resume ? 'text-white/70' : 'text-ink-3'}`}>{meta[m].detail}</span>
+                <span className="mt-auto flex flex-wrap items-center gap-1.5 pt-3 text-xs font-semibold">
+                  <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 ${resume ? 'border-white/15 bg-white/10 text-white' : 'border-ink/[0.08] bg-surface-2 text-ink-2'}`}>
                     <Clock className="h-3.5 w-3.5" /> {meta[m].time}
                   </span>
-                  {meta[m].progress && <span className="text-brand-700">{meta[m].progress}</span>}
+                  {meta[m].progress && <span className={`inline-flex rounded-full px-2.5 py-0.5 ${resume ? 'bg-white/10 text-white' : 'bg-brand-50 text-brand-700'}`}>{meta[m].progress}</span>}
                 </span>
-                <span className="mt-3 inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl bg-brand-50 px-4 text-sm font-bold text-brand-700 group-hover:bg-brand-600 group-hover:text-white">
-                  {M.cta}
+                <span className={`mt-3 inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl px-4 font-display text-sm font-bold ${resume ? 'bg-white text-navy' : 'bg-brand-600 text-white shadow-md shadow-brand-600/25 group-hover:bg-brand-700'}`}>
+                  {resume ? 'ทำต่อ' : M.cta} <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </span>
               </button>
             );

@@ -1,3 +1,4 @@
+import { SubjectMark } from '../ui/subject';
 import { ArrowRight, CheckCircle2, CalendarClock, RotateCcw } from 'lucide-react';
 import { SUBJECT_EMOJI, SUBJECT_LABEL } from '../../diagnostic/engine';
 import type { LoopOutcome } from '../../hooks/learningLoop';
@@ -19,7 +20,7 @@ export function LoopResult({ outcome, onNext }: { outcome: LoopOutcome; onNext: 
   const { next } = outcome;
   const changed = outcome.changes.filter((c) => c.before !== c.after);
   return (
-    <section aria-labelledby="loop-result" className="rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6" data-testid="loop-result" data-passed={outcome.passed}>
+    <section aria-labelledby="loop-result" className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-5 sm:p-6" data-testid="loop-result" data-passed={outcome.passed}>
       <h2 id="loop-result" className="flex items-center gap-2 text-lg font-bold text-ink">
         {outcome.passed ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <RotateCcw className="h-5 w-5 text-amber-600" />}
         อัปเดตความเข้าใจแล้ว
@@ -33,7 +34,7 @@ export function LoopResult({ outcome, onNext }: { outcome: LoopOutcome; onNext: 
       <ul className="mt-4 space-y-2" data-testid="skill-changes">
         {outcome.changes.map((c) => (
           <li key={c.skillId} className="rounded-2xl bg-slate-50 px-4 py-3" data-skill={c.skillId} data-before={c.before} data-after={c.after}>
-            <p className="text-xs text-slate-500">{SUBJECT_EMOJI[c.subjectId]} {SUBJECT_LABEL[c.subjectId]}</p>
+            <p className="flex items-center gap-1.5 text-xs text-ink-3"><SubjectMark subjectId={c.subjectId} size="sm" /> {SUBJECT_LABEL[c.subjectId]}</p>
             <p className="text-sm font-semibold text-ink break-words">{c.title}</p>
             <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-600">
               {c.before === c.after ? (
@@ -67,7 +68,7 @@ export function LoopResult({ outcome, onNext }: { outcome: LoopOutcome; onNext: 
         )}
       </dl>
 
-      <div className="mt-5 rounded-2xl bg-gradient-to-br from-brand-700 to-brand-900 p-4 text-white sm:p-5" data-testid="loop-next" data-subject={next.pathway?.subjectId ?? ''}>
+      <div className="mt-5 rounded-2xl v2u-hero bg-gradient-to-br from-navy via-navy-2 to-brand-700 p-4 text-white sm:p-5" data-testid="loop-next" data-subject={next.pathway?.subjectId ?? ''}>
         <p className="text-xs font-semibold text-brand-100">ก้าวต่อไปของคุณ (คำนวณใหม่แล้ว)</p>
         <p className="mt-1 text-lg font-bold break-words">
           {next.pathway ? `${SUBJECT_EMOJI[next.pathway.subjectId]} ${SUBJECT_LABEL[next.pathway.subjectId]} — ` : ''}

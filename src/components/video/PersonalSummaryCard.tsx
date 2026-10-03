@@ -19,7 +19,7 @@ export function PersonalSummaryCard({ lessonId, videoTitle, check }: Omit<Summar
   const count = notesForLesson(notes, lessonId).length;
 
   return (
-    <section aria-labelledby="my-summary" className="rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6" data-testid="personal-summary">
+    <section aria-labelledby="my-summary" className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-5 sm:p-6" data-testid="personal-summary">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 id="my-summary" className="text-base font-bold text-ink">🧠 สรุปของฉัน</h3>
         <span className="text-xs text-slate-500">จากโน้ต {count} รายการของคุณ{saved?.edited ? ' · แก้ไขแล้ว' : ''}</span>

@@ -1,5 +1,5 @@
 /* =========================================================================
-   V2U UI primitives (Phase 52)
+   V2U UI primitives (Phase 52; visual system from the V2U design reference)
    -------------------------------------------------------------------------
    One spacing rhythm (4/8 px grid; sections 24–32 px apart), one type scale:
      eyebrow 12/600 · title 24–28/700 · section 16/700 · body 14 · meta 12
@@ -42,9 +42,9 @@ export function ScreenHeader({
             ← {back.label}
           </Link>
         )}
-        {eyebrow && <p className="text-xs font-semibold text-brand-700">{eyebrow}</p>}
-        <h1 className="mt-0.5 text-2xl font-bold leading-tight text-ink sm:text-[28px] break-words">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-slate-600 break-words">{subtitle}</p>}
+        {eyebrow && <p className="text-xs font-semibold tracking-wide text-brand-700">{eyebrow}</p>}
+        <h1 className="mt-0.5 font-display text-2xl font-bold leading-tight text-ink sm:text-[30px] break-words">{title}</h1>
+        {subtitle && <p className="mt-1 text-sm text-ink-3 break-words">{subtitle}</p>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </header>
@@ -98,11 +98,11 @@ export function Surface({
   'aria-labelledby'?: string;
 }) {
   const t = {
-    plain: 'bg-white border border-slate-200/80',
-    muted: 'bg-slate-50 border border-slate-200/60',
+    plain: 'bg-white border border-ink/[0.08] shadow-card',
+    muted: 'bg-surface-2 border border-ink/[0.06]',
     brand: 'bg-brand-50 border border-brand-100',
-    warn: 'bg-amber-50 border border-amber-200',
-    good: 'bg-emerald-50 border border-emerald-200',
+    warn: 'bg-rev-soft border border-rev/20',
+    good: 'bg-ok-soft border border-ok/20',
   }[tone];
   return (
     <As className={cx('rounded-2xl', t, padded && 'p-4 sm:p-5', className)} {...rest}>
@@ -125,8 +125,8 @@ export function ProgressBar({
   size?: 'sm' | 'md';
 }) {
   const v = Math.max(0, Math.min(100, Math.round(value)));
-  const fill = tone === 'good' ? 'bg-emerald-500' : tone === 'onDark' ? 'bg-white' : 'bg-brand-600';
-  const track = tone === 'onDark' ? 'bg-white/20' : 'bg-slate-100';
+  const fill = tone === 'good' ? 'bg-ok' : tone === 'onDark' ? 'bg-white' : 'bg-gradient-to-r from-brand-600 to-brand-500';
+  const track = tone === 'onDark' ? 'bg-white/20' : 'bg-none-soft';
   return (
     <div
       role="progressbar"
@@ -152,7 +152,7 @@ export function ProgressRing({ value, size = 64, stroke = 7, label, children }: 
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }} role="img" aria-label={label}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className="stroke-slate-100" />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className="stroke-none-soft" />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -165,20 +165,24 @@ export function ProgressRing({ value, size = 64, stroke = 7, label, children }: 
           className="stroke-brand-600"
         />
       </svg>
-      <div className="absolute inset-0 flex items-center justify-center text-sm font-bold text-ink">{children ?? `${v}%`}</div>
+      <div className="absolute inset-0 flex items-center justify-center font-mono text-sm font-semibold text-ink">{children ?? `${v}%`}</div>
     </div>
   );
 }
 
 export function Stat({ label, value, hint, icon: I, tone = 'plain' }: { label: string; value: ReactNode; hint?: ReactNode; icon?: Icon; tone?: 'plain' | 'warn' | 'good' }) {
-  const ic = tone === 'warn' ? 'text-amber-600' : tone === 'good' ? 'text-emerald-600' : 'text-brand-600';
+  const ic = tone === 'warn' ? 'bg-rev-soft text-rev' : tone === 'good' ? 'bg-ok-soft text-ok' : 'bg-brand-50 text-brand-600';
   return (
-    <div className="min-w-0 rounded-2xl border border-slate-200/80 bg-white p-3.5">
-      <p className="flex items-start gap-1.5 text-xs font-medium text-slate-500">
-        {I && <I className={cx('h-4 w-4 shrink-0', ic)} />}
+    <div className="min-w-0 rounded-2xl border border-ink/[0.08] bg-white p-3.5 shadow-card">
+      <p className="flex items-center gap-2 text-xs font-medium text-ink-3">
+        {I && (
+          <span className={cx('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg', ic)}>
+            <I className="h-4 w-4" />
+          </span>
+        )}
         <span className="min-w-0 break-words leading-tight">{label}</span>
       </p>
-      <p className="mt-1 text-xl font-bold text-ink">{value}</p>
+      <p className="mt-1.5 font-mono text-xl font-semibold text-ink">{value}</p>
       {hint && <p className="mt-0.5 text-[11px] text-slate-500 break-words">{hint}</p>}
     </div>
   );
@@ -186,24 +190,24 @@ export function Stat({ label, value, hint, icon: I, tone = 'plain' }: { label: s
 
 export function Chip({ children, tone = 'neutral' }: { children: ReactNode; tone?: 'neutral' | 'brand' | 'warn' | 'good' | 'onDark' }) {
   const t = {
-    neutral: 'bg-slate-100 text-slate-700',
-    brand: 'bg-brand-50 text-brand-700',
-    warn: 'bg-amber-100 text-amber-800',
-    good: 'bg-emerald-100 text-emerald-800',
-    onDark: 'bg-white/15 text-white',
+    neutral: 'bg-none-soft text-ink-2 border-ink/[0.06]',
+    brand: 'bg-brand-50 text-brand-700 border-brand-100',
+    warn: 'bg-rev-soft text-rev border-rev/20',
+    good: 'bg-ok-soft text-ok border-ok/20',
+    onDark: 'bg-white/10 text-white border-white/15',
   }[tone];
-  return <span className={cx('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold', t)}>{children}</span>;
+  return <span className={cx('inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold', t)}>{children}</span>;
 }
 
 const BTN = {
-  primary: 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm shadow-brand-600/20',
-  secondary: 'bg-white text-brand-700 border border-brand-200 hover:bg-brand-50',
+  primary: 'bg-brand-600 text-white hover:bg-brand-700 shadow-md shadow-brand-600/25',
+  secondary: 'bg-white text-brand-700 border border-brand-200 hover:bg-brand-50 shadow-card',
   ghost: 'text-brand-700 hover:bg-brand-50',
   inverse: 'bg-white text-brand-800 hover:bg-brand-50 shadow-md',
 };
 const btnCls = (variant: keyof typeof BTN, block?: boolean) =>
   cx(
-    'inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold transition-colors focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200',
+    'inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-5 font-display text-sm font-bold transition-[background-color,box-shadow,transform] active:translate-y-px focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200',
     BTN[variant],
     block && 'w-full'
   );
@@ -238,12 +242,13 @@ export function ButtonLink({ to, children, variant = 'primary', block }: { to: s
 
 export function EmptyState({ icon: I, title, body, action }: { icon: Icon; title: string; body?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-8 text-center">
-      <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+    <div className="relative flex flex-col items-center overflow-hidden rounded-2xl border border-dashed border-ink/15 bg-white px-5 py-8 text-center">
+      <span className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(rgba(59,85,224,0.10)_1px,transparent_1px)] [background-size:14px_14px] [mask-image:linear-gradient(to_bottom,black,transparent)]" aria-hidden="true" />
+      <span className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-8 ring-brand-50/50">
         <I className="h-6 w-6" />
       </span>
-      <p className="mt-3 text-base font-bold text-ink">{title}</p>
-      {body && <p className="mt-1 max-w-sm text-sm text-slate-600">{body}</p>}
+      <p className="relative mt-4 font-display text-base font-bold text-ink">{title}</p>
+      {body && <p className="relative mt-1 max-w-sm text-sm text-ink-3">{body}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );
@@ -254,6 +259,8 @@ export interface RowItem {
   title: ReactNode;
   meta?: ReactNode;
   icon?: Icon;
+  /** Tile colour classes for the icon (e.g. subject identity); default brand */
+  iconTone?: string;
   trailing?: ReactNode;
   /** Optional thin progress under the title (0–100). */
   progress?: number;
@@ -263,17 +270,17 @@ export interface RowItem {
 /** A group of navigable rows inside ONE surface, separated by dividers. */
 export function RowGroup({ items, label }: { items: RowItem[]; label?: string }) {
   return (
-    <ul aria-label={label} className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+    <ul aria-label={label} className="divide-y divide-ink/[0.06] overflow-hidden rounded-2xl border border-ink/[0.08] bg-white shadow-card">
       {items.map((it, i) => {
         const I = it.icon;
         return (
           <li key={it.key ?? `${it.to}|${i}`}>
             <Link
               to={it.to}
-              className="flex min-h-[60px] items-center gap-3 px-4 py-3 transition-colors hover:bg-slate-50 focus:outline-none focus-visible:bg-brand-50"
+              className="flex min-h-[60px] items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-2 focus:outline-none focus-visible:bg-brand-50"
             >
               {I && (
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+                <span className={cx('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', it.iconTone ?? 'bg-brand-50 text-brand-700')}>
                   <I className="h-5 w-5" />
                 </span>
               )}
@@ -315,10 +322,10 @@ export function LoopStrip({ current, onDark = false }: { current: LoopStage; onD
               ? 'text-white'
               : 'text-white/60'
           : state === 'now'
-            ? 'bg-brand-600 text-white'
+            ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/30'
             : state === 'done'
               ? 'text-brand-700'
-              : 'text-slate-400';
+              : 'text-ink-3/70';
         return (
           <li key={s.id} className="flex items-center gap-1.5" aria-current={state === 'now' ? 'step' : undefined}>
             <span className={cx('rounded-full px-2 py-0.5', cls)}>{s.label}</span>

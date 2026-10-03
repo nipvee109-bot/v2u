@@ -111,11 +111,11 @@ export function ReadingExperience({
       refs.current[id] = el;
     },
   });
-  const card = 'scroll-mt-28 rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6';
+  const card = 'scroll-mt-28 rounded-2xl border border-ink/[0.08] bg-white shadow-card p-5 sm:p-6';
 
   return (
     <article aria-label="อ่านกับ V2U" className="space-y-5" data-testid="reading-mode">
-      <header className="rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-7">
+      <header className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-5 sm:p-7">
         <p className="flex items-center gap-1.5 text-xs font-semibold text-brand-700">
           <BookOpen className="h-4 w-4" /> อ่านกับ V2U · สั้น แต่เข้าใจจริง
         </p>
@@ -140,7 +140,7 @@ export function ReadingExperience({
         )}
       </header>
 
-      <nav aria-label="หัวข้อในบท" className="sticky top-0 z-10 -mx-1 rounded-2xl border border-slate-200/80 bg-white/95 px-3 py-2.5 backdrop-blur">
+      <nav aria-label="หัวข้อในบท" className="sticky top-0 z-10 -mx-1 rounded-2xl border border-ink/[0.08] bg-white shadow-card/95 px-3 py-2.5 backdrop-blur">
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <ProgressBar value={pct} size="sm" label={`อ่านแล้ว ${pct}%`} />
@@ -216,7 +216,7 @@ export function ReadingExperience({
         {content.code?.map((c, i) => <CodeExplained key={c.code} ex={c} n={i + 1} />)}
         {content.errorExample && <ErrorExample e={content.errorExample} />}
         {content.examples.map((e, i) => (
-          <details key={e.problem} className="group rounded-3xl border border-slate-200/80 bg-white" open={i === 0}>
+          <details key={e.problem} className="group rounded-2xl border border-ink/[0.08] bg-white shadow-card" open={i === 0}>
             <summary className="flex min-h-[56px] cursor-pointer list-none items-center justify-between gap-3 px-5 py-3">
               <span className="font-mono text-base font-semibold text-ink break-words">{e.problem}</span>
               <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-brand-700">

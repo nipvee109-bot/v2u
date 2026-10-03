@@ -17,7 +17,7 @@ interface Props {
 /** "ทำไม่ได้ → เปิดต้นทาง": honest message + a link to the source, nothing else. */
 export function MediaFallback({ media, title, cause }: { media: MediaSource; title: string; cause: 'error' | 'unsupported' }) {
   return (
-    <div className="rounded-3xl border border-slate-200/80 bg-white p-5" data-testid="video-fallback" data-reason={cause === 'error' ? 'provider-error' : media.reason}>
+    <div className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-5" data-testid="video-fallback" data-reason={cause === 'error' ? 'provider-error' : media.reason}>
       <p className="text-sm font-bold text-ink">{media.provider === 'webpage' || media.provider === 'unsupported' ? 'แหล่งนี้ยังไม่สามารถเล่นใน V2U ได้' : 'คลิปนี้ไม่สามารถเล่นใน V2U ได้'}</p>
       <p className="mt-0.5 text-xs text-slate-500">
         {cause === 'error'

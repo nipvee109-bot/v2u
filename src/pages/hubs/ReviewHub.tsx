@@ -60,7 +60,7 @@ export function ReviewHub() {
       {signals.length > 0 && (
         <section aria-labelledby="said-unclear" className="space-y-3" data-testid="unclear-signals">
           <h2 id="said-unclear" className="text-base font-bold text-ink">สิ่งที่คุณเคยบอกว่ายังไม่เข้าใจ</h2>
-          <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+          <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-ink/[0.08] bg-white shadow-card">
             {signals.map((g) => (
               <li key={`${g.lessonId}|${g.skillId ?? ''}`}>
                 <Link to={`/learn/curriculum/${g.lessonId}?mode=v2u`} className="flex min-h-[60px] items-start gap-3 px-4 py-3 hover:bg-slate-50">

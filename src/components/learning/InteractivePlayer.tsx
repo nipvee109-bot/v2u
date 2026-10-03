@@ -91,7 +91,7 @@ export function InteractivePlayer({ lesson, state, dispatch, onToCheck }: Player
       <div className="grid gap-5 @3xl:grid-cols-[minmax(0,1fr)_240px]">
         <div className="min-w-0 space-y-5">
           {/* Mission header */}
-          <div className="rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white sm:p-6">
+          <div className="rounded-3xl v2u-hero bg-gradient-to-br from-navy via-navy-2 to-brand-700 p-5 text-white sm:p-6">
             <p className="flex items-center gap-1.5 text-xs font-semibold text-brand-100">
               <Sparkles className="h-4 w-4" /> ภารกิจ
             </p>
@@ -108,7 +108,7 @@ export function InteractivePlayer({ lesson, state, dispatch, onToCheck }: Player
           {lesson.theme && <ThemeBanner lesson={lesson} state={state} />}
 
           {/* Step card */}
-          <section key={step.id} aria-labelledby={`step-${step.id}`} className="rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-7 animate-in fade-in slide-in-from-right-2 duration-200">
+          <section key={step.id} aria-labelledby={`step-${step.id}`} className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-5 sm:p-7 animate-in fade-in slide-in-from-right-2 duration-200">
             <p className="text-xs font-semibold text-brand-700">
               ขั้นที่ {idx + 1} · {TYPE_LABEL[step.type]}
             </p>
@@ -168,7 +168,7 @@ export function InteractivePlayer({ lesson, state, dispatch, onToCheck }: Player
 
         {/* Context panel (wide containers only) */}
         <aside aria-label="ภารกิจนี้" className="hidden @3xl:block">
-          <div className="sticky top-0 space-y-3 rounded-3xl border border-slate-200/80 bg-white p-4">
+          <div className="sticky top-0 space-y-3 rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4">
             <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
               <Target className="h-4 w-4 text-brand-600" /> ระหว่างทาง
             </p>

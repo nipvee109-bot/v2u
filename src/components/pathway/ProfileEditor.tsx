@@ -42,7 +42,7 @@ export function ProfileEditor() {
   const horizon = resolvePlanningHorizon(p);
   const select = 'mt-1 min-h-[48px] w-full rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-normal text-ink';
   return (
-    <section aria-labelledby="me-profile" className="space-y-4 rounded-3xl border border-slate-200/80 bg-white p-4 sm:p-5" data-testid="profile-editor">
+    <section aria-labelledby="me-profile" className="space-y-4 rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 sm:p-5" data-testid="profile-editor">
       <div>
         <h2 id="me-profile" className="text-base font-bold text-ink">ข้อมูลของฉัน</h2>
         <p className="text-xs text-slate-500">V2U ใช้ข้อมูลนี้จัดเส้นทาง — ช่องที่ว่างไว้จะแสดงว่า “{NOT_SET}” และกลับมากรอกทีหลังได้</p>

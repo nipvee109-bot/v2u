@@ -1,3 +1,4 @@
+import { subjectStyle } from '../../components/ui/subjectStyle';
 import { learningHubPathFor } from '../../curriculum/engine';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { usePathway } from '../../hooks/usePathway';
@@ -52,7 +53,8 @@ export function LearnHub() {
       to: `/subjects/${id}`,
       title: SUBJECTS[id].name,
       meta: `เรียนจบ ${done}/${subjectLessons.length} บท`,
-      icon: SUBJECT_ICONS[id],
+      icon: subjectStyle(id).icon ?? SUBJECT_ICONS[id],
+      iconTone: `${subjectStyle(id).soft} ${subjectStyle(id).text}`,
       progress: subjectLessons.length ? (done / subjectLessons.length) * 100 : 0,
     };
   });
@@ -75,7 +77,7 @@ export function LearnHub() {
       {cont && (
         <Link
           to={cont.to}
-          className="order-2 lg:order-none block rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white shadow-lg shadow-brand-900/15 transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200"
+          className="order-2 lg:order-none block rounded-3xl v2u-hero bg-gradient-to-br from-navy via-navy-2 to-brand-700 p-5 text-white shadow-lg shadow-brand-900/15 transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200"
         >
           <LoopStrip current={cont.stage} onDark />
           <p className="mt-3 text-xs font-semibold text-brand-100">{cont.eyebrow}</p>

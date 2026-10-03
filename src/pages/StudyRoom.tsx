@@ -418,7 +418,7 @@ export const StudyRoom: React.FC = () => {
   return (
     <div className="mx-auto w-full max-w-[1600px] space-y-5 pb-16 animate-fadeIn">
       {/* ═══════════ TOP HEADER & CONTROL BAR ═══════════ */}
-      <div className="rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 p-4 sm:p-6 text-white shadow-lg shadow-brand-900/15 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="rounded-3xl v2u-hero bg-gradient-to-br from-navy via-navy-2 to-brand-700 p-4 sm:p-6 text-white shadow-lg shadow-brand-900/15 flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Left: Breadcrumbs & Title */}
         <div className="space-y-1">
           <LoopStrip current="learn" onDark />

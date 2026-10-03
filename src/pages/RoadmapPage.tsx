@@ -158,7 +158,7 @@ export function RoadmapPage() {
         title="ลำดับเนื้อหาสู่วิศวกรรมคอมพิวเตอร์ & AI"
         subtitle="เนื้อหาทั้งหมดเรียงเป็นช่วง ๆ — ระยะเวลาจริงของคุณดูได้ที่หน้าเส้นทาง"
       />
-      <section aria-label="ความก้าวหน้าตามลำดับเนื้อหา" className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
+      <section aria-label="ความก้าวหน้าตามลำดับเนื้อหา" className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 sm:p-5">
         <div className="flex items-center justify-between text-sm">
           <span className="font-semibold text-ink">ความก้าวหน้าตามลำดับเนื้อหา</span>
           <span className="font-bold text-brand-700">{overallProgressPercent}%</span>

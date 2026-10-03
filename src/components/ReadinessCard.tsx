@@ -18,7 +18,7 @@ function StatusChip({ status }: { status: ReadinessStatus }) {
 export function ReadinessCard() {
   const r = useReadiness();
   return (
-    <section aria-labelledby="readiness-title" className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5">
+    <section aria-labelledby="readiness-title" className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 sm:p-5">
       <div className="flex items-center justify-between gap-2">
         <h2 id="readiness-title" className="flex items-center gap-2 text-sm font-bold text-slate-900">
           <Gauge className="h-4 w-4 text-blue-600" /> ตอนนี้ฉันพร้อมแค่ไหน?

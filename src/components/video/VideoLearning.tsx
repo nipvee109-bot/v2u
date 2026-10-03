@@ -77,7 +77,7 @@ export function TopicPath({ items, currentId }: { items: PathItem[]; currentId: 
   const icon = (s: PathItem['status']) =>
     s === 'done' ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : s === 'current' ? <CircleDot className="h-5 w-5 text-brand-600" /> : s === 'wait' ? <Hourglass className="h-5 w-5 text-slate-400" /> : <Circle className="h-5 w-5 text-slate-300" />;
   return (
-    <section aria-label="เส้นทางคลิปในหัวข้อนี้" className="rounded-3xl border border-slate-200/80 bg-white p-4 sm:p-5">
+    <section aria-label="เส้นทางคลิปในหัวข้อนี้" className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 sm:p-5">
       <p className="text-sm font-bold text-ink">เส้นทางการเรียนในหัวข้อนี้</p>
       <ol className="mt-3 space-y-1">
         {items.map((it, i) => (
@@ -107,7 +107,7 @@ export function TopicPath({ items, currentId }: { items: PathItem[]; currentId: 
 function SequenceHeader({ lessonTitle, seq, currentKey }: { lessonTitle: string; seq: VideoItem[]; currentKey?: string }) {
   const idx = seq.findIndex((v) => v.key === currentKey);
   return (
-    <div className="rounded-3xl border border-slate-200/80 bg-white p-4 sm:p-5">
+    <div className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="min-w-0 text-sm text-slate-500">
           บท: <span className="font-bold text-ink break-words">{lessonTitle}</span>
@@ -246,7 +246,7 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
                 const state = stateOf(v);
                 const seenIt = state === 'watched' || state === 'checked' || state === 'done';
                 return (
-                  <li key={v.key} className="flex flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white">
+                  <li key={v.key} className="flex flex-col overflow-hidden rounded-2xl border border-ink/[0.08] bg-white shadow-card">
                     <VideoCover v={v} index={i + 1} lessonTitle={lesson.title} />
                     <div className="flex flex-1 flex-col p-4">
                       <p className="text-sm font-semibold text-ink break-words">{v.title}</p>
@@ -292,7 +292,7 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
         {shown.map((g) => (
           <div key={g} data-group={g}>
             <p className="mb-2 text-xs font-semibold text-slate-500">{VIDEO_GROUP_LABEL[g]}{g === 'next' ? ' — บทถัดไปในเส้นทาง' : ''}</p>
-            <ul className="divide-y divide-slate-100 overflow-hidden rounded-3xl border border-slate-200/80 bg-white">
+            <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-ink/[0.08] bg-white shadow-card">
               {groups[g].map((v) => (
                 <li key={v.key} className="flex flex-wrap items-center gap-3 p-4">
                   <div className="min-w-0 flex-1">
@@ -329,7 +329,7 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
   if (stage === 'reflect') {
     return (
       <section aria-labelledby="reflect" className="space-y-4" data-testid="video-reflect">
-        <div className="rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-7">
+        <div className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-5 sm:p-7">
           <h3 id="reflect" className="text-lg font-bold text-ink">หลังจากดูคลิปนี้ คุณคิดว่าตัวเองเข้าใจแค่ไหน?</h3>
           <p className="mt-1 text-xs text-slate-500">นี่คือความรู้สึกของคุณ — V2U จะเช็กความเข้าใจอีกครั้งก่อนนับว่าเข้าใจ</p>
           <div role="radiogroup" aria-label="ระดับความเข้าใจ" className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -390,7 +390,7 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
               </p>
               {!v.embeddable && !v.checked && v.locator && <p className="text-xs text-amber-700">ยังไม่ได้ตรวจลิงก์ — ถ้าเปิดไม่ได้ หาได้ที่: {v.locator}</p>}
             </div>
-            <div className="rounded-3xl border border-slate-200/80 bg-white p-5">
+            <div className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-5">
               <p className="text-xs font-semibold text-brand-700">ดูคลิปนี้เพื่อ</p>
               <ul className="mt-1.5 space-y-1 text-sm text-slate-800">
                 {lesson.learningOutcomes.map((o) => (
@@ -415,7 +415,7 @@ export function VideoLearning({ lessonId, ownResources = [], availableMinutes, w
           </div>
         </div>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-3xl border border-slate-200/80 bg-white p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-ink/[0.08] bg-white shadow-card p-3">
         <button type="button" onClick={() => (prev ? choose(prev) : setStage('pick'))} className="inline-flex min-h-[48px] items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-slate-600 hover:bg-slate-100">
           <ArrowLeft className="h-4 w-4" /> {prev ? 'คลิปก่อนหน้า' : 'เลือกคลิปอื่น'}
         </button>

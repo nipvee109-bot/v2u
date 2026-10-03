@@ -5,7 +5,7 @@ import { ORIGINAL_SECTION_TITLES as T } from '../../content/types';
 export function OriginalLessonView({ content, compact = false }: { content: OriginalLesson; compact?: boolean }) {
   const h = 'mt-6 text-base font-bold text-ink';
   return (
-    <article aria-label="บทเรียนจาก V2U" className="rounded-2xl border border-slate-200/80 bg-white p-4 text-sm leading-relaxed text-slate-700 sm:p-6">
+    <article aria-label="บทเรียนจาก V2U" className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 text-sm leading-relaxed text-slate-700 sm:p-6">
       <p className="text-[11px] font-semibold text-slate-500">
         อ่านประมาณ {content.readingMinutes} นาที · เขียนโดย V2U · ฉบับ {content.version}
       </p>

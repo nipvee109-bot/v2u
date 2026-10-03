@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Flag, ListChecks, ArrowRight, Clock, Trophy, RotateCcw, Gauge, CheckCircle2, ChevronRight } from 'lucide-react';
+import { Navigation, GraduationCap, MapPin, Flag, ListChecks, ArrowRight, Clock, Trophy, RotateCcw, Gauge, CheckCircle2, ChevronRight } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { getNextStep } from '../utils/nextStep';
+import { getNextStep, buildNextStepRoute } from '../utils/nextStep';
 import { shouldShowOnboarding } from '../utils/onboardingUtils';
 import { StudyOnboardingModal } from '../components/onboarding/StudyOnboardingModal';
 import { useNextStepParams } from '../hooks/useNextStep';
 import { useStartNextStep } from '../hooks/useStartNextStep';
 import { usePathway } from '../hooks/usePathway';
 import { StatusPill } from '../components/pathway/PathwayBits';
-import { SUBJECT_EMOJI, SUBJECT_LABEL } from '../diagnostic/engine';
+import { SUBJECT_LABEL } from '../diagnostic/engine';
+import { SubjectMark } from '../components/ui/subject';
+import { JourneyStrip } from '../components/pathway/JourneyStrip';
 import { TimeBudgetPicker } from '../components/TimeBudgetPicker';
 import { getRouteTarget, normalizeStudentProfile } from '../route/engine';
 import { LoopStrip, PlanBar, ProgressBar, Section, Stat, Surface, Chip } from '../components/ui';
@@ -45,6 +47,7 @@ export function HomePage() {
   const handleStart = () => start(step);
   const rec = step.curriculum?.recommendedResource;
   const pathway = usePathway();
+  const route = buildNextStepRoute(useNextStepParams());
   const diagnostic = useStore((st) => st.diagnostic);
   const needsDiagnostic = !pathway.hasDiagnostic && (diagnostic?.skippedSubjects.length ?? 0) < 3;
   const goalText = studentProfile
@@ -54,9 +57,26 @@ export function HomePage() {
 
   return (
     <div className="mx-auto w-full max-w-3xl lg:max-w-6xl space-y-6 sm:space-y-8">
-      <header>
-        <p className="text-xs font-semibold text-brand-700">จากจุดที่คุณอยู่ → สู่มหาวิทยาลัยที่คุณต้องการ</p>
-        <h1 className="mt-0.5 text-2xl font-bold text-ink sm:text-[28px]">ก้าวต่อไปของคุณ</h1>
+      <header className="space-y-4">
+        <div>
+          <p className="text-xs font-semibold tracking-wide text-brand-700">จากจุดที่คุณอยู่ → สู่มหาวิทยาลัยที่คุณต้องการ</p>
+          <h1 className="mt-0.5 font-display text-2xl font-bold text-ink sm:text-[30px]">ก้าวต่อไปของคุณ</h1>
+        </div>
+        {/* where I am · goal · time — all from the same next-step data */}
+        <dl className="grid gap-3 rounded-2xl border border-ink/[0.08] bg-white/80 p-3.5 shadow-card backdrop-blur-sm sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-ink/[0.08] sm:p-0" data-testid="home-summary">
+          <div className="flex items-start gap-2.5 sm:p-4">
+            <Navigation className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />
+            <div className="min-w-0"><dt className="text-[11px] font-semibold text-brand-700">ตอนนี้คุณอยู่ที่</dt><dd className="text-sm font-semibold text-ink break-words">{step.current.label}</dd></div>
+          </div>
+          <div className="flex items-start gap-2.5 sm:p-4">
+            <GraduationCap className="mt-0.5 h-4 w-4 shrink-0 text-dest" aria-hidden="true" />
+            <div className="min-w-0"><dt className="text-[11px] font-semibold text-dest-ink">เป้าหมาย</dt><dd className="text-sm font-semibold text-ink break-words">{step.goal.label}</dd></div>
+          </div>
+          <div className="flex items-start gap-2.5 sm:p-4">
+            <Clock className="mt-0.5 h-4 w-4 shrink-0 text-ink-3" aria-hidden="true" />
+            <div className="min-w-0"><dt className="text-[11px] font-semibold text-ink-3">เวลา</dt><dd className="text-sm font-semibold text-ink break-words">{step.goal.detail.split(' · ')[0]} · วันละ {budget} นาที</dd></div>
+          </div>
+        </dl>
       </header>
 
       {/* Mobile: one column in reading order. Desktop: next step + what is missing | route + progress */}
@@ -65,11 +85,11 @@ export function HomePage() {
       {/* Today's single next step */}
       <section
         aria-labelledby="next-step-today"
-        className="order-1 lg:order-none relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white shadow-lg shadow-brand-900/20 sm:p-7"
+        className="order-1 lg:order-none relative overflow-hidden rounded-3xl v2u-hero bg-gradient-to-br from-navy via-navy-2 to-brand-700 p-5 text-white shadow-lg shadow-brand-900/20 sm:p-7"
       >
         <LoopStrip current="today" onDark />
-        <p className="mt-4 text-xs font-semibold text-brand-100">วันนี้ควรทำอะไร</p>
-        <h2 id="next-step-today" className="mt-1 text-xl font-bold leading-snug sm:text-2xl break-words">
+        <p className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-brand-100"><Navigation className="h-3.5 w-3.5" aria-hidden="true" /> วันนี้ควรทำอะไร</p>
+        <h2 id="next-step-today" className="mt-1 font-display text-xl font-bold leading-snug sm:text-[28px] break-words">
           {step.todayAction}
         </h2>
         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -132,9 +152,14 @@ export function HomePage() {
           {step.ctaLabel}
           <ArrowRight className="h-5 w-5" />
         </button>
+              {route && (
+          <div className="mt-6 border-t border-white/10 pt-5">
+            <JourneyStrip route={route} onDark />
+          </div>
+        )}
       </section>
 
-      <section aria-labelledby="home-now" className="order-2 lg:order-none rounded-3xl border border-slate-200/80 bg-white p-4 sm:p-5" data-testid="home-now">
+      <section aria-labelledby="home-now" className="order-2 lg:order-none rounded-2xl border border-ink/[0.08] bg-white p-4 shadow-card sm:p-5" data-testid="home-now">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 id="home-now" className="text-base font-bold text-ink">📊 ตอนนี้</h2>
           <p className="text-xs text-slate-600 break-words">
@@ -144,7 +169,7 @@ export function HomePage() {
         <ul className="mt-3 grid gap-2 sm:grid-cols-3">
           {pathway.subjects.map((p) => (
             <li key={p.subjectId} className="flex items-center justify-between gap-2 rounded-2xl bg-slate-50 px-3 py-2.5">
-              <span className="text-sm font-semibold text-ink">{SUBJECT_EMOJI[p.subjectId]} {SUBJECT_LABEL[p.subjectId]}</span>
+              <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-ink"><SubjectMark subjectId={p.subjectId} size="sm" /> <span className="break-words">{SUBJECT_LABEL[p.subjectId]}</span></span>
               <StatusPill status={p.status} />
             </li>
           ))}
@@ -175,7 +200,7 @@ export function HomePage() {
         }
       >
         {step.missing.length > 0 ? (
-          <ul className="divide-y divide-slate-100 rounded-2xl border border-slate-200/80 bg-white">
+          <ul className="divide-y divide-slate-100 rounded-2xl border border-ink/[0.08] bg-white shadow-card">
             {step.missing.map((m) => (
               <li key={m} className="flex min-h-[48px] items-center gap-3 px-4 py-2.5 text-sm text-slate-800">
                 <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />

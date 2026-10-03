@@ -1,3 +1,4 @@
+import { SubjectTag } from '../components/ui/subject';
 import { useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useStore } from '../store/useStore';
@@ -101,7 +102,7 @@ export function CurriculumLessonPage() {
       {confirmModal}
       <ScreenHeader
         back={{ to: '/learn/curriculum', label: 'หลักสูตร' }}
-        eyebrow={subject?.title}
+        eyebrow={subject ? <SubjectTag subjectId={lesson.subjectId} label={subject.title} /> : undefined}
         title={lesson.title}
         subtitle={lesson.description}
       />
@@ -153,7 +154,7 @@ export function CurriculumLessonPage() {
           </div>
         </section>
       )}
-          <section aria-label="ความคืบหน้าของบทนี้" className="rounded-2xl border border-slate-200/80 bg-white p-4">
+          <section aria-label="ความคืบหน้าของบทนี้" className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4">
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-bold text-ink">บทนี้</p>
               <Chip tone={done ? 'good' : 'neutral'}>{done ? 'เรียนจบแล้ว' : 'ยังไม่จบ'}</Chip>

@@ -529,7 +529,7 @@ export const ReviewRoom: React.FC = () => {
                   ))}
                 </ul>
               )}
-              <div className="rounded-2xl bg-gradient-to-br from-brand-700 to-brand-900 p-4 text-white" data-testid="loop-next">
+              <div className="rounded-2xl v2u-hero bg-gradient-to-br from-navy via-navy-2 to-brand-700 p-4 text-white" data-testid="loop-next">
                 <p className="text-xs font-semibold text-brand-100">ก้าวต่อไปของคุณ (คำนวณใหม่แล้ว)</p>
                 <p className="mt-1 text-base font-bold break-words">{reviewLoop.next.todayAction}</p>
                 <p className="mt-1 text-xs text-white/90 break-words">เพราะ {reviewLoop.next.reason}</p>

@@ -51,7 +51,7 @@ export function CurriculumPage() {
             const topic = getCurriculumTopic(topicId);
             if (!topic) return null;
             return (
-              <div key={topic.id} className="rounded-2xl border border-slate-200/80 bg-white p-4">
+              <div key={topic.id} className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4">
                 <h3 className="text-sm font-bold text-ink">{topic.title}</h3>
                 <p className="text-xs text-slate-500">{topic.description}</p>
                 <ol className="mt-3 divide-y divide-slate-100 border-t border-slate-100">
@@ -193,7 +193,7 @@ export function CurriculumPage() {
           const subject = CURRICULUM.subjects.find((s) => s.id === req.subjectId);
           const pct = r?.readinessPercent ?? 0;
           return (
-            <div key={req.subjectId} className="rounded-2xl border border-slate-200/80 bg-white p-4">
+            <div key={req.subjectId} className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4">
               <p className="text-sm font-bold text-slate-900">{subject?.title}</p>
               <p className="mt-0.5 text-xs text-slate-500">ความพร้อม {pct}% · เป้าหมาย {req.targetReadinessPercent}%</p>
               <div className="mt-2.5">

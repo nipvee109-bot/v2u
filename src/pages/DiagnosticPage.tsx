@@ -1,3 +1,4 @@
+import { SubjectMark } from '../components/ui/subject';
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, ShieldCheck, SkipForward, X } from 'lucide-react';
@@ -29,7 +30,7 @@ export function DiagnosticPage() {
     return (
       <div className="mx-auto w-full max-w-3xl lg:max-w-5xl space-y-6" data-testid="diagnostic-intro">
         <Link to="/me" className="inline-flex min-h-[44px] items-center gap-1 text-sm font-semibold text-brand-700"><ArrowLeft className="h-4 w-4" /> ฉัน</Link>
-        <header className="rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 p-6 text-white sm:p-8">
+        <header className="rounded-3xl v2u-hero bg-gradient-to-br from-navy via-navy-2 to-brand-700 p-6 text-white sm:p-8">
           <p className="text-xs font-semibold text-brand-100">การวัดระดับของฉัน</p>
           <h1 className="mt-1 text-2xl font-bold sm:text-3xl">ก่อนเริ่มเรียน มารู้จักพื้นฐานของคุณกันก่อน</h1>
           <ul className="mt-4 space-y-1.5 text-sm text-white/90">
@@ -55,7 +56,7 @@ export function DiagnosticPage() {
                   className={`min-h-[96px] rounded-3xl border-2 p-4 text-left transition-colors ${on ? 'border-brand-500 bg-brand-50' : 'border-slate-200 bg-white hover:border-brand-300'}`}
                 >
                   <span className="flex items-center justify-between gap-2">
-                    <span className="text-base font-bold text-ink">{SUBJECT_EMOJI[s]} {SUBJECT_LABEL[s]}</span>
+                    <span className="flex items-center gap-2.5 font-display text-base font-bold text-ink"><SubjectMark subjectId={s} /> {SUBJECT_LABEL[s]}</span>
                     <span className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${on ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-300'}`}>{on && <Check className="h-4 w-4" />}</span>
                   </span>
                   <span className="mt-1 block text-xs text-slate-600">{diagnosticItemsFor(s).length} ข้อ · ประมาณ {Math.ceil(diagnosticItemsFor(s).length * 0.5)} นาที</span>
@@ -96,12 +97,12 @@ export function DiagnosticPage() {
     };
     return (
       <div className="mx-auto w-full max-w-3xl space-y-4" data-testid="diagnostic-quiz" data-subject={subject}>
-        <div className="sticky top-0 z-10 -mx-1 rounded-2xl border border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur">
+        <div className="sticky top-0 z-10 -mx-1 rounded-2xl border border-ink/[0.08] bg-white shadow-card/95 px-4 py-3 backdrop-blur">
           <p className="text-sm font-bold text-ink">{SUBJECT_EMOJI[subject]} วัดพื้นฐาน{SUBJECT_LABEL[subject]}</p>
           <p className="text-xs text-slate-500">ตอบแล้ว {answeredCount}/{items.length} · ไม่หักคะแนน · ไม่ใช่การเช็กความเข้าใจของบทเรียน</p>
         </div>
         {items.map((it, n) => (
-          <fieldset key={it.id} className="rounded-3xl border border-slate-200/80 bg-white p-4 sm:p-5" data-item={it.id}>
+          <fieldset key={it.id} className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 sm:p-5" data-item={it.id}>
             <legend className="sr-only">ข้อ {n + 1}</legend>
             <p className="text-xs font-semibold text-slate-500">ข้อ {n + 1} · {CURRICULUM.skills.find((s) => s.id === it.skillId)?.title}</p>
             {it.code && <div className="mt-2"><CodeBlock code={it.code} /></div>}
@@ -152,7 +153,7 @@ export function DiagnosticPage() {
             const lastAnswers = useStore.getState().diagnostic.attempts.filter((a) => a.subjectId === s).slice(-1)[0];
             const scores = lastAnswers ? scoreAttempt(lastAnswers) : [];
             return (
-              <details key={s} className="rounded-3xl border border-slate-200/80 bg-white p-4">
+              <details key={s} className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4">
                 <summary className="flex min-h-[44px] cursor-pointer items-center text-sm font-bold text-ink">{SUBJECT_EMOJI[s]} ดูเฉลย{SUBJECT_LABEL[s]}</summary>
                 <ul className="mt-2 divide-y divide-slate-100 text-sm">
                   {items.map((it) => {
@@ -174,7 +175,7 @@ export function DiagnosticPage() {
         </section>
       )}
       {recommendation && (
-        <section className="rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white sm:p-6" data-testid="diagnostic-recommendation">
+        <section className="rounded-3xl v2u-hero bg-gradient-to-br from-navy via-navy-2 to-brand-700 p-5 text-white sm:p-6" data-testid="diagnostic-recommendation">
           <p className="text-xs font-semibold text-brand-100">เราแนะนำให้เริ่มจาก</p>
           <p className="mt-1 text-xl font-bold">{SUBJECT_EMOJI[recommendation.subjectId]} {SUBJECT_LABEL[recommendation.subjectId]} — {recommendation.lesson.title}</p>
           <p className="mt-2 text-sm text-white/90 break-words">{recommendation.reasons.join(' · ')}</p>

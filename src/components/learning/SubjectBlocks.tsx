@@ -28,7 +28,7 @@ function Output({ text, stdin }: { text: string; stdin?: string }) {
 /** Programming: the code, what it prints, what it does, why, and what happens if you change it. */
 export function CodeExplained({ ex, n }: { ex: CodeExample; n: number }) {
   return (
-    <div className="space-y-3 rounded-3xl border border-slate-200/80 bg-white p-4 sm:p-5" data-testid="code-example">
+    <div className="space-y-3 rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 sm:p-5" data-testid="code-example">
       <p className="text-xs font-semibold text-brand-700">ตัวอย่างโค้ด {n}</p>
       <CodeBlock code={ex.code} />
       <Output text={ex.output} stdin={ex.stdin} />

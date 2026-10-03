@@ -44,7 +44,7 @@ export function NotesPanel({ lessonId, videoKey, currentSeconds, onSeek }: Props
   };
 
   return (
-    <section aria-label="โน้ตของฉัน" className="rounded-3xl border border-slate-200/80 bg-white p-4 sm:p-5" data-testid="notes-panel">
+    <section aria-label="โน้ตของฉัน" className="rounded-2xl border border-ink/[0.08] bg-white shadow-card p-4 sm:p-5" data-testid="notes-panel">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-base font-bold text-ink">📝 โน้ตของฉัน</h3>
         <span className="text-xs text-slate-500">{notes.length} โน้ต</span>

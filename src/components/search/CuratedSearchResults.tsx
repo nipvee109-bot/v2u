@@ -15,7 +15,7 @@ export function CuratedSearchResults({ query }: { query: string }) {
       {ORDER.filter((g) => res.groups[g].length > 0).map((g) => (
         <div key={g} data-group={g}>
           <h3 className="mb-2 text-xs font-semibold text-slate-500">{SEARCH_GROUP_LABEL[g]} · {res.groups[g].length}</h3>
-          <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+          <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-ink/[0.08] bg-white shadow-card">
             {res.groups[g].slice(0, 8).map((h) => (
               <li key={`${g}-${h.id}`}>
                 <Link to={h.href} className="flex min-h-[56px] flex-col justify-center px-4 py-2.5 hover:bg-slate-50">
