@@ -1,39 +1,42 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { GraduationCap, Search, Clock, ArrowRight } from 'lucide-react';
 import { PRIMARY_NAV, isPrimaryNavActive } from './primaryNav';
-import { useNextStep } from '../../hooks/useNextStep';
+import { NAV_ICON } from './navKeys';
+import { useNextStep, useNextStepParams } from '../../hooks/useNextStep';
 import { useStore } from '../../store/useStore';
-import { ProgressBar } from '../ui';
+import { buildNextStepRoute } from '../../utils/nextStep';
+import { KIcon, Mark } from '../v2u/kit';
 
 /**
- * Desktop primary navigation (≥1024px): a persistent sidebar with the same
- * 5 destinations, search, and the student's one next step always in view.
+ * Desktop primary navigation (≥1024px) — design reference "V2U App" sidebar:
+ * 256px frosted rail, the same 5 destinations, and the destination card
+ * (real route requirements as segments + the one next step).
  */
 export function DesktopSidebar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [q, setQ] = useState('');
   const step = useNextStep();
+  const route = buildNextStepRoute(useNextStepParams());
   const { getDueReviewItems } = useStore();
   const { overdue, dueToday } = getDueReviewItems();
   const due = overdue.length + dueToday.length;
 
   return (
-    <aside className="hidden lg:flex w-64 xl:w-72 shrink-0 flex-col border-r border-slate-200/70 bg-white">
-      <Link to="/" aria-label="V2U เส้นทางสายอาชีพสู่มหาวิทยาลัย — หน้าหลัก" className="flex items-center gap-2.5 px-5 pt-5 pb-4">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-sm shadow-brand-700/30">
-          <GraduationCap className="h-5 w-5" />
-        </span>
+    <aside
+      className="hidden lg:flex w-64 shrink-0 flex-col gap-6 border-r"
+      style={{ padding: '24px 16px', background: 'var(--nav-bg)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderColor: 'var(--line)' }}
+    >
+      <Link to="/" aria-label="V2U เส้นทางสายอาชีพสู่มหาวิทยาลัย — หน้าหลัก" className="flex items-center gap-3 px-2">
+        <Mark size={40} />
         <span className="flex flex-col leading-tight">
-          <span className="text-lg font-bold tracking-tight text-ink">V2U</span>
-          <span className="text-[11px] text-slate-500">จากจุดที่คุณอยู่ → สู่มหาวิทยาลัย</span>
+          <span className="font-display text-[20px] font-bold" style={{ color: 'var(--ink)', letterSpacing: '-.01em' }}>V2U</span>
+          <span className="text-[11px]" style={{ color: 'var(--ink-3)' }}>Vocational → University</span>
         </span>
       </Link>
 
       <form
         role="search"
-        className="px-4"
         onSubmit={(e) => {
           e.preventDefault();
           if (q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`);
@@ -41,36 +44,35 @@ export function DesktopSidebar() {
         }}
       >
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+          <KIcon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--ink-3)' }} />
           <input
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             aria-label="ค้นหาบทเรียน คลิป และโจทย์"
             placeholder="ค้นหา…"
-            className="min-h-[40px] w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
+            className="min-h-[44px] w-full rounded-xl pl-9 pr-3 text-sm outline-none focus:ring-2"
+            style={{ background: 'var(--surface-2)', border: '1px solid var(--line)', color: 'var(--ink)' }}
           />
         </div>
       </form>
 
-      <nav aria-label="เมนูหลัก" className="mt-4 px-3">
-        <ul className="space-y-1">
+      <nav aria-label="เมนูหลัก">
+        <ul className="flex flex-col gap-1">
           {PRIMARY_NAV.map((item) => {
             const active = isPrimaryNavActive(item, pathname);
-            const Icon = item.icon;
             return (
               <li key={item.to}>
                 <Link
                   to={item.to}
                   aria-current={active ? 'page' : undefined}
-                  className={`flex min-h-[44px] items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${
-                    active ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100 hover:text-ink'
-                  }`}
+                  className="flex min-h-[44px] items-center gap-3 rounded-xl text-[15px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 hover:bg-[var(--surface-2)]"
+                  style={{ padding: '0 14px', background: active ? 'var(--brand-soft)' : undefined, color: active ? 'var(--brand-ink)' : 'var(--ink-2)' }}
                 >
-                  <Icon className="h-5 w-5" />
+                  <KIcon name={NAV_ICON[item.to]} size={20} />
                   <span className="flex-1">{item.label}</span>
                   {item.to === '/review' && due > 0 && (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">{due}</span>
+                    <span className="rounded-full px-2 font-mono text-[11px] font-bold" style={{ background: 'var(--rev-soft)', color: 'var(--rev)', lineHeight: '20px' }}>{due}</span>
                   )}
                 </Link>
               </li>
@@ -79,26 +81,36 @@ export function DesktopSidebar() {
         </ul>
       </nav>
 
-      {/* The one next step, visible from every screen */}
-      <div className="mt-auto p-4">
-        <Link
-          to="/"
-          className="block rounded-2xl v2u-hero bg-gradient-to-br from-navy via-navy-2 to-brand-700 p-4 text-white transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200"
-        >
-          <p className="text-[11px] font-semibold text-brand-100">ก้าวต่อไป</p>
-          <p className="mt-0.5 line-clamp-2 text-sm font-bold">{step.todayAction}</p>
-          {step.minutes !== undefined && (
-            <p className="mt-1 flex items-center gap-1 text-xs text-white/80">
-              <Clock className="h-3.5 w-3.5" /> {step.minutes} นาที
-            </p>
-          )}
-          <div className="mt-3">
-            <ProgressBar value={step.current.progressPercent} tone="onDark" size="sm" label={`ความคืบหน้าในเส้นทาง ${step.current.progressPercent}%`} />
+      {/* ปลายทาง — real route requirements, plus the one next step */}
+      <div className="mt-auto rounded-[18px] p-4" style={{ background: 'var(--surface)', border: '1px solid var(--line)', boxShadow: 'var(--shadow)' }}>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-[10px]" style={{ background: 'var(--dest-soft)', color: 'var(--dest-ink)' }}>
+            <KIcon name="cap" size={18} />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold" style={{ color: 'var(--dest-ink)' }}>ปลายทาง</p>
+            <p className="truncate text-[13px] font-bold" style={{ color: 'var(--ink)' }}>{step.goal.label}</p>
           </div>
-          <p className="mt-2 flex items-center justify-between text-[11px] text-white/80">
-            <span>เส้นทาง {step.current.progressPercent}%</span>
-            <ArrowRight className="h-3.5 w-3.5" />
-          </p>
+        </div>
+        {route && route.steps.length > 0 && (
+          <div className="mt-3 flex gap-1" aria-label={`ผ่านแล้ว ${route.completedCount} จาก ${route.steps.length} ขั้น`} role="img">
+            {route.steps.map((s) => (
+              <span
+                key={s.requirement.id}
+                className="h-[5px] flex-1 rounded-full"
+                style={{ background: s.status === 'done' ? 'var(--brand)' : s.requirement.id === route.currentRequirementId ? 'var(--dest)' : 'var(--surface-3)' }}
+              />
+            ))}
+          </div>
+        )}
+        <p className="mt-3 text-[11px] font-semibold" style={{ color: 'var(--ink-3)' }}>ก้าวต่อไป</p>
+        <p className="line-clamp-2 text-[13px] font-semibold" style={{ color: 'var(--ink-2)' }}>{step.todayAction}</p>
+        <Link
+          to={'/route'}
+          className="mt-2 inline-flex min-h-[36px] items-center gap-1 text-[13px] font-semibold"
+          style={{ color: 'var(--brand-ink)' }}
+        >
+          ดูเส้นทาง <KIcon name="chevR" size={14} />
         </Link>
       </div>
     </aside>

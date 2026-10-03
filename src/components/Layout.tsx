@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Bell, GraduationCap, UserRound } from 'lucide-react';
+import { Mark, KIcon } from './v2u/kit';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { BottomNav } from './BottomNav';
@@ -24,15 +24,18 @@ export function Layout({ children }: LayoutProps) {
   const activeHref = activeLesson
     ? learningHubPathFor(activeLesson, lessons, activeLearningSession?.curriculumLessonId) ?? `/lessons/${activeLesson.id}`
     : '/learn';
-  const completedCount = lessons.filter((l) => l.status === 'COMPLETED').length;
-  const totalCount = lessons.length;
-  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   const todayFormatted = format(new Date(), 'd MMM yyyy', { locale: th });
 
 
   return (
-    <div className="flex h-screen overflow-hidden bg-canvas">
+    <div className="relative flex h-screen overflow-hidden">
+      {/* Design background: dot grid fading toward the bottom (body carries the glow) */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 -z-0"
+        style={{ backgroundImage: 'radial-gradient(var(--dot) 1px, transparent 1.2px)', backgroundSize: '22px 22px', maskImage: 'linear-gradient(to bottom, #000 0%, transparent 70%)', WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, transparent 70%)' }}
+      />
       {/* Keyboard Accessible Skip Link */}
       <a
         href="#main-content"
@@ -45,40 +48,24 @@ export function Layout({ children }: LayoutProps) {
       <DesktopSidebar />
 
       {/* Main content area */}
-      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+      <div className="relative flex flex-1 flex-col overflow-hidden min-w-0">
         <OfflineIndicator />
-        {/* Header */}
-        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between border-b border-slate-200/70 bg-white/95 px-3.5 sm:px-4 lg:px-6 backdrop-blur-xl">
-          {/* Left section: V2U brand + desktop primary nav */}
+        {/* Header (design: 58px frosted bar; brand mark on phone/tablet) */}
+        <header
+          className="sticky top-0 z-10 flex h-[58px] shrink-0 items-center justify-between border-b px-4 lg:h-16 lg:px-8"
+          style={{ background: 'var(--nav-bg)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderColor: 'var(--line)' }}
+        >
           <div className="flex items-center gap-3 lg:gap-5 min-w-0">
-            <Link to="/" aria-label="V2U เส้นทางสายอาชีพสู่มหาวิทยาลัย — หน้าหลัก" className="flex items-center gap-2 shrink-0 lg:hidden">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-sm shadow-brand-700/30">
-                <GraduationCap className="h-5 w-5" />
-              </span>
-              <span className="flex flex-col leading-tight">
-                <span className="text-base font-bold tracking-tight text-ink">V2U</span>
-                <span className="text-[10px] font-medium text-slate-500 md:hidden">จากจุดที่คุณอยู่ → สู่มหาวิทยาลัย</span>
-              </span>
+            <Link to="/" aria-label="V2U เส้นทางสายอาชีพสู่มหาวิทยาลัย — หน้าหลัก" className="flex items-center gap-2.5 shrink-0 lg:hidden">
+              <Mark size={34} />
+              <span className="font-display text-[18px] font-bold" style={{ color: 'var(--ink)' }}>V2U</span>
             </Link>
             <TopNav />
+            <span className="hidden text-[13px] font-medium lg:block" style={{ color: 'var(--ink-3)' }}>{todayFormatted}</span>
           </div>
 
           {/* Right cluster */}
           <div className="flex items-center gap-2 lg:gap-3">
-            {/* Today's date */}
-            <span className="hidden text-xs font-medium text-slate-500 2xl:block">
-              {todayFormatted}
-            </span>
-
-            {/* Progress stat pill */}
-            <div className="hidden items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 sm:flex md:hidden xl:flex text-slate-700">
-              <span className="text-xs font-semibold">{progressPercent}%</span>
-              <span className="text-xs text-slate-400">&middot;</span>
-              <span className="text-xs text-slate-600">
-                {completedCount}/{totalCount} บท
-              </span>
-            </div>
-
             {/* Active Learning Session live pill */}
             {activeLesson && activeLearningSession && activeLearningSession.status !== 'completed' && activeLearningSession.status !== 'abandoned' && (
               <Link
@@ -86,11 +73,11 @@ export function Layout({ children }: LayoutProps) {
                 data-testid="live-session-chip"
                 aria-label={`กลับไปเรียนบทนี้: ${activeLesson.title}`}
                 title="กลับไปเรียนบทนี้"
-                className="flex items-center gap-2 px-3 py-1.5 min-h-[36px] rounded-full bg-emerald-50 border border-emerald-300 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-xs"
+                className="flex items-center gap-2 px-3 py-1.5 min-h-[36px] rounded-full bg-[var(--ok-soft)] text-xs font-bold text-[var(--ok)] transition-colors"
               >
-                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-[var(--ok)] animate-pulse" />
                 <span className="hidden lg:inline truncate max-w-[130px]">{activeLesson.title}</span>
-                <span className="text-[11px] font-mono font-semibold text-emerald-900">
+                <span className="text-[11px] font-mono font-semibold ">
                   {activeLearningSession.status === 'paused' ? 'กลับไปเรียนบทนี้' : 'กำลังเรียน'}
                 </span>
               </Link>
@@ -100,28 +87,28 @@ export function Layout({ children }: LayoutProps) {
             <Link
               to="/search"
               aria-label="ค้นหา"
-              className="rounded-xl p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors lg:hidden"
+              className="rounded-xl p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--ink-2)] hover:bg-[var(--surface-2)] transition-colors lg:hidden"
             >
-              <Search className="h-5 w-5" />
+              <KIcon name="search" size={20} />
             </Link>
 
             {/* Review reminder: dot only when something is actually due (Phase 49) */}
             <Link
               to="/review"
               aria-label={dueCount > 0 ? `ถึงเวลาทบทวน ${dueCount} เรื่อง` : 'ทบทวน — ไม่มีเรื่องที่ถึงรอบ'}
-              className="relative rounded-xl p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors focus:ring-2 focus:ring-blue-500"
+              className="relative rounded-xl p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--ink-2)] hover:bg-[var(--surface-2)] transition-colors focus:ring-2 focus:ring-blue-500"
             >
-              <Bell className="h-5 w-5" />
-              {dueCount > 0 && <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-red-600 ring-2 ring-white" aria-hidden="true" />}
+              <KIcon name="refresh" size={20} />
+              {dueCount > 0 && <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[var(--rev)] ring-2 ring-[var(--surface)]" aria-hidden="true" />}
             </Link>
 
             {/* Avatar → ฉัน */}
             <Link
               to="/me"
               aria-label="โปรไฟล์ผู้ใช้งาน"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-600 to-brand-800 text-sm font-bold text-white shadow-sm transition-transform hover:scale-105 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--brand-soft)] text-sm font-bold text-[var(--brand-ink)] transition-transform hover:scale-105 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             >
-              <UserRound className="h-5 w-5" />
+              <KIcon name="user" size={18} />
             </Link>
           </div>
         </header>
@@ -130,7 +117,7 @@ export function Layout({ children }: LayoutProps) {
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 overflow-y-auto overflow-x-hidden px-3.5 sm:px-4 pt-5 pb-28 sm:pt-8 md:pb-10 lg:px-10 xl:px-12 focus:outline-none"
+          className="flex-1 overflow-y-auto overflow-x-hidden px-4 pt-5 pb-28 sm:px-6 sm:pt-8 md:pb-10 lg:px-10 xl:px-12 focus:outline-none"
         >
           {children}
         </main>

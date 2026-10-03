@@ -278,7 +278,7 @@ await test('15. Existing saved data / old backups stay compatible', () => {
 console.log('7. UI wiring & non-goals');
 await test('Home / Route / Me show per-subject status, target and diagnostic; nav stays 5', async () => {
   const H = read('src/pages/HomePage.tsx'), R = read('src/pages/hubs/RouteHub.tsx'), M = read('src/pages/hubs/MeHub.tsx');
-  assert(H.includes('📊 ตอนนี้') && H.includes('ยังไม่ได้ตั้งเป้าหมาย') && H.includes('ก่อนเริ่มเรียน มารู้จักพื้นฐานของคุณกันก่อน'));
+  assert(H.includes('การวัดระดับของฉัน') && H.includes('ยังไม่ได้ตั้งเป้าหมาย') && H.includes('ก่อนเริ่มเรียน มารู้จักพื้นฐานของคุณกันก่อน'));
   assert(R.includes('<PathwayOverview'));
   assert(M.includes('<ProfileEditor />') && M.includes('การวัดระดับของฉัน') && M.includes('วัดใหม่'));
   const PE = read('src/components/pathway/ProfileEditor.tsx');

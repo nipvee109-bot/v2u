@@ -19,7 +19,7 @@ export function JourneyStrip({ route, onDark = false }: { route: StudentRoute; o
     { id: 'dest', label: route.target.title, sub: 'ปลายทาง', state: 'dest' as const },
   ];
   const t = onDark
-    ? { line: 'bg-white/70', dash: 'border-white/30', label: 'text-white', sub: 'text-white/65', done: 'bg-white text-navy', now: 'bg-brand-500 ring-4 ring-white/25', next: 'border-2 border-white/40 bg-navy-2' }
+    ? { line: 'bg-white/80', dash: 'border-white/30', label: 'text-white', sub: 'text-[#c9d1ff]', done: 'bg-white text-[#16207a]', now: 'bg-[#8fa0ff] border-[3px] border-white [animation:v2uPulse_2s_ease-in-out_infinite]', next: 'border-2 border-dashed border-white/45 bg-transparent' }
     : { line: 'bg-brand-600', dash: 'border-ink/20', label: 'text-ink', sub: 'text-ink-3', done: 'bg-brand-600 text-white', now: 'bg-white ring-4 ring-brand-200 border-2 border-brand-600', next: 'border-2 border-ink/20 bg-white' };
   return (
     <div className="-mx-1 overflow-x-auto px-1 pb-1" data-testid="journey-strip">
@@ -36,7 +36,7 @@ export function JourneyStrip({ route, onDark = false }: { route: StudentRoute; o
               )}
               <span
                 className={`relative z-10 flex h-6 w-6 items-center justify-center rounded-full ${
-                  n.state === 'dest' ? 'bg-dest text-navy' : n.state === 'done' ? t.done : n.state === 'now' ? t.now : t.next
+                  n.state === 'dest' ? (onDark ? 'rounded-lg bg-[#f5c04d] text-[#0b1135]' : 'bg-dest text-navy') : n.state === 'done' ? t.done : n.state === 'now' ? t.now : t.next
                 }`}
                 aria-hidden="true"
               >
