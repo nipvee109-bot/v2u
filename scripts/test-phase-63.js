@@ -9,8 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
-import { execFileSync } from 'node:child_process';
-import { findPython, python } from './lib/crossPlatform.js';
+import { execPython, findPython, python } from './lib/crossPlatform.js';
 const PY = python(); // py -3 on Windows, then python, then python3 (never the Store alias)
 import { createJiti } from 'jiti';
 
@@ -46,14 +45,14 @@ const get = (id) => K.getLessonKnowledge(id);
 const CITED = [...new Set(K.SOURCES.filter((s) => s.id.startsWith('python-')).map((s) => s.title.match(/CPython (\d+\.\d+)/)?.[1]).filter(Boolean))];
 const DOCS_PY = findPython({ version: CITED[0] });
 const DOCS = DOCS_PY.cmd && JSON.parse(
-  execFileSync(DOCS_PY.cmd, [...DOCS_PY.args, '-c', `
+  execPython(['-c', `
 import json, builtins, sys, pydoc_data.topics as t
 d = {'topic:' + k: v for k, v in t.topics.items()}
 for n in ('input', 'print', 'int', 'range', 'len', 'str', 'float', 'type'):
     d['doc:' + n] = getattr(builtins, n).__doc__ or ''
 d['version'] = sys.version.split()[0]
 print(json.dumps(d))
-`], { encoding: 'utf-8', maxBuffer: 64 * 1024 * 1024 })
+`], { py: DOCS_PY })
 );
 const norm = (s) => s.replace(/\s+/g, ' ');
 
@@ -85,7 +84,7 @@ await test('Every programming lesson cites opened official docs with evidence fo
   }
 });
 await test('Doc behaviour also holds when executed (input returns str, range excludes stop, int truncates, / gives float)', () => {
-  const out = execFileSync(PY.cmd, [...PY.args, '-c', 'print(type(input()).__name__, list(range(1,4)), int(-3.7), type(8/2).__name__, {"a":1}.get("b"))'], { input: '5\n', encoding: 'utf-8' }).trim();
+  const out = execPython(['-c', 'print(type(input()).__name__, list(range(1,4)), int(-3.7), type(8/2).__name__, {"a":1}.get("b"))'], { py: PY, input: '5\n' }).trim();
   assert.strictEqual(out, "str [1, 2, 3] -3 float None");
 });
 

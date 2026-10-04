@@ -28,8 +28,7 @@ async function test(name, fn) {
   }
 }
 
-import { execFileSync } from 'node:child_process';
-import { python, readText } from './lib/crossPlatform.js';
+import { execPython, python, readText } from './lib/crossPlatform.js';
 const PY = python(); // py -3 on Windows, then python, then python3 (never the Store alias)
 console.log('=== Phase 60: Diagnostic & pathway foundation ===\n');
 const D = await jiti.import(path.join(root, 'src/diagnostic/engine.ts'));
@@ -41,7 +40,7 @@ const { getNextStep } = await jiti.import(path.join(root, 'src/utils/nextStep.ts
 const RE = await jiti.import(path.join(root, 'src/route/engine.ts'));
 const I = await jiti.import(path.join(root, 'src/utils/integrityUtils.ts'));
 const { useStore } = await jiti.import(path.join(root, 'src/store/useStore.ts'));
-const py = (code) => execFileSync(PY.cmd, [...PY.args, '-c', code], { encoding: 'utf-8' }).replace(/\n$/, '');
+const py = (code) => execPython(['-c', code], { py: PY }).replace(/\n$/, '');
 const NOW = new Date('2026-10-02T12:00:00Z');
 const lessons = initialLessons.map((l) => ({ ...l, status: 'NOT STARTED' }));
 const profile = { educationLevel: 'ปวช.3', programId: 'other', targetId: 'target-computer-engineering', availableMinutes: 30 };

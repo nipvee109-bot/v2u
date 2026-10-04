@@ -14,7 +14,7 @@ import { spawnSync } from 'node:child_process';
 import {
   candidateBinDirs, connectionFor, exeName, findServerBin, hasServerTools, initdbArgs, missingRuntimeMessage, rlsRequired,
 } from './lib/pgTestRuntime.js';
-import { findPython, importFile, python, pythonCandidates, readText, relPosix, toPosix } from './lib/crossPlatform.js';
+import { execPython, findPython, importFile, normalizeNewlines, python, pythonCandidates, pythonEnv, readText, relPosix, toPosix } from './lib/crossPlatform.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -171,6 +171,20 @@ await test('CRLF checkouts read as LF; Windows paths compare with "/"; absolute 
   fs.writeFileSync(mod, 'export default 42;');
   assert.strictEqual((await importFile(mod)).default, 42);
   fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+await test('Python output is UTF-8 and LF on every OS: Thai prints even when the parent says cp1252; CRLF/CR become LF', () => {
+  assert.strictEqual(normalizeNewlines('a\r\nb\rc\n'), 'a\nb\nc\n');
+  assert.strictEqual(normalizeNewlines('  x  \n\n'), '  x  \n\n', 'no trimming');
+  const env = pythonEnv({ PATH: 'p', PYTHONIOENCODING: 'cp1252', PYTHONUTF8: '0' });
+  assert.deepStrictEqual([env.PATH, env.PYTHONIOENCODING, env.PYTHONUTF8], ['p', 'utf-8', '1']);
+  const cp1252 = { ...process.env, PYTHONIOENCODING: 'cp1252', PYTHONUTF8: '0' };   // what a Windows console gives
+  assert.strictEqual(execPython(['-c', 'print("ร้อน คู่")'], { env: cp1252 }), 'ร้อน คู่\n');
+  assert.strictEqual(execPython(['-c', 'import sys; sys.stdout.buffer.write(b"a\\r\\nb\\r\\n")']), 'a\nb\n');
+  assert.strictEqual(execPython(['-c', 'print(input()[::-1])'], { input: 'กข\n' }), 'ขก\n');
+  let err;
+  try { execPython(['-c', 'import sys; sys.stdout.write("x\\r\\n"); raise ValueError("ไม่ได้")'], { stdio: 'pipe', env: cp1252 }); } catch (e) { err = e; }
+  assert(err && err.stdout === 'x\n' && err.stderr.includes('ValueError: ไม่ได้') && !err.stderr.includes('\r'));
 });
 
 console.log(`\nTotal: ${passed + failed} | Passed: ${passed} | Failed: ${failed}`);

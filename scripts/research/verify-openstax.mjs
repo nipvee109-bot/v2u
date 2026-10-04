@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { python } from '../lib/crossPlatform.js';
+import { execPython } from '../lib/crossPlatform.js';
 import { createJiti } from 'jiti';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -39,7 +39,7 @@ for (const k of K.LESSON_KNOWLEDGE) for (const p of k.provenance) {
     const mod = e.ref.slice('openstax:'.length);
     const bundle = path.join(dir, path.basename(src.repo.url));
     const key = `${bundle}/${mod}`;
-    if (!text.has(key)) text.set(key, norm(sh(python().cmd, [...python().args, path.join(root, 'scripts/research/openstax_text.py'), bundle, mod])));
+    if (!text.has(key)) text.set(key, norm(execPython([path.join(root, 'scripts/research/openstax_text.py'), bundle, mod])));
     if (text.get(key).includes(norm(e.quote))) ok++;
     else { bad++; console.log(`MISSING ${k.lessonId} ${e.ref}: ${e.quote}`); }
   }

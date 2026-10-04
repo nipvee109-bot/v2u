@@ -7,10 +7,12 @@
  * - readText(): file contents with LF line endings (Git for Windows checks files out with CRLF by default).
  * - relPosix(): repository-relative paths with "/" (path.relative() returns "\" on Windows).
  * - importFile(): dynamic import of an absolute path (a raw C:\... path is not a valid ESM specifier).
+ * - execPython(): run Python with UTF-8 I/O (Windows defaults to cp1252, which cannot print Thai) and return
+ *   stdout with LF line endings (Python on Windows writes CRLF). Errors carry normalized stdout/stderr too.
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
 export const readText = (file) => fs.readFileSync(file, 'utf-8').replace(/\r\n/g, '\n');
@@ -66,4 +68,23 @@ export function python(opts = {}) {
     throw new Error(`${want} not found (tried: ${p.tried.join('; ')}). Install it or set V2U_PYTHON to the interpreter path.`);
   }
   return p;
+}
+
+/** Parent environment plus UTF-8 for Python's stdin/stdout/stderr and file I/O. */
+export const pythonEnv = (env = process.env) => ({ ...env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' });
+
+/** CRLF and lone CR -> LF. Nothing else is touched (no trimming). */
+export const normalizeNewlines = (s) => String(s ?? '').replace(/\r\n?/g, '\n');
+
+/** execFileSync for Python: resolved interpreter, UTF-8, LF output. `py` defaults to python(). */
+export function execPython(args, { py, env, ...opts } = {}) {
+  const p = py ?? python();
+  try {
+    const out = execFileSync(p.cmd, [...p.args, ...args], { maxBuffer: 64 * 1024 * 1024, ...opts, encoding: 'utf-8', env: pythonEnv(env) });
+    return normalizeNewlines(out);
+  } catch (err) {
+    if (err.stdout != null) err.stdout = normalizeNewlines(err.stdout);
+    if (err.stderr != null) err.stderr = normalizeNewlines(err.stderr);
+    throw err;
+  }
 }

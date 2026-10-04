@@ -2,9 +2,8 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { python } from '../lib/crossPlatform.js';
+import { execPython, python } from '../lib/crossPlatform.js';
 import { createJiti } from 'jiti';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const K = await createJiti(import.meta.url).import(path.join(root, 'src/content/knowledge/index.ts'));
@@ -18,4 +17,4 @@ const tmp = path.join(os.tmpdir(), 'v2u-trace-samples.json');
 fs.writeFileSync(tmp, JSON.stringify(samples));
 const out = process.argv[2] ?? path.join(root, 'src/interactive/studio/traces.json');
 const PY = python(); // py -3 on Windows, then python, then python3
-console.log(execFileSync(PY.cmd, [...PY.args, path.join(root, 'scripts/research/gen_traces.py'), tmp, out], { encoding: 'utf-8' }).trim());
+console.log(execPython([path.join(root, 'scripts/research/gen_traces.py'), tmp, out], { py: PY }).trim());
