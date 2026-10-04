@@ -10,6 +10,8 @@ import path from 'node:path';
 import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { findPython, python } from './lib/crossPlatform.js';
+const PY = python(); // py -3 on Windows, then python, then python3 (never the Store alias)
 import { createJiti } from 'jiti';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -39,9 +41,12 @@ const KS = K.LESSON_KNOWLEDGE;
 const SRC = new Map(K.SOURCES.map((s) => [s.id, s]));
 const get = (id) => K.getLessonKnowledge(id);
 
-// Official Python text, read from the installed CPython (not from memory)
-const DOCS = JSON.parse(
-  execFileSync('python3', ['-c', `
+// Official Python text, read from the CPython version the sources cite (not from memory, not a newer release:
+// later CPython versions reword a few docstrings, e.g. 3.13 writes "floating-point")
+const CITED = [...new Set(K.SOURCES.filter((s) => s.id.startsWith('python-')).map((s) => s.title.match(/CPython (\d+\.\d+)/)?.[1]).filter(Boolean))];
+const DOCS_PY = findPython({ version: CITED[0] });
+const DOCS = DOCS_PY.cmd && JSON.parse(
+  execFileSync(DOCS_PY.cmd, [...DOCS_PY.args, '-c', `
 import json, builtins, sys, pydoc_data.topics as t
 d = {'topic:' + k: v for k, v in t.topics.items()}
 for n in ('input', 'print', 'int', 'range', 'len', 'str', 'float', 'type'):
@@ -53,7 +58,9 @@ print(json.dumps(d))
 const norm = (s) => s.replace(/\s+/g, ' ');
 
 console.log('1. Python content against official documentation (opened locally)');
-await test(`Every evidence quote exists verbatim in the Python ${DOCS.version} reference / docstrings`, () => {
+await test(`Every evidence quote exists verbatim in the Python ${DOCS?.version ?? CITED[0]} reference / docstrings`, () => {
+  assert.strictEqual(CITED.length, 1, `Python sources must cite one CPython version, got ${CITED.join(', ')}`);
+  assert(DOCS, `the sources cite CPython ${CITED[0]}, but no Python ${CITED[0]} is installed (${DOCS_PY.tried.join('; ')}). Quotes are verified against the cited version only: install Python ${CITED[0]} (Windows: py install ${CITED[0]}, or the python.org installer) or set V2U_PYTHON.`);
   let n = 0;
   for (const k of KS) for (const p of k.provenance) for (const e of p.evidence ?? []) {
     if (e.ref.startsWith('openstax:')) continue; // checked against the OpenStax source files (test-phase-66)
@@ -78,7 +85,7 @@ await test('Every programming lesson cites opened official docs with evidence fo
   }
 });
 await test('Doc behaviour also holds when executed (input returns str, range excludes stop, int truncates, / gives float)', () => {
-  const out = execFileSync('python3', ['-c', 'print(type(input()).__name__, list(range(1,4)), int(-3.7), type(8/2).__name__, {"a":1}.get("b"))'], { input: '5\n', encoding: 'utf-8' }).trim();
+  const out = execFileSync(PY.cmd, [...PY.args, '-c', 'print(type(input()).__name__, list(range(1,4)), int(-3.7), type(8/2).__name__, {"a":1}.get("b"))'], { input: '5\n', encoding: 'utf-8' }).trim();
   assert.strictEqual(out, "str [1, 2, 3] -3 float None");
 });
 
