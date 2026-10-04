@@ -7,6 +7,8 @@ import path from 'node:path';
 import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { python } from './lib/crossPlatform.js';
+const PY = python(); // py -3 on Windows, then python, then python3 (never the Store alias)
 import { createJiti } from 'jiti';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -43,7 +45,7 @@ const SRC = new Set(K.SOURCES.map((s) => s.id));
 const evalWith = (expr, vars = {}) => Function(...Object.keys(vars), `return (${expr});`)(...Object.values(vars));
 function runPython(code, stdin = '') {
   try {
-    return { out: execFileSync('python3', ['-c', code], { input: stdin, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).replace(/\n$/, ''), err: '' };
+    return { out: execFileSync(PY.cmd, [...PY.args, '-c', code], { input: stdin, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).replace(/\n$/, ''), err: '' };
   } catch (e) {
     return { out: String(e.stdout ?? ''), err: String(e.stderr ?? e.message) };
   }

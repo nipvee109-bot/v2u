@@ -30,6 +30,8 @@ async function test(name, fn) {
 }
 
 import { execFileSync } from 'node:child_process';
+import { python } from './lib/crossPlatform.js';
+const PY = python(); // py -3 on Windows, then python, then python3 (never the Store alias)
 console.log('=== Phase 59: V2U learning content foundation ===\n');
 const A = await jiti.import(path.join(root, 'src/content/audit.ts'));
 const { ORIGINAL_LESSONS: O } = await jiti.import(path.join(root, 'src/content/originals.ts'));
@@ -39,7 +41,7 @@ const IR = await jiti.import(path.join(root, 'src/interactive/registry.ts'));
 const { RESOURCE_REGISTRY: R } = await jiti.import(path.join(root, 'src/resources/registry.ts'));
 const { useStore } = await jiti.import(path.join(root, 'src/store/useStore.ts'));
 const I = await jiti.import(path.join(root, 'src/utils/integrityUtils.ts'));
-const py = (code, input = '') => execFileSync('python3', ['-c', code], { input, encoding: 'utf-8' }).replace(/\n$/, '');
+const py = (code, input = '') => execFileSync(PY.cmd, [...PY.args, '-c', code], { input, encoding: 'utf-8' }).replace(/\n$/, '');
 const pyErr = (code) => { try { py(code); return null; } catch (e) { return String(e.stderr).trim().split('\n').pop().split(':')[0]; } };
 const byId = (id) => O.find((o) => o.lessonId === id);
 

@@ -3,6 +3,7 @@
  * - finds PostgreSQL via PG_BIN or Program Files\PostgreSQL\<version>\bin (.exe tools, no hard-coded version)
  * - Windows connects over TCP 127.0.0.1; Linux keeps the Unix-socket setup unchanged
  * - without PostgreSQL: SKIPPED (exit 0) normally, BLOCKED (exit 2) when V2U_RLS_REQUIRED=1 — never a pass
+ * - cross-platform test helpers: real Python resolver (never the Store alias), CRLF-safe reads, "/" paths, file:// imports
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -13,6 +14,7 @@ import { spawnSync } from 'node:child_process';
 import {
   candidateBinDirs, connectionFor, exeName, findServerBin, hasServerTools, initdbArgs, missingRuntimeMessage, rlsRequired,
 } from './lib/pgTestRuntime.js';
+import { findPython, importFile, python, pythonCandidates, readText, relPosix, toPosix } from './lib/crossPlatform.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -123,6 +125,52 @@ await test('harness: no PostgreSQL -> SKIPPED exit 0, but BLOCKED exit 2 when RL
   assert.strictEqual(blocked.status, 2);
   assert.match(blocked.stdout, /^BLOCKED: PostgreSQL server binaries not found .*not a pass/m);
   assert(fs.existsSync(script));
+});
+
+console.log('\n--- cross-platform test helpers ---');
+const fakeRun = (table) => (cmd, args) => {
+  const r = table[[cmd, ...args].join(' ')];
+  return r === undefined ? { status: null, stdout: '', error: new Error('ENOENT') } : r;
+};
+const STORE_ALIAS = { status: 9009, stdout: '', stderr: 'Python was not found; run without arguments to install from the Microsoft Store' };
+
+await test('Python candidates: py -3, python, python3 on Windows (py -3.11 when a version is cited); python3 first elsewhere', () => {
+  const c = (o) => pythonCandidates({ env: {}, ...o }).map((x) => [x.cmd, ...x.args].join(' '));
+  assert.deepStrictEqual(c({ platform: 'win32' }), ['py -3', 'python', 'python3']);
+  assert.deepStrictEqual(c({ platform: 'win32', version: '3.11' }), ['py -3.11', 'python', 'python3']);
+  assert.deepStrictEqual(c({ platform: 'linux' }), ['python3', 'python']);
+  assert.deepStrictEqual(c({ platform: 'linux', version: '3.11' }), ['python3.11', 'python3', 'python']);
+  assert.strictEqual(pythonCandidates({ platform: 'win32', env: { V2U_PYTHON: 'C:\\Py\\python.exe' } })[0].cmd, 'C:\\Py\\python.exe');
+});
+
+await test('the Microsoft Store python3 alias is never chosen; a missing py launcher falls through to python', () => {
+  const p = findPython({ platform: 'win32', env: {}, run: fakeRun({ python: { status: 0, stdout: '3.13.1\n' }, python3: STORE_ALIAS }) });
+  assert.deepStrictEqual([p.cmd, p.version], ['python', '3.13.1']);
+  const none = findPython({ platform: 'win32', env: {}, run: fakeRun({ python3: STORE_ALIAS }) });
+  assert.strictEqual(none.cmd, null);
+  assert(none.tried.some((t) => t.startsWith('python3 -> unusable (exit 9009)')));
+  assert.throws(() => python({ platform: 'win32', env: {}, run: fakeRun({ python3: STORE_ALIAS }) }), /Python 3 not found .*V2U_PYTHON/);
+});
+
+await test('a cited version is matched exactly: 3.13 never stands in for 3.11', () => {
+  const run = fakeRun({ 'py -3.11': { status: 0, stdout: '3.11.9\n' }, python: { status: 0, stdout: '3.13.1\n' } });
+  assert.deepStrictEqual(findPython({ platform: 'win32', env: {}, version: '3.11', run }).args, ['-3.11']);
+  const only313 = fakeRun({ python: { status: 0, stdout: '3.13.1\n' }, python3: STORE_ALIAS });
+  assert.strictEqual(findPython({ platform: 'win32', env: {}, version: '3.11', run: only313 }).cmd, null);
+  assert.strictEqual(findPython({ platform: 'win32', env: {}, run: fakeRun({ 'py -3': { status: 0, stdout: '2.7.18\n' } }) }).cmd, null, 'Python 2 is rejected');
+});
+
+await test('CRLF checkouts read as LF; Windows paths compare with "/"; absolute paths import via file:// URLs', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'v2u-xp-'));
+  const f = path.join(tmp, 'crlf.txt');
+  fs.writeFileSync(f, 'a,\r\n    });\r\n');
+  assert.strictEqual(readText(f), 'a,\n    });\n');
+  assert.strictEqual(toPosix('src\\resources\\registry.ts'), 'src/resources/registry.ts');
+  assert.strictEqual(relPosix(tmp, path.join(tmp, 'src', 'x.ts')), 'src/x.ts');
+  const mod = path.join(tmp, 'm.mjs');
+  fs.writeFileSync(mod, 'export default 42;');
+  assert.strictEqual((await importFile(mod)).default, 42);
+  fs.rmSync(tmp, { recursive: true, force: true });
 });
 
 console.log(`\nTotal: ${passed + failed} | Passed: ${passed} | Failed: ${failed}`);

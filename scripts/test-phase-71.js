@@ -7,12 +7,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
+import { importFile, readText } from './lib/crossPlatform.js';
 import { execFileSync } from 'node:child_process';
 import { createJiti } from 'jiti';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
-const read = (p) => fs.readFileSync(path.join(root, p), 'utf-8');
+const read = (p) => readText(path.join(root, p));
 const jiti = createJiti(import.meta.url);
 const mem = new Map();
 globalThis.localStorage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k), clear: () => mem.clear(), key: (i) => [...mem.keys()][i], get length() { return mem.size; } };
@@ -36,7 +37,7 @@ async function test(name, fn) {
 console.log('=== Phase 71: First real GameContent payload export ===\n');
 const os = await import('node:os');
 const crypto = await import('node:crypto');
-const { default: AjvMod } = await import(path.join(root, 'node_modules/ajv/dist/ajv.js'));
+const { default: AjvMod } = await importFile(path.join(root, 'node_modules/ajv/dist/ajv.js'));
 const Ajv = AjvMod.default ?? AjvMod;
 const K = await jiti.import(path.join(root, 'src/content/knowledge/index.ts'));
 const { CURRICULUM: C } = await jiti.import(path.join(root, 'src/curriculum/data.ts'));

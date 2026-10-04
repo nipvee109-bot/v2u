@@ -2,7 +2,6 @@
  * Test Suite: Phase 60 — Diagnostic & pathway foundation
  * (live microphone + iframe mounting are also exercised in Playwright with a fake SpeechRecognition)
  */
-import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
@@ -10,7 +9,7 @@ import { createJiti } from 'jiti';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
-const read = (p) => fs.readFileSync(path.join(root, p), 'utf-8');
+const read = (p) => readText(path.join(root, p));
 const jiti = createJiti(import.meta.url);
 const mem = new Map();
 globalThis.localStorage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k), clear: () => mem.clear(), key: (i) => [...mem.keys()][i], get length() { return mem.size; } };
@@ -30,6 +29,8 @@ async function test(name, fn) {
 }
 
 import { execFileSync } from 'node:child_process';
+import { python, readText } from './lib/crossPlatform.js';
+const PY = python(); // py -3 on Windows, then python, then python3 (never the Store alias)
 console.log('=== Phase 60: Diagnostic & pathway foundation ===\n');
 const D = await jiti.import(path.join(root, 'src/diagnostic/engine.ts'));
 const { DIAGNOSTIC_ITEMS: ITEMS, diagnosticItemsFor } = await jiti.import(path.join(root, 'src/diagnostic/items.ts'));
@@ -40,7 +41,7 @@ const { getNextStep } = await jiti.import(path.join(root, 'src/utils/nextStep.ts
 const RE = await jiti.import(path.join(root, 'src/route/engine.ts'));
 const I = await jiti.import(path.join(root, 'src/utils/integrityUtils.ts'));
 const { useStore } = await jiti.import(path.join(root, 'src/store/useStore.ts'));
-const py = (code) => execFileSync('python3', ['-c', code], { encoding: 'utf-8' }).replace(/\n$/, '');
+const py = (code) => execFileSync(PY.cmd, [...PY.args, '-c', code], { encoding: 'utf-8' }).replace(/\n$/, '');
 const NOW = new Date('2026-10-02T12:00:00Z');
 const lessons = initialLessons.map((l) => ({ ...l, status: 'NOT STARTED' }));
 const profile = { educationLevel: 'ปวช.3', programId: 'other', targetId: 'target-computer-engineering', availableMinutes: 30 };

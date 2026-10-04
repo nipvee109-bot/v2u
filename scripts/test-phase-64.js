@@ -8,6 +8,8 @@ import path from 'node:path';
 import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { python } from './lib/crossPlatform.js';
+const PY = python(); // py -3 on Windows, then python, then python3 (never the Store alias)
 import { createJiti } from 'jiti';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -110,7 +112,7 @@ await test('tutor lines are short, have no links and do not mention future topic
 const k = K.getLessonKnowledge('prog-ctrl-conditions');
 const we1 = k.workedExamples.find((e) => e.id === 'we-1').code;
 const i3 = [...k.guided, ...k.independent].find((p) => p.id === 'i-3').code;
-const py = (code) => execFileSync('python3', ['-c', code], { encoding: 'utf-8' }).replace(/\n$/, '');
+const py = (code) => execFileSync(PY.cmd, [...PY.args, '-c', code], { encoding: 'utf-8' }).replace(/\n$/, '');
 await test('branch runner output = python3 output (worked example, many values)', () => {
   for (const v of [-5, 0, 40, 69, 70, 71, 72, 79, 80, 81, 95, 100]) assert.strictEqual(runBranches(withValue(we1, v)).output, py(withValue(we1, v)), `score ${v}`);
 });

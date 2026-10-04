@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
+import { relPosix } from './lib/crossPlatform.js';
 import { createJiti } from 'jiti';
 import { useActionableRegistry } from './lib/actionableFixture.js';
 
@@ -32,7 +33,7 @@ function walk(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
     e.isDirectory() ? walk(path.join(dir, e.name)) : /\.tsx?$/.test(e.name) ? [path.join(dir, e.name)] : []);
 }
-const srcFiles = walk(path.join(root, 'src')).map((f) => [path.relative(root, f), fs.readFileSync(f, 'utf-8')]);
+const srcFiles = walk(path.join(root, 'src')).map((f) => [relPosix(root, f), fs.readFileSync(f, 'utf-8')]);
 
 console.log('=== Phase 42C: Resource Consolidation & Verification ===\n');
 

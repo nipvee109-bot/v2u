@@ -8,6 +8,8 @@ import path from 'node:path';
 import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { python } from './lib/crossPlatform.js';
+const PY = python(); // py -3 on Windows, then python, then python3 (never the Store alias)
 import { createJiti } from 'jiti';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -109,12 +111,12 @@ await test('allowedKnowledge respected / notYetAllowed excluded (no loops, try, 
 });
 
 await test('expected outputs are what real python3 prints (predictions, starter code, fixed debug code)', () => {
-  const run = (c) => execFileSync('python3', ['-c', c], { encoding: 'utf-8' }).replace(/\n$/, '');
+  const run = (c) => execFileSync(PY.cmd, [...PY.args, '-c', c], { encoding: 'utf-8' }).replace(/\n$/, '');
   for (const p of GC.teaching.predictions) assert.strictEqual(run(p.code), p.expectedOutput, p.sourceId);
   for (const s of GC.teaching.starterCode) assert.strictEqual(run(s.code), s.expectedOutput, s.sourceId);
   for (const d of GC.teaching.debugging) {
     assert.strictEqual(run(d.fixedCode), d.expectedOutput);
-    assert.throws(() => execFileSync('python3', ['-c', d.brokenCode], { stdio: 'pipe' }), 'broken code really fails');
+    assert.throws(() => execFileSync(PY.cmd, [...PY.args, '-c', d.brokenCode], { stdio: 'pipe' }), 'broken code really fails');
   }
 });
 

@@ -3,15 +3,15 @@
  * (browser behaviour — no YouTube before "ดูคลิป", layouts, overflow — is also
  *  exercised by the Playwright sweep; here we pin the logic and the structure)
  */
-import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
+import { readText } from './lib/crossPlatform.js';
 import { createJiti } from 'jiti';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
-const read = (p) => fs.readFileSync(path.join(root, p), 'utf-8');
+const read = (p) => readText(path.join(root, p));
 const jiti = createJiti(import.meta.url);
 
 // The persisted store needs storage; give it an in-memory one
