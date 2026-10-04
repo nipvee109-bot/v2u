@@ -290,12 +290,13 @@ class LintManagerTests(LintRepoCase):
         m = self.lint_manager(implement, maxTaskRetries=1, lint={"warnings": "fail"})
         self.assertEqual(self.one_task(m)["status"], T.FAILED)
 
-    def test_unparseable_lint_failure_is_fail_not_pass(self):
+    def test_unparseable_lint_failure_is_blocked_not_pass(self):
         step = V.Step("lint", ["npm", "run", "lint"], "lint")
         m = self.lint_manager()
         m.preflight()
         res = m.lint_evaluator()(step, 2, "Error: config file broken\n")
-        self.assertEqual(res.status, V.FAIL)
+        self.assertEqual(res.status, V.BLOCKED)          # never PASS, never a "regression" for agents to fix
+        self.assertEqual(V.task_verdict([res])[0], "human")
 
 
 # ============================================================ 2. RLS / SKIPPED handling

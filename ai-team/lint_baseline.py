@@ -70,34 +70,51 @@ _UNIX_ESLINT = re.compile(r"^(?P<file>(?:[A-Za-z]:)?[^:\n]+?):(?P<line>\d+):(?P<
                           r"\[(?P<sev>Error|Warning)(?:/(?P<rule>[^\]]+))?\]\s*$")
 #   12:5  error  message  rule-id                     (stylish, file on a header line)
 _STYLISH = re.compile(r"^\s+(?P<line>\d+):(?P<col>\d+)\s+(?P<sev>error|warning)\s+(?P<msg>.+?)(?:\s{2,}(?P<rule>[\w@/.\-()]+))?\s*$")
-# ⚠ rule(name): message   then   ╭─[file:line:col]  (oxlint default graphical)
-_GRAPH_HEAD = re.compile(r"^\s*(?P<icon>[⚠×✗!])\s+(?P<rule>[\w@/.\-]+(?:\([^)]*\))?):\s*(?P<msg>.*)$")
-_GRAPH_LOC = re.compile(r"[╭┌]─+\[(?P<file>.+?):(?P<line>\d+):(?P<col>\d+)\]")
+# Diagnostic block (oxlint/miette "default" format). Two themes exist and BOTH occur in practice:
+#   unicode:  "  ⚠ rule(name): msg" / "  × rule(name): msg"   then   "   ╭─[file:line:col]"
+#   ASCII:    "  ! rule(name): msg" / "  x rule(name): msg"   then   "   ,-[file:line:col]"
+# The ASCII theme is what a plain Windows console / piped process gets (no AI_AGENT / unicode terminal).
+_GRAPH_HEAD = re.compile(r"^\s*(?P<icon>[⚠×✗!x])\s+(?P<rule>[\w@/.\-]+(?:\([^)]*\))?):\s*(?P<msg>.*)$")
+_GRAPH_LOC = re.compile(r"(?:[╭┌]─+|,-+)\[(?P<file>.+?):(?P<line>\d+):(?P<col>\d+)\]")
 _SUMMARY = re.compile(r"Found\s+(?P<w>\d+)\s+warnings?\s+and\s+(?P<e>\d+)\s+errors?", re.I)
 _ESLINT_SUMMARY = re.compile(r"(?P<t>\d+)\s+problems?\s+\((?P<e>\d+)\s+errors?,\s+(?P<w>\d+)\s+warnings?\)", re.I)
+# The linter itself did not run (dependencies not installed, wrong PATH): never "0 findings".
+_LINTER_MISSING = re.compile(r"is not recognized as an internal or external command|command not found|"
+                             r"Cannot find module|ERR_MODULE_NOT_FOUND|MODULE_NOT_FOUND|ENOENT.*(oxlint|eslint)|"
+                             r"could not determine executable to run", re.I)
+
+PARSER_VERSION = "2"   # stored with the baseline; a parser change forces a fresh baseline
 
 
-def _parse_json(text: str, root: Path | None) -> list[Finding] | None:
-    start = min([i for i in (text.find("["), text.find("{")) if i >= 0], default=-1)
-    if start < 0:
-        return None
-    try:
-        data = json.loads(text[start:])
-    except json.JSONDecodeError:
-        return None
+def _json_documents(text: str):
+    """Yield JSON values that start on their own line (npm banner lines before, 'npm error' lines after are fine).
+
+    Only line-leading documents count, so code snippets inside a text report (e.g. `useEffect(fn, [])`) are
+    never mistaken for an empty JSON report.
+    """
+    dec = json.JSONDecoder()
+    for m in re.finditer(r"(?m)^[ \t]*([\[{])", text):
+        k = m.start(1)
+        try:
+            obj, _ = dec.raw_decode(text, k)
+        except json.JSONDecodeError:
+            continue
+        yield obj
+
+
+def _from_json(data, root: Path | None) -> list[Finding] | None:
     out: list[Finding] = []
-    if isinstance(data, list):  # eslint json
-        for f in data:
-            if not isinstance(f, dict) or "messages" not in f:
-                return None
+    if isinstance(data, list) and data and all(isinstance(f, dict) and "filePath" in f and "messages" in f for f in data):
+        for f in data:  # eslint --format json
             for m in f.get("messages", []):
                 out.append(Finding(_norm_file(f.get("filePath", ""), root), int(m.get("line") or 0), int(m.get("column") or 0),
-                                   "error" if m.get("severity") == 2 else "warning", str(m.get("ruleId") or "unknown"),
-                                   _norm_msg(str(m.get("message", "")))))
+                                   "error" if m.get("severity") == 2 or m.get("fatal") else "warning",
+                                   str(m.get("ruleId") or "unknown"), _norm_msg(str(m.get("message", "")))))
         return out
-    if isinstance(data, dict) and isinstance(data.get("diagnostics"), list):  # oxlint json
+    if isinstance(data, dict) and isinstance(data.get("diagnostics"), list):  # oxlint --format json
         for d in data["diagnostics"]:
-            span = ((d.get("labels") or [{}])[0] or {}).get("span", {}) if d.get("labels") else {}
+            labels = d.get("labels") or []
+            span = (labels[0] or {}).get("span", {}) if labels and isinstance(labels[0], dict) else {}
             out.append(Finding(_norm_file(d.get("filename", ""), root), int(span.get("line") or 0), int(span.get("column") or 0),
                                _sev(str(d.get("severity", "warning"))), str(d.get("code") or "unknown"),
                                _norm_msg(str(d.get("message", "")))))
@@ -105,16 +122,42 @@ def _parse_json(text: str, root: Path | None) -> list[Finding] | None:
     return None
 
 
-def parse_lint_output(text: str, root: Path | None = None) -> tuple[list[Finding], dict | None]:
-    """Returns (findings, reported_counts) where reported_counts is the linter's own summary if printed."""
-    text = _ANSI.sub("", text or "")
+@dataclass
+class ParseResult:
+    findings: list
+    reported: dict | None      # the linter's own "Found N warnings and M errors" summary, if printed
+    fmt: str                   # json | text | none
+    recognized: bool           # output is understood (JSON document, findings, or a summary line)
+    linter_missing: bool
+
+    @property
+    def consistent(self) -> bool:
+        """Parsed counts agree with the linter's own summary (when it printed one)."""
+        return self.reported is None or self.reported == counts(self.findings)
+
+
+def parse_lint(text: str, root: Path | None = None) -> ParseResult:
+    text = _ANSI.sub("", text or "").replace("\r\n", "\n").replace("\r", "\n")
     reported = None
     m = _SUMMARY.search(text) or _ESLINT_SUMMARY.search(text)
     if m:
         reported = {"errors": int(m.group("e")), "warnings": int(m.group("w"))}
-    js = _parse_json(text, root) if text.lstrip().startswith(("[", "{")) else None
-    if js is not None:
-        return js, reported
+    missing = bool(_LINTER_MISSING.search(text))
+    for doc in _json_documents(text):
+        found = _from_json(doc, root)
+        if found is not None:
+            return ParseResult(found, reported, "json", True, missing)
+    findings = _parse_text(text, root)
+    return ParseResult(findings, reported, "text", bool(findings) or reported is not None, missing)
+
+
+def parse_lint_output(text: str, root: Path | None = None) -> tuple[list[Finding], dict | None]:
+    """Backward-compatible: (findings, reported_counts)."""
+    r = parse_lint(text, root)
+    return r.findings, r.reported
+
+
+def _parse_text(text: str, root: Path | None) -> list[Finding]:
     findings: list[Finding] = []
     current_file = None
     pending_head = None
@@ -149,7 +192,7 @@ def parse_lint_output(text: str, root: Path | None = None) -> tuple[list[Finding
             continue
         if line and not line.startswith((" ", "\t", ">")) and re.search(r"\.\w{1,5}$", line) and ":" not in line[2:]:
             current_file = _norm_file(line, root)  # stylish file header
-    return findings, reported
+    return findings
 
 
 def counts(findings: list[Finding]) -> dict:

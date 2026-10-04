@@ -146,6 +146,8 @@ Before the first task, AI-Team records the current lint findings as **BASELINE_D
 - **FAIL_REGRESSION** if there is a new error, or an old error moved because the task rewrote its line (`MOVED`).
 - New warnings are always shown. By default they are warning-only. Set `"lint": {"warnings": "fail"}`, or write "no new lint warnings" in PROJECT_RULES.md, to make them fail.
 - The fix agent is shown **only** the regressions and told not to touch the old debt.
+- **Output format:** when the `lint` script is a single plain `oxlint` or `eslint` call, AI-Team runs it with `--format json` (for example `npm run lint -- --format json`). That output is the same on every OS and terminal; without it, oxlint prints a different layout on a plain Windows console (`x`/`!` markers and `,-[file:line:col]`) than inside an AI agent. Other text layouts are still read: oxlint's console layout in ASCII or Unicode, one-line `file:line:col`, unix, and stylish. Windows `\` paths and CRLF line endings are handled.
+- **Unreadable output is BLOCKED, never guessed.** This covers three cases: the linter didn't run (for example not installed), it exited non-zero with a layout AI-Team can't read, or the parsed counts disagree with the linter's own `Found N warnings and M errors` line. The raw output is saved to `.aiteam\reports\*-lint-unreadable-*.txt`. A change of lint command or parser version triggers a fresh baseline.
 - After each validated checkpoint the baseline moves forward to the accepted state. `aiteam status` still shows the counts from the start of the session.
 
 ```

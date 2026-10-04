@@ -60,7 +60,7 @@ function Invoke-Git([string[]]$a, [string]$dir) { return Invoke-Native -Exe 'git
 $HelperSource = @'
 """AI-Team V3 Windows pre-flight helper v2 (read-only for the V2U repo).
 Usage: python helper.py <AI-Team dir> <V2U dir> <command> [--mock]
-Commands: inspect | probe | comprehension | dryrun-sim | rls | lint
+Commands: inspect | probe | comprehension | dryrun-sim | rls | lint | deps
 Prints one line 'AITEAM_RESULT {json}'. Never edits V2U files: the dry-run simulation runs on a
 temporary `git clone` of V2U that is deleted afterwards.
 """
@@ -370,15 +370,39 @@ def lint():
         emit({"lint": "no lint step"})
         return 0
     code, output, nf, _ = V.run_command(step.argv, ROOT, os.environ.copy(), 600)
-    findings, reported = LB.parse_lint_output(output, ROOT)
-    emit({"exit_code": code, "not_found": nf, "counts": LB.counts(findings), "reported": reported,
-          "parseable": bool(findings) or code == 0})
+    r = LB.parse_lint(output, ROOT)
+    trusted = not (r.linter_missing and not r.findings) and (code == 0 or r.recognized) and r.consistent
+    raw = None
+    if not trusted:
+        raw = ROOT / ".aiteam" / "reports" / f"{time.strftime('%Y%m%d-%H%M%S')}-preflight-lint-raw.txt"
+        raw.parent.mkdir(parents=True, exist_ok=True)
+        raw.write_text(output, encoding="utf-8")
+    emit({"command": " ".join(step.argv), "format": r.fmt, "exit_code": code, "not_found": nf, "counts": LB.counts(r.findings),
+          "reported": r.reported, "consistent": r.consistent, "linter_missing": r.linter_missing, "parseable": trusted,
+          "raw": str(raw) if raw else None, "raw_head": output[:600] if raw else None})
+    return 0
+
+
+def deps():
+    """What is actually installed - never a stale 'npm ci needed' claim."""
+    pkg = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
+    declared = {**pkg.get("dependencies", {}), **pkg.get("devDependencies", {})}
+    nm = ROOT / "node_modules"
+    missing = sorted(n for n in declared if not (nm / n / "package.json").exists()) if nm.is_dir() else sorted(declared)
+    lock = ROOT / "package-lock.json"
+    marker = nm / ".package-lock.json"
+    emit({"nodeModules": nm.is_dir(), "declared": len(declared), "missing": missing,
+          "devMissing": sorted(n for n in missing if n in pkg.get("devDependencies", {})),
+          "nodeEnv": os.environ.get("NODE_ENV"), "npmOmit": os.environ.get("npm_config_omit") or os.environ.get("NPM_CONFIG_OMIT"),
+          "installedAfterLock": bool(marker.exists() and lock.exists() and marker.stat().st_mtime >= lock.stat().st_mtime - 1),
+          "linterBin": any((nm / ".bin" / n).exists() for n in ("oxlint", "oxlint.cmd", "eslint", "eslint.cmd")),
+          "pg": (nm / "pg" / "package.json").exists()})
     return 0
 
 
 if __name__ == "__main__":
     sys.exit({"inspect": inspect, "probe": probe, "comprehension": comprehension, "dryrun-sim": dryrun_sim,
-              "rls": rls, "lint": lint}[CMD]())
+              "rls": rls, "lint": lint, "deps": deps}[CMD]())
 
 '@
 
@@ -792,19 +816,29 @@ Set-R 'AUTO_PUSH_CONFIG' ("effective autoPush=$ap (local $ai\config.json" + $(if
 if ($ap -ne $false) { Add-Blocker "autoPush is $ap - first real cycle must not push automatically (set: python `"$AiTeam\aiteam.py`" --project `"$Project`" config set autoPush false)" }
 
 # ================================================================ RLS + lint preview
-Phase 'RLS CHECK (project script, read-only) + LINT PREVIEW'
-$pg = Join-Path (Join-Path $Project 'node_modules') 'pg'
-if (-not (Test-Path -LiteralPath $pg)) {
-  Set-R 'RLS_NATIVE_WINDOWS' 'BLOCKED - not run: node_modules\pg missing (npm install not allowed in pre-flight)'
-  Add-Blocker 'V2U node_modules missing: lint/test/build/test:rls cannot run in a real cycle (npm ci needs your approval)'
-} else {
+Phase 'DEPENDENCIES, RLS CHECK (project script, read-only) + LINT'
+$dp = (Invoke-Helper 'deps').Data
+if (-not $dp) { Add-Blocker 'dependency check failed' }
+elseif (-not $dp.nodeModules) {
+  Set-R 'RLS_NATIVE_WINDOWS' 'BLOCKED - not run: node_modules is missing'
+  Add-Blocker 'V2U node_modules is missing: run npm ci in the V2U folder (validation cannot run without it)'
+} elseif (@($dp.missing).Count) {
+  $why = "node_modules exists but $(@($dp.missing).Count) declared package(s) are missing: $(@($dp.missing) -join ', ')"
+  if (@($dp.devMissing).Count -and ($dp.nodeEnv -eq 'production' -or $dp.npmOmit)) { $why += " (devDependencies were skipped: NODE_ENV=$($dp.nodeEnv) npm omit=$($dp.npmOmit); run: npm ci --include=dev)" }
+  else { $why += ' (run npm ci again)' }
+  Add-Blocker $why
+  Set-R 'RLS_NATIVE_WINDOWS' "BLOCKED - not run: $why"
+} else { Ok "node_modules complete: all $($dp.declared) declared packages installed (npm ci already done)" }
+
+if ($dp -and $dp.nodeModules -and -not @($dp.missing).Count) {
   $q = Invoke-Helper 'rls'
+  Say "  test:rls exit $($q.Data.exit_code); status $($q.Data.status)"
   foreach ($nn in @($q.Data.notes)) { if ($nn) { Say "  note: $nn" } }
   switch ($q.Data.status) {
-    'PASS' { Set-R 'RLS_NATIVE_WINDOWS' 'PASS (the project test ran on this machine)' }
+    'PASS' { Set-R 'RLS_NATIVE_WINDOWS' 'PASS - real PostgreSQL migration + RLS tests ran on this machine' }
     { $_ -in @('BLOCKED', 'SKIPPED') } {
       Set-R 'RLS_NATIVE_WINDOWS' "BLOCKED - $($q.Data.reason)"
-      Add-Known "RLS_NATIVE_WINDOWS: BLOCKED ($($q.Data.reason)). scripts/test-supabase-rls.mjs looks for 'initdb' without '.exe' and uses Unix sockets, so it cannot run on native Windows. Goal cannot be COMPLETE until RLS runs (WSL, or an approved test-script change); security tasks in the first cycle stay UNVERIFIED and must not be pushed."
+      Add-Known "RLS_NATIVE_WINDOWS: BLOCKED ($($q.Data.reason)). Required: $($q.Data.required_action). The Goal cannot be COMPLETE until RLS runs; security tasks stay UNVERIFIED and must not be pushed."
     }
     default {
       Set-R 'RLS_NATIVE_WINDOWS' "FAIL (exit $($q.Data.exit_code)) - $($q.Data.reason)"
@@ -813,9 +847,12 @@ if (-not (Test-Path -LiteralPath $pg)) {
   }
   $l = Invoke-Helper 'lint'
   if ($l.Data -and $l.Data.counts) {
-    Say "  lint preview: $($l.Data.counts.errors) errors / $($l.Data.counts.warnings) warnings parsed (exit $($l.Data.exit_code)), parseable=$($l.Data.parseable)"
-    if (-not $l.Data.parseable) { Add-Blocker 'lint output not parseable on this machine (lint would be BLOCKED every task)' }
-  }
+    Say "  lint: $($l.Data.command) -> format=$($l.Data.format) $($l.Data.counts.errors) errors / $($l.Data.counts.warnings) warnings (exit $($l.Data.exit_code)), linter summary=$($l.Data.reported), parseable=$($l.Data.parseable)"
+    if (-not $l.Data.parseable) {
+      Say "  raw lint output saved to $($l.Data.raw); first lines:"; Say $l.Data.raw_head
+      Add-Blocker "lint output not readable on this machine (raw output: $($l.Data.raw)) - lint would be BLOCKED every task"
+    }
+  } else { Add-Blocker "lint check failed: $($l.Out)" }
 }
 Say "  RLS_NATIVE_WINDOWS: $(Get-R 'RLS_NATIVE_WINDOWS')"
 Assert-Unchanged 'RLS / lint checks'

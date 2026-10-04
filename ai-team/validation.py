@@ -53,6 +53,7 @@ class Step:
     kind: str = "test"         # typecheck | lint | test | security | build
     critical: bool = False
     env: dict = field(default_factory=dict)
+    fmt: str = "text"          # lint output format requested: json | text
 
 
 @dataclass
@@ -132,7 +133,10 @@ def detect_steps(root: Path, configured: dict | None = None) -> list[Step]:
         for name in ("typecheck", "type-check", "lint", "test", "build"):
             if name in scripts and "no test specified" not in scripts[name]:
                 kind, critical = _kind_for(name)
-                steps.append(Step(name, [runner, "run", name], kind, critical))
+                argv, fmt = [runner, "run", name], "text"
+                if kind == "lint":
+                    argv, fmt = lint_argv(runner, name, scripts[name])
+                steps.append(Step(name, argv, kind, critical, fmt=fmt))
         for name in scripts:
             if SECURITY_NAME.search(name) and name.split(":")[0] in ("test", "rls", "security", "check", "verify"):
                 steps.append(Step(name, [runner, "run", name], "security", True))
@@ -146,6 +150,22 @@ def detect_steps(root: Path, configured: dict | None = None) -> list[Step]:
     elif (root / "go.mod").exists():
         steps = [Step("test", ["go", "test", "./..."]), Step("build", ["go", "build", "./..."], "build")]
     return _ordered(steps)
+
+
+# Linters whose machine-readable output is stable across OS, terminal and agent detection
+# (oxlint picks a different text layout on a plain Windows console than inside an AI agent).
+_JSON_LINTERS = {"oxlint": ["--format", "json"], "eslint": ["--format", "json"]}
+
+
+def lint_argv(runner: str, name: str, script: str) -> tuple[list[str], str]:
+    """Run the project's own lint script, asking a known linter for JSON when the script is a single plain call."""
+    m = re.match(r"^\s*(?:npx\s+)?(oxlint|eslint)(\s|$)", script or "")
+    if not m or re.search(r"&&|\|\||[;|<>]|\s(-f|--format)(\s|=)", script):
+        return [runner, "run", name], "text"
+    extra = _JSON_LINTERS[m.group(1)]
+    if runner == "npm":
+        return ["npm", "run", name, "--"] + extra, "json"
+    return [runner, "run", name] + extra, "json"   # pnpm / yarn pass trailing args to the script
 
 
 def detect_commands(root: Path, configured: dict | None = None) -> dict[str, list[str]]:
@@ -231,6 +251,13 @@ def classify(step: Step, code: int | None, output: str, not_found: bool = False,
     skips = _skip_lines(output)
     ran = any(p.search(output) for p in RAN_PATTERNS)
     if code not in (0, None):
+        blocked = [ln.strip() for ln in output.splitlines() if re.match(r"^\s*BLOCKED\b", ln)]
+        if blocked and not ran and not re.search(r"\bFailed:\s*[1-9]|\bfailing\b|\u274c", output):
+            r.status, r.reason = BLOCKED, blocked[0][:300]
+            if POSTGRES_HINT.search(output):
+                r.required_action = ("install/configure PostgreSQL or set PG_BIN "
+                                     "(aiteam config set validationEnv.PG_BIN \"<PostgreSQL bin folder>\")")
+            return r
         r.status, r.reason = FAIL, f"exit code {code}"
         if skips:
             r.notes.append("output also mentions skipped parts: " + "; ".join(skips[:3]))

@@ -673,10 +673,13 @@ class Manager:
         base = self.load_lint_baseline()
         head = self.git.head_full()
         goal_hash = self.state.get("goalHash")
-        if base and not force and base.get("commit") == head and base.get("goalHash") == goal_hash:
+        same_tool = bool(base) and base.get("command") == step.argv and base.get("parser") == LB.PARSER_VERSION
+        if base and same_tool and not force and base.get("commit") == head and base.get("goalHash") == goal_hash:
             return
         owned_dirty = self.git.changed_paths() & self.owned()
         if base and owned_dirty and not force:
+            if not same_tool:
+                self.log("lint_baseline_stale", reason="lint command/parser changed while a task is in progress")
             return  # resuming mid-task: keep the clean baseline; diff line-mapping covers later commits
         captured: dict = {}
 
@@ -688,12 +691,15 @@ class Manager:
             self.ui.say(f"Lint baseline could not be recorded: {res.reason or res.status}")
             self.log("lint_baseline_failed", status=res.status, reason=res.reason)
             return
-        findings, reported = LB.parse_lint_output(captured["output"], self.paths.root)
-        parseable = bool(findings) or captured["code"] == 0
+        pr = LB.parse_lint(captured["output"], self.paths.root)
+        findings, reported = pr.findings, pr.reported
+        unreadable = self.lint_unreadable(pr, captured["code"], captured["output"], "baseline")
+        parseable = unreadable is None
         c = LB.counts(findings)
         original = base.get("original") if base and base.get("goalHash") == goal_hash else None
         data = {"commit": head, "goalHash": goal_hash, "takenAt": iso(utcnow()), "command": step.argv,
-                "exitCode": captured["code"], "parseable": parseable, "reported": reported, "counts": c,
+                "exitCode": captured["code"], "parseable": parseable, "unreadableReason": unreadable,
+                "parser": LB.PARSER_VERSION, "format": pr.fmt, "reported": reported, "counts": c,
                 "includesUncommittedWork": bool(owned_dirty),
                 "original": original or {"commit": head, "takenAt": iso(utcnow()), **c},
                 "findings": LB.findings_to_json(findings)}
@@ -706,7 +712,8 @@ class Manager:
         self.store.write_report("lint-baseline.md", "\n".join(
             [f"# Lint baseline (BASELINE_DEBT)", "", f"commit: {head}", f"command: {' '.join(step.argv)}",
              f"exit code: {captured['code']}", f"errors: {c['errors']}", f"warnings: {c['warnings']}",
-             f"parseable: {parseable}", "", "## By rule"] + [f"- {n} x {k}" for k, n in sorted(by_rule.items(), key=lambda x: -x[1])]
+             f"format: {pr.fmt}  parser: {LB.PARSER_VERSION}", f"parseable: {parseable}"
+             + (f" ({unreadable})" if unreadable else ""), "", "## By rule"] + [f"- {n} x {k}" for k, n in sorted(by_rule.items(), key=lambda x: -x[1])]
             + ["", "## Errors"] + [f"- {f.label()}" for f in findings if f.severity == "error"]))
         self.log("lint_baseline", commit=head, errors=c["errors"], warnings=c["warnings"], parseable=parseable,
                  rolled=bool(force))
@@ -714,10 +721,28 @@ class Manager:
             self.ui.say(f"Lint baseline: {c['errors']} errors, {c['warnings']} warnings recorded as BASELINE_DEBT "
                         f"(pre-existing; not this team's task) @ {(head or '')[:7]}")
             if not parseable:
-                self.ui.say("WARNING: lint exited non-zero but its output could not be parsed; lint will report BLOCKED.")
+                self.ui.say(f"WARNING: lint output cannot be trusted ({unreadable}); lint will report BLOCKED until fixed.")
             if owned_dirty:
                 self.ui.say("NOTE: baseline taken with uncommitted AI-Team work present (interrupted task).")
         self.save()
+
+    def lint_unreadable(self, pr, code, output: str, label: str) -> str | None:
+        """Why this lint output must not be used (None = trustworthy). Raw output is kept for diagnosis."""
+        why = None
+        if pr.linter_missing and not pr.findings:
+            why = "the linter did not run (dependency not installed? run npm ci in the project)"
+        elif code not in (0, None) and not pr.recognized:
+            why = "lint exited non-zero but its output is in a format AI-Team cannot read"
+        elif not pr.consistent:
+            got = LB.counts(pr.findings)
+            why = (f"parsed {got['errors']} errors / {got['warnings']} warnings but the linter itself reported "
+                   f"{pr.reported['errors']} / {pr.reported['warnings']}")
+        if why:
+            raw = self.store.write_report(f"{self.clock().strftime('%Y%m%d-%H%M%S')}-lint-unreadable-{label}.txt",
+                                          f"# {why}\n# exit code: {code}\n\n{output}")
+            self.log("lint_unreadable", label=label, reason=why, raw=raw.name)
+            why += f" - raw output saved to {raw}"
+        return why
 
     def line_mapper(self, commit: str | None):
         if not commit:
@@ -737,10 +762,14 @@ class Manager:
 
         def evaluate(step, code, output):
             res = V.StepResult(step.name, step.argv, V.PASS, "lint", False, output[-6000:], exit_code=code)
-            findings, reported = LB.parse_lint_output(output, self.paths.root)
-            if code not in (0, None) and not findings:
-                res.status, res.reason = V.FAIL, "lint exited non-zero but its output could not be parsed into findings"
+            pr = LB.parse_lint(output, self.paths.root)
+            unreadable = self.lint_unreadable(pr, code, output, step.name)
+            if unreadable:
+                # Never guess: an unreadable report is neither PASS nor a regression the agents should "fix".
+                res.status, res.reason = V.BLOCKED, unreadable
+                res.required_action = "fix the lint setup, or configure a lint format AI-Team can read (json, unix or stylish)"
                 return res
+            findings = pr.findings
             if base is None:
                 res.notes.append("no lint baseline recorded: every finding counts as new")
                 base_findings = []
@@ -753,11 +782,7 @@ class Manager:
             comp = LB.compare(base_findings, findings, self.line_mapper(base.get("commit") if base else None), policy)
             res.status = comp.status
             res.details = comp.details()
-            if reported and reported["errors"] != comp.current["errors"]:
-                res.notes.append(f"linter reported {reported['errors']} errors but {comp.current['errors']} were parsed")
-                base_reported = ((base or {}).get("reported") or {}).get("errors", comp.baseline["errors"])
-                if reported["errors"] > base_reported and res.status != V.FAIL_REGRESSION:
-                    res.status, res.reason = V.FAIL_REGRESSION, "the linter's own error count increased"
+            res.details["format"] = pr.fmt
             if res.status == V.FAIL_REGRESSION and not res.reason:
                 res.reason = (f"{comp.new_errors} new and {comp.moved_errors} moved lint error(s)"
                               + (f", {comp.new_warnings + comp.moved_warnings} new warning(s)" if policy == LB.FAIL_ON_WARNINGS else ""))
