@@ -4,7 +4,10 @@
  * Supabase's roles and auth schema) and acts as anon / authenticated users
  * exactly like PostgREST does (SET ROLE + request.jwt.claims).
  *   npm run test:rls
- * Needs PostgreSQL server binaries (initdb/pg_ctl). Skips with a notice when absent.
+ * Needs PostgreSQL server binaries (initdb/pg_ctl/postgres; .exe on Windows), found via PG_BIN or the usual
+ * install folders (see scripts/lib/pgTestRuntime.js). Linux/macOS use a Unix socket in a throwaway folder;
+ * Windows uses TCP on 127.0.0.1. Without PostgreSQL it prints SKIPPED and exits 0, or - with
+ * V2U_RLS_REQUIRED=1 - prints BLOCKED and exits 2, because a skipped RLS run is not a pass.
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -13,28 +16,50 @@ import assert from 'node:assert';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import { connectionFor, exeName, findServerBin, initdbArgs, missingRuntimeMessage, rlsRequired } from './lib/pgTestRuntime.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const BIN = [process.env.PG_BIN, '/usr/lib/postgresql/16/bin', '/usr/lib/postgresql/17/bin', '/usr/lib/postgresql/15/bin'].find((d) => d && fs.existsSync(path.join(d, 'initdb')));
+const runtime = findServerBin();
+const BIN = runtime.dir;
 if (!BIN) {
-  console.log('SKIPPED: PostgreSQL server binaries not found (set PG_BIN)');
+  const what = missingRuntimeMessage();
+  if (rlsRequired()) {
+    console.log(`BLOCKED: ${what}. V2U_RLS_REQUIRED=1, so a skipped RLS run is not a pass.`);
+    process.exit(2);
+  }
+  console.log(`SKIPPED: ${what}`);
   process.exit(0);
 }
-const PORT = 54329;
+const PORT = Number(process.env.V2U_RLS_PG_PORT) || 54329;
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'v2u-pg-'));
 const isRoot = process.getuid?.() === 0;
+const conn = connectionFor({ dir, port: PORT });
 const run = (bin, args) => {
+  const exe = path.join(BIN, exeName(bin));
   if (isRoot) {
     { const id = Number(execFileSync("id", ["-u", "postgres"]).toString().trim()); const gid = Number(execFileSync("id", ["-g", "postgres"]).toString().trim()); fs.chownSync(dir, id, gid); }
-    return execFileSync('runuser', ['-u', 'postgres', '--', path.join(BIN, bin), ...args], { stdio: ['ignore', 'ignore', 'pipe'] });
+    return execFileSync('runuser', ['-u', 'postgres', '--', exe, ...args], { stdio: ['ignore', 'ignore', 'pipe'] });
   }
-  return execFileSync(path.join(BIN, bin), args, { stdio: ['ignore', 'ignore', 'pipe'] });
+  if (process.platform === 'win32') {
+    // pg_ctl's background server inherits stdio; a pipe would keep execFileSync waiting, so stderr goes to a file.
+    const errFile = path.join(dir, `${bin}.err`);
+    const fd = fs.openSync(errFile, 'w');
+    try {
+      return execFileSync(exe, args, { stdio: ['ignore', 'ignore', fd], windowsHide: true });
+    } catch (err) {
+      err.message += `\n${fs.readFileSync(errFile, 'utf-8')}`;
+      throw err;
+    } finally {
+      fs.closeSync(fd);
+    }
+  }
+  return execFileSync(exe, args, { stdio: ['ignore', 'ignore', 'pipe'] });
 };
-run('initdb', ['-D', path.join(dir, 'data'), '-U', 'postgres', '--auth=trust', '-E', 'UTF8']);
-run('pg_ctl', ['-D', path.join(dir, 'data'), '-l', path.join(dir, 'pg.log'), '-o', `-p ${PORT} -k ${dir} -c listen_addresses=''`, '-w', 'start']);
-const stop = () => { try { run('pg_ctl', ['-D', path.join(dir, 'data'), '-m', 'immediate', 'stop']); } catch { /* already stopped */ } fs.rmSync(dir, { recursive: true, force: true }); };
+run('initdb', initdbArgs(path.join(dir, 'data')));
+run('pg_ctl', ['-D', path.join(dir, 'data'), '-l', path.join(dir, 'pg.log'), '-o', conn.serverOptions, '-w', 'start']);
+const stop = () => { try { run('pg_ctl', ['-D', path.join(dir, 'data'), '-m', 'immediate', 'stop']); } catch { /* already stopped */ } fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); };
 
-const db = new pg.Client({ host: dir, port: PORT, user: 'postgres', database: 'postgres' });
+const db = new pg.Client({ host: conn.clientHost, port: PORT, user: 'postgres', database: 'postgres' });
 let passed = 0;
 let failed = 0;
 async function test(name, fn) {
@@ -53,7 +78,7 @@ try {
   await db.query(fs.readFileSync(path.join(root, 'supabase/tests/supabase-shim.sql'), 'utf-8'));
   const migrations = fs.readdirSync(path.join(root, 'supabase/migrations')).filter((f) => f.endsWith('.sql')).sort();
   for (const m of migrations) await db.query(fs.readFileSync(path.join(root, 'supabase/migrations', m), 'utf-8'));
-  console.log(`=== Supabase RLS (${migrations.length} migration(s), PostgreSQL ${(await db.query('show server_version')).rows[0].server_version}) ===\n`);
+  console.log(`=== Supabase RLS (${migrations.length} migration(s), PostgreSQL ${(await db.query('show server_version')).rows[0].server_version}, ${conn.transport}, ${runtime.source === 'PG_BIN' ? 'PG_BIN' : BIN}) ===\n`);
 
   /** Run SQL as a PostgREST caller. uid=null → anon. Returns rows, or throws the DB error. */
   const as = async (uid, sql, params = []) => {
@@ -293,7 +318,7 @@ try {
   });
 
   // ── End-to-end: the app's Supabase repository (supabase-js) → real PostgREST → this database ──
-  const PGRST = [process.env.POSTGREST_BIN, '/usr/local/bin/postgrest', '/usr/bin/postgrest', path.join(os.tmpdir(), 'postgrest')].find((f) => f && fs.existsSync(f));
+  const PGRST = [process.env.POSTGREST_BIN, '/usr/local/bin/postgrest', '/usr/bin/postgrest', path.join(os.tmpdir(), exeName('postgrest'))].find((f) => f && fs.existsSync(f));
   if (!PGRST) {
     console.log('\n  (client end-to-end SKIPPED: PostgREST binary not found — set POSTGREST_BIN)');
   } else {
@@ -308,7 +333,7 @@ try {
     const jwt = (claims) => { const h = b64({ alg: 'HS256', typ: 'JWT' }); const b = b64({ ...claims, exp: Math.floor(Date.now() / 1000) + 3600 }); return `${h}.${b}.${crypto.createHmac('sha256', SECRET).update(`${h}.${b}`).digest('base64url')}`; };
     await db.query(`create role authenticator login noinherit; grant anon, authenticated to authenticator;`);
     const conf = path.join(dir, 'pgrst.conf');
-    fs.writeFileSync(conf, `db-uri = "postgres://authenticator@/postgres?host=${dir}&port=${PORT}"\ndb-schemas = "public"\ndb-anon-role = "anon"\njwt-secret = "${SECRET}"\nserver-port = ${PORT + 1}\nserver-host = "127.0.0.1"\nlog-level = "crit"\n`);
+    fs.writeFileSync(conf, `db-uri = "${conn.dbUri('authenticator')}"\ndb-schemas = "public"\ndb-anon-role = "anon"\njwt-secret = "${SECRET}"\nserver-port = ${PORT + 1}\nserver-host = "127.0.0.1"\nlog-level = "crit"\n`);
     const { spawn } = await import('node:child_process');
     const proc = spawn(PGRST, [conf], { stdio: 'ignore' });
     // Supabase serves PostgREST under /rest/v1 — a tiny local proxy gives supabase-js the same layout
