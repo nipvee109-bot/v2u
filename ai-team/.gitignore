@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.aiteam/
+*.tmp
+*.bak
+.env
+.env.*
+# never commit agent credentials / sessions
+.claude/
+.codex/
+auth.json
+*.token

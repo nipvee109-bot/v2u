@@ -1,0 +1,47 @@
+{
+  "quotaProbeMinutes": 30,
+  "autoPush": true,
+  "allowDeploy": false,
+  "improvementMode": true,
+  "parallelAnalysis": true,
+  "maxTaskRetries": 3,
+  "preferredPlanner": "claude",
+  "preferredImplementer": "codex",
+  "preferredReviewer": "claude",
+  "agentTimeoutMinutes": 45,
+  "waitForQuota": true,
+  "startupProbe": true,
+  "maxCycles": 500,
+  "maxImprovementRounds": 10,
+  "maxImprovementsPerRound": 3,
+  "minImprovementImpact": 2,
+  "stableRoundsRequired": 1,
+  "maxDiffChars": 60000,
+  "maxContextChars": 20000,
+  "validationTimeoutMinutes": 20,
+  "validation": {},
+  "useWorktrees": false,
+  "claude": {
+    "command": "claude",
+    "model": null,
+    "readPermissionMode": "plan",
+    "writePermissionMode": "acceptEdits",
+    "writeAllowedTools": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Bash",
+      "TodoWrite"
+    ],
+    "extraArgs": []
+  },
+  "codex": {
+    "command": "codex",
+    "model": null,
+    "readSandbox": "read-only",
+    "writeSandbox": "workspace-write",
+    "extraArgs": []
+  }
+}
