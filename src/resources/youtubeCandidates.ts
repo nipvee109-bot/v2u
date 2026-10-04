@@ -13,33 +13,76 @@ export interface YouTubeCandidate {
   videoId: string;
   watchUrl: string;
   /** Title exactly as shown in the search result */
-  resultTitle: string;
+  title: string;
+  /** Channel as stated by the search result, or null when unknown. `channelConfirmed` is false until the page is opened. */
+  channel: string | null;
+  channelConfirmed: false;
   /** Language guessed from the title only */
-  titleLanguage: 'th' | 'en';
-  provenance: { kind: 'search-result'; query: string; foundAt: string };
+  language: 'th' | 'en';
+  provenance: { kind: 'search-result'; query: string; foundAt: string; requestedBy?: 'user' };
+  /** Review order within the lesson (1 = check first). NOT a quality ranking — nothing was watched. */
+  candidateRank: number;
   status: 'PENDING';
   actualContentInspected: false;
-  captions: 'unknown';
-  embeddable: 'unknown';
-  review: 'UNREVIEWED';
+  transcriptStatus: 'UNKNOWN';
+  embedStatus: 'UNKNOWN';
+  summaryStatus: 'SUMMARY_PENDING';
+}
+
+/** A candidate the user asked for that search could not tie to a real watch URL — no URL is stored. */
+export interface UnresolvedCandidateRequest {
+  lessonId: string;
+  requestedTitle: string;
+  requestedChannel: string;
+  searchQuery: string;
+  searchedAt: string;
+  reason: string;
+  status: 'PENDING';
 }
 
 const FOUND = '2026-10-04';
-const c = (lessonId: string, videoId: string, resultTitle: string, titleLanguage: 'th' | 'en', query: string): YouTubeCandidate => ({
+const FOUND_REQ = '2026-10-05';
+type Row = Omit<YouTubeCandidate, 'candidateRank'>;
+const c = (lessonId: string, videoId: string, title: string, language: 'th' | 'en', query: string, channel: string | null = null, requested = false): Row => ({
   lessonId,
   videoId,
   watchUrl: `https://www.youtube.com/watch?v=${videoId}`,
-  resultTitle,
-  titleLanguage,
-  provenance: { kind: 'search-result', query, foundAt: FOUND },
+  title,
+  channel,
+  channelConfirmed: false,
+  language,
+  provenance: { kind: 'search-result', query, foundAt: requested ? FOUND_REQ : FOUND, ...(requested ? { requestedBy: 'user' as const } : {}) },
   status: 'PENDING',
   actualContentInspected: false,
-  captions: 'unknown',
-  embeddable: 'unknown',
-  review: 'UNREVIEWED',
+  transcriptStatus: 'UNKNOWN',
+  embedStatus: 'UNKNOWN',
+  summaryStatus: 'SUMMARY_PENDING',
 });
+const P14 = 'Project 14 (สสวท.) — ตามผลค้นหา';
+const r = (lessonId: string, videoId: string, title: string, query: string, channel: string) => c(lessonId, videoId, title, 'th', query, channel, true);
 
-export const YOUTUBE_CANDIDATES: YouTubeCandidate[] = [
+/* Phase 67b: candidates the user prioritised (review these first). */
+const PRIORITY: Row[] = [
+  r('math-alg-linear-eq', 'A-GxPuyuNMU', 'การแก้สมการเชิงเส้นตัวแปรเดียว ตอนที่ 1 คณิตศาสตร์ ม.1', 'Project 14 การแก้สมการเชิงเส้นตัวแปรเดียว ตอนที่ 1', 'ไม่ระบุในผลค้นหา (ผู้ใช้ระบุว่า Project 14)'),
+  r('math-alg-linear-eq', 'XiCtWVxf3DY', '06_โจทย์ปัญหาเกี่ยวกับสมการเชิงเส้นตัวแปรเดียว ตอนที่ 1 (คณิตศาสตร์ ม.1 เล่ม 2 บทที่ 1)', 'Project 14 โจทย์ปัญหาเกี่ยวกับสมการเชิงเส้นตัวแปรเดียว ตอนที่ 1', P14),
+  r('math-alg-linear-system', '-eXNHrJwR-A', '01_แนะนำระบบสมการเชิงเส้นสองตัวแปร (คณิตศาสตร์ ม.3 เล่ม 2 บทที่ 1)', 'Project 14 แนะนำระบบสมการเชิงเส้นสองตัวแปร', P14),
+  r('math-alg-linear-system', 'vnXIPsijIRc', '02_การแก้ระบบสมการเชิงเส้นสองตัวแปร ตอนที่ 1 (คณิตศาสตร์ ม.3 เล่ม 2 บทที่ 1)', 'Project 14 การแก้ระบบสมการเชิงเส้นสองตัวแปร', P14),
+  r('math-alg-linear-ineq', 'S10UEeXywYk', '08_การแก้อสมการเชิงเส้นตัวแปรเดียว ตอนที่ 4 (คณิตศาสตร์ ม.3 เล่ม 1 บทที่ 1) V3', 'Project 14 การแก้อสมการเชิงเส้นตัวแปรเดียว', P14),
+  r('phy-dyn-newton', 'WbOEVqXy0lo', "LIVE ! ติวฟรี #ฟิสิกส์ #ปายภาค เกรด 4 กับ 'ป๋ามัก' ideal physics l ม.4 เทอม 1 กฏของนิวตัน", 'ideal Physics กฎของนิวตัน', 'ideal Physics (ป๋ามัก) — ตามชื่อคลิปในผลค้นหา'),
+];
+
+/* Requested by the user but no matching watch URL was found — kept without a URL (never invented). */
+export const UNRESOLVED_CANDIDATE_REQUESTS: UnresolvedCandidateRequest[] = [
+  { lessonId: 'math-alg-linear-eq', requestedTitle: 'การแก้สมการเชิงเส้นตัวแปรเดียว ตอนที่ 2', requestedChannel: 'Project 14', searchQuery: 'Project 14 การแก้สมการเชิงเส้นตัวแปรเดียว ตอนที่ 2', searchedAt: FOUND_REQ, reason: 'ผลค้นหาไม่มีคลิปชื่อนี้', status: 'PENDING' },
+  { lessonId: 'math-alg-exponents', requestedTitle: 'เลขยกกำลัง ม.4', requestedChannel: 'ALTV / Thai PBS', searchQuery: 'ALTV Thai PBS เลขยกกำลัง ม.4', searchedAt: FOUND_REQ, reason: 'ผลค้นหาไม่มีคลิปของ ALTV / Thai PBS', status: 'PENDING' },
+  { lessonId: 'math-trig-ratios', requestedTitle: 'อัตราส่วนตรีโกณมิติ ม.4', requestedChannel: 'DekTalent', searchQuery: 'DekTalent อัตราส่วนตรีโกณมิติ', searchedAt: FOUND_REQ, reason: 'พบคลิปอื่นของ DekTalent แต่ไม่มีคลิปอัตราส่วนตรีโกณมิติที่ยืนยันว่าเป็นของช่องนี้', status: 'PENDING' },
+  { lessonId: 'phy-kin-1d', requestedTitle: 'การเคลื่อนที่แนวตรง', requestedChannel: 'ideal Physics', searchQuery: 'ideal Physics การเคลื่อนที่แนวตรง', searchedAt: FOUND_REQ, reason: 'ผลค้นหาไม่ระบุช่อง ideal Physics สำหรับเรื่องนี้', status: 'PENDING' },
+  { lessonId: 'phy-kin-1d', requestedTitle: 'การเคลื่อนที่แนวตรง', requestedChannel: 'Nestle School', searchQuery: 'Nestle School การเคลื่อนที่แนวตรง ฟิสิกส์', searchedAt: FOUND_REQ, reason: 'ผลค้นหาไม่มีคลิปของ Nestle School', status: 'PENDING' },
+  { lessonId: 'phy-dyn-newton', requestedTitle: 'กฎของนิวตัน', requestedChannel: 'We Mahidol', searchQuery: 'We Mahidol กฎของนิวตัน', searchedAt: FOUND_REQ, reason: 'ผลค้นหาไม่ระบุคลิปใดว่าเป็นของ We Mahidol', status: 'PENDING' },
+];
+
+/* Phase 67: found by lesson-topic searches (channel unknown). */
+const SEARCHED: Row[] = [] = [
   c('math-alg-linear-eq', '-L6v1ZiysTA', "สมการเชิงเส้นตัวแปรเดียว ม.1 EP.1 หลักการแก้สมการ", 'th', "สมการเชิงเส้นตัวแปรเดียว คณิตศาสตร์ ม.1"),
   c('math-alg-linear-eq', 'FciYz-j1Sg8', "สมการ ver.สอนละเอียดที่สุดในชีวิต EP.1 || สมการเชิงเส้นตัวแปรเดียว || คณิต ม.1 เทอม 2", 'th', "สมการเชิงเส้นตัวแปรเดียว คณิตศาสตร์ ม.1"),
   c('math-alg-linear-eq', 'KnQ2TpnUCYg', "การแก้สมการเชิงเส้นตัวแปรเดียว", 'th', "สมการเชิงเส้นตัวแปรเดียว คณิตศาสตร์ ม.1"),
@@ -85,3 +128,16 @@ export const YOUTUBE_CANDIDATES: YouTubeCandidate[] = [
   c('phy-dyn-newton', 'g7igNxNEYkg', "กฎการเคลื่อนที่ข้อที่หนึ่งและข้อที่สองของนิวตัน วิทยาศาสตร์ ม.4-6 (ฟิสิกส์)", 'th', "กฎการเคลื่อนที่ของนิวตัน ฟิสิกส์ ม.4"),
   c('phy-dyn-newton', 'uMQp0KYBoIo', "กฎการเคลื่อนที่ข้อที่สามของนิวตัน วิทยาศาสตร์ ม.4-6 (ฟิสิกส์)", 'th', "กฎการเคลื่อนที่ของนิวตัน ฟิสิกส์ ม.4"),
 ];
+
+/** Priority candidates first, then the rest; candidateRank = review order within each lesson. */
+export const YOUTUBE_CANDIDATES: YouTubeCandidate[] = (() => {
+  const seen = new Set<string>();
+  const next = new Map<string, number>();
+  return [...PRIORITY, ...SEARCHED]
+    .filter((x) => !seen.has(`${x.lessonId}:${x.videoId}`) && !!seen.add(`${x.lessonId}:${x.videoId}`))
+    .map((x) => {
+      const n = (next.get(x.lessonId) ?? 0) + 1;
+      next.set(x.lessonId, n);
+      return { ...x, candidateRank: n };
+    });
+})();

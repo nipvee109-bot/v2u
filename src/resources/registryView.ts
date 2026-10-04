@@ -109,11 +109,11 @@ export function youtubeCandidateToRecord(y: YouTubeCandidate): RegistryRecord {
   const lesson = CURRICULUM.lessons.find((l) => l.id === y.lessonId);
   return {
     id: `yt-${y.lessonId}-${y.videoId}`,
-    title: y.resultTitle,
-    publisher: 'ยังไม่ทราบช่อง (ยังไม่ได้เปิดดู)',
+    title: y.title,
+    publisher: y.channel ?? 'ยังไม่ทราบช่อง (ยังไม่ได้เปิดดู)',
     url: y.watchUrl,
     type: 'video',
-    language: y.titleLanguage,
+    language: y.language,
     subjectId: lesson?.subjectId,
     topicIds: lesson ? [lesson.topicId] : [],
     lessonIds: [y.lessonId],
@@ -123,7 +123,7 @@ export function youtubeCandidateToRecord(y: YouTubeCandidate): RegistryRecord {
     actualContentInspected: false,
     summaryStatus: 'SUMMARY_PENDING',
     embedSupport: 'youtube',
-    qualityNotes: 'ยังไม่ได้รีวิว (UNREVIEWED)',
+    qualityNotes: `ลำดับตรวจ #${y.candidateRank} ในบทนี้ (ยังไม่ได้รีวิวคุณภาพ)`,
     limitations: ['พบจากผลการค้นหาเท่านั้น ยังไม่ได้ดูคลิป ไม่ทราบช่อง ความยาว คำบรรยาย หรือการฝัง'],
     provenance: `search result: "${y.provenance.query}"`,
   };

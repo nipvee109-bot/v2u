@@ -118,12 +118,29 @@ await test('YouTube candidates: real watch URLs from search, all PENDING, uninsp
     assert(lessons.has(y.lessonId), y.lessonId);
     assert.match(y.videoId, /^[A-Za-z0-9_-]{11}$/);
     assert.strictEqual(y.watchUrl, `https://www.youtube.com/watch?v=${y.videoId}`);
-    assert(y.status === 'PENDING' && y.actualContentInspected === false && y.review === 'UNREVIEWED' && y.provenance.query);
+    assert(y.status === 'PENDING' && y.actualContentInspected === false && y.transcriptStatus === 'UNKNOWN' && y.embedStatus === 'UNKNOWN' && y.summaryStatus === 'SUMMARY_PENDING' && y.channelConfirmed === false && y.provenance.query && y.candidateRank >= 1);
   }
   for (const l of C.lessons) assert(YOUTUBE_CANDIDATES.some((y) => y.lessonId === l.id), `${l.id} has a candidate`);
   const src = ['src/components', 'src/pages', 'src/video'].flatMap((d) => fs.readdirSync(path.join(root, d), { recursive: true }).map((f) => path.join(d, f))).filter((f) => /\.tsx?$/.test(f)).map(read).join('\n');
   assert(!src.includes('youtubeCandidates') && !src.includes('discovered'), 'backlog never imported by UI');
   for (const r of RV.registryRecords().filter((x) => x.id.startsWith('yt-'))) assert(r.verificationStatus === 'VERIFICATION_PENDING' && r.summaryStatus === 'SUMMARY_PENDING');
+});
+
+await test('user-prioritised candidates: rank first, PENDING, unresolved requests kept without any URL', async () => {
+  const M = await jiti.import(path.join(root, 'src/resources/youtubeCandidates.ts'));
+  const req = YOUTUBE_CANDIDATES.filter((y) => y.provenance.requestedBy === 'user');
+  assert.strictEqual(req.length, 6);
+  for (const y of req) assert.strictEqual(y.candidateRank, YOUTUBE_CANDIDATES.filter((x) => x.lessonId === y.lessonId && x.provenance.requestedBy === 'user').indexOf(y) + 1, y.videoId);
+  for (const l of new Set(YOUTUBE_CANDIDATES.map((y) => y.lessonId))) {
+    const ranks = YOUTUBE_CANDIDATES.filter((y) => y.lessonId === l).map((y) => y.candidateRank);
+    assert.deepStrictEqual(ranks, ranks.map((_, i) => i + 1), l);
+  }
+  assert.strictEqual(new Set(YOUTUBE_CANDIDATES.map((y) => `${y.lessonId}:${y.videoId}`)).size, YOUTUBE_CANDIDATES.length, 'no duplicates');
+  assert.strictEqual(M.UNRESOLVED_CANDIDATE_REQUESTS.length, 6);
+  for (const u of M.UNRESOLVED_CANDIDATE_REQUESTS) {
+    assert(!JSON.stringify(u).includes('http'), 'no URL for an unresolved request');
+    assert(u.status === 'PENDING' && u.reason && u.searchQuery);
+  }
 });
 
 await test('fixture sanity: selection logic still ranks Thai first and fills plans when links are verified', () => {
