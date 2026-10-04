@@ -5,6 +5,7 @@
 import type { StudioChunk, StudioScript } from './types';
 import { getLessonKnowledge } from '../../content/knowledge';
 import { getInteractiveLesson } from '../registry';
+import { applyDepth } from './depth';
 
 const MATH: StudioScript = {
   lessonId: 'math-alg-linear-eq',
@@ -98,7 +99,7 @@ export function buildStudioScript(lessonId: string): StudioScript | undefined {
     { id: 'recover', phase: 'practice', kind: 'mistakes', title: 'จุดที่มักพลาด' },
     { id: 'summary', phase: 'practice', kind: 'summary' },
   ];
-  return { lessonId, subject: sub.subject, principle: sub.principle, experience: 'B', chunks };
+  return { lessonId, subject: sub.subject, principle: sub.principle, experience: 'B', chunks: applyDepth(lessonId, chunks) };
 }
 
 export const getStudioScript = (lessonId: string): StudioScript | undefined => STUDIO_SCRIPTS.find((s) => s.lessonId === lessonId) ?? buildStudioScript(lessonId);

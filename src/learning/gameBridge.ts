@@ -82,3 +82,11 @@ export function toPlayerActions(evidence: GameEvidence, lesson: InteractiveLesso
   }
   return actions;
 }
+
+/** Phase 69: game slot status. No Codex game is connected yet, so every lesson is NOT_AVAILABLE —
+ *  never faked. When games ship, this reads their registry; nothing else changes. */
+export type GameSlotStatus = 'NOT_AVAILABLE' | 'AVAILABLE' | 'LOADING' | 'COMPLETED' | 'ERROR';
+export const CONNECTED_GAMES: readonly string[] = [];
+export function getGameSlotStatus(lessonId: string): GameSlotStatus {
+  return CONNECTED_GAMES.includes(lessonId) ? 'AVAILABLE' : 'NOT_AVAILABLE';
+}

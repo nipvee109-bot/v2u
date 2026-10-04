@@ -17,7 +17,30 @@ export type StudioWidget =
   /** Programming: run an existing knowledge code sample and watch the robot follow the branch */
   | { kind: 'robot-run'; codeFrom: { exampleId?: string; practiceId?: string }; values: number[] }
   /** Programming: debug an existing buggy sample by reordering its branches */
-  | { kind: 'robot-debug'; practiceId: string; value: number };
+  | { kind: 'robot-debug'; practiceId: string; value: number }
+  /* ── Phase 69 teaching patterns (all data comes from the lesson's knowledge) ── */
+  /** STEP_ORDERING: put a worked example's own steps back in order */
+  | { kind: 'order-steps'; exampleId: string }
+  /** MISSING_STEP: one step of a worked example is hidden; pick it among the lesson's real steps */
+  | { kind: 'missing-step'; exampleId: string; index: number }
+  /** VISUAL_REASONING (systems): try (x, y) pairs and see each equation become true/false */
+  | { kind: 'pair-check'; exampleId: string; eqs: [number, number, number][] }
+  /** PREDICT_OBSERVE_EXPLAIN on a number line: multiply both sides of a < b by c */
+  | { kind: 'number-line'; a: number; b: number }
+  /** VISUAL_REASONING (exponents): factors as blocks for aᵐ·aⁿ and aᵐ ÷ aⁿ */
+  | { kind: 'exponent-blocks'; base: number }
+  /** GRAPH_EXPLORER: move m and c until y = mx + c passes the example's two points */
+  | { kind: 'line-graph'; exampleId: string; points: [number, number][] }
+  /** VISUAL_REASONING (trig): label opposite / adjacent / hypotenuse for the marked angle */
+  | { kind: 'triangle-sides'; exampleId: string; opp: number; adj: number; hyp: number }
+  /** PREDICT_OBSERVE_EXPLAIN (units): predict bigger/smaller, then convert with factors */
+  | { kind: 'unit-ladder'; exampleId: string; value: number; from: 'km/h'; to: 'm/s' }
+  /** VARIABLE_EXPLORER (vectors): magnitude + angle → components */
+  | { kind: 'vector-explorer'; exampleId: string; magnitude: number; angle: number }
+  /** VARIABLE_EXPLORER + GRAPH_EXPLORER (kinematics): u, a, t → motion + v–t graph */
+  | { kind: 'motion-explorer'; exampleId: string; u: number; a: number; t: number }
+  /** CODE_TRACE (+ predict): step through a python3-generated trace */
+  | { kind: 'code-trace'; traceId: string; mode: 'memory' | 'loop' | 'io' | 'call'; predictStep?: number };
 
 export type StudioChunk =
   | { id: string; phase: StudioPhase; kind: 'hook'; tutor: string }
@@ -25,6 +48,7 @@ export type StudioChunk =
   | { id: string; phase: StudioPhase; kind: 'widget'; title: string; tutor: string; widget: StudioWidget }
   | { id: string; phase: StudioPhase; kind: 'step'; stepId: string; tutor?: string }
   | { id: string; phase: StudioPhase; kind: 'example'; exampleId: string; tutor?: string }
+  /** FIND_THE_MISTAKE: the lesson's own mistakes — match each mistake to its fix (interactive) */
   | { id: string; phase: StudioPhase; kind: 'mistakes'; title: string; tutor?: string; stepId?: string }
   | { id: string; phase: StudioPhase; kind: 'summary'; tutor?: string }
   /** Knowledge practice (guided / independent), checked against the item's verified answer. Practice only — no mastery evidence. */

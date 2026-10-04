@@ -15,6 +15,10 @@ import { DiagramView } from '../Diagrams';
 import { EquationCard } from '../InteractivePlayer';
 import { ChoiceQuestion, CodeQuestion, LabQuestion, OrderQuestion, SelfCheck, TypedQuestion } from '../Questions';
 import { AdaptiveHelp, TutorBubble } from './Tutor';
+import { CodeTrace, ExponentBlocks, GameSlot, LineGraph, MistakeMatch, MissingStep, MotionExplorer, NumberLine, OrderSteps, PairCheck, TriangleSides, UnitLadder, VectorExplorer } from './Patterns';
+import { getTrace } from '../../../interactive/studio/traces';
+import { getGameSlotStatus } from '../../../learning/gameBridge';
+import type { StudioWidget } from '../../../interactive/studio/types';
 import { BalanceWidget, CartLab, RobotDebug, RobotRun } from './Widgets';
 
 /* "เรียนกับ V2U" as a teaching studio (Phase 64):
@@ -85,7 +89,7 @@ export function TeachingStudio({ script, lesson, state, dispatch, onToCheck, onM
     const i = lesson.steps.findIndex((s) => s.id === id);
     return i < 0 || canContinue(lesson, state, i);
   };
-  const chunkReady = (c: StudioChunk) => (c.kind === 'practice' || c.kind === 'debug' ? saved.done.includes(c.id) : c.kind === 'widget' ? saved.done.includes(c.id) || (stepIdOf(c) !== undefined && stepReady(stepIdOf(c))) : stepReady(stepIdOf(c)));
+  const chunkReady = (c: StudioChunk) => (c.kind === 'practice' || c.kind === 'debug' || (c.kind === 'mistakes' && !c.stepId) ? saved.done.includes(c.id) : c.kind === 'widget' ? saved.done.includes(c.id) || (stepIdOf(c) !== undefined && stepReady(stepIdOf(c))) : stepReady(stepIdOf(c)));
   const ready = chunkReady(chunk);
   const current = stepOf(stepIdOf(chunk));
   const prevExplain = [...chunks.slice(0, idx)].reverse().findIndex((c) => c.kind === 'explain');
@@ -224,6 +228,7 @@ function ChunkBody({ chunk, k, lesson, state, dispatch, subject, step, onWidgetD
             <li key={s} className="flex gap-2 text-[15px] leading-relaxed"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-[var(--ok)]" /><span>{s}</span></li>
           ))}
           <li className="pt-2 text-sm text-[var(--ink-2)]">ต่อไปคือเช็กความเข้าใจสั้น ๆ — ผลจากตรงนั้นจะบอกว่าควรทบทวนอะไร</li>
+          <li className="list-none pt-2"><GameSlot status={getGameSlotStatus(lesson.lessonId)} /></li>
         </ul>
       );
     case 'practice':
@@ -233,6 +238,8 @@ function ChunkBody({ chunk, k, lesson, state, dispatch, subject, step, onWidgetD
       return d ? <DebugBody key={chunk.id} d={d} onDone={onWidgetDone} /> : null;
     }
     case 'mistakes':
+      // Phase 69: without a step, the lesson's mistakes become an interactive match (FIND_THE_MISTAKE)
+      if (!chunk.stepId) return <MistakeMatch key={chunk.id} mistakes={k.mistakes} onDone={onWidgetDone} />;
       return (
         <div className="space-y-3">
           <ul className="space-y-2">
@@ -265,6 +272,7 @@ function ChunkBody({ chunk, k, lesson, state, dispatch, subject, step, onWidgetD
         const code = w.codeFrom.exampleId ? k.workedExamples.find((e) => e.id === w.codeFrom.exampleId)?.code : [...k.guided, ...k.independent].find((p) => p.id === w.codeFrom.practiceId)?.code;
         return code ? <RobotRun code={code} values={w.values} onDone={onWidgetDone} /> : null;
       }
+      if (w.kind !== 'robot-debug') return <PatternWidget key={chunk.id} w={w} k={k} onDone={onWidgetDone} />;
       const p = [...k.guided, ...k.independent].find((x) => x.id === w.practiceId);
       return p?.code ? <RobotDebug code={p.code} explanation={p.explanation} onDone={onWidgetDone} /> : null;
     }
@@ -468,4 +476,38 @@ function DebugBody({ d, onDone }: { d: KnowledgeDebug; onDone: () => void }) {
       )}
     </div>
   );
+}
+
+/** Phase 69 teaching patterns — every value comes from the lesson's knowledge (ids checked by tests). */
+function PatternWidget({ w, k, onDone }: { w: Exclude<StudioWidget, { kind: 'balance' | 'cart-lab' | 'robot-run' | 'robot-debug' }>; k: LessonKnowledge; onDone: () => void }) {
+  const ex = 'exampleId' in w ? k.workedExamples.find((e) => e.id === w.exampleId) : undefined;
+  switch (w.kind) {
+    case 'order-steps':
+      return ex ? <OrderSteps steps={ex.steps} onDone={onDone} /> : null;
+    case 'missing-step': {
+      if (!ex) return null;
+      const others = k.workedExamples.filter((e) => e.id !== ex.id).flatMap((e) => e.steps);
+      return <MissingStep problem={ex.problem} steps={ex.steps} index={w.index} distractors={others} onDone={onDone} />;
+    }
+    case 'pair-check':
+      return <PairCheck eqs={w.eqs} onDone={onDone} />;
+    case 'number-line':
+      return <NumberLine a={w.a} b={w.b} rule={k.rules.find((r) => r.id === 'r-neg')?.statement ?? ''} onDone={onDone} />;
+    case 'exponent-blocks':
+      return <ExponentBlocks base={w.base} onDone={onDone} />;
+    case 'line-graph':
+      return <LineGraph points={w.points} onDone={onDone} />;
+    case 'triangle-sides':
+      return <TriangleSides opp={w.opp} adj={w.adj} hyp={w.hyp} onDone={onDone} />;
+    case 'unit-ladder':
+      return <UnitLadder value={w.value} onDone={onDone} />;
+    case 'vector-explorer':
+      return <VectorExplorer magnitude={w.magnitude} angle={w.angle} onDone={onDone} />;
+    case 'motion-explorer':
+      return <MotionExplorer u={w.u} a={w.a} t={w.t} onDone={onDone} />;
+    case 'code-trace': {
+      const t = getTrace(w.traceId);
+      return t ? <CodeTrace data={t} mode={w.mode} onDone={onDone} /> : null;
+    }
+  }
 }

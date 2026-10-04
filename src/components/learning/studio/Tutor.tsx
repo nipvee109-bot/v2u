@@ -24,7 +24,7 @@ export function TutorBubble({ children, tone = 'plain' }: { children: ReactNode;
   );
 }
 
-export type HelpKind = 'simpler' | 'visual' | 'example' | 'hint' | 'confused' | 'summary' | 'other' | 'back';
+export type HelpKind = 'simpler' | 'visual' | 'example' | 'hint' | 'confused' | 'mistakes' | 'summary' | 'other' | 'back';
 
 const HELP: { kind: HelpKind; label: string }[] = [
   { kind: 'simpler', label: 'อธิบายให้ง่ายกว่านี้' },
@@ -32,6 +32,7 @@ const HELP: { kind: HelpKind; label: string }[] = [
   { kind: 'example', label: 'ดูตัวอย่าง' },
   { kind: 'hint', label: 'ขอคำใบ้' },
   { kind: 'confused', label: 'ยังไม่เข้าใจ' },
+  { kind: 'mistakes', label: 'จุดที่มักพลาด' },
   { kind: 'summary', label: 'สรุปสั้น ๆ' },
   { kind: 'other', label: 'ลองอีกวิธี' },
   { kind: 'back', label: 'กลับไปแนวคิดก่อนหน้า' },
@@ -90,6 +91,17 @@ export function AdaptiveHelp({ k, simple, hint, onHint, onVisual, onBack, onMode
                 <p>{simple ?? k.analogy ?? k.detailed[0]}</p>
                 {simple && k.analogy && <p className="mt-2 rounded-xl bg-[var(--rev-soft)] px-3 py-2">นึกภาพแบบนี้: {k.analogy}</p>}
               </div>
+            )}
+            {kind === 'mistakes' && (
+              <ul className="space-y-2" data-testid="help-mistakes">
+                {k.mistakes.map((m) => (
+                  <li key={m.mistake} className="rounded-xl bg-[var(--surface-3)] px-3 py-2">
+                    <b>✗ {m.mistake}</b>
+                    <span className="block text-[var(--ink-2)]">เพราะ: {m.why}</span>
+                    <span className="block text-[var(--ink-2)]">แก้: {m.fix}</span>
+                  </li>
+                ))}
+              </ul>
             )}
             {kind === 'summary' && (
               <ul className="list-disc space-y-1 pl-5" data-testid="help-summary">
