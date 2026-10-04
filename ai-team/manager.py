@@ -613,8 +613,8 @@ class Manager:
         if task["status"] == T.REVIEW:
             T.transition(task, T.IN_PROGRESS)
         findings = json.dumps(task["reviewFindings"], indent=1, ensure_ascii=False) if task["reviewFindings"] else ""
-        val = task.get("validation") or {}
-        failures = self.failure_text(val) if val.get("passed") is False else ""
+        val = V.normalize_validation(task.get("validation"))
+        failures = self.failure_text(val) if task.get("validation") and not val["passed"] else ""
         before = self.git.changed_paths()
         try:
             name, res, parsed = self.call("fix", self.context(task, diff=True, findings=findings, validation=failures),
@@ -811,9 +811,10 @@ class Manager:
         return out
 
     def validation_lines(self, val: dict) -> list[str]:
+        val = V.normalize_validation(val)   # stored records may be old/malformed: never crash, never treat as PASS
         lines: list[str] = []
         if val.get("dryRun"):
-            lines += [f"{k:<9}: {V.NOT_RUN} (dry-run)" for k in val["summary"]]
+            lines += [f"{k:<9}: {V.NOT_RUN} (dry-run)" for k in val.get("summary", {})]
             if val.get("requireSecurity"):
                 lines.append("(real Goal completion also requires RLS/security validation = PASS)")
             return lines
@@ -836,6 +837,8 @@ class Manager:
                     line += f" ({st['reason']})"
                 lines.append(line)
             lines += [f"  note: {n}" for n in st.get("notes", [])]
+        for name in val["malformed"]:
+            lines.append(f"Validation infrastructure: {name} BLOCKED - {V.MALFORMED}; re-run validation")
         for b in val.get("goalBlockers", []):
             if not any(b.startswith(f"{st['name']}:") for st in val["steps"]):
                 lines.append(f"Goal blocker: {b}")
@@ -851,7 +854,12 @@ class Manager:
 
     def failure_text(self, val: dict) -> str:
         parts = []
-        for st in val.get("steps", []):
+        for st in V.normalize_validation(val)["steps"]:
+            if st["malformed"]:
+                # Fail closed: an unreadable stored result is reported, never silently skipped or counted as PASS.
+                parts.append(f"[{st['name']} BLOCKED] {st['reason']}. This step's stored result cannot be trusted and "
+                             "is re-validated after this fix; do not assume it passed.")
+                continue
             if st["status"] not in V.FAIL_STATES:
                 continue
             if st["kind"] == "lint" and st["details"]:
@@ -876,7 +884,7 @@ class Manager:
         if val["verdict"] == "human":
             raise HumanNeeded("Validation cannot run: " + "; ".join(val["reasons"]), task["id"])
         if val["passed"]:
-            unverified = [st["name"] for st in val["steps"] if st["critical"] and st["status"] not in V.OK_STATES]
+            unverified = [st["name"] for st in V.normalize_validation(val)["steps"] if st["critical"] and st["status"] not in V.OK_STATES]
             if unverified:
                 self.ui.say(f"WARNING: security validation did not run for this task: {', '.join(unverified)} (UNVERIFIED). "
                             "The Goal cannot be marked COMPLETE until it passes.")
@@ -915,7 +923,7 @@ class Manager:
                 raise AgentCallFailed("git commit failed")
         else:
             self.ui.say("No file changes for this task (nothing to commit).")
-        checkpoint = {"task": task["id"], "commit": commit, "validation": task["validation"]["summary"] if task.get("validation") else None,
+        checkpoint = {"task": task["id"], "commit": commit, "validation": V.normalize_validation(task["validation"])["summary"] if task.get("validation") else None,
                       "at": iso(utcnow()), "message": msg}
         atomic_write_json(self.paths.checkpoints / f"{self.clock().strftime('%Y%m%d-%H%M%S')}-{task['id']}.json", checkpoint)
         T.transition(task, T.DONE)
@@ -1014,7 +1022,7 @@ class Manager:
                 new_items.append({"title": f"Fix critical issue: {str(crit)[:120]}", "description": str(crit),
                                   "priority": "high", "impact": "high", "acceptanceCriteria": [str(crit)]})
         if not checks["passed"]:
-            failing = [s["name"] for s in checks["steps"] if s["status"] in V.FAIL_STATES]
+            failing = [s["name"] for s in V.normalize_validation(checks)["steps"] if s["status"] in V.FAIL_STATES or s["malformed"]]
             new_items.append({"title": f"Fix failing validation: {', '.join(failing)}", "priority": "high", "impact": "high",
                               "description": self.failure_text(checks)[-3000:],
                               "acceptanceCriteria": [f"{n} has no regression" for n in failing]})

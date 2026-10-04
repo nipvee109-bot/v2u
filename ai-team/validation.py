@@ -28,6 +28,60 @@ FAIL_REGRESSION = "FAIL_REGRESSION"
 
 OK_STATES = {PASS, PASS_WITH_BASELINE_DEBT}
 FAIL_STATES = {FAIL, FAIL_REGRESSION}
+ALL_STATES = OK_STATES | FAIL_STATES | {SKIPPED, NOT_RUN, BLOCKED}
+MALFORMED = "malformed validation record"
+
+
+def normalize_step(st) -> dict:
+    """Fail-closed view of a stored validation step (tasks.json may hold records written by an older AI-Team).
+
+    Every field the manager reads gets a safe default. A missing or unknown status becomes BLOCKED with
+    malformed=True - never PASS, even if a legacy record says ok=true - so the step is re-validated, not trusted.
+    """
+    if not isinstance(st, dict):
+        st = {"name": None, "output": repr(st)[:300]}
+    details = st.get("details")
+    out = {
+        "name": str(st.get("name") or "unknown-step"),
+        "argv": [str(a) for a in (st.get("argv") or [])] if isinstance(st.get("argv"), (list, tuple)) else [],
+        "kind": str(st.get("kind") or "test"),
+        "critical": bool(st.get("critical", False)),
+        "output": str(st.get("output") or ""),
+        "reason": str(st.get("reason") or ""),
+        "required_action": str(st.get("required_action") or ""),
+        "notes": [str(n) for n in (st.get("notes") or [])] if isinstance(st.get("notes"), list) else [],
+        "details": details if isinstance(details, dict) else {},
+        "exit_code": st.get("exit_code"),
+        "malformed": False,
+    }
+    status = st.get("status")
+    if st.get("malformed") is True:
+        # Already normalized (normalization is idempotent): stays BLOCKED and malformed.
+        out.update(status=BLOCKED, malformed=True)
+    elif status in ALL_STATES:
+        out["status"] = status
+    else:
+        out["status"] = BLOCKED
+        out["malformed"] = True
+        what = "missing validation status" if status is None else f"unknown validation status {status!r}"
+        out["reason"] = f"{MALFORMED}: {what}" + (f" (step '{out['name']}')" if st.get("name") else "")
+        out["required_action"] = "re-run validation for this task; the stored result cannot be trusted"
+    out["ok"] = out["status"] not in FAIL_STATES and not out["malformed"]
+    return out
+
+
+def normalize_validation(val) -> dict:
+    """Fail-closed view of a stored validation result: malformed steps make it not-passed."""
+    val = val if isinstance(val, dict) else {}
+    steps = [normalize_step(st) for st in (val.get("steps") or [])] if isinstance(val.get("steps"), list) else []
+    malformed = [st["name"] for st in steps if st["malformed"]]
+    out = dict(val)
+    out["steps"] = steps
+    out["malformed"] = malformed
+    out["passed"] = val.get("passed") is True and not malformed
+    out["summary"] = val.get("summary") if isinstance(val.get("summary"), dict) else {st["name"]: st["status"] for st in steps}
+    out["goalBlockers"] = list(val.get("goalBlockers") or [])
+    return out
 
 ORDER = ["typecheck", "lint", "test", "security", "build"]
 SECURITY_NAME = re.compile(r"(^|[:_\-])(rls|security|policies|policy)([:_\-]|$)", re.I)
