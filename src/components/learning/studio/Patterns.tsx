@@ -614,11 +614,15 @@ export function CodeTrace({ data, mode, onDone }: { data: CodeTraceData; mode: '
 }
 
 /* ── Game slot (Codex games are separate; never faked) ── */
-export function GameSlot({ status }: { status: 'NOT_AVAILABLE' | 'AVAILABLE' | 'LOADING' | 'COMPLETED' | 'ERROR' }) {
+export function GameSlot({ status, message }: { status: 'NOT_AVAILABLE' | 'PREPARING' | 'AVAILABLE' | 'LOADING' | 'PLAYING' | 'COMPLETED' | 'ERROR'; message?: string }) {
+  const text: Record<string, string> = {
+    NOT_AVAILABLE: 'ยังไม่มีเกมสำหรับบทนี้ — การเรียนและเช็กความเข้าใจทำได้ครบโดยไม่ต้องใช้เกม',
+    PREPARING: message ?? 'กิจกรรมเกมของบทนี้กำลังเตรียม',
+  };
   return (
     <div data-testid="game-slot" data-status={status} className="rounded-2xl border border-dashed border-[var(--line)] p-3 text-sm text-[var(--ink-2)]">
-      <p className="font-semibold text-ink">ลองฝึกแบบเกม</p>
-      <p>{status === 'NOT_AVAILABLE' ? 'ยังไม่มีเกมสำหรับบทนี้ — การเรียนและเช็กความเข้าใจทำได้ครบโดยไม่ต้องใช้เกม' : status}</p>
+      <p className="font-semibold text-ink">ลองฝึกแบบเกม {status === 'PREPARING' && <span className="ml-1 rounded-full bg-[var(--rev-soft)] px-2 py-0.5 text-xs">กำลังเตรียม</span>}</p>
+      <p>{text[status] ?? 'ยังเปิดใช้ไม่ได้'}</p>
     </div>
   );
 }

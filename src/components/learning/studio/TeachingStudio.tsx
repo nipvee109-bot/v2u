@@ -18,6 +18,7 @@ import { AdaptiveHelp, TutorBubble } from './Tutor';
 import { CodeTrace, ExponentBlocks, GameSlot, LineGraph, MistakeMatch, MissingStep, MotionExplorer, NumberLine, OrderSteps, PairCheck, TriangleSides, UnitLadder, VectorExplorer } from './Patterns';
 import { getTrace } from '../../../interactive/studio/traces';
 import { getGameSlotStatus } from '../../../learning/gameBridge';
+import { gamesForLesson } from '../../../learning/games/registry';
 import type { StudioWidget } from '../../../interactive/studio/types';
 import { BalanceWidget, CartLab, RobotDebug, RobotRun } from './Widgets';
 
@@ -228,7 +229,7 @@ function ChunkBody({ chunk, k, lesson, state, dispatch, subject, step, onWidgetD
             <li key={s} className="flex gap-2 text-[15px] leading-relaxed"><CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-[var(--ok)]" /><span>{s}</span></li>
           ))}
           <li className="pt-2 text-sm text-[var(--ink-2)]">ต่อไปคือเช็กความเข้าใจสั้น ๆ — ผลจากตรงนั้นจะบอกว่าควรทบทวนอะไร</li>
-          <li className="list-none pt-2"><GameSlot status={getGameSlotStatus(lesson.lessonId)} /></li>
+          <li className="list-none pt-2"><GameSlot status={getGameSlotStatus(lesson.lessonId)} message={gamesForLesson(lesson.lessonId)[0]?.slotMessage} /></li>
         </ul>
       );
     case 'practice':

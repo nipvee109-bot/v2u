@@ -15,6 +15,9 @@ import type { KnowledgeCheck, KnowledgePractice, ReadinessStatus } from '../cont
 import type { PlayerAction } from '../interactive/engine';
 import type { InteractiveLesson } from '../interactive/types';
 
+import { GAME_REGISTRY, getLessonGameAvailability } from './games/registry';
+import type { GameAvailability } from './games/registry';
+
 export const GAME_CONTRACT_VERSION = 1;
 
 export interface GameContent {
@@ -83,10 +86,10 @@ export function toPlayerActions(evidence: GameEvidence, lesson: InteractiveLesso
   return actions;
 }
 
-/** Phase 69: game slot status. No Codex game is connected yet, so every lesson is NOT_AVAILABLE —
- *  never faked. When games ship, this reads their registry; nothing else changes. */
-export type GameSlotStatus = 'NOT_AVAILABLE' | 'AVAILABLE' | 'LOADING' | 'COMPLETED' | 'ERROR';
-export const CONNECTED_GAMES: readonly string[] = [];
+/** Game slot status (Phase 69 → 70): read from the game registry — never inferred from the subject. */
+export type GameSlotStatus = GameAvailability;
 export function getGameSlotStatus(lessonId: string): GameSlotStatus {
-  return CONNECTED_GAMES.includes(lessonId) ? 'AVAILABLE' : 'NOT_AVAILABLE';
+  return getLessonGameAvailability(lessonId);
 }
+/** Games whose integration is AVAILABLE to learners (none yet). */
+export const CONNECTED_GAMES: readonly string[] = GAME_REGISTRY.filter((g) => g.status === 'AVAILABLE').map((g) => g.gameId);

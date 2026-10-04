@@ -131,7 +131,8 @@ await test('lesson boundaries: no notYetAllowed idea in titles/tutor lines; syst
 
 await test('game slot: honest NOT_AVAILABLE everywhere; nothing imported from a game project', () => {
   assert.strictEqual(G.CONNECTED_GAMES.length, 0);
-  for (const id of LESSONS) assert.strictEqual(G.getGameSlotStatus(id), 'NOT_AVAILABLE');
+  // Phase 70: Pixel Code Battle is registered as PREPARING for the if/elif/else lesson only
+  for (const id of LESSONS) assert.strictEqual(G.getGameSlotStatus(id), id === 'prog-ctrl-conditions' ? 'PREPARING' : 'NOT_AVAILABLE', id);
   const all = ['src/components/learning/studio/Patterns.tsx', 'src/components/learning/studio/TeachingStudio.tsx', 'src/interactive/studio/depth.ts'].map(read).join('\n');
   assert(!/v2u-game-lab|\bXP\b|leaderboard|high ?score|lives\b/i.test(all));
 });
