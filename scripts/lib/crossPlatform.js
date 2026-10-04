@@ -12,7 +12,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
 export const readText = (file) => fs.readFileSync(file, 'utf-8').replace(/\r\n/g, '\n');
@@ -76,15 +76,29 @@ export const pythonEnv = (env = process.env) => ({ ...env, PYTHONUTF8: '1', PYTH
 /** CRLF and lone CR -> LF. Nothing else is touched (no trimming). */
 export const normalizeNewlines = (s) => String(s ?? '').replace(/\r\n?/g, '\n');
 
-/** execFileSync for Python: resolved interpreter, UTF-8, LF output. `py` defaults to python(). */
-export function execPython(args, { py, env, ...opts } = {}) {
+/** Bytes or text -> text: Buffers are decoded as UTF-8 (Python is forced to write UTF-8 above). */
+const asText = (v) => (Buffer.isBuffer(v) ? v.toString('utf-8') : String(v ?? ''));
+
+/**
+ * Run Python like execFileSync (returns stdout, throws on failure) but with UTF-8 I/O and LF output on every OS.
+ * Success and failure are handled the same way: both streams are decoded as UTF-8 and normalized; a failure
+ * throws an Error that keeps status, signal, pid and the spawn error, with normalized stdout/stderr.
+ * `py` defaults to python().
+ */
+export function execPython(args, { py, env, input, stdio, ...opts } = {}) {
   const p = py ?? python();
-  try {
-    const out = execFileSync(p.cmd, [...p.args, ...args], { maxBuffer: 64 * 1024 * 1024, ...opts, encoding: 'utf-8', env: pythonEnv(env) });
-    return normalizeNewlines(out);
-  } catch (err) {
-    if (err.stdout != null) err.stdout = normalizeNewlines(err.stdout);
-    if (err.stderr != null) err.stderr = normalizeNewlines(err.stderr);
+  const r = spawnSync(p.cmd, [...p.args, ...args], {
+    maxBuffer: 64 * 1024 * 1024, windowsHide: true, ...opts,
+    input: typeof input === 'string' ? Buffer.from(input, 'utf-8') : input, stdio: stdio ?? 'pipe', env: pythonEnv(env),
+  });
+  const stdout = normalizeNewlines(asText(r.stdout));
+  const stderr = normalizeNewlines(asText(r.stderr));
+  if (r.error || r.status !== 0) {
+    const cmd = [p.cmd, ...p.args, ...args].join(' ');
+    const err = new Error(r.error ? `${cmd}: ${r.error.message}` : `Command failed: ${cmd}\n${stderr}`);
+    Object.assign(err, { status: r.status, signal: r.signal, pid: r.pid, stdout, stderr, output: [null, stdout, stderr], cause: r.error });
+    if (r.error?.code) err.code = r.error.code;
     throw err;
   }
+  return stdout;
 }
