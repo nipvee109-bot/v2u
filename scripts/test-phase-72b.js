@@ -12,7 +12,7 @@ import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import {
-  candidateBinDirs, connectionFor, exeName, findServerBin, hasServerTools, initdbArgs, missingRuntimeMessage, rlsRequired,
+  candidateBinDirs, connectionFor, exeName, findServerBin, hasServerTools, initdbArgs, missingRuntimeMessage, rlsRequired, rlsRunResult,
 } from './lib/pgTestRuntime.js';
 import { execPython, findPython, importFile, normalizeNewlines, python, pythonCandidates, pythonEnv, readText, relPosix, toPosix } from './lib/crossPlatform.js';
 
@@ -69,6 +69,15 @@ await test('auto-detects Program Files\\PostgreSQL\\<version>\\bin, newest versi
   assert.deepStrictEqual([r.dir, r.source], ['C:\\Program Files\\PostgreSQL\\17\\bin', 'auto']);
 });
 
+await test('standard Windows folders remain discoverable when Program Files environment variables are absent', () => {
+  for (const drive of ['C:', 'D:']) {
+    const bin = `${drive}\\Program Files\\PostgreSQL\\16\\bin`;
+    const fsx = winFs(winTools(bin), { [`${drive}\\Program Files\\PostgreSQL`]: ['16'] });
+    const env = drive === 'C:' ? {} : { SystemDrive: drive };
+    assert.strictEqual(findServerBin({ env, platform: 'win32', ...fsx }).dir, bin);
+  }
+});
+
 await test('a PG_BIN without the server tools falls back to installed versions; psql alone is not enough', () => {
   const clientOnly = 'C:\\Program Files\\PostgreSQL\\16\\bin';
   const fsx = winFs([`${clientOnly}\\psql.exe`, ...winTools('C:\\Users\\com\\AppData\\Local\\Programs\\PostgreSQL\\16\\bin')],
@@ -111,12 +120,25 @@ await test('V2U_RLS_REQUIRED parsing', () => {
   assert.strictEqual(rlsRequired({ V2U_RLS_REQUIRED: '1' }), true);
   assert.strictEqual(rlsRequired({ V2U_RLS_REQUIRED: 'true' }), true);
   assert.strictEqual(rlsRequired({}), false);
+  for (const CI of ['true', '1', 'github-actions']) assert.strictEqual(rlsRequired({ CI }), true);
+  for (const CI of ['', 'false', '0']) assert.strictEqual(rlsRequired({ CI }), false);
+  assert.strictEqual(rlsRequired({ CI: 'true', V2U_RLS_REQUIRED: '0' }), false);
+});
+
+await test('RLS summary distinguishes complete, partial, blocked and failed runs', () => {
+  const run = (failed, skippedSections, env = {}) => rlsRunResult({ failed, skippedSections, env });
+  assert.deepStrictEqual(run(0, []), { status: 'PASS', exitCode: 0 });
+  assert.deepStrictEqual(run(0, ['PostgREST']), { status: 'PARTIAL', exitCode: 0 });
+  assert.deepStrictEqual(run(0, ['PostgREST'], { V2U_RLS_E2E_REQUIRED: '1' }), { status: 'BLOCKED', exitCode: 2 });
+  assert.deepStrictEqual(run(1, ['PostgREST'], { V2U_RLS_E2E_REQUIRED: '1' }), { status: 'FAILED', exitCode: 1 });
+  assert.deepStrictEqual(run(0, [], { V2U_RLS_E2E_REQUIRED: '1' }), { status: 'PASS', exitCode: 0 });
 });
 
 await test('harness: no PostgreSQL -> SKIPPED exit 0, but BLOCKED exit 2 when RLS is required (never PASS)', () => {
   const script = path.join(__dirname, 'test-supabase-rls.mjs');
   const env = { ...process.env, PG_BIN: path.join(os.tmpdir(), 'no-postgres-here'), V2U_RLS_PG_AUTODETECT: '0' };
   delete env.V2U_RLS_REQUIRED;
+  delete env.CI;
   const skipped = spawnSync(process.execPath, [script], { env, encoding: 'utf-8' });
   assert.strictEqual(skipped.status, 0);
   assert.match(skipped.stdout, /^SKIPPED: PostgreSQL server binaries not found/m);
@@ -124,6 +146,12 @@ await test('harness: no PostgreSQL -> SKIPPED exit 0, but BLOCKED exit 2 when RL
   const blocked = spawnSync(process.execPath, [script], { env: { ...env, V2U_RLS_REQUIRED: '1' }, encoding: 'utf-8' });
   assert.strictEqual(blocked.status, 2);
   assert.match(blocked.stdout, /^BLOCKED: PostgreSQL server binaries not found .*not a pass/m);
+  const ciBlocked = spawnSync(process.execPath, [script], { env: { ...env, CI: 'true' }, encoding: 'utf-8' });
+  assert.strictEqual(ciBlocked.status, 2);
+  assert.match(ciBlocked.stdout, /BLOCKED:.*CI/);
+  const ciOverride = spawnSync(process.execPath, [script], { env: { ...env, CI: 'true', V2U_RLS_REQUIRED: '0' }, encoding: 'utf-8' });
+  assert.strictEqual(ciOverride.status, 0);
+  assert.match(ciOverride.stdout, /SKIPPED:.*not a pass/);
   assert(fs.existsSync(script));
 });
 

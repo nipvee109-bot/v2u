@@ -7,7 +7,8 @@
  * Needs PostgreSQL server binaries (initdb/pg_ctl/postgres; .exe on Windows), found via PG_BIN or the usual
  * install folders (see scripts/lib/pgTestRuntime.js). Linux/macOS use a Unix socket in a throwaway folder;
  * Windows uses TCP on 127.0.0.1. Without PostgreSQL it prints SKIPPED and exits 0, or - with
- * V2U_RLS_REQUIRED=1 - prints BLOCKED and exits 2, because a skipped RLS run is not a pass.
+ * V2U_RLS_REQUIRED=1 or CI - prints BLOCKED and exits 2, because a skipped RLS run is not a pass.
+ * Missing PostgREST makes the result PARTIAL, or BLOCKED with V2U_RLS_E2E_REQUIRED=1.
  */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -16,7 +17,7 @@ import assert from 'node:assert';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
-import { connectionFor, exeName, findServerBin, initdbArgs, missingRuntimeMessage, rlsRequired } from './lib/pgTestRuntime.js';
+import { connectionFor, exeName, findServerBin, initdbArgs, missingRuntimeMessage, rlsRequired, rlsRunResult } from './lib/pgTestRuntime.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const runtime = findServerBin();
@@ -24,11 +25,14 @@ const BIN = runtime.dir;
 if (!BIN) {
   const what = missingRuntimeMessage();
   if (rlsRequired()) {
-    console.log(`BLOCKED: ${what}. V2U_RLS_REQUIRED=1, so a skipped RLS run is not a pass.`);
+    console.log(`BLOCKED: ${what}. RLS required by V2U_RLS_REQUIRED or CI; a skipped RLS run is not a pass.`);
     process.exit(2);
   }
-  console.log(`SKIPPED: ${what}`);
+  console.log(`SKIPPED: ${what}. No RLS assertions ran; this is not a pass.`);
   process.exit(0);
+}
+if (process.env.PG_BIN && runtime.source !== 'PG_BIN') {
+  console.warn(`WARNING: PG_BIN lacks the required server tools; using detected PostgreSQL at ${BIN}.`);
 }
 const PORT = Number(process.env.V2U_RLS_PG_PORT) || 54329;
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'v2u-pg-'));
@@ -62,6 +66,7 @@ const stop = () => { try { run('pg_ctl', ['-D', path.join(dir, 'data'), '-m', 'i
 const db = new pg.Client({ host: conn.clientHost, port: PORT, user: 'postgres', database: 'postgres' });
 let passed = 0;
 let failed = 0;
+const skippedSections = [];
 async function test(name, fn) {
   try {
     await fn();
@@ -320,6 +325,7 @@ try {
   // ── End-to-end: the app's Supabase repository (supabase-js) → real PostgREST → this database ──
   const PGRST = [process.env.POSTGREST_BIN, '/usr/local/bin/postgrest', '/usr/bin/postgrest', path.join(os.tmpdir(), exeName('postgrest'))].find((f) => f && fs.existsSync(f));
   if (!PGRST) {
+    skippedSections.push('client end-to-end (PostgREST binary not found; set POSTGREST_BIN)');
     console.log('\n  (client end-to-end SKIPPED: PostgREST binary not found — set POSTGREST_BIN)');
   } else {
     const http = await import('node:http');
@@ -435,4 +441,7 @@ try {
   stop();
 }
 console.log(`\nTotal: ${passed + failed} | Passed: ${passed} | Failed: ${failed}`);
-if (failed > 0) process.exit(1);
+const result = rlsRunResult({ failed, skippedSections });
+console.log(`RLS RESULT: ${result.status}${skippedSections.length ? `; skipped: ${skippedSections.join('; ')}; not a complete pass` : ''}`);
+if (result.status === 'BLOCKED') console.log('V2U_RLS_E2E_REQUIRED requires the skipped client end-to-end section.');
+process.exitCode = result.exitCode;

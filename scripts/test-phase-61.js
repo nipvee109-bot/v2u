@@ -301,7 +301,16 @@ await test('25. One store, one skill engine, one mastery calculator, one review 
 await test('26. Phase 60 diagnostic still works alongside learning evidence (newest wins)', () => {
   fresh();
   learn('math-alg-linear-eq', {});
-  useStore.getState().recordDiagnosticAttempt('math', sit('math', 0));
+  const learnedAt = skill('skill-math-solve-linear').at;
+  assert(learnedAt, 'learning evidence has a timestamp');
+  const attempt = useStore.getState().recordDiagnosticAttempt('math', sit('math', 0));
+  // Back-to-back actions can share a millisecond; this case requires strictly newer evidence.
+  const takenAt = new Date(new Date(learnedAt).getTime() + 1000).toISOString();
+  useStore.setState((state) => ({ diagnostic: {
+    ...state.diagnostic,
+    attempts: state.diagnostic.attempts.map((a) => a.id === attempt.id ? { ...a, takenAt } : a),
+  } }));
+  assert(takenAt > learnedAt, 'the diagnostic fixture is strictly newer than the learning evidence');
   assert.strictEqual(skill('skill-math-solve-linear').status, 'needs-review', 'a newer diagnostic sitting is newer evidence');
 });
 await test('28. Legacy Study Room stays out of the main flow; legacy finish route still exists', () => {

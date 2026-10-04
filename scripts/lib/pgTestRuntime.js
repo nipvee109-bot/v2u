@@ -7,7 +7,8 @@
  *   V2U_RLS_PG_TRANSPORT    socket | tcp   (default: tcp on Windows, socket elsewhere)
  *   V2U_RLS_PG_PORT         cluster port (default 54329; PostgREST uses +1, the proxy +2)
  *   V2U_RLS_PG_AUTODETECT   0 = only use PG_BIN (no search of install folders)
- *   V2U_RLS_REQUIRED        1 = a run without PostgreSQL is BLOCKED (exit 2), never a silent SKIPPED
+ *   V2U_RLS_REQUIRED        1 = missing PostgreSQL is BLOCKED (exit 2); CI also requires it; 0 overrides CI
+ *   V2U_RLS_E2E_REQUIRED    1 = missing PostgREST is BLOCKED (exit 2), otherwise explicitly PARTIAL
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -57,7 +58,12 @@ export function candidateBinDirs({ env = process.env, platform = process.platfor
   if (env.V2U_RLS_PG_AUTODETECT === '0') return out;
   const versions = (base) => listDir(base).filter((v) => /^\d/.test(v)).sort(byVersionDesc);
   if (platform === 'win32') {
-    const roots = [env.ProgramW6432, env.ProgramFiles, env['ProgramFiles(x86)'], env.LOCALAPPDATA && p.join(env.LOCALAPPDATA, 'Programs')];
+    const systemDrive = env.SystemDrive || 'C:';
+    const roots = [
+      env.ProgramW6432, env.ProgramFiles || p.join(systemDrive, 'Program Files'),
+      env['ProgramFiles(x86)'] || p.join(systemDrive, 'Program Files (x86)'),
+      env.LOCALAPPDATA && p.join(env.LOCALAPPDATA, 'Programs'),
+    ];
     for (const r of roots.filter(Boolean)) {
       const base = p.join(r, 'PostgreSQL');
       for (const v of versions(base)) add(p.join(base, v, 'bin'), 'auto');
@@ -124,5 +130,18 @@ export function initdbArgs(dataDir, platform = process.platform) {
 }
 
 export function rlsRequired(env = process.env) {
-  return /^(1|true|yes)$/i.test(env.V2U_RLS_REQUIRED ?? '');
+  if (/^(0|false|no)$/i.test(env.V2U_RLS_REQUIRED ?? '')) return false;
+  return /^(1|true|yes)$/i.test(env.V2U_RLS_REQUIRED ?? '') ||
+    Boolean(env.CI && !/^(0|false|no)$/i.test(env.CI));
+}
+
+/** Keep a partial run distinct from PASS, and never hide assertion failures behind a skip. */
+export function rlsRunResult({ failed, skippedSections, env = process.env }) {
+  if (failed > 0) return { status: 'FAILED', exitCode: 1 };
+  if (skippedSections.length > 0) {
+    return /^(1|true|yes)$/i.test(env.V2U_RLS_E2E_REQUIRED ?? '')
+      ? { status: 'BLOCKED', exitCode: 2 }
+      : { status: 'PARTIAL', exitCode: 0 };
+  }
+  return { status: 'PASS', exitCode: 0 };
 }

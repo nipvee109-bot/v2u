@@ -178,7 +178,40 @@ The fixture is reachable only under `import.meta.env.DEV`, so production bundles
 - **`npm run test:rls`** applies the real migration to a throwaway PostgreSQL 16 cluster, using `supabase/tests/supabase-shim.sql` to stand in for Supabase's roles and `auth` schema. It then:
   - acts as anon or authenticated users exactly like PostgREST does;
   - if a PostgREST binary is available (`POSTGREST_BIN`), runs the app's repository through **supabase-js → PostgREST → PostgreSQL** end to end.
-  - It needs PostgreSQL server binaries (`PG_BIN`) and skips with a notice when they are absent.
+  - It needs PostgreSQL server binaries (`PG_BIN`). Missing dependencies are reported as SKIPPED, PARTIAL or BLOCKED, never as a complete pass.
+
+### Running `test:rls` locally and in CI
+
+The runner creates an isolated, throwaway local cluster; it does not connect to a Supabase project or an existing database.
+On Windows it first checks `PG_BIN` for `initdb.exe`, `pg_ctl.exe` and `postgres.exe`, then searches
+`Program Files\PostgreSQL\<version>\bin` (newest version first), the x86 and local Programs locations, and Scoop.
+If the Program Files environment variables are absent, it checks the standard folders on `SystemDrive` (default `C:`).
+Linux checks `/usr/lib/postgresql/<version>/bin`; macOS also checks Homebrew install locations.
+An invalid `PG_BIN` produces a warning if automatic discovery finds a fallback. Set `V2U_RLS_PG_AUTODETECT=0`
+to use only `PG_BIN` and diagnose a missing or mistyped path.
+
+PowerShell example:
+
+```powershell
+$env:PG_BIN = 'C:\Program Files\PostgreSQL\16\bin'
+$env:V2U_RLS_REQUIRED = '1'
+npm run test:rls
+```
+
+- `V2U_RLS_REQUIRED=1` (also `true` or `yes`) requires PostgreSQL; a missing runtime is BLOCKED with exit 2.
+- A truthy `CI` also requires PostgreSQL. Explicit `V2U_RLS_REQUIRED=0` overrides that default for optional local checks.
+  `CI=0`, `false` or `no` does not enable strict mode.
+- `POSTGREST_BIN` points to the PostgREST executable, including `.exe` on Windows. Without it, SQL assertions still run,
+  but the final result is PARTIAL and names the skipped client end-to-end section.
+- `V2U_RLS_E2E_REQUIRED=1` additionally requires that client section. Missing PostgREST then produces BLOCKED (exit 2),
+  after recording the SQL assertion counts. Use both required settings for complete security validation.
+- `V2U_RLS_PG_PORT` overrides port 54329; PostgREST and its proxy use the next two ports.
+- `V2U_RLS_PG_TRANSPORT=tcp|socket` overrides transport; Windows defaults to localhost TCP, other platforms to a Unix socket.
+
+Exit codes: **0** means a complete PASS, or an explicitly reported non-strict SKIPPED/PARTIAL run;
+**1** means failed assertions or a runtime/setup error; **2** means required coverage was blocked by missing dependencies.
+Always read the result label as well as the exit code: **SKIPPED and PARTIAL are not a complete pass**.
+Startup, migration and assertion errors are never converted into skips. Assertion failures take precedence over missing optional coverage.
 
 ## Security review checklist (covered by `test:rls`)
 
