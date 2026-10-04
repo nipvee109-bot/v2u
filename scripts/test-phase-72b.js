@@ -183,7 +183,7 @@ await test('Python output is UTF-8 and LF on every OS: Thai prints even when the
   assert.strictEqual(execPython(['-c', 'import sys; sys.stdout.buffer.write(b"a\\r\\nb\\r\\n")']), 'a\nb\n');
   assert.strictEqual(execPython(['-c', 'print(input()[::-1])'], { input: 'กข\n' }), 'ขก\n');
   let err;
-  try { execPython(['-c', 'import sys; sys.stdout.write("x\\r\\n"); raise ValueError("ไม่ได้")'], { stdio: 'pipe', env: cp1252 }); } catch (e) { err = e; }
+  try { execPython(['-c', 'import sys; sys.stdout.buffer.write(b"x\\r\\n"); sys.stdout.flush(); raise ValueError("ไม่ได้")'], { stdio: 'pipe', env: cp1252 }); } catch (e) { err = e; }
   assert(err && err.stdout === 'x\n' && err.stderr.includes('ValueError: ไม่ได้') && !err.stderr.includes('\r'));
 });
 
