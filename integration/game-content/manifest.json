@@ -1,0 +1,27 @@
+{
+  "generator": "scripts/export-game-content.mjs",
+  "adapter": "src/learning/games/contentAdapter.ts",
+  "source": "src/content/knowledge (via the adapter only)",
+  "schemas": {
+    "gameContent": "integration/contracts/gamecontent-1.1.schema.json",
+    "gameEvidence": "integration/contracts/gameevidence-1.1.schema.json"
+  },
+  "gameLab": {
+    "repository": "v2u-game-lab",
+    "commit": "6ba7a91b6eb3f79311b02da118e423384f1e1bef",
+    "note": "Target Game Lab commit as stated by the product owner. V2U did not open or modify the Game Lab; its contracts must be compared by Codex."
+  },
+  "files": [
+    {
+      "path": "integration/game-content/prog-ctrl-conditions.gamecontent.json",
+      "gameId": "pixel-code-battle",
+      "lessonId": "prog-ctrl-conditions",
+      "contract": "v2u.game-content",
+      "version": "1.1",
+      "registryStatus": "PREPARING",
+      "learningEffectsActive": false,
+      "sha256": "2529b5be215a55cd0934814b2fa33d3b8df8381f8a2e45eee233da80dbc5ba12",
+      "excludedPracticeItems": []
+    }
+  ]
+}

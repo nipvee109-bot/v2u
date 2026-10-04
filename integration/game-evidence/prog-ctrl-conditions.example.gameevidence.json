@@ -1,0 +1,21 @@
+{
+  "contract": "v2u.game-evidence",
+  "version": "1.1",
+  "gameId": "pixel-code-battle",
+  "lessonId": "prog-ctrl-conditions",
+  "sessionId": "example-session-0001",
+  "duration": 420,
+  "completed": true,
+  "attempts": 9,
+  "correct": 7,
+  "hintsUsed": 2,
+  "retries": 2,
+  "skillEvidence": [
+    {
+      "skillId": "skill-prog-conditions",
+      "attempts": 9,
+      "correct": 7,
+      "hintsUsed": 2
+    }
+  ]
+}

@@ -1,0 +1,349 @@
+{
+  "contract": "v2u.game-content",
+  "version": "1.1",
+  "gameId": "pixel-code-battle",
+  "lessonId": "prog-ctrl-conditions",
+  "subjectId": "programming",
+  "topicId": "prog-control-flow",
+  "language": "th",
+  "title": "เงื่อนไข if / elif / else",
+  "skills": [
+    {
+      "id": "skill-prog-conditions",
+      "title": "เงื่อนไข"
+    }
+  ],
+  "objectives": [
+    "เขียนเงื่อนไขหลายทางได้ถูกลำดับ",
+    "รวมเงื่อนไขด้วย and / or"
+  ],
+  "prerequisites": [
+    {
+      "lessonId": "prog-py-variables",
+      "title": "ตัวแปร ชนิดข้อมูล และนิพจน์"
+    }
+  ],
+  "readiness": "READY",
+  "boundary": {
+    "allowedKnowledge": [
+      "if / elif / else และการเยื้อง (indentation) บอกขอบเขตของบล็อก",
+      "นิพจน์บูลีนด้วย == != < > <= >=",
+      "and or not",
+      "Python ตรวจเงื่อนไขจากบนลงล่าง ทำบล็อกแรกที่จริงแล้วข้ามที่เหลือ",
+      "เงื่อนไขซ้อน (if ใน if) ระดับพื้นฐาน"
+    ],
+    "notYetAllowed": [
+      "match / case",
+      "การวนซ้ำ",
+      "try / except",
+      "นิพจน์เงื่อนไขบรรทัดเดียว (x if c else y)"
+    ]
+  },
+  "teaching": {
+    "missionObjective": "เขียนเงื่อนไขหลายทางได้ถูกลำดับ",
+    "whyItMatters": "โปรแกรมต้องตัดสินใจ เช่น ให้เกรดตามคะแนน หรืออนุญาตเมื่อเงื่อนไขครบ if / elif / else คือวิธีเลือกว่าจะรันโค้ดส่วนไหน",
+    "concepts": [
+      {
+        "id": "c-bool",
+        "term": "นิพจน์บูลีน",
+        "meaning": "นิพจน์ที่ได้ค่า True หรือ False เช่น score >= 80",
+        "skillId": "skill-prog-conditions"
+      },
+      {
+        "id": "c-branch",
+        "term": "การแตกทาง",
+        "meaning": "Python ทำบล็อกแรกที่เงื่อนไขเป็นจริงเพียงบล็อกเดียว",
+        "skillId": "skill-prog-conditions"
+      },
+      {
+        "id": "c-indent",
+        "term": "การเยื้อง",
+        "meaning": "บรรทัดที่เยื้องเข้าไปใต้ if คือโค้ดที่อยู่ในเงื่อนไขนั้น",
+        "skillId": "skill-prog-conditions"
+      }
+    ],
+    "rules": [
+      {
+        "id": "r-if",
+        "name": "รูปแบบ",
+        "statement": "if เงื่อนไข:\n    ...\nelif เงื่อนไข:\n    ...\nelse:\n    ...",
+        "skillId": "skill-prog-conditions"
+      },
+      {
+        "id": "r-eq",
+        "name": "= กับ ==",
+        "statement": "= กำหนดค่า, == เปรียบเทียบว่าเท่ากันไหม",
+        "skillId": "skill-prog-conditions"
+      },
+      {
+        "id": "r-logic",
+        "name": "ตรรกะ",
+        "statement": "A and B จริงเมื่อจริงทั้งคู่ · A or B จริงเมื่อจริงอย่างน้อยหนึ่ง · not A กลับค่า",
+        "skillId": "skill-prog-conditions"
+      }
+    ],
+    "starterCode": [
+      {
+        "sourceId": "we-1",
+        "skillId": "skill-prog-conditions",
+        "problem": "ตัดเกรดคะแนน 72",
+        "code": "score = 72\nif score >= 80:\n    print(\"A\")\nelif score >= 70:\n    print(\"B\")\nelse:\n    print(\"C\")",
+        "expectedOutput": "B",
+        "steps": [
+          "72 >= 80 เป็นเท็จ ข้ามไป",
+          "72 >= 70 เป็นจริง ทำบล็อกนี้แสดง B",
+          "ไม่ตรวจ else อีก"
+        ]
+      },
+      {
+        "sourceId": "we-2",
+        "skillId": "skill-prog-conditions",
+        "problem": "เข้าชมได้เมื่ออายุ 12 ปีขึ้นไปและมีตั๋ว",
+        "code": "age = 15\nhas_ticket = True\nif age >= 12 and has_ticket:\n    print(\"เข้าได้\")\nelse:\n    print(\"เข้าไม่ได้\")",
+        "expectedOutput": "เข้าได้",
+        "steps": [
+          "age >= 12 → True",
+          "has_ticket → True",
+          "True and True → True แสดง เข้าได้"
+        ]
+      }
+    ],
+    "predictions": [
+      {
+        "sourceId": "g-1",
+        "skillId": "skill-prog-conditions",
+        "level": 1,
+        "prompt": "โค้ดนี้แสดงอะไร",
+        "code": "x = 0\nif x > 0:\n    print(\"บวก\")\nelif x < 0:\n    print(\"ลบ\")\nelse:\n    print(\"ศูนย์\")",
+        "expectedOutput": "ศูนย์",
+        "explanation": "ทั้ง x > 0 และ x < 0 เป็นเท็จ จึงไป else",
+        "hints": {
+          "concept": "รูปแบบ: if เงื่อนไข:\n    ...\nelif เงื่อนไข:\n    ...\nelse:\n    ...",
+          "focus": "ไล่ทีละเงื่อนไขจากบน",
+          "guided": {
+            "exampleId": "we-1",
+            "steps": [
+              "72 >= 80 เป็นเท็จ ข้ามไป",
+              "72 >= 70 เป็นจริง ทำบล็อกนี้แสดง B",
+              "ไม่ตรวจ else อีก"
+            ]
+          }
+        }
+      },
+      {
+        "sourceId": "g-2",
+        "skillId": "skill-prog-conditions",
+        "level": 1,
+        "prompt": "โค้ดนี้แสดงอะไร",
+        "code": "print(not (3 > 2))",
+        "expectedOutput": "False",
+        "explanation": "3 > 2 เป็น True แล้ว not กลับเป็น False",
+        "hints": {
+          "concept": "ตรรกะ: A and B จริงเมื่อจริงทั้งคู่ · A or B จริงเมื่อจริงอย่างน้อยหนึ่ง · not A กลับค่า",
+          "focus": "หาค่าในวงเล็บก่อน",
+          "guided": {
+            "exampleId": "we-2",
+            "steps": [
+              "age >= 12 → True",
+              "has_ticket → True",
+              "True and True → True แสดง เข้าได้"
+            ]
+          }
+        }
+      },
+      {
+        "sourceId": "g-3",
+        "skillId": "skill-prog-conditions",
+        "level": 2,
+        "prompt": "โค้ดนี้แสดงอะไร",
+        "code": "n = 10\nif n % 2 == 0:\n    print(\"คู่\")\nelse:\n    print(\"คี่\")",
+        "expectedOutput": "คู่",
+        "explanation": "10 % 2 = 0 จึงเป็นเลขคู่",
+        "hints": {
+          "concept": "รูปแบบ: if เงื่อนไข:\n    ...\nelif เงื่อนไข:\n    ...\nelse:\n    ...",
+          "focus": "n % 2 คือเศษจากการหารด้วย 2",
+          "guided": {
+            "exampleId": "we-1",
+            "steps": [
+              "72 >= 80 เป็นเท็จ ข้ามไป",
+              "72 >= 70 เป็นจริง ทำบล็อกนี้แสดง B",
+              "ไม่ตรวจ else อีก"
+            ]
+          }
+        }
+      },
+      {
+        "sourceId": "i-1",
+        "skillId": "skill-prog-conditions",
+        "level": 1,
+        "prompt": "โค้ดนี้แสดงอะไร",
+        "code": "t = 35\nif t > 30:\n    print(\"ร้อน\")",
+        "expectedOutput": "ร้อน",
+        "explanation": "35 > 30 เป็นจริง",
+        "hints": {
+          "concept": "รูปแบบ: if เงื่อนไข:\n    ...\nelif เงื่อนไข:\n    ...\nelse:\n    ...",
+          "focus": null,
+          "guided": {
+            "exampleId": "we-1",
+            "steps": [
+              "72 >= 80 เป็นเท็จ ข้ามไป",
+              "72 >= 70 เป็นจริง ทำบล็อกนี้แสดง B",
+              "ไม่ตรวจ else อีก"
+            ]
+          }
+        }
+      },
+      {
+        "sourceId": "i-2",
+        "skillId": "skill-prog-conditions",
+        "level": 1,
+        "prompt": "โค้ดนี้แสดงอะไร",
+        "code": "print(4 == 4.0)",
+        "expectedOutput": "True",
+        "explanation": "== เปรียบเทียบค่า 4 กับ 4.0 มีค่าเท่ากัน แม้ชนิดต่างกัน",
+        "hints": {
+          "concept": "= กับ ==: = กำหนดค่า, == เปรียบเทียบว่าเท่ากันไหม",
+          "focus": null,
+          "guided": {
+            "exampleId": "we-1",
+            "steps": [
+              "72 >= 80 เป็นเท็จ ข้ามไป",
+              "72 >= 70 เป็นจริง ทำบล็อกนี้แสดง B",
+              "ไม่ตรวจ else อีก"
+            ]
+          }
+        }
+      },
+      {
+        "sourceId": "i-3",
+        "skillId": "skill-prog-conditions",
+        "level": 2,
+        "prompt": "โค้ดนี้แสดงอะไร และผิดตรงไหน",
+        "code": "score = 95\nif score >= 50:\n    print(\"ผ่าน\")\nelif score >= 80:\n    print(\"ดี\")",
+        "expectedOutput": "ผ่าน",
+        "explanation": "เงื่อนไขแรกจริงแล้วจึงไม่ตรวจ elif สลับลำดับจึงจะได้ \"ดี\"",
+        "hints": {
+          "concept": "รูปแบบ: if เงื่อนไข:\n    ...\nelif เงื่อนไข:\n    ...\nelse:\n    ...",
+          "focus": null,
+          "guided": {
+            "exampleId": "we-1",
+            "steps": [
+              "72 >= 80 เป็นเท็จ ข้ามไป",
+              "72 >= 70 เป็นจริง ทำบล็อกนี้แสดง B",
+              "ไม่ตรวจ else อีก"
+            ]
+          }
+        }
+      },
+      {
+        "sourceId": "i-4",
+        "skillId": "skill-prog-conditions",
+        "level": 2,
+        "prompt": "โค้ดนี้แสดงอะไร",
+        "code": "x = 7\nprint(x > 5 or x < 0)",
+        "expectedOutput": "True",
+        "explanation": "x > 5 เป็นจริง or จึงจริงทันที",
+        "hints": {
+          "concept": "ตรรกะ: A and B จริงเมื่อจริงทั้งคู่ · A or B จริงเมื่อจริงอย่างน้อยหนึ่ง · not A กลับค่า",
+          "focus": null,
+          "guided": {
+            "exampleId": "we-2",
+            "steps": [
+              "age >= 12 → True",
+              "has_ticket → True",
+              "True and True → True แสดง เข้าได้"
+            ]
+          }
+        }
+      },
+      {
+        "sourceId": "i-5",
+        "skillId": "skill-prog-conditions",
+        "level": 3,
+        "prompt": "โค้ดนี้แสดงอะไร",
+        "code": "a = 3\nb = 3\nif a > b:\n    print(\"a มากกว่า\")\nelif a == b:\n    print(\"เท่ากัน\")\nelse:\n    print(\"b มากกว่า\")",
+        "expectedOutput": "เท่ากัน",
+        "explanation": "a > b เท็จ แต่ a == b จริง",
+        "hints": {
+          "concept": "รูปแบบ: if เงื่อนไข:\n    ...\nelif เงื่อนไข:\n    ...\nelse:\n    ...",
+          "focus": null,
+          "guided": {
+            "exampleId": "we-1",
+            "steps": [
+              "72 >= 80 เป็นเท็จ ข้ามไป",
+              "72 >= 70 เป็นจริง ทำบล็อกนี้แสดง B",
+              "ไม่ตรวจ else อีก"
+            ]
+          }
+        }
+      },
+      {
+        "sourceId": "i-6",
+        "skillId": "skill-prog-conditions",
+        "level": 3,
+        "prompt": "ปี 2024 เป็นปีอธิกสุรทินหรือไม่ (โค้ดนี้แสดงอะไร)",
+        "code": "y = 2024\nprint((y % 4 == 0 and y % 100 != 0) or y % 400 == 0)",
+        "expectedOutput": "True",
+        "explanation": "2024 หาร 4 ลงตัวและหาร 100 ไม่ลงตัว",
+        "hints": {
+          "concept": "ตรรกะ: A and B จริงเมื่อจริงทั้งคู่ · A or B จริงเมื่อจริงอย่างน้อยหนึ่ง · not A กลับค่า",
+          "focus": null,
+          "guided": {
+            "exampleId": "we-2",
+            "steps": [
+              "age >= 12 → True",
+              "has_ticket → True",
+              "True and True → True แสดง เข้าได้"
+            ]
+          }
+        }
+      }
+    ],
+    "debugging": [
+      {
+        "sourceId": "d-1",
+        "skillId": "skill-prog-conditions",
+        "brokenCode": "x = 5\nif x = 5:\n    print(\"ห้า\")",
+        "symptom": "SyntaxError (ใช้ = ในเงื่อนไข)",
+        "fixedCode": "x = 5\nif x == 5:\n    print(\"ห้า\")",
+        "expectedOutput": "ห้า",
+        "explanation": "การเปรียบเทียบใช้ == ส่วน = ใช้กำหนดค่า"
+      }
+    ],
+    "commonMistakes": [
+      {
+        "mistake": "ใช้ = แทน == ในเงื่อนไข",
+        "why": "คณิตศาสตร์ใช้ = เพื่อบอกว่าเท่ากัน",
+        "fix": "อ่าน == ว่า \"เท่ากับไหม?\" — Python จะแจ้ง SyntaxError ถ้าใช้ = ใน if"
+      },
+      {
+        "mistake": "เรียงเงื่อนไขกว้างก่อนแคบ",
+        "why": "เขียนตามลำดับที่นึกออก",
+        "fix": "เรียงจากเงื่อนไขที่เข้มที่สุดก่อน เช่น >= 80 ก่อน >= 50 แล้วลองไล่ด้วยค่าสุดขั้ว"
+      },
+      {
+        "mistake": "เยื้องบรรทัดไม่สม่ำเสมอ",
+        "why": "ภาษาอื่นใช้ { } แต่ Python ใช้การเยื้อง",
+        "fix": "ใช้ช่องว่าง 4 ตัวต่อหนึ่งระดับเสมอ ทุกบรรทัดในบล็อกเดียวกันต้องเยื้องเท่ากัน"
+      }
+    ],
+    "summary": [
+      "ทำบล็อกแรกที่เงื่อนไขจริงเพียงบล็อกเดียว",
+      "เรียงเงื่อนไขจากแคบไปกว้าง",
+      "== เปรียบเทียบ, and/or/not รวมเงื่อนไข"
+    ]
+  },
+  "narration": {
+    "conditionTrue": "เงื่อนไขนี้เป็น True จึงทำบล็อกนี้ แล้วข้ามส่วนที่เหลือของ if / elif / else",
+    "conditionFalse": "เงื่อนไขนี้เป็น False จึงข้ามไปตรวจ elif ต่อ (หรือไป else ถ้าไม่มี elif แล้ว)",
+    "skipped": "ข้าม — มีเงื่อนไขก่อนหน้าที่เป็น True ไปแล้ว Python ทำได้แค่ทางเดียว",
+    "elseTaken": "ไม่มีเงื่อนไขไหนเป็น True จึงทำ else",
+    "printed": "print แสดงข้อความนี้ออกมา"
+  },
+  "missing": [
+    "hint level 2 (focus) for i-1, i-2, i-3, i-4, i-5, i-6 — the lesson has no item hint",
+    "debugging cases: the lesson has 1 (a debug level may need more — add them to the knowledge layer first)",
+    "supportedActions: defined by the game itself (not curriculum)",
+    "per-item misconception for practice items (only understanding-check choices carry misconception links)"
+  ]
+}

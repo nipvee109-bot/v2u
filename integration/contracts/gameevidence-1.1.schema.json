@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://v2u.local/contracts/gameevidence-1.1.schema.json",
+  "title": "V2U GameEvidence 1.1",
+  "description": "What a game returns to V2U. Practice facts only — V2U alone decides mastery, skill status, review, next step and diagnostics, so those fields are not allowed (additionalProperties: false).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "version",
+    "gameId",
+    "lessonId",
+    "sessionId",
+    "duration",
+    "completed",
+    "attempts",
+    "correct",
+    "hintsUsed",
+    "retries",
+    "skillEvidence"
+  ],
+  "properties": {
+    "contract": {
+      "const": "v2u.game-evidence"
+    },
+    "version": {
+      "const": "1.1"
+    },
+    "gameId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lessonId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sessionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "duration": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Seconds."
+    },
+    "completed": {
+      "type": "boolean"
+    },
+    "attempts": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "correct": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Must be ≤ attempts (checked by validateGameEvidence)."
+    },
+    "hintsUsed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "retries": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "skillEvidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "skillId",
+          "attempts",
+          "correct",
+          "hintsUsed"
+        ],
+        "properties": {
+          "skillId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^skill-[a-z0-9-]+$"
+          },
+          "attempts": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "correct": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "hintsUsed": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

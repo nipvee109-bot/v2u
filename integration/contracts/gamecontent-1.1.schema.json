@@ -1,0 +1,507 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://v2u.local/contracts/gamecontent-1.1.schema.json",
+  "title": "V2U GameContent 1.1",
+  "description": "What V2U sends to a game. Generated from V2U lesson knowledge by src/learning/games/contentAdapter.ts. The game must not depend on V2U internals beyond this contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "version",
+    "gameId",
+    "lessonId",
+    "subjectId",
+    "topicId",
+    "language",
+    "title",
+    "skills",
+    "objectives",
+    "prerequisites",
+    "readiness",
+    "boundary",
+    "teaching",
+    "narration",
+    "missing"
+  ],
+  "properties": {
+    "contract": {
+      "const": "v2u.game-content"
+    },
+    "version": {
+      "const": "1.1"
+    },
+    "gameId": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "lessonId": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "subjectId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "topicId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "language": {
+      "const": "th",
+      "description": "Language of explanations; code stays Python."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "skills": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^skill-[a-z0-9-]+$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "objectives": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "prerequisites": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "lessonId",
+          "title"
+        ],
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "readiness": {
+      "enum": [
+        "READY",
+        "READY_WITH_LIMITATIONS",
+        "NOT_READY"
+      ]
+    },
+    "boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allowedKnowledge",
+        "notYetAllowed"
+      ],
+      "properties": {
+        "allowedKnowledge": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "notYetAllowed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "teaching": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "missionObjective",
+        "whyItMatters",
+        "concepts",
+        "rules",
+        "starterCode",
+        "predictions",
+        "debugging",
+        "commonMistakes",
+        "summary"
+      ],
+      "properties": {
+        "missionObjective": {
+          "type": "string",
+          "minLength": 1
+        },
+        "whyItMatters": {
+          "type": "string",
+          "minLength": 1
+        },
+        "concepts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "term",
+              "meaning",
+              "skillId"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "term": {
+                "type": "string",
+                "minLength": 1
+              },
+              "meaning": {
+                "type": "string",
+                "minLength": 1
+              },
+              "skillId": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^skill-[a-z0-9-]+$"
+              }
+            }
+          }
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "statement",
+              "skillId"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "statement": {
+                "type": "string",
+                "minLength": 1
+              },
+              "skillId": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^skill-[a-z0-9-]+$"
+              }
+            }
+          }
+        },
+        "starterCode": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sourceId",
+              "skillId",
+              "problem",
+              "code",
+              "expectedOutput",
+              "steps"
+            ],
+            "properties": {
+              "sourceId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "skillId": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^skill-[a-z0-9-]+$"
+              },
+              "problem": {
+                "type": "string",
+                "minLength": 1
+              },
+              "code": {
+                "type": "string",
+                "minLength": 1
+              },
+              "expectedOutput": {
+                "type": "string",
+                "minLength": 1
+              },
+              "steps": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        },
+        "predictions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sourceId",
+              "skillId",
+              "level",
+              "prompt",
+              "code",
+              "expectedOutput",
+              "explanation",
+              "hints"
+            ],
+            "properties": {
+              "sourceId": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Practice item id in V2U knowledge (g-* guided, i-* independent)."
+              },
+              "skillId": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^skill-[a-z0-9-]+$"
+              },
+              "level": {
+                "type": "integer",
+                "enum": [
+                  1,
+                  2,
+                  3
+                ]
+              },
+              "prompt": {
+                "type": "string",
+                "minLength": 1
+              },
+              "code": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Python exactly as in the lesson — keywords are never translated."
+              },
+              "expectedOutput": {
+                "type": "string",
+                "minLength": 1,
+                "description": "stdout of `code`, verified with real python3 in V2U tests."
+              },
+              "explanation": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Why — show after the learner answers."
+              },
+              "hints": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "concept",
+                  "focus",
+                  "guided"
+                ],
+                "properties": {
+                  "concept": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Hint 1 — conceptual guidance: one lesson rule as '<name>: <statement>'."
+                  },
+                  "focus": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "description": "Hint 2 — focus attention: the practice item's own hint, or null when the lesson has none (never invented)."
+                  },
+                  "guided": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "exampleId",
+                      "steps"
+                    ],
+                    "properties": {
+                      "exampleId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "steps": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    },
+                    "description": "Hint 3 — stronger guidance: the steps of a worked example on the same idea (never this item's answer)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "debugging": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sourceId",
+              "skillId",
+              "brokenCode",
+              "symptom",
+              "fixedCode",
+              "expectedOutput",
+              "explanation"
+            ],
+            "properties": {
+              "sourceId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "skillId": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^skill-[a-z0-9-]+$"
+              },
+              "brokenCode": {
+                "type": "string",
+                "minLength": 1
+              },
+              "symptom": {
+                "type": "string",
+                "minLength": 1,
+                "description": "What Python reports / what goes wrong."
+              },
+              "fixedCode": {
+                "type": "string",
+                "minLength": 1
+              },
+              "expectedOutput": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Output of fixedCode (expected behaviour)."
+              },
+              "explanation": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Error reason and the concept that fixes it."
+              }
+            }
+          }
+        },
+        "commonMistakes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mistake",
+              "why",
+              "fix"
+            ],
+            "properties": {
+              "mistake": {
+                "type": "string",
+                "minLength": 1
+              },
+              "why": {
+                "type": "string",
+                "minLength": 1
+              },
+              "fix": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "summary": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "narration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "conditionTrue",
+        "conditionFalse",
+        "skipped",
+        "elseTaken",
+        "printed"
+      ],
+      "properties": {
+        "conditionTrue": {
+          "type": "string",
+          "minLength": 1
+        },
+        "conditionFalse": {
+          "type": "string",
+          "minLength": 1
+        },
+        "skipped": {
+          "type": "string",
+          "minLength": 1
+        },
+        "elseTaken": {
+          "type": "string",
+          "minLength": 1
+        },
+        "printed": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "missing": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Data the lesson does not provide. The game must not invent it."
+    }
+  }
+}
