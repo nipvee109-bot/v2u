@@ -269,7 +269,7 @@ export function PathwayOverview({
     <section aria-labelledby="route-pathway" className="rounded-[22px] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-card sm:p-6" data-testid="pathway-overview">
       <h2 id="route-pathway" className="font-display text-lg font-bold text-ink">เส้นทางแยกตามวิชา</h2>
       <p className="mt-0.5 text-xs text-ink-3 break-words">🎯 {goal} · แถบสีคือสัดส่วนทักษะที่พร้อม (เขียว) กำลังพัฒนา (น้ำเงิน) ต้องทบทวน (เหลือง) ส่วนสีเทาคือยังไม่ได้วัด — คำนวณจากข้อมูลจริงเท่านั้น</p>
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+      <div className="mt-4 grid gap-4 lg:[grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
         {subjects.map((p) => {
           const known = p.skills.filter((s) => s.status === 'ready');
           const missing = p.skills.filter((s) => s.status !== 'ready');

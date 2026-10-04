@@ -6,11 +6,14 @@ import path from 'node:path';
 import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
 import { createJiti } from 'jiti';
+import { useActionableRegistry } from './lib/actionableFixture.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf-8');
 const jiti = createJiti(import.meta.url);
+// Phase 67: learners only see verified links; this suite tests selection logic on a verified fixture
+await useActionableRegistry(jiti, root, path);
 
 let passed = 0;
 let failed = 0;

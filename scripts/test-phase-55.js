@@ -7,11 +7,14 @@ import path from 'node:path';
 import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
 import { createJiti } from 'jiti';
+import { useActionableRegistry } from './lib/actionableFixture.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf-8');
 const jiti = createJiti(import.meta.url);
+// Phase 67: learners only see verified links; this suite tests selection logic on a verified fixture
+await useActionableRegistry(jiti, root, path);
 const mem = new Map();
 globalThis.localStorage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k), clear: () => mem.clear(), key: (i) => [...mem.keys()][i], get length() { return mem.size; } };
 // the store's debounced storage writes through window.localStorage
@@ -61,7 +64,7 @@ await test('2. Recommendation: lesson videos, Thai first, basics first, real rea
   assert(r.reasons[0].includes('สมการเชิงเส้นตัวแปรเดียว') && r.reasons[0].includes('ระบบสมการเชิงเส้นสองตัวแปร'), r.reasons[0]);
   assert(r.reasons.some((x) => x.includes('ภาษาไทย')));
   assert(r.reasons.some((x) => x.includes('พอดีกับเวลา 30 นาที')));
-  assert(r.reasons.some((x) => x.includes('ยังไม่ได้ตรวจลิงก์')), 'unchecked status is part of the reason');
+  assert(!r.reasons.some((x) => x.includes('ยังไม่ได้ตรวจลิงก์')), 'Phase 67: only verified clips are recommended');
   assert(r.position === 1 && r.of === 2 && r.estimatedMinutes === 12);
   assert(!/qualityScore|rating|stars|คะแนนคลิป|★/i.test(read('src/video/engine.ts')), 'no quality score');
 });
@@ -245,15 +248,12 @@ await test('20. Deprecated resources never appear in video lists, paths or recom
     if (r) assert(!dep.has(r.video.resourceId));
   }
 });
-await test('21. Unverified stays labelled "ยังไม่ได้ตรวจลิงก์"; never given a checked url (Phase 57: may embed only its real YouTube upload)', () => {
-  for (const l of C.lessons)
-    for (const v of V.getLessonVideos(l.id)) {
-      const r = R.find((x) => x.id === v.resourceId);
-      if (r.status === 'unverified') {
-        assert(v.linkState === 'ยังไม่ได้ตรวจลิงก์' && !v.checked && !v.url, v.resourceId);
-        assert.strictEqual(v.embeddable, !!r.candidateVideoUrl, `${v.resourceId}: embeds only from a candidate YouTube upload`);
-      }
-    }
+await test('21. Phase 67: unverified clips are never shown to learners (real registry); verified ones are labelled checked', async () => {
+  const RE = await jiti.import(path.join(root, 'src/resources/engine.ts'));
+  RE.__setResourceRegistryForTests();
+  for (const l of C.lessons) assert.strictEqual(V.getLessonVideos(l.id).filter((v) => v.source === 'curated').length, 0, l.id);
+  await useActionableRegistry(jiti, root, path);
+  for (const l of C.lessons) for (const v of V.getLessonVideos(l.id)) if (v.source === 'curated') assert(v.checked && v.url && v.linkState.startsWith('ตรวจลิงก์แล้ว'), v.resourceId);
   assert(VL.includes('ยังไม่ได้ตรวจลิงก์ — ถ้าเปิดไม่ได้'));
 });
 await test('22. Video completion states: ยังไม่เริ่ม → กำลังเรียน → ดูจบแล้ว → เช็กความเข้าใจแล้ว → เรียนจบ', () => {

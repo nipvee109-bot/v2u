@@ -51,9 +51,35 @@ export function getOutcomeText(outcomeId: OutcomeId, curriculum: Curriculum = CU
 
 /* ── Selection ────────────────────────────────────────────────────────── */
 
-/** Deprecated resources are never recommended for new study sessions. */
+/** The registry the selection functions read by default. Tests may swap in a fixture
+ *  (e.g. entries marked verified) to exercise ranking and planning logic; the app never does. */
+let activeRegistry: CuratedResource[] = RESOURCE_REGISTRY;
+export function __setResourceRegistryForTests(r?: CuratedResource[]): void {
+  activeRegistry = r ?? RESOURCE_REGISTRY;
+}
+
+/* ── Learner visibility (Phase 67) ─────────────────────────────────────
+   ACTIONABLE     verified/active with a real, safe https URL — the learner can open it
+   PENDING        a candidate URL exists (found by search) but it was not verified
+   BROKEN         a check found the URL unusable
+   METADATA_ONLY  title/publisher/locator only — nothing to open
+   Only ACTIONABLE resources are ever shown to learners. The rest stay in the
+   registry as research backlog (see src/resources/registryView.ts). */
+export type Actionability = 'ACTIONABLE' | 'PENDING' | 'BROKEN' | 'METADATA_ONLY';
+
+const SAFE_URL = /^https:\/\/[a-z0-9.-]+\.[a-z]{2,}(\/[^\s]*)?$/i;
+
+export function classifyResource(r: CuratedResource): Actionability {
+  const http = r.verification?.httpStatus;
+  if (http !== undefined && (http < 200 || http >= 300)) return 'BROKEN';
+  if ((r.status === 'active' || r.status === 'verified') && r.url && SAFE_URL.test(r.url)) return 'ACTIONABLE';
+  if (r.candidateUrl || r.candidateVideoUrl || r.url) return 'PENDING';
+  return 'METADATA_ONLY';
+}
+
+/** A learner-facing resource: not deprecated and actionable (a real link they can open). */
 export function isRecommendable(r: CuratedResource): boolean {
-  return r.status !== 'deprecated';
+  return r.status !== 'deprecated' && classifyResource(r) === 'ACTIONABLE';
 }
 const usable = isRecommendable;
 
@@ -71,7 +97,7 @@ const STATUS_TIER: Record<CuratedResource['status'], number> = {
 };
 
 /** Every recommendable registry entry (Phase 51: used by search). */
-export function getRecommendableResources(resources: CuratedResource[] = RESOURCE_REGISTRY): CuratedResource[] {
+export function getRecommendableResources(resources: CuratedResource[] = activeRegistry): CuratedResource[] {
   return resources.filter(isRecommendable);
 }
 
@@ -83,12 +109,12 @@ export function linkStateLabel(r: CuratedResource): string {
 }
 
 /** Look up any registry entry by id, including deprecated ones (for old references). */
-export function getResourceById(id: string, resources: CuratedResource[] = RESOURCE_REGISTRY): CuratedResource | undefined {
+export function getResourceById(id: string, resources: CuratedResource[] = activeRegistry): CuratedResource | undefined {
   return resources.find((r) => r.id === id);
 }
 
 /** Follow `supersededBy` from a deprecated entry to its current replacements. */
-export function resolveCurrentResources(id: string, resources: CuratedResource[] = RESOURCE_REGISTRY): CuratedResource[] {
+export function resolveCurrentResources(id: string, resources: CuratedResource[] = activeRegistry): CuratedResource[] {
   const r = getResourceById(id, resources);
   if (!r) return [];
   if (isRecommendable(r)) return [r];
@@ -113,7 +139,7 @@ export function scoreResourceForLesson(r: CuratedResource, lesson: CurriculumLes
 /** All usable resources for a lesson, best first. */
 export function getResourcesForLesson(
   lessonId: string,
-  resources: CuratedResource[] = RESOURCE_REGISTRY,
+  resources: CuratedResource[] = activeRegistry,
   curriculum: Curriculum = CURRICULUM
 ): CuratedResource[] {
   const lesson = curriculum.lessons.find((l) => l.id === lessonId);
@@ -130,7 +156,7 @@ export function getResourcesForLesson(
     );
 }
 
-export function getResourcesForOutcome(outcomeId: OutcomeId, resources: CuratedResource[] = RESOURCE_REGISTRY): CuratedResource[] {
+export function getResourcesForOutcome(outcomeId: OutcomeId, resources: CuratedResource[] = activeRegistry): CuratedResource[] {
   return resources.filter((r) => usable(r) && r.coveredOutcomes.includes(outcomeId));
 }
 
@@ -141,7 +167,7 @@ export function getResourcesForOutcome(outcomeId: OutcomeId, resources: CuratedR
 export function getBestResourcesForTime(
   lessonId: string,
   minutes: number,
-  resources: CuratedResource[] = RESOURCE_REGISTRY,
+  resources: CuratedResource[] = activeRegistry,
   curriculum: Curriculum = CURRICULUM
 ): CuratedResource[] {
   const picked: CuratedResource[] = [];
@@ -211,7 +237,7 @@ export function isTimeBudget(n: number): n is TimeBudgetMinutes {
 export function buildLearningPlan(
   lessonId: string,
   budgetMinutes: TimeBudgetMinutes,
-  resources: CuratedResource[] = RESOURCE_REGISTRY,
+  resources: CuratedResource[] = activeRegistry,
   curriculum: Curriculum = CURRICULUM
 ): LearningPlan | null {
   const lesson = curriculum.lessons.find((l) => l.id === lessonId);
@@ -392,6 +418,23 @@ export function validateResources(
       }
     } else if (r.status === 'unverified' && r.verification) {
       errors.push(`${where}: unverified resources must not carry a verification record`);
+    }
+    // Phase 67: a learner-facing YouTube clip carries inspected-content metadata
+    const yt = r.youtube;
+    const ytUrl = r.url ? parseYouTubeVideoId(r.url) : null;
+    if (checked && r.type === 'video' && ytUrl) {
+      if (!yt) errors.push(`${where}: verified YouTube video needs youtube metadata`);
+      else {
+        if (yt.videoId !== ytUrl) errors.push(`${where}: youtube.videoId does not match url`);
+        if (!yt.actualContentInspected) errors.push(`${where}: verified YouTube video must have its content inspected`);
+        if (!yt.channel?.trim() || !ISO_DATE.test(yt.checkedAt)) errors.push(`${where}: youtube needs channel and checkedAt`);
+      }
+    }
+    if (yt) {
+      if (r.type !== 'video') errors.push(`${where}: youtube metadata only for videos`);
+      if (yt.summary && !yt.actualContentInspected) errors.push(`${where}: a video summary requires inspected content`);
+      if (yt.chapters?.length && !yt.actualContentInspected) errors.push(`${where}: timestamps require inspected content`);
+      if (!checked && yt.actualContentInspected === false && yt.review.rank === 'RECOMMENDED') errors.push(`${where}: cannot recommend an uninspected video`);
     }
     if (r.videoId !== undefined && r.type !== 'video') errors.push(`${where}: videoId only allowed for video`);
     if (r.videoId !== undefined && !/^[A-Za-z0-9_-]{6,20}$/.test(r.videoId)) errors.push(`${where}: invalid videoId`);

@@ -240,7 +240,7 @@ export function DiagnosticPage() {
         <h1 className="font-display font-bold leading-tight" style={{ fontSize: 'clamp(24px,1.6vw + 18px,34px)', color: 'var(--ink)' }}>พื้นฐานของคุณตอนนี้</h1>
         <p className="text-sm" style={{ color: 'var(--ink-2)' }}>แยกตามวิชาและทักษะ ใช้จัดเส้นทาง ไม่ใช่คะแนนสอบ</p>
       </header>
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:[grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
         {subjects.map((p) => (
           <SubjectStatusCard key={p.subjectId} p={p} detailed highlight={stage.done.includes(p.subjectId)} />
         ))}

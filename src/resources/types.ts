@@ -101,6 +101,37 @@ export interface CuratedResource {
   needsFirst?: string;
   /** Plain-Thai: what to do after */
   doNext?: string;
+  /** Phase 67: required for a verified/active YouTube video */
+  youtube?: YouTubeMeta;
+}
+
+/** Phase 67: what a learner-facing YouTube clip must record. Filled only after the clip's
+ *  real content (video, captions or transcript) was inspected — never from a search result. */
+export interface YouTubeMeta {
+  videoId: string;
+  watchUrl: string;
+  channel: string;
+  /** Official embed allowed by the uploader (checked through the official player) */
+  embeddable: boolean;
+  /** Seconds, from the player/API — omitted when not verified */
+  durationSeconds?: number;
+  captions: 'official' | 'auto' | 'none' | 'unknown';
+  actualContentInspected: boolean;
+  checkedAt: string;
+  review: { rank: 'RECOMMENDED' | 'GOOD_ALTERNATIVE' | 'NOT_RECOMMENDED'; notes: string };
+  /** Timestamps only from the player, the transcript or the uploader's chapters */
+  chapters?: { seconds: number; title: string; source: 'chapters' | 'transcript' | 'player' }[];
+  /** Original V2U notes — allowed only when actualContentInspected */
+  summary?: {
+    teaches: string;
+    needsFirst: string;
+    keyIdeas: string[];
+    examples: string[];
+    formulas: string[];
+    commonMistakes: string[];
+    afterWatching: string[];
+    notCovered: string[];
+  };
 }
 
 export type TimeBudgetMinutes = 15 | 30 | 60 | 120;

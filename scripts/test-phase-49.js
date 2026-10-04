@@ -9,11 +9,15 @@ import path from 'node:path';
 import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
 import { createJiti } from 'jiti';
+import { useActionableRegistry } from './lib/actionableFixture.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf-8');
 const jiti = createJiti(import.meta.url);
+// Phase 67: learners only see verified links; this suite tests selection logic on a verified fixture
+await useActionableRegistry(jiti, root, path);
+const RES = await jiti.import(path.join(root, 'src/resources/engine.ts'));
 
 let passed = 0;
 let failed = 0;
@@ -91,11 +95,17 @@ await test('Onboarding speaks Thai (no "Study Onboarding" / "(Skip)" / "Step n")
 });
 
 console.log('\n3. Start → Study Room (bugs #5, #6)');
-await test('Next step exposes where to find the recommended resource (no unchecked URL)', () => {
+await test('Next step exposes where to find the recommended resource (no unchecked URL)', async () => {
   const s = NS.getNextStep({ lessons: fresh, referenceDate: NOW, route: { profile: PERSONA, records: fresh.map((l) => rec(l)) } });
   const rr = s.curriculum.recommendedResource;
   assert(rr.locator && rr.locator.length > 5);
-  assert.strictEqual(rr.url, undefined, 'unverified resources must not expose a URL');
+  assert(rr.url, 'Phase 67: only verified resources (with a real URL) are recommended');
+  // the real registry has no verified link yet → nothing is recommended, and the step still works
+  RES.__setResourceRegistryForTests();
+  const real = NS.getNextStep({ lessons: fresh, referenceDate: NOW, route: { profile: PERSONA, records: fresh.map((l) => rec(l)) } });
+  assert.strictEqual(real.curriculum.recommendedResource, undefined);
+  assert(real.curriculum.lessonId && real.curriculum.title);
+  await useActionableRegistry(jiti, root, path);
 });
 await test('Resource confirmation shows V2U recommendation and today\'s planned minutes', () => {
   const hook = read('src/hooks/useStartNextStep.tsx');

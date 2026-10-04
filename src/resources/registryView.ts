@@ -11,6 +11,8 @@ import type { CuratedResource } from './types';
 import { CURRICULUM } from '../curriculum/data';
 import { DISCOVERED_RESOURCES } from './discovered';
 import type { DiscoveredResource } from './discovered';
+import { YOUTUBE_CANDIDATES } from './youtubeCandidates';
+import type { YouTubeCandidate } from './youtubeCandidates';
 
 export type RegistryStatus = 'DISCOVERED' | 'VERIFICATION_PENDING' | 'VERIFIED' | 'DEPRECATED' | 'UNAVAILABLE';
 export type SummaryStatus = 'SUMMARY_READY' | 'SUMMARY_PENDING' | 'NOT_A_VIDEO';
@@ -103,4 +105,32 @@ export function discoveredToRecord(d: DiscoveredResource): RegistryRecord {
   };
 }
 
-export const registryRecords = (): RegistryRecord[] => [...allResources().map(toRegistryRecord), ...DISCOVERED_RESOURCES.map(discoveredToRecord)];
+export function youtubeCandidateToRecord(y: YouTubeCandidate): RegistryRecord {
+  const lesson = CURRICULUM.lessons.find((l) => l.id === y.lessonId);
+  return {
+    id: `yt-${y.lessonId}-${y.videoId}`,
+    title: y.resultTitle,
+    publisher: 'ยังไม่ทราบช่อง (ยังไม่ได้เปิดดู)',
+    url: y.watchUrl,
+    type: 'video',
+    language: y.titleLanguage,
+    subjectId: lesson?.subjectId,
+    topicIds: lesson ? [lesson.topicId] : [],
+    lessonIds: [y.lessonId],
+    skillIds: lesson?.skillIds ?? [],
+    dateChecked: y.provenance.foundAt,
+    verificationStatus: 'VERIFICATION_PENDING',
+    actualContentInspected: false,
+    summaryStatus: 'SUMMARY_PENDING',
+    embedSupport: 'youtube',
+    qualityNotes: 'ยังไม่ได้รีวิว (UNREVIEWED)',
+    limitations: ['พบจากผลการค้นหาเท่านั้น ยังไม่ได้ดูคลิป ไม่ทราบช่อง ความยาว คำบรรยาย หรือการฝัง'],
+    provenance: `search result: "${y.provenance.query}"`,
+  };
+}
+
+export const registryRecords = (): RegistryRecord[] => [
+  ...allResources().map(toRegistryRecord),
+  ...DISCOVERED_RESOURCES.map(discoveredToRecord),
+  ...YOUTUBE_CANDIDATES.map(youtubeCandidateToRecord),
+];

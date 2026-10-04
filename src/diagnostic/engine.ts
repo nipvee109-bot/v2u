@@ -20,12 +20,15 @@ import type { SkillStatus } from '../skills/engine';
 import { getRouteRequirement, getRouteTarget, getVocationalProgram } from '../route/engine';
 import type { StudentProfile } from '../route/types';
 import { DIAGNOSTIC_ITEMS } from './items';
+import { activeSubjectIds, subjectIdentity, subjectLabel } from '../subjects/registry';
 import type { DiagnosticAttempt, DiagnosticData, DiagnosticItem, ProfileStatus, SkillProfileEntry, SubjectProfile } from './types';
 import { EMPTY_DIAGNOSTIC, PROFILE_STATUS_LABEL } from './types';
 
-export const SUBJECT_ORDER: CurriculumSubjectId[] = ['math', 'physics', 'programming'];
-export const SUBJECT_LABEL: Record<CurriculumSubjectId, string> = { math: 'คณิตศาสตร์', physics: 'ฟิสิกส์', programming: 'Programming' };
-export const SUBJECT_EMOJI: Record<CurriculumSubjectId, string> = { math: '🧮', physics: '⚛️', programming: '💻' };
+/* Phase 67: subjects come from the subject registry (active subjects that the curriculum has),
+   not from a fixed list of three. Same values today: math, physics, programming. */
+export const SUBJECT_ORDER: CurriculumSubjectId[] = activeSubjectIds(CURRICULUM.subjects.map((s) => s.id));
+export const SUBJECT_LABEL = Object.fromEntries(SUBJECT_ORDER.map((id) => [id, subjectLabel(id)])) as Record<CurriculumSubjectId, string>;
+export const SUBJECT_EMOJI = Object.fromEntries(SUBJECT_ORDER.map((id) => [id, subjectIdentity(id).emoji])) as Record<CurriculumSubjectId, string>;
 
 /* ── Data hygiene (old saves, imports) ─────────────────────────────────── */
 

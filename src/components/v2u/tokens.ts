@@ -1,4 +1,5 @@
 import type { IconName } from './kit';
+import { subjectIdentity } from '../../subjects/registry';
 
 /* ── Status (skill) ── */
 export type StKey = 'ok' | 'dev' | 'rev' | 'none';
@@ -12,14 +13,11 @@ export const ST: Record<StKey, { label: string; c: string; soft: string; k: Icon
 export const stOf = (s: 'ready' | 'developing' | 'needs-review' | 'not-assessed'): StKey =>
   s === 'ready' ? 'ok' : s === 'developing' ? 'dev' : s === 'needs-review' ? 'rev' : 'none';
 
-/* ── Subject identity ── */
-export type SubKey = 'math' | 'physics' | 'programming';
-export const SUB: Record<SubKey, { name: string; c: string; soft: string; k: IconName }> = {
-  math: { name: 'คณิตศาสตร์', c: 'var(--math)', soft: 'var(--math-soft)', k: 'sigma' },
-  physics: { name: 'ฟิสิกส์', c: 'var(--phy)', soft: 'var(--phy-soft)', k: 'atom' },
-  programming: { name: 'Programming', c: 'var(--prog)', soft: 'var(--prog-soft)', k: 'code' },
+/* ── Subject identity ── (Phase 67: from the subject registry — any number of subjects) */
+export const subOf = (id: string): { name: string; c: string; soft: string; k: IconName } => {
+  const s = subjectIdentity(id);
+  return { name: s.label, c: s.color, soft: s.soft, k: s.icon as IconName };
 };
-export const subOf = (id: string) => SUB[(id in SUB ? id : 'math') as SubKey] && (id in SUB ? SUB[id as SubKey] : { name: id, c: 'var(--brand-ink)', soft: 'var(--brand-soft)', k: 'book' as IconName });
 
 /* ── Lesson state (Subject list) ── */
 export type LstKey = 'rec' | 'progress' | 'done' | 'review' | 'none' | 'ready' | 'locked';
