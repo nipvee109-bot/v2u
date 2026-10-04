@@ -1,17 +1,17 @@
 /* =========================================================================
-   V2U CMS data model (Phase 72).
+   V2U CMS data model (Phase 72, Supabase since 72B).
    CMS content is OPERATIONAL content layered on top of the trusted knowledge
    layer — it never replaces lesson/skill ids, mastery, evidence, review or
-   next-step logic. Firestore collections (see docs/admin-backend.md):
+   next-step logic. PostgreSQL tables (supabase/migrations, docs/supabase-setup.md):
 
-     users/{uid}                      UserProfile
-     cmsDrafts/{entityId}             working copy + workflow state (staff only)
-     cmsPublished/{entityId}          what learners see (public read)
-     cmsVersions/{entityId}__v{n}     previous published versions (recovery)
-     games/{gameId}                   GameDoc (registered games)
-     lessonGameAssignments/{id}       LessonGameAssignment
-     auditLogs/{autoId}               AuditEvent (append-only)
-     settings/{id}                    operational settings / announcements
+     profiles                  UserProfile (auth.users is identity only)
+     videos / resources        working copies + workflow state (staff only)
+     content_overrides         reviewed text overrides (summary/analogy/whyItMatters)
+     cms_published             learner snapshots (written only by cms_transition)
+     cms_versions              previous published snapshots (recovery, append-only)
+     games                     GameDoc
+     lesson_game_assignments   LessonGameAssignment
+     audit_logs                AuditEvent (database-written, append-only)
    ========================================================================= */
 
 import type { AccountStatus, Role } from '../auth/permissions';
@@ -88,23 +88,15 @@ export interface ContentOverrideData {
   reason: string;
 }
 
-export interface AnnouncementData {
-  title: string;
-  body: string;
-  visibility: 'VISIBLE' | 'HIDDEN';
-}
-
-export type EntityKind = 'video' | 'resource' | 'contentOverride' | 'announcement';
+export type EntityKind = 'video' | 'resource' | 'contentOverride';
 export interface EntityDataMap {
   video: VideoData;
   resource: ResourceData;
   contentOverride: ContentOverrideData;
-  announcement: AnnouncementData;
 }
 export const ENTITY_CATEGORY: Record<EntityKind, ContentCategory> = {
   video: 'SAFE_OPERATIONAL',
   resource: 'SAFE_OPERATIONAL',
-  announcement: 'SAFE_OPERATIONAL',
   contentOverride: 'CONTROLLED',
 };
 
@@ -121,6 +113,8 @@ export interface DraftDoc<K extends EntityKind = EntityKind> {
   updatedAt: string;
   updatedBy: string;
   reviewNote: string | null;
+  /** Reviewer who approved (recorded by the database) */
+  approvedBy?: string | null;
 }
 
 export interface PublishedDoc<K extends EntityKind = EntityKind> {
@@ -182,9 +176,9 @@ export interface LessonGameAssignment {
 /* ── Audit ── */
 export const AUDIT_ACTIONS = [
   'VIDEO_CREATED', 'VIDEO_UPDATED', 'VIDEO_VERIFIED', 'VIDEO_HIDDEN',
-  'RESOURCE_CREATED', 'RESOURCE_UPDATED',
+  'RESOURCE_CREATED', 'RESOURCE_UPDATED', 'RESOURCE_VERIFIED',
   'GAME_REGISTERED', 'GAME_UPDATED', 'GAME_ATTACHED', 'GAME_DETACHED', 'GAME_ENABLED', 'GAME_DISABLED',
-  'CONTENT_CREATED', 'CONTENT_UPDATED', 'CONTENT_SUBMITTED', 'CONTENT_APPROVED', 'CONTENT_REJECTED', 'CONTENT_PUBLISHED', 'CONTENT_UNPUBLISHED', 'CONTENT_ARCHIVED',
+  'CONTENT_CREATED', 'CONTENT_UPDATED', 'CONTENT_SUBMITTED', 'CONTENT_APPROVED', 'CONTENT_REJECTED', 'CONTENT_PUBLISHED', 'CONTENT_UNPUBLISHED', 'CONTENT_ARCHIVED', 'CONTENT_REOPENED',
   'ROLE_CHANGED', 'STATUS_CHANGED', 'ORDER_CHANGED', 'SETTINGS_UPDATED',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
@@ -193,7 +187,7 @@ export interface AuditEvent {
   actorUid: string;
   actorRole: Role;
   action: AuditAction;
-  entityType: 'video' | 'resource' | 'contentOverride' | 'announcement' | 'game' | 'assignment' | 'user' | 'settings';
+  entityType: 'video' | 'resource' | 'contentOverride' | 'game' | 'assignment' | 'user' | 'settings';
   entityId: string;
   /** Short human summaries — never tokens or secrets */
   before: string | null;

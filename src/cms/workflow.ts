@@ -1,6 +1,6 @@
 /* CMS workflow (Phase 72) — pure functions: who may move an entity to which state,
    what a valid entity looks like, and which audit event each action produces.
-   The service and the Firestore rules both follow these rules. */
+   The service and the database (supabase/migrations: cms_transition) both follow these rules. */
 
 import { can } from '../auth/permissions';
 import type { Actor, Permission } from '../auth/permissions';
@@ -37,7 +37,7 @@ export function transitionResult(actor: Actor, d: DraftDoc, t: Transition, isPub
       return d.state === 'REJECTED' || d.state === 'ARCHIVED' ? { ok: true, next: 'DRAFT' } : { ok: false, reason: 'เปิดแก้ใหม่ได้เฉพาะรายการที่ถูกตีกลับหรือเก็บถาวร' };
     case 'publish':
       if (d.state === 'APPROVED') return { ok: true, next: 'PUBLISHED' };
-      // safe operational content (videos, resources, announcements) may skip review for publishers
+      // safe operational content (videos, resources) may skip review for publishers
       if (!controlled && (d.state === 'DRAFT' || d.state === 'IN_REVIEW')) return { ok: true, next: 'PUBLISHED' };
       return { ok: false, reason: controlled ? 'เนื้อหาการเรียนต้องผ่านการอนุมัติก่อนเผยแพร่' : 'เผยแพร่ไม่ได้จากสถานะนี้' };
     case 'unpublish':
@@ -52,7 +52,7 @@ export const TRANSITION_AUDIT: Record<Transition, AuditAction> = {
   submit: 'CONTENT_SUBMITTED',
   approve: 'CONTENT_APPROVED',
   reject: 'CONTENT_REJECTED',
-  reopen: 'CONTENT_UPDATED',
+  reopen: 'CONTENT_REOPENED',
   publish: 'CONTENT_PUBLISHED',
   unpublish: 'CONTENT_UNPUBLISHED',
   archive: 'CONTENT_ARCHIVED',
@@ -69,7 +69,7 @@ const SAFE_HTTPS = /^https:\/\/[a-z0-9.-]+\.[a-z]{2,}(\/\S*)?$/i;
 export function validateEntity<K extends EntityKind>(kind: K, data: EntityDataMap[K], ctx: ValidationContext): string[] {
   const e: string[] = [];
   const lessonId = (data as { lessonId?: string }).lessonId;
-  if (kind !== 'announcement' && (!lessonId || !ctx.lessonIds.has(lessonId))) e.push('บทเรียนไม่ถูกต้อง');
+  if ((!lessonId || !ctx.lessonIds.has(lessonId))) e.push('บทเรียนไม่ถูกต้อง');
   if (kind === 'video') {
     const v = data as VideoData;
     if (!v.title?.trim()) e.push('ต้องมีชื่อคลิป');
@@ -101,10 +101,6 @@ export function validateEntity<K extends EntityKind>(kind: K, data: EntityDataMa
     if (!c.reason?.trim()) e.push('ต้องระบุเหตุผลของการแก้ไข');
     for (const n of ctx.notYet.get(c.lessonId) ?? []) if (values.some((x) => x.includes(n))) e.push(`มีเนื้อหาที่บทนี้ยังไม่สอน: ${n}`);
   }
-  if (kind === 'announcement') {
-    const a = data as EntityDataMap['announcement'];
-    if (!a.title?.trim() || !a.body?.trim()) e.push('ต้องมีหัวข้อและเนื้อหา');
-  }
   return e;
 }
 
@@ -122,7 +118,6 @@ export function isLearnerVisibleData(kind: EntityKind, data: EntityDataMap[Entit
     const d = data as VideoData;
     return d.visibility === 'VISIBLE' && d.verification === 'VERIFIED' && !!d.verifiedBy && !!d.verifiedAt && SAFE_HTTPS_URL.test(d.url);
   }
-  if (kind === 'announcement') return (data as EntityDataMap['announcement']).visibility === 'VISIBLE';
   return true;
 }
 

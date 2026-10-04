@@ -47,6 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((b) => {
         if (cancelled || !b) return;
         setBackend(b);
+        // returning from Google with an error (e.g. the learner pressed cancel)
+        const redirectError = b.consumeAuthRedirectError?.();
+        if (redirectError && !redirectError.ok) setError(MESSAGES[redirectError.reason] ?? MESSAGES.error);
         // learner-visible CMS content (public read) — never drafts
         Promise.all([b.listPublished({ learnerOnly: true }), b.listGames({ learnerOnly: true }), b.listAssignments({ learnerOnly: true })])
           .then(([pub, games, assignments]) => setCmsOverlay({ resources: learnerResources(pub), overrides: learnerOverrides(pub), games, assignments }))
@@ -58,7 +61,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
           try {
-            setProfile(await b.upsertOwnProfile(u));
+            // the database created the STUDENT/ACTIVE profile at sign-up; this records the login
+            setProfile(await b.touchOwnProfile(u));
             setStatus('signed-in');
           } catch {
             // e.g. a suspended account cannot update its profile — read it instead
@@ -82,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setError(MESSAGES.network);
       return { ok: false, reason: 'network' };
     }
-    const r = await backend.signInWithGoogle();
+    const r = await backend.signInWithGoogle(); // Supabase redirects to Google; the session is restored on return
     if (!r.ok) setError(MESSAGES[r.reason] ?? MESSAGES.error);
     return r;
   }, [backend]);

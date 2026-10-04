@@ -1,6 +1,6 @@
 /* ⚠ DEVELOPMENT ONLY — never shipped (Phase 72).
    Reached only through backend/index.ts under `import.meta.env.DEV && VITE_V2U_DEV_ADMIN=1`.
-   Seeds one fake account per role so the admin UI can be exercised locally without Firebase.
+   Seeds one fake account per role so the admin UI can be exercised locally without Supabase.
    Choose who "signs in" with localStorage key `v2u-dev-as` (a role name). Data lives in memory. */
 
 import { ROLES } from '../auth/permissions';

@@ -1,6 +1,6 @@
 /* V2U Admin (Phase 72) — /admin, its own shell outside the learner Layout.
    Every action goes through CmsService (can() → validate → workflow → backend + audit);
-   Firestore rules enforce the same limits server-side. The admin cannot reach learner
+   the database (Supabase RLS + RPCs) enforces the same limits server-side. The admin cannot reach learner
    mastery, diagnostics, evidence, review scheduling or next-step logic: those live only
    on each learner's device and are not part of any CMS collection. */
 
@@ -71,7 +71,7 @@ export function AdminApp() {
   if (a.status === 'unconfigured')
     return (
       <Gate title="ยังไม่ได้ตั้งค่าระบบบัญชี">
-        <p className="text-sm">หน้าผู้ดูแลต้องใช้ระบบบัญชี (Firebase) ซึ่งยังไม่ได้ตั้งค่าในเว็บนี้ ดูวิธีตั้งค่าที่ docs/admin-backend.md</p>
+        <p className="text-sm">หน้าผู้ดูแลต้องใช้ระบบบัญชี (Supabase) ซึ่งยังไม่ได้ตั้งค่าในเว็บนี้ ดูวิธีตั้งค่าที่ docs/supabase-setup.md</p>
       </Gate>
     );
   if (a.status === 'error') return <Gate title="เชื่อมต่อระบบบัญชีไม่ได้"><p className="text-sm">ลองใหม่อีกครั้งเมื่อออนไลน์</p></Gate>;

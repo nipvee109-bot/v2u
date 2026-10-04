@@ -39,7 +39,9 @@ const R = await jiti.import(path.join(root, 'src/cms/resolver.ts'));
 const O = await jiti.import(path.join(root, 'src/cms/overlay.ts'));
 const { CmsService } = await jiti.import(path.join(root, 'src/cms/service.ts'));
 const { createMemoryBackend } = await jiti.import(path.join(root, 'src/backend/memory.ts'));
-const { readFirebaseEnv } = await jiti.import(path.join(root, 'src/backend/firebase.ts'));
+const { readSupabaseEnv, isSecretKey } = await jiti.import(path.join(root, 'src/backend/supabaseEnv.ts'));
+const MAP = await jiti.import(path.join(root, 'src/backend/supabaseMap.ts'));
+const MIGRATION = fs.readdirSync(path.join(root, 'supabase/migrations')).filter((f) => f.endsWith('.sql')).map((f) => read(`supabase/migrations/${f}`)).join('\n');
 const { planLearnerDataMigration } = await jiti.import(path.join(root, 'src/cms/migration.ts'));
 const { CURRICULUM: C } = await jiti.import(path.join(root, 'src/curriculum/data.ts'));
 const RE = await jiti.import(path.join(root, 'src/resources/engine.ts'));
@@ -124,26 +126,36 @@ await test('last SUPER_ADMIN is protected (no self-demotion, no last demotion/su
   assert.strictEqual(P.roleChangeDenied(actor(user('SUPER_ADMIN', 'other')), sa, 'ADMIN', 2), null);
 });
 
-await test('role spoofing fails: first sign-in profile is always STUDENT/ACTIVE; roles never come from the browser', async () => {
-  const be = createMemoryBackend({});
-  const p = await be.upsertOwnProfile({ uid: 'n1', displayName: 'n', email: 'n@example.invalid', photoURL: null, role: 'SUPER_ADMIN' });
-  assert.strictEqual(p.role, 'STUDENT');
-  const p2 = await be.upsertOwnProfile({ uid: 'n1', displayName: 'n2', email: 'n@example.invalid', photoURL: null, role: 'ADMIN', status: 'ACTIVE' });
+await test('role spoofing fails: a new identity is always STUDENT/ACTIVE; roles never come from the browser or OAuth metadata', async () => {
+  const be = createMemoryBackend({ signInAs: { uid: 'n1', displayName: 'n', email: 'n@example.invalid', photoURL: null, role: 'SUPER_ADMIN' } });
+  await be.signInWithGoogle();
+  assert.strictEqual((await be.getProfile('n1')).role, 'STUDENT');
+  const p2 = await be.touchOwnProfile({ uid: 'n1', displayName: 'n2', email: 'n@example.invalid', photoURL: null, role: 'ADMIN', status: 'ACTIVE' });
   assert.strictEqual(p2.role, 'STUDENT');
+  await rejects(be.setUserRole({ uid: 'n1', role: 'SUPER_ADMIN', status: 'ACTIVE' }, 'n1', 'SUPER_ADMIN'), /permission denied|สิทธิ์/); // claimed actor ignored: stored profile decides
   const provider = read('src/auth/AuthProvider.tsx');
   assert(!/localStorage/.test(provider), 'AuthProvider must not read roles from storage');
-  const rules = read('firestore.rules');
-  assert(rules.includes("request.resource.data.role == 'STUDENT'") && rules.includes("changed().hasOnly(['displayName', 'photoURL'"));
+  // database: profile created by trigger (role defaulted), metadata only fills display fields, role/status need the RPC
+  assert(/create trigger on_auth_user_created after insert on auth\.users/.test(MIGRATION));
+  assert(/insert into public\.profiles \(id, email, display_name, avatar_url\)/.test(MIGRATION), 'trigger never copies role from metadata');
+  assert(/grant update \(display_name, avatar_url, last_login_at, onboarding_completed\) on public\.profiles to authenticated/.test(MIGRATION));
+  // the Supabase client never writes role/status/state/verification columns
+  const sup = read('src/backend/supabase.ts');
+  assert(!/role:|status:|state:|verified_by|created_by/.test(sup.replace(/rpc\('set_user_(role|status)'[^)]*\)/g, '')), 'no privileged columns written directly');
+  for (const k of ['state', 'verified_by', 'verified_at', 'created_by', 'updated_by', 'published_version', 'approved_by']) {
+    assert(!(k in MAP.dataToRow('video', video())), k);
+  }
 });
 
-await test('unauthorized direct writes are denied by the rules (default deny, append-only audit, no deletes)', () => {
-  const rules = read('firestore.rules');
-  assert(/match \/\{document=\*\*\} \{\s*allow read, write: if false;/.test(rules));
-  assert(/auditLogs[\s\S]*allow update, delete: if false/.test(rules));
-  assert(/cmsVersions[\s\S]*allow update, delete: if false/.test(rules));
-  assert(rules.includes('request.resource.data.actorUid == request.auth.uid'));
-  // emulator suite exists and is wired
-  assert(read('package.json').includes('"test:rules"') && fs.existsSync(path.join(root, 'scripts/test-firestore-rules.mjs')));
+await test('unauthorized direct writes are denied by the database (RLS everywhere, revoked defaults, append-only audit, no deletes)', () => {
+  for (const t of ['profiles', 'videos', 'resources', 'content_overrides', 'cms_published', 'cms_versions', 'games', 'lesson_game_assignments', 'audit_logs']) assert(MIGRATION.includes(`alter table public.${t} enable row level security`), t);
+  assert(MIGRATION.includes('revoke all on all tables in schema public from anon, authenticated'));
+  assert(!/for delete/.test(MIGRATION), 'no delete policies');
+  assert(/create trigger audit_logs_immutable before update or delete/.test(MIGRATION));
+  assert(/create trigger cms_versions_immutable before update or delete/.test(MIGRATION));
+  for (const m of MIGRATION.matchAll(/create function ([\w.]+)\([^)]*\)[^$]*?security definer([^$]*?)as \$/g)) assert(/set search_path = ''/.test(m[2]), `${m[1]} search_path`);
+  // real-database suite exists and is wired
+  assert(read('package.json').includes('"test:rls"') && fs.existsSync(path.join(root, 'scripts/test-supabase-rls.mjs')));
 });
 
 await test('workflow: controlled content needs approval by someone else; safe content can be published directly', async () => {
@@ -166,15 +178,18 @@ await test('unpublished, hidden and unverified content is never shown to learner
   assert.strictEqual(R.learnerResources(await be.listPublished({ learnerOnly: true })).length, 0, 'draft not shown');
   const p1 = await svc('REVIEWER').transition(d, 'publish', null, null); // published but unverified
   assert.strictEqual((await be.listPublished({ learnerOnly: true })).length, 0, 'unverified not shown');
-  const v = await svc('REVIEWER').verifySource(p1);
+  await svc('REVIEWER').verifySource(p1);
+  const v = (await be.listDrafts()).find((x) => x.id === d.id);
+  assert.strictEqual(v.data.verification, 'VERIFIED');
   const p2 = await svc('REVIEWER').transition(v, 'publish', null, (await be.listPublished())[0]);
   const shown = R.learnerResources(await be.listPublished({ learnerOnly: true }));
   assert.strictEqual(shown.length, 1);
   assert.strictEqual(shown[0].id, `cms:${d.id}`);
   const h = await svc('CONTENT_EDITOR').updateDraft(p2, { ...p2.data, visibility: 'HIDDEN' });
+  assert.strictEqual(h.state, 'DRAFT', 'editing published content makes a new draft');
   await svc('REVIEWER').transition(h, 'publish', null, (await be.listPublished())[0]);
   assert.strictEqual((await be.listPublished({ learnerOnly: true })).length, 0, 'hidden not shown');
-  assert((await be.listVersions(d.id)).length >= 2, 'previous versions kept');
+  assert((await be.listVersions('video', d.id)).length >= 2, 'previous versions kept');
   assert(be._dump().audit.some((e) => e.action === 'VIDEO_HIDDEN') && be._dump().audit.some((e) => e.action === 'VIDEO_VERIFIED'));
 });
 
@@ -209,11 +224,19 @@ await test('no hardcoded owner email or secrets in client source; .env.example h
   for (const f of walk(path.join(root, 'src'))) {
     const s = fs.readFileSync(f, 'utf-8');
     assert(!/[\w.+-]+@(gmail|hotmail|outlook|yahoo)\.com/i.test(s), `email in ${f}`);
-    assert(!/AIza[0-9A-Za-z_-]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY|"private_key"|client_secret/.test(s), `secret in ${f}`);
+    assert(!/AIza[0-9A-Za-z_-]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY|"private_key"|client_secret|sb_secret_[A-Za-z0-9]{8,}|SUPABASE_SERVICE_ROLE_KEY\s*=|service_role"\s*:/.test(s), `secret in ${f}`);
   }
   const env = read('.env.example');
-  assert(/VITE_FIREBASE_API_KEY=your-/.test(env) && !/AIza/.test(env));
-  assert.strictEqual(readFirebaseEnv(Object.fromEntries(env.split('\n').filter((l) => l.includes('=') && !l.startsWith('#')).map((l) => l.split('=')))), null, 'placeholders never configure the backend');
+  assert(/VITE_SUPABASE_URL=https:\/\/your-/.test(env) && /VITE_SUPABASE_ANON_KEY=your-/.test(env));
+  assert(!/^\s*[A-Z_]*(SERVICE_ROLE|SECRET|PASSWORD)[A-Z_]*=/m.test(env), 'no secret variables defined');
+  assert.strictEqual(readSupabaseEnv(Object.fromEntries(env.split('\n').filter((l) => l.includes('=') && !l.startsWith('#')).map((l) => l.split('=')))), null, 'placeholders never configure the backend');
+  // a service-role key is refused even if someone puts it in the browser env
+  const fakeServiceJwt = `x.${Buffer.from(JSON.stringify({ role: 'service_role' })).toString('base64url')}.y`;
+  assert(isSecretKey(fakeServiceJwt) && isSecretKey('sb_secret_abc'));
+  const origErr = console.error; console.error = () => {};
+  assert.strictEqual(readSupabaseEnv({ VITE_SUPABASE_URL: 'https://abc.supabase.co', VITE_SUPABASE_ANON_KEY: fakeServiceJwt }), null);
+  console.error = origErr;
+  assert.deepStrictEqual(readSupabaseEnv({ VITE_SUPABASE_URL: 'https://abc.supabase.co/', VITE_SUPABASE_ANON_KEY: `x.${Buffer.from(JSON.stringify({ role: 'anon' })).toString('base64url')}.y` })?.url, 'https://abc.supabase.co');
   const gi = read('.gitignore');
   assert(gi.includes('.env') && gi.includes('*service-account*.json'));
 });
@@ -231,7 +254,7 @@ await test('learner-data migration plan is non-destructive and guest mode keeps 
   assert.strictEqual(planLearnerDataMigration(null, '{}').action, 'guest-keep-local');
   assert.strictEqual(planLearnerDataMigration(p, '{"x":1}').action, 'offer-copy-with-consent');
   // CMS cannot touch learner state: no CMS module imports the store
-  for (const f of ['src/cms/service.ts', 'src/cms/workflow.ts', 'src/backend/firebase.ts', 'src/admin/sections.tsx', 'src/admin/AdminApp.tsx']) assert(!/store\/useStore/.test(read(f)), f);
+  for (const f of ['src/cms/service.ts', 'src/cms/workflow.ts', 'src/backend/supabase.ts', 'src/backend/supabaseMap.ts', 'src/admin/sections.tsx', 'src/admin/AdminApp.tsx']) assert(!/store\/useStore/.test(read(f)), f);
 });
 
 await test('learner navigation unchanged; /admin is outside the learner Layout', () => {

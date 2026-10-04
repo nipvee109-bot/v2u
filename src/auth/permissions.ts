@@ -1,8 +1,9 @@
 /* =========================================================================
    V2U roles & permissions (Phase 72) — the ONE place that decides who may do what.
    Components call can(user, permission); nothing checks role strings directly.
-   The same matrix is enforced server-side by firestore.rules (tested against the
-   Firestore emulator), so hiding UI is never the only protection.
+   The same matrix is enforced server-side by PostgreSQL RLS + RPCs in
+   supabase/migrations (v2u_role_can; parity tested by npm run test:rls), so hiding UI
+   is never the only protection.
    ========================================================================= */
 
 export const ROLES = ['STUDENT', 'CONTENT_EDITOR', 'GAME_EDITOR', 'REVIEWER', 'ADMIN', 'SUPER_ADMIN'] as const;

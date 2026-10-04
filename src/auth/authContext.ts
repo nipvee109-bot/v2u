@@ -7,7 +7,7 @@ export type AuthStatus = 'loading' | 'unconfigured' | 'signed-out' | 'signed-in'
 
 export interface AuthState {
   status: AuthStatus;
-  mode: 'firebase' | 'memory-dev' | 'none';
+  mode: 'supabase' | 'memory-dev' | 'none';
   /** Profile as stored in the database (role/status are authoritative there) */
   profile: UserProfile | null;
   actor: Actor | null;

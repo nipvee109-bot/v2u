@@ -367,7 +367,7 @@ export function PublishingSection({ c }: { c: AdminCtx }) {
               {d.kind === 'contentOverride' && <p className="whitespace-pre-wrap text-sm">{String((d.data as { value: unknown }).value)}</p>}
               <div className="flex flex-wrap gap-2">
                 <TransitionButtons c={c} d={d} pub={pubOf(c, d.id)} />
-                <button type="button" className={btnLine} onClick={() => void c.svc.versions(d.id).then((list) => setHistory({ id: d.id, list }))}>ประวัติเวอร์ชัน</button>
+                <button type="button" className={btnLine} onClick={() => void c.svc.versions(d).then((list) => setHistory({ id: d.id, list }))}>ประวัติเวอร์ชัน</button>
               </div>
               {history?.id === d.id && (
                 <ul className="text-sm" data-version-history>
@@ -479,7 +479,7 @@ export function SettingsSection({ c }: { c: AdminCtx }) {
         <div><dt className="font-semibold">รายการที่ผู้เรียนเห็น</dt><dd>{visible}</dd></div>
         <div><dt className="font-semibold">วิดีโอที่ผู้เรียนยังไม่เห็น (ซ่อน/ยังไม่ยืนยัน)</dt><dd>{hiddenVideos}</dd></div>
       </dl>
-      <p className="text-sm text-[var(--ink-2)]">การตั้งผู้ดูแลระบบสูงสุดคนแรก การตั้งค่า Firebase และแผนย้ายข้อมูลผู้เรียน อยู่ใน docs/admin-backend.md — ไม่มีอีเมลหรือรหัสลับเก็บในโค้ดฝั่งเว็บ</p>
+      <p className="text-sm text-[var(--ink-2)]">การตั้งผู้ดูแลระบบสูงสุดคนแรก การตั้งค่า Supabase และแผนย้ายข้อมูลผู้เรียน อยู่ใน docs/supabase-setup.md — ไม่มีอีเมลหรือรหัสลับเก็บในโค้ดฝั่งเว็บ</p>
     </section>
   );
 }
