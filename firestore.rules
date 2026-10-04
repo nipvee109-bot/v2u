@@ -1,0 +1,134 @@
+rules_version = '2';
+
+// V2U Firestore Security Rules (Phase 72)
+// Server-side enforcement of src/auth/permissions.ts. Hiding UI is never the only protection.
+// Roles/status come ONLY from users/{uid} written by admins — never from the browser.
+// Learner data (mastery, evidence, review, next step, diagnostics) is NOT stored here and no
+// CMS collection can touch it. Tested against the Firestore emulator: npm run test:rules.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function profilePath(uid) { return /databases/$(database)/documents/users/$(uid); }
+    function hasProfile() { return signedIn() && exists(profilePath(request.auth.uid)); }
+    function me() { return get(profilePath(request.auth.uid)).data; }
+    function active() { return hasProfile() && me().status == 'ACTIVE'; }
+    function roleIn(roles) { return active() && me().role in roles; }
+
+    function staff()      { return roleIn(['CONTENT_EDITOR', 'GAME_EDITOR', 'REVIEWER', 'ADMIN', 'SUPER_ADMIN']); }
+    function canDraft()   { return roleIn(['CONTENT_EDITOR', 'ADMIN', 'SUPER_ADMIN']); }
+    function canReview()  { return roleIn(['REVIEWER', 'ADMIN', 'SUPER_ADMIN']); } // review, publish, verify sources
+    function canGames()   { return roleIn(['GAME_EDITOR', 'ADMIN', 'SUPER_ADMIN']); }
+    function canUsers()   { return roleIn(['ADMIN', 'SUPER_ADMIN']); }
+    function isSuper()    { return roleIn(['SUPER_ADMIN']); }
+
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+    function privileged(r) { return r in ['ADMIN', 'SUPER_ADMIN']; }
+    function validRole(r) { return r in ['STUDENT', 'CONTENT_EDITOR', 'GAME_EDITOR', 'REVIEWER', 'ADMIN', 'SUPER_ADMIN']; }
+    function validStatus(s) { return s in ['ACTIVE', 'SUSPENDED', 'DISABLED']; }
+
+    // ── Users ──────────────────────────────────────────────────────────
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || canUsers());
+
+      // First sign-in: a user may create ONLY their own profile, always STUDENT + ACTIVE.
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.role == 'STUDENT'
+        && request.resource.data.status == 'ACTIVE'
+        && request.resource.data.email == request.auth.token.email;
+
+      // Own profile: only display fields. Role/status can never be self-edited.
+      allow update: if signedIn() && request.auth.uid == uid && active()
+        && changed().hasOnly(['displayName', 'photoURL', 'lastLoginAt', 'updatedAt', 'onboardingCompleted', 'learnerData']);
+
+      // Admins: role/status of OTHER users only. ADMIN/SUPER_ADMIN involvement needs SUPER_ADMIN.
+      // Nobody can change their own role/status, so the last SUPER_ADMIN can only be demoted by
+      // another SUPER_ADMIN — there is always at least one.
+      allow update: if canUsers() && request.auth.uid != uid
+        && changed().hasOnly(['role', 'status', 'updatedAt'])
+        && validRole(request.resource.data.role) && validStatus(request.resource.data.status)
+        && (!(privileged(resource.data.role) || privileged(request.resource.data.role)) || isSuper());
+
+      allow delete: if false; // accounts are disabled, never deleted (learning records are kept)
+    }
+
+    // ── CMS drafts (staff only; learners never read drafts) ────────────
+    match /cmsDrafts/{id} {
+      allow read: if staff();
+      allow create, update: if (
+          canReview()
+          || (canDraft()
+              && request.resource.data.state in ['DRAFT', 'IN_REVIEW', 'ARCHIVED']
+              // marking a source VERIFIED needs a reviewer
+              && !(request.resource.data.kind in ['video', 'resource']
+                   && request.resource.data.data.verification == 'VERIFIED'
+                   && (resource == null || resource.data.data.verification != 'VERIFIED')))
+        )
+        && (resource == null || (resource.data.kind == request.resource.data.kind && resource.data.id == request.resource.data.id));
+      allow delete: if false; // archive instead
+    }
+
+    // ── Published content (what learners see) ──────────────────────────
+    function learnerVisibleOk(d) {
+      return d.learnerVisible == false
+        || (d.kind in ['video', 'resource']
+              && d.data.visibility == 'VISIBLE' && d.data.verification == 'VERIFIED'
+              && d.data.verifiedBy is string && d.data.verifiedAt is string)
+        || (d.kind == 'announcement' && d.data.visibility == 'VISIBLE')
+        || d.kind == 'contentOverride';
+    }
+    match /cmsPublished/{id} {
+      allow read: if resource.data.learnerVisible == true || staff();
+      allow create, update: if canReview()
+        && learnerVisibleOk(request.resource.data)
+        // reviewed learning content: the draft must have been APPROVED before this publish
+        && (request.resource.data.kind != 'contentOverride'
+            || get(/databases/$(database)/documents/cmsDrafts/$(id)).data.state == 'APPROVED');
+      allow delete: if canReview(); // unpublish (previous copy is kept in cmsVersions)
+    }
+    match /cmsVersions/{id} {
+      allow read: if staff();
+      allow create: if canReview();
+      allow update, delete: if false; // recovery history is append-only
+    }
+
+    // ── Games ───────────────────────────────────────────────────────────
+    match /games/{gameId} {
+      allow read: if resource.data.published == true || staff();
+      allow create, update: if canGames()
+        && request.resource.data.gameId == gameId
+        && request.resource.data.contentContract == '1.1'
+        && request.resource.data.evidenceContract == '1.1'
+        && request.resource.data.status in ['DRAFT', 'PREPARING', 'READY_FOR_REVIEW', 'AVAILABLE', 'DISABLED', 'ERROR', 'ARCHIVED'];
+      allow delete: if false;
+    }
+    match /lessonGameAssignments/{id} {
+      allow read: if (resource.data.attached == true && resource.data.visible == true) || staff();
+      allow create, update: if canGames() && request.resource.data.required == false;
+      allow delete: if false; // detach instead
+    }
+
+    // ── Audit log (append-only; never edited or deleted) ───────────────
+    match /auditLogs/{id} {
+      allow read: if canUsers();
+      allow create: if staff()
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.actorRole == me().role
+        && request.resource.data.keys().hasOnly(['actorUid', 'actorRole', 'action', 'entityType', 'entityId', 'before', 'after', 'at']);
+      allow update, delete: if false;
+    }
+
+    // ── Operational settings / announcements config ────────────────────
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if canUsers();
+    }
+
+    // Everything else (including any future learner-state collection) is denied by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

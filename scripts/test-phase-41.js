@@ -248,7 +248,10 @@ function walk(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
     e.isDirectory() ? walk(path.join(dir, e.name)) : /\.tsx?$/.test(e.name) ? [path.join(dir, e.name)] : []);
 }
-const matchers = routePaths.filter((p) => p !== '*').map((p) => new RegExp(`^${p.replace(/:[^/]+/g, '[^/]+')}$`));
+// Phase 72: /admin/* renders AdminApp, whose nested routes are resolved here (no blanket wildcard)
+const adminSrc = fs.readFileSync(path.join(root, 'src/admin/AdminApp.tsx'), 'utf-8');
+const adminPaths = ['/admin', ...[...adminSrc.matchAll(/<Route path="([^"*]+)"/g)].map((m) => `/admin/${m[1]}`)];
+const matchers = [...routePaths.filter((p) => p !== '*' && p !== '/admin/*'), ...adminPaths].map((p) => new RegExp(`^${p.replace(/:[^/]+/g, '[^/]+')}$`));
 await test('Every static internal link resolves to a defined route', () => {
   const bad = [];
   for (const file of walk(path.join(root, 'src'))) {

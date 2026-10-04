@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets (Phase 72) — never commit
+.env
+.env.*
+!.env.example
+*serviceAccount*.json
+*service-account*.json
+*-firebase-adminsdk-*.json

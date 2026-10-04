@@ -11,6 +11,7 @@ import { resolvePlanningHorizon } from '../../route/engine';
 import { KIcon } from '../../components/v2u/kit';
 import type { IconName } from '../../components/v2u/kit';
 import { ST, subOf } from '../../components/v2u/tokens';
+import { AccountCard } from '../../components/account/AccountCard';
 
 const NOT_SET = 'ยังไม่ได้ตั้ง';
 
@@ -55,6 +56,8 @@ export function MeHub() {
           <KIcon name="pen" size={16} /> แก้ไขโปรไฟล์
         </a>
       </section>
+
+      <AccountCard />
 
       <section aria-labelledby="goal-h" className="flex flex-col gap-3.5" style={card}>
         <div className="flex items-center gap-2.5">

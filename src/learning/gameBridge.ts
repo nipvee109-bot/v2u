@@ -16,6 +16,8 @@ import type { PlayerAction } from '../interactive/engine';
 import type { InteractiveLesson } from '../interactive/types';
 
 import { GAME_REGISTRY, getLessonGameAvailability } from './games/registry';
+import { getCmsOverlay } from '../cms/overlay';
+import { effectiveGameAvailability } from '../cms/resolver';
 import type { GameAvailability } from './games/registry';
 
 export const GAME_CONTRACT_VERSION = 1;
@@ -89,7 +91,9 @@ export function toPlayerActions(evidence: GameEvidence, lesson: InteractiveLesso
 /** Game slot status (Phase 69 → 70): read from the game registry — never inferred from the subject. */
 export type GameSlotStatus = GameAvailability;
 export function getGameSlotStatus(lessonId: string): GameSlotStatus {
-  return getLessonGameAvailability(lessonId);
+  // Phase 72: published CMS assignments can hide/disable; only the code integration can make it AVAILABLE
+  const o = getCmsOverlay();
+  return effectiveGameAvailability(lessonId, getLessonGameAvailability(lessonId), o.games, o.assignments);
 }
 /** Games whose integration is AVAILABLE to learners (none yet). */
 export const CONNECTED_GAMES: readonly string[] = GAME_REGISTRY.filter((g) => g.status === 'AVAILABLE').map((g) => g.gameId);

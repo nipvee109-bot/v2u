@@ -1,5 +1,8 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+
+// Admin CMS (Phase 72) — its own shell, outside the learner Layout; loaded only on /admin
+const AdminApp = lazy(() => import('./admin/AdminApp').then((m) => ({ default: m.AdminApp })));
 import { PageErrorBoundary, PageSkeleton } from './components/ui/states';
 import { Layout } from './components/Layout';
 import { HomePage } from './pages/HomePage';
@@ -36,6 +39,15 @@ function PageLoadingFallback() {
 }
 
 function App() {
+  return (
+    <Routes>
+      <Route path="/admin/*" element={<Suspense fallback={<PageLoadingFallback />}><AdminApp /></Suspense>} />
+      <Route path="*" element={<LearnerApp />} />
+    </Routes>
+  );
+}
+
+function LearnerApp() {
   return (
     <Layout>
       <PageErrorBoundary>

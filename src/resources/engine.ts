@@ -8,6 +8,7 @@ import { parseYouTubeVideoId } from '../video/youtube';
 import type { Curriculum, CurriculumLesson } from '../curriculum/types';
 import { CURRICULUM } from '../curriculum/data';
 import { RESOURCE_REGISTRY } from './registry';
+import { getCmsOverlay } from '../cms/overlay';
 import type {
   CuratedResource,
   CuratedResourceType,
@@ -144,7 +145,9 @@ export function getResourcesForLesson(
 ): CuratedResource[] {
   const lesson = curriculum.lessons.find((l) => l.id === lessonId);
   if (!lesson) return [];
-  return resources
+  // Phase 72: published, verified CMS items (admin order) come first — only with the live registry
+  const cms = resources === activeRegistry ? getCmsOverlay().resources.filter((r) => usable(r) && r.curriculumLessonIds.includes(lessonId)) : [];
+  return [...cms, ...resources
     .filter((r) => usable(r) && r.curriculumLessonIds.includes(lessonId))
     .sort(
       (a, b) =>
@@ -153,7 +156,7 @@ export function getResourcesForLesson(
         (b.language === 'th' ? 1 : 0) - (a.language === 'th' ? 1 : 0) ||
         scoreResourceForLesson(b, lesson) - scoreResourceForLesson(a, lesson) ||
         a.estimatedMinutes - b.estimatedMinutes
-    );
+    )];
 }
 
 export function getResourcesForOutcome(outcomeId: OutcomeId, resources: CuratedResource[] = activeRegistry): CuratedResource[] {

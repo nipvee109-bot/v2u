@@ -7,11 +7,24 @@ import { PROGRAMMING_KNOWLEDGE } from './programming';
 import type { LessonKnowledge, ReadinessStatus } from './types';
 
 export * from './types';
+import { getCmsOverlay } from '../../cms/overlay';
 export { SOURCES, getSource, REJECTED_SOURCES } from './sources';
 
 export const LESSON_KNOWLEDGE: LessonKnowledge[] = [...MATH_KNOWLEDGE, ...PROGRAMMING_KNOWLEDGE, ...PHYSICS_KNOWLEDGE];
 
-export const getLessonKnowledge = (lessonId: string) => LESSON_KNOWLEDGE.find((k) => k.lessonId === lessonId);
+/** Base knowledge, with PUBLISHED reviewed CMS overrides of summary / analogy / whyItMatters only (Phase 72).
+ *  Ids, skills, rules, practice and checks always come from the knowledge layer. */
+export const getLessonKnowledge = (lessonId: string) => {
+  const k = LESSON_KNOWLEDGE.find((x) => x.lessonId === lessonId);
+  const o = k ? getCmsOverlay().overrides[lessonId] : undefined;
+  if (!k || !o) return k;
+  return {
+    ...k,
+    ...(Array.isArray(o.summary) ? { summary: o.summary } : {}),
+    ...(typeof o.analogy === 'string' ? { analogy: o.analogy } : {}),
+    ...(typeof o.whyItMatters === 'string' ? { whyItMatters: o.whyItMatters } : {}),
+  };
+};
 
 /** Knowledge checks in the shape the understanding check already uses. */
 export function knowledgeFinalChecks(lessonId: string): FinalCheckItem[] {
