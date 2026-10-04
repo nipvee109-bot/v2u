@@ -132,5 +132,16 @@ export function youtubeCandidateToRecord(y: YouTubeCandidate): RegistryRecord {
 export const registryRecords = (): RegistryRecord[] => [
   ...allResources().map(toRegistryRecord),
   ...DISCOVERED_RESOURCES.map(discoveredToRecord),
-  ...YOUTUBE_CANDIDATES.map(youtubeCandidateToRecord),
+  // a backlog clip that an older registry record already points at is listed once (under that record)
+  ...YOUTUBE_CANDIDATES.filter((y) => !allResources().some((r) => r.candidateVideoUrl?.includes(y.videoId))).map(youtubeCandidateToRecord),
 ];
+
+/** Unique pending YouTube videos across the backlog and the registry (each video id counted once). */
+export function pendingVideoIds(): string[] {
+  const ids = new Set(YOUTUBE_CANDIDATES.map((y) => y.videoId));
+  for (const r of allResources()) {
+    const m = r.candidateVideoUrl?.match(/[?&]v=([A-Za-z0-9_-]{11})|youtu\.be\/([A-Za-z0-9_-]{11})/);
+    if (m && registryStatus(r) !== 'VERIFIED') ids.add(m[1] ?? m[2]);
+  }
+  return [...ids];
+}

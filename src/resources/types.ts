@@ -121,6 +121,11 @@ export interface YouTubeMeta {
   review: { rank: 'RECOMMENDED' | 'GOOD_ALTERNATIVE' | 'NOT_RECOMMENDED'; notes: string };
   /** Timestamps only from the player, the transcript or the uploader's chapters */
   chapters?: { seconds: number; title: string; source: 'chapters' | 'transcript' | 'player' }[];
+  /** What the clip suits (decided only after inspection) */
+  suitability?: ('FIRST_LEARNING' | 'REVIEW' | 'PRACTICE_SUPPORT')[];
+  /** Questions about the IDEAS the clip teaches (never video trivia) — only after inspection.
+   *  Until then the post-video step uses the lesson's own understanding check. */
+  postVideoQuiz?: { skillId: string; prompt: string; choices: string[]; correctIndex: number; explanation: string; misconception?: string }[];
   /** Original V2U notes — allowed only when actualContentInspected */
   summary?: {
     teaches: string;

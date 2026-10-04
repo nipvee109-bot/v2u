@@ -29,6 +29,8 @@ export interface LessonCompletion {
   quizQuestions: number;
   sources: { total: number; opened: number };
   overall: ReadinessStatus;
+  /** Reading, Learn with V2U, practice and the check are all READY — no external video needed */
+  independentlyLearnable: boolean;
   gaps: string[];
 }
 
@@ -73,7 +75,7 @@ export function auditLessonCompletion(lessonId: string): LessonCompletion | unde
 
   const core = [reading, learnWithV2U, practice, quizStatus];
   const overall: ReadinessStatus = core.includes('LIMITATION') ? 'NOT_READY' : k.audit.readiness === 'READY' && video === 'VERIFIED' ? 'READY' : 'READY_WITH_LIMITATIONS';
-  return { lessonId, reading, learnWithV2U, video, videoCandidates: videos.length, practice, checkedPractice, quiz: quizStatus, quizQuestions: quiz.length, sources: { total: srcIds.length, opened }, overall, gaps };
+  return { lessonId, independentlyLearnable: !core.includes('LIMITATION'), reading, learnWithV2U, video, videoCandidates: videos.length, practice, checkedPractice, quiz: quizStatus, quizQuestions: quiz.length, sources: { total: srcIds.length, opened }, overall, gaps };
 }
 
 export const auditAllLessons = () => CURRICULUM.lessons.map((l) => auditLessonCompletion(l.id)).filter((x): x is LessonCompletion => !!x);

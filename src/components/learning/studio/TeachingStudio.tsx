@@ -8,6 +8,7 @@ import type { StudioChunk, StudioPhase, StudioScript } from '../../../interactiv
 import { getLessonKnowledge } from '../../../content/knowledge';
 import type { KnowledgeDebug, KnowledgePractice, LessonKnowledge } from '../../../content/knowledge';
 import { checkPractice, INEQ_OPS, practiceFields } from '../../../interactive/studio/practiceCheck';
+import { diagnoseWrong } from '../../../interactive/studio/wrongAnswer';
 import { Feedback } from '../Questions';
 import { getOriginalLesson } from '../../../content/originals';
 import { DiagramView } from '../Diagrams';
@@ -378,11 +379,12 @@ function PracticeItem({ p, n, code, onSettled }: { p: KnowledgePractice; n: numb
   const [wrong, setWrong] = useState(0);
   const [state, setState] = useState<'open' | 'correct' | 'revealed'>('open');
   const [hint, setHint] = useState(false);
+  const [diag, setDiag] = useState<string | undefined>();
   const done = state !== 'open';
   const submit = () => {
     const v = checkPractice(p, input);
     if (v === 'correct') { setState('correct'); onSettled(); }
-    else { setWrong((w) => w + 1); setHint(true); }
+    else { setWrong((w) => w + 1); setHint(true); setDiag(diagnoseWrong(p, input)); }
   };
   const reveal = () => { setState('revealed'); onSettled(); };
   const fid = (k: string) => `pr-${p.id}-${k}`;
@@ -424,6 +426,7 @@ function PracticeItem({ p, n, code, onSettled }: { p: KnowledgePractice; n: numb
       )}
       {!done && wrong > 0 && (
         <Feedback tone="try" title="เกือบถูกแล้ว — ลองดูอีกที">
+          {diag && <span className="mb-1 block font-semibold" data-testid="practice-diagnosis">{diag}</span>}
           {p.hint ?? 'ย้อนดูหลักในบทนี้ แล้วทำทีละขั้น'}
           {wrong >= 2 && <span className="block mt-1">ถ้ายังติด เปิดดูเฉลยพร้อมเหตุผลได้ ไม่เสียคะแนน</span>}
         </Feedback>

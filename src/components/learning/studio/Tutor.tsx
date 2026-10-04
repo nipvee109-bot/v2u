@@ -24,7 +24,7 @@ export function TutorBubble({ children, tone = 'plain' }: { children: ReactNode;
   );
 }
 
-export type HelpKind = 'simpler' | 'visual' | 'example' | 'hint' | 'confused' | 'other' | 'back';
+export type HelpKind = 'simpler' | 'visual' | 'example' | 'hint' | 'confused' | 'summary' | 'other' | 'back';
 
 const HELP: { kind: HelpKind; label: string }[] = [
   { kind: 'simpler', label: 'อธิบายให้ง่ายกว่านี้' },
@@ -32,6 +32,7 @@ const HELP: { kind: HelpKind; label: string }[] = [
   { kind: 'example', label: 'ดูตัวอย่าง' },
   { kind: 'hint', label: 'ขอคำใบ้' },
   { kind: 'confused', label: 'ยังไม่เข้าใจ' },
+  { kind: 'summary', label: 'สรุปสั้น ๆ' },
   { kind: 'other', label: 'ลองอีกวิธี' },
   { kind: 'back', label: 'กลับไปแนวคิดก่อนหน้า' },
 ];
@@ -84,7 +85,19 @@ export function AdaptiveHelp({ k, simple, hint, onHint, onVisual, onBack, onMode
             ))}
           </div>
           <div aria-live="polite" className="mt-3 text-sm leading-relaxed text-[var(--ink)]">
-            {kind === 'simpler' && <p data-testid="help-simpler">{simple ?? k.analogy ?? k.detailed[0]}</p>}
+            {kind === 'simpler' && (
+              <div data-testid="help-simpler">
+                <p>{simple ?? k.analogy ?? k.detailed[0]}</p>
+                {simple && k.analogy && <p className="mt-2 rounded-xl bg-[var(--rev-soft)] px-3 py-2">นึกภาพแบบนี้: {k.analogy}</p>}
+              </div>
+            )}
+            {kind === 'summary' && (
+              <ul className="list-disc space-y-1 pl-5" data-testid="help-summary">
+                {k.summary.map((x) => (
+                  <li key={x}>{x}</li>
+                ))}
+              </ul>
+            )}
             {kind === 'visual' &&
               (diagram ? (
                 <DiagramView d={diagram} />

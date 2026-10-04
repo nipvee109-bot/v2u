@@ -434,6 +434,12 @@ export function validateResources(
       if (r.type !== 'video') errors.push(`${where}: youtube metadata only for videos`);
       if (yt.summary && !yt.actualContentInspected) errors.push(`${where}: a video summary requires inspected content`);
       if (yt.chapters?.length && !yt.actualContentInspected) errors.push(`${where}: timestamps require inspected content`);
+      if ((yt.postVideoQuiz?.length || yt.suitability?.length) && !yt.actualContentInspected) errors.push(`${where}: post-video quiz / suitability require inspected content`);
+      const skills = new Set(curriculum.lessons.filter((l) => r.curriculumLessonIds.includes(l.id)).flatMap((l) => l.skillIds));
+      for (const q of yt.postVideoQuiz ?? []) {
+        if (!skills.has(q.skillId)) errors.push(`${where}: post-video question uses a skill outside the lesson (${q.skillId})`);
+        if (!(q.correctIndex >= 0 && q.correctIndex < q.choices.length) || !q.explanation?.trim()) errors.push(`${where}: post-video question needs a valid answer and explanation`);
+      }
       if (!checked && yt.actualContentInspected === false && yt.review.rank === 'RECOMMENDED') errors.push(`${where}: cannot recommend an uninspected video`);
     }
     if (r.videoId !== undefined && r.type !== 'video') errors.push(`${where}: videoId only allowed for video`);
