@@ -12,9 +12,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import tasks as T  # noqa: E402
-from config import load_config  # noqa: E402
+from config import is_forbidden_key, load_config  # noqa: E402
 from goal import GOAL_TEMPLATE, RULES_TEMPLATE, load_goal  # noqa: E402
-from state import AGENTS, ProjectPaths, StateStore, atomic_write_text  # noqa: E402
+from state import AGENTS, ProjectPaths, StateStore, atomic_write_json, atomic_write_text, read_json  # noqa: E402
 from ui import UI, bar  # noqa: E402
 
 
@@ -47,6 +47,9 @@ def cmd_init(args) -> int:
     if not GitManager(root).is_repo():
         ui.say("NOTE: this folder is not a Git repository root. Run 'git init' and make a first commit before 'aiteam start'.")
     ui.say(f"Initialized {paths.aidir} (machine-local, git-ignored).")
+    cfg = load_config(root)
+    ui.say(f"Auto push: {'ON' if cfg['autoPush'] else 'OFF'} ({paths.local_config}); "
+           "AI-Team commits locally, you push with 'aiteam push --yes'.")
     return 0
 
 
@@ -119,6 +122,18 @@ def cmd_status(args) -> int:
     ui.say(f"Current Task: {cur['id'] + ' ' + cur['title'] + ' (phase ' + cur['phase'] + ')' if cur else '-'}")
     ui.say(f"Last Task   : {st.get('lastCompletedTask') or '-'}")
     ui.say(f"Last Commit : {st.get('lastCommit') or '-'}")
+    cfg = load_config(root)
+    ui.say(f"Auto push   : {'ON' if cfg['autoPush'] else 'OFF (commits stay local until aiteam push --yes)'}")
+    lb = st.get("lintBaseline")
+    if lb:
+        o = lb.get("original") or {}
+        ui.say(f"Lint baseline: {lb['counts']['errors']} errors / {lb['counts']['warnings']} warnings @ {(lb.get('commit') or '')[:7]}"
+               f" (session start: {o.get('errors')} / {o.get('warnings')})")
+    lv = st.get("lastValidation")
+    if lv:
+        ui.say("Last validation: " + ", ".join(f"{k}={v}" for k, v in lv["summary"].items()))
+        for b in lv.get("goalBlockers", []):
+            ui.say(f"  Goal blocker: {b}")
     if paths.pause_flag.exists():
         ui.say("Pause requested: yes")
     if st.get("humanQuestions"):
@@ -174,6 +189,78 @@ def cmd_answer(args) -> int:
     return 0
 
 
+def _parse_value(text: str):
+    import json
+    try:
+        return json.loads(text)
+    except ValueError:
+        return text
+
+
+def cmd_config(args) -> int:
+    """Show or change the machine-local project config (.aiteam/config.json)."""
+    import json
+    root = project_root(args.project)
+    paths = ProjectPaths(root)
+    paths.ensure()
+    data = read_json(paths.local_config, {})
+    if args.action in ("set", "unset"):
+        if not args.key:
+            print("usage: aiteam config set KEY VALUE  |  aiteam config unset KEY")
+            return 2
+        parts = args.key.split(".")
+        if any(is_forbidden_key(p) for p in parts):
+            print(f"Refusing to store '{args.key}': no API keys, tokens, secrets or passwords in AI-Team config.")
+            return 2
+        node = data
+        for p in parts[:-1]:
+            node = node.setdefault(p, {})
+            if not isinstance(node, dict):
+                print(f"'{p}' is not an object")
+                return 2
+        if args.action == "set":
+            if args.value is None:
+                print("missing VALUE")
+                return 2
+            node[parts[-1]] = _parse_value(args.value)
+        else:
+            node.pop(parts[-1], None)
+        atomic_write_json(paths.local_config, data)
+        StateStore(paths).log("config_changed", key=args.key, action=args.action)
+        print(f"{paths.local_config}:")
+    else:
+        print(f"Local config: {paths.local_config}")
+    print(json.dumps(data if args.action != "show-all" else load_config(root), indent=2, ensure_ascii=False))
+    return 0
+
+
+def cmd_push(args) -> int:
+    """Push local AI-Team commits only when the user explicitly asks (first-cycle safety)."""
+    from git_manager import GitManager
+    from goal import load_rules, rules_forbid_push
+    root = project_root(args.project)
+    g = GitManager(root)
+    if not g.is_repo() or not g.has_origin():
+        print("Not a git repository root with an 'origin' remote.")
+        return 1
+    if rules_forbid_push(load_rules(root / "PROJECT_RULES.md")):
+        print("PROJECT_RULES.md forbids pushing. Not pushing.")
+        return 1
+    ref, log = g.unpushed()
+    print(f"Branch {g.branch()} -> {ref or 'origin (new upstream)'}")
+    print("Commits to push:\n" + (log or "(none)"))
+    if not log:
+        return 0
+    if not args.yes:
+        print("\nReview them (git show <sha>), then run: aiteam push --yes")
+        return 0
+    r = g.push()
+    StateStore(ProjectPaths(root)).log("manual_push", ok=r.ok, detail=(r.err or r.out)[-300:])
+    print("Pushed." if r.ok else f"Push failed: {(r.err or r.out)[-300:]}")
+    print("(Pushing never deploys anything.)")
+    return 0 if r.ok else 1
+
+
 def cmd_review(args) -> int:
     m = build_manager(args)
     return 0 if m.review_only() == "REVIEWED" else 1
@@ -220,6 +307,12 @@ def main(argv=None) -> int:
     p.add_argument("task")
     p.add_argument("text", nargs="+")
     sub.add_parser("doctor", help="check installed CLIs and the exact flags that will be used (no quota used)")
+    p = sub.add_parser("config", help="show/change machine-local project config (.aiteam/config.json)")
+    p.add_argument("action", nargs="?", default="show", choices=["show", "show-all", "set", "unset"])
+    p.add_argument("key", nargs="?")
+    p.add_argument("value", nargs="?")
+    p = sub.add_parser("push", help="push local AI-Team commits to origin (asks for --yes; never deploys)")
+    p.add_argument("--yes", action="store_true", help="really push")
     args = ap.parse_args(argv)
     if args.cmd == "init":
         return cmd_init(args)
@@ -237,6 +330,10 @@ def main(argv=None) -> int:
         return cmd_answer(args)
     if args.cmd == "doctor":
         return cmd_doctor(args)
+    if args.cmd == "config":
+        return cmd_config(args)
+    if args.cmd == "push":
+        return cmd_push(args)
     return 2
 
 

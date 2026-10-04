@@ -11,17 +11,18 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
+import lint_baseline as LB
 import quota
 import tasks as T
+import validation as V
 from agents import READ, WRITE, AgentResult, BaseAgent, make_agents
 from git_manager import GitManager, sanitize_commit_message
 from goal import Goal, load_goal, load_rules, rules_forbid_push
 from prompts import build_prompt, extract_json, human_gate_reason
 from state import (AGENTS, AVAILABLE, BUSY, COOLDOWN, ERROR, GOAL_COMPLETE, IMPLEMENTING, IMPROVING,
                    INITIALIZING, NEEDS_HUMAN, PAUSED, PLANNING, PROJECT_STABLE, REVIEWING, UNAVAILABLE,
-                   VALIDATING, WAITING_FOR_QUOTA, ProjectPaths, StateStore, atomic_write_json, iso, utcnow)
+                   VALIDATING, WAITING_FOR_QUOTA, ProjectPaths, StateStore, atomic_write_json, iso, read_json, utcnow)
 from ui import UI, bar
-from validation import detect_commands, run_validation, summarize
 
 WRITE_ROLES = {"implement", "fix"}
 ROLE_LABEL = {"plan": "planning", "plan_merge": "backlog review", "analyze": "architecture analysis",
@@ -76,7 +77,7 @@ class Manager:
     def __init__(self, root: Path, cfg: dict, *, agents: dict[str, BaseAgent] | None = None,
                  git: GitManager | None = None, dry_run: bool = False, ui: UI | None = None,
                  clock: Callable[[], datetime] = utcnow, sleeper: Callable[[float], None] = time.sleep,
-                 run_validation_fn=None):
+                 command_runner=None, pg_globs: list[str] | None = None):
         self.cfg = cfg
         self.dry_run = dry_run
         self.paths = ProjectPaths(root, "dry-run" if dry_run else None)
@@ -95,7 +96,8 @@ class Manager:
         self.probe_lock = threading.Lock()
         self.goal: Goal | None = None
         self.rules = ""
-        self._validate = run_validation_fn or (lambda cmds: run_validation(self.paths.root, cmds, cfg["validationTimeoutMinutes"]))
+        self.runner = command_runner or V.run_command   # injectable: tests never run real npm/linters
+        self.pg_globs = pg_globs
 
     # ------------------------------------------------------------------ persistence
     def save(self) -> None:
@@ -363,6 +365,7 @@ class Manager:
             self.state["humanQuestions"] = []
             if not self.preflight():
                 return self.state["status"]
+            self.ensure_lint_baseline()
             if improve:
                 self.state["mode"] = "IMPROVEMENT"
                 self.state["stableRounds"] = 0
@@ -522,7 +525,8 @@ class Manager:
             created.append(task)
         for task in created:
             task["dependencies"] = [key_to_id[d] for d in task.pop("_deps") if d in key_to_id and key_to_id[d] != task["id"]]
-            reason = human_gate_reason(f"{task['title']}\n{task['description']}", self.cfg["allowDeploy"])
+            reason = human_gate_reason(f"{task['title']}\n{task['description']}", self.cfg["allowDeploy"],
+                                       goal_text=self.goal.raw if self.goal else None)
             if reason:
                 task["humanQuestion"] = f"'{task['title']}' involves {reason}. Approve (with instructions) or skip?"
                 T.transition(task, T.NEEDS_HUMAN)
@@ -610,8 +614,7 @@ class Manager:
             T.transition(task, T.IN_PROGRESS)
         findings = json.dumps(task["reviewFindings"], indent=1, ensure_ascii=False) if task["reviewFindings"] else ""
         val = task.get("validation") or {}
-        failures = "\n\n".join(f"[{s['name']} FAIL] {' '.join(s['argv'])}\n{s['output']}"
-                               for s in val.get("steps", []) if not s["ok"]) if val.get("passed") is False else ""
+        failures = self.failure_text(val) if val.get("passed") is False else ""
         before = self.git.changed_paths()
         try:
             name, res, parsed = self.call("fix", self.context(task, diff=True, findings=findings, validation=failures),
@@ -628,28 +631,231 @@ class Manager:
             T.transition(task, T.REVIEW)
         task["phase"] = "validate"
 
+    # ------------------------------------------------------------------ validation
+    def validation_steps(self) -> list:
+        return V.detect_steps(self.paths.root, self.cfg.get("validation"))
+
     def validation_commands(self) -> dict:
-        return detect_commands(self.paths.root, self.cfg.get("validation"))
+        return {st.name: st.argv for st in self.validation_steps()}
+
+    def require_security(self) -> bool:
+        setting = self.cfg.get("requireSecurityValidation", "auto")
+        if isinstance(setting, bool):
+            return setting
+        if self.goal is None:
+            return False
+        return V.requires_security(self.goal.raw, self.goal.section("definition of done"))
+
+    def warnings_policy(self) -> str:
+        return LB.warnings_policy_from((self.cfg.get("lint") or {}).get("warnings"), self.rules)
+
+    @property
+    def lint_baseline_path(self) -> Path:
+        return self.paths.aidir / "lint-baseline.json"
+
+    def load_lint_baseline(self) -> dict | None:
+        data = read_json(self.lint_baseline_path, None)
+        return data if isinstance(data, dict) and "findings" in data else None
+
+    def _run_steps(self, steps: list, lint_evaluator=None) -> list:
+        return V.run_validation(self.paths.root, steps, timeout_minutes=self.cfg["validationTimeoutMinutes"],
+                                runner=self.runner, extra_env=self.cfg.get("validationEnv") or {},
+                                lint_evaluator=lint_evaluator, pg_globs=self.pg_globs)
+
+    def ensure_lint_baseline(self, force: bool = False) -> None:
+        """Record pre-existing lint findings (BASELINE_DEBT) before the first task, and roll it forward after
+        every validated checkpoint so later tasks are only judged on what THEY change."""
+        if self.dry_run:
+            return
+        step = next((st for st in self.validation_steps() if st.kind == "lint"), None)
+        if step is None:
+            return
+        base = self.load_lint_baseline()
+        head = self.git.head_full()
+        goal_hash = self.state.get("goalHash")
+        if base and not force and base.get("commit") == head and base.get("goalHash") == goal_hash:
+            return
+        owned_dirty = self.git.changed_paths() & self.owned()
+        if base and owned_dirty and not force:
+            return  # resuming mid-task: keep the clean baseline; diff line-mapping covers later commits
+        captured: dict = {}
+
+        def capture(st, code, output):
+            captured.update(code=code, output=output)
+            return V.StepResult(st.name, st.argv, V.PASS, "lint")
+        res = self._run_steps([step], capture)[0]
+        if not captured:
+            self.ui.say(f"Lint baseline could not be recorded: {res.reason or res.status}")
+            self.log("lint_baseline_failed", status=res.status, reason=res.reason)
+            return
+        findings, reported = LB.parse_lint_output(captured["output"], self.paths.root)
+        parseable = bool(findings) or captured["code"] == 0
+        c = LB.counts(findings)
+        original = base.get("original") if base and base.get("goalHash") == goal_hash else None
+        data = {"commit": head, "goalHash": goal_hash, "takenAt": iso(utcnow()), "command": step.argv,
+                "exitCode": captured["code"], "parseable": parseable, "reported": reported, "counts": c,
+                "includesUncommittedWork": bool(owned_dirty),
+                "original": original or {"commit": head, "takenAt": iso(utcnow()), **c},
+                "findings": LB.findings_to_json(findings)}
+        atomic_write_json(self.lint_baseline_path, data)
+        self.state["lintBaseline"] = {"commit": head, "takenAt": data["takenAt"], "counts": c, "parseable": parseable,
+                                      "original": data["original"]}
+        by_rule: dict[str, int] = {}
+        for f in findings:
+            by_rule[f"{f.severity} {f.rule}"] = by_rule.get(f"{f.severity} {f.rule}", 0) + 1
+        self.store.write_report("lint-baseline.md", "\n".join(
+            [f"# Lint baseline (BASELINE_DEBT)", "", f"commit: {head}", f"command: {' '.join(step.argv)}",
+             f"exit code: {captured['code']}", f"errors: {c['errors']}", f"warnings: {c['warnings']}",
+             f"parseable: {parseable}", "", "## By rule"] + [f"- {n} x {k}" for k, n in sorted(by_rule.items(), key=lambda x: -x[1])]
+            + ["", "## Errors"] + [f"- {f.label()}" for f in findings if f.severity == "error"]))
+        self.log("lint_baseline", commit=head, errors=c["errors"], warnings=c["warnings"], parseable=parseable,
+                 rolled=bool(force))
+        if not force:
+            self.ui.say(f"Lint baseline: {c['errors']} errors, {c['warnings']} warnings recorded as BASELINE_DEBT "
+                        f"(pre-existing; not this team's task) @ {(head or '')[:7]}")
+            if not parseable:
+                self.ui.say("WARNING: lint exited non-zero but its output could not be parsed; lint will report BLOCKED.")
+            if owned_dirty:
+                self.ui.say("NOTE: baseline taken with uncommitted AI-Team work present (interrupted task).")
+        self.save()
+
+    def line_mapper(self, commit: str | None):
+        if not commit:
+            return LB.identity_mapper
+        cache: dict[str, list] = {}
+
+        def mapper(file: str, line: int):
+            if file not in cache:
+                r = self.git.git("diff", "-U0", "--no-color", "--no-ext-diff", commit, "--", file)
+                cache[file] = LB.parse_hunks(r.out) if r.ok else []
+            return LB.map_line(line, cache[file])
+        return mapper
+
+    def lint_evaluator(self):
+        base = self.load_lint_baseline()
+        policy = self.warnings_policy()
+
+        def evaluate(step, code, output):
+            res = V.StepResult(step.name, step.argv, V.PASS, "lint", False, output[-6000:], exit_code=code)
+            findings, reported = LB.parse_lint_output(output, self.paths.root)
+            if code not in (0, None) and not findings:
+                res.status, res.reason = V.FAIL, "lint exited non-zero but its output could not be parsed into findings"
+                return res
+            if base is None:
+                res.notes.append("no lint baseline recorded: every finding counts as new")
+                base_findings = []
+            elif not base.get("parseable"):
+                res.status, res.reason = V.BLOCKED, "lint baseline output could not be parsed"
+                res.required_action = "configure a lint output format AI-Team can parse (unix, stylish or json)"
+                return res
+            else:
+                base_findings = LB.findings_from_json(base["findings"])
+            comp = LB.compare(base_findings, findings, self.line_mapper(base.get("commit") if base else None), policy)
+            res.status = comp.status
+            res.details = comp.details()
+            if reported and reported["errors"] != comp.current["errors"]:
+                res.notes.append(f"linter reported {reported['errors']} errors but {comp.current['errors']} were parsed")
+                base_reported = ((base or {}).get("reported") or {}).get("errors", comp.baseline["errors"])
+                if reported["errors"] > base_reported and res.status != V.FAIL_REGRESSION:
+                    res.status, res.reason = V.FAIL_REGRESSION, "the linter's own error count increased"
+            if res.status == V.FAIL_REGRESSION and not res.reason:
+                res.reason = (f"{comp.new_errors} new and {comp.moved_errors} moved lint error(s)"
+                              + (f", {comp.new_warnings + comp.moved_warnings} new warning(s)" if policy == LB.FAIL_ON_WARNINGS else ""))
+            res.details["reportLines"] = [ln if not ln.startswith("Status:") else f"Status: {res.status}" for ln in comp.report_lines()]
+            res.details["baselineCommit"] = (base or {}).get("commit")
+            return res
+        return evaluate
 
     def run_checks(self) -> dict:
-        cmds = self.validation_commands()
+        steps = self.validation_steps()
+        req_sec = self.require_security()
+        base = {"requireSecurity": req_sec, "dryRun": self.dry_run}
         if self.dry_run:
-            return {"passed": True, "configured": bool(cmds), "summary": {k: "SKIPPED (dry-run)" for k in cmds}, "steps": []}
-        if not cmds:
-            return {"passed": True, "configured": False, "summary": {"validation": "NOT CONFIGURED"}, "steps": []}
-        results = self._validate(cmds)
-        return {"passed": all(r.ok for r in results), "configured": True, "summary": summarize(results),
-                "steps": [{"name": r.name, "argv": r.argv, "ok": r.ok, "output": r.output[-3000:]} for r in results]}
+            return {**base, "passed": True, "verdict": "pass", "reasons": [], "goalBlockers": [], "configured": bool(steps),
+                    "summary": {st.name: V.NOT_RUN for st in steps} or {"validation": V.NOT_RUN}, "steps": []}
+        if not steps:
+            blockers = V.goal_blockers([], req_sec)
+            return {**base, "passed": True, "verdict": "pass", "reasons": [], "goalBlockers": blockers, "configured": False,
+                    "summary": {"validation": V.NOT_RUN}, "steps": []}
+        results = self._run_steps(steps, self.lint_evaluator())
+        verdict, reasons = V.task_verdict(results)
+        blockers = V.goal_blockers(results, req_sec)
+        out = {**base, "passed": verdict == "pass", "verdict": verdict, "reasons": reasons, "goalBlockers": blockers,
+               "configured": True, "summary": V.summarize(results), "steps": [r.to_dict() for r in results]}
+        self.state["lastValidation"] = {"at": iso(utcnow()), "summary": out["summary"], "goalBlockers": blockers}
+        return out
+
+    def validation_lines(self, val: dict) -> list[str]:
+        lines: list[str] = []
+        if val.get("dryRun"):
+            lines += [f"{k:<9}: {V.NOT_RUN} (dry-run)" for k in val["summary"]]
+            if val.get("requireSecurity"):
+                lines.append("(real Goal completion also requires RLS/security validation = PASS)")
+            return lines
+        if not val["steps"]:
+            lines.append("Validation: NOT_RUN (no validation commands configured or detected)")
+        for st in val["steps"]:
+            if st["kind"] == "lint" and st["details"].get("reportLines"):
+                lines.append("Lint:")
+                lines += st["details"]["reportLines"]
+            elif st["kind"] == "security":
+                lines.append(("RLS security validation" if "rls" in st["name"].lower() else f"Security validation ({st['name']})") + ":")
+                lines.append(f"Status: {st['status']}")
+                if st["reason"]:
+                    lines.append(f"Reason: {st['reason']}")
+                if st["required_action"]:
+                    lines.append(f"Required action: {st['required_action']}")
+            else:
+                line = f"{st['name'].capitalize():<9}: {st['status']}"
+                if st["status"] not in (V.PASS,) and st["reason"]:
+                    line += f" ({st['reason']})"
+                lines.append(line)
+            lines += [f"  note: {n}" for n in st.get("notes", [])]
+        for b in val.get("goalBlockers", []):
+            if not any(b.startswith(f"{st['name']}:") for st in val["steps"]):
+                lines.append(f"Goal blocker: {b}")
+        return lines
+
+    def show_validation(self, val: dict, label: str) -> None:
+        lines = self.validation_lines(val)
+        for line in lines:
+            self.ui.say(line)
+        if not val.get("dryRun"):
+            self.store.write_report(f"{self.clock().strftime('%Y%m%d-%H%M%S')}-{label}-validation.md",
+                                    "# Validation\n\n" + "\n".join(lines) + "\n\n" + json.dumps(val["summary"], indent=1))
+
+    def failure_text(self, val: dict) -> str:
+        parts = []
+        for st in val.get("steps", []):
+            if st["status"] not in V.FAIL_STATES:
+                continue
+            if st["kind"] == "lint" and st["details"]:
+                d = st["details"]
+                parts.append(f"[lint {st['status']}] {' '.join(st['argv'])}\n" + "\n".join(d.get("newFindings", []) + d.get("movedFindings", []))
+                             + f"\n\nOnly the findings above are regressions. MOVED = a pre-existing error now reported in code this task "
+                               f"edited: fix it there or restore the original code. The other {d.get('baselineErrors')} baseline errors and "
+                               f"{d.get('baselineWarnings')} warnings are pre-existing BASELINE_DEBT: do NOT fix them unless they are in code "
+                               "this task changes.")
+            else:
+                parts.append(f"[{st['name']} {st['status']}] {' '.join(st['argv'])}\n{st['output']}")
+        return "\n\n".join(parts)
 
     def phase_validate(self, task: dict) -> None:
         val = self.run_checks()
         task["validation"] = val
-        for k, v in val["summary"].items():
-            self.ui.say(f"{k.capitalize():<9}: {v}")
-        self.log("validation", task=task["id"], summary=val["summary"], passed=val["passed"])
+        self.show_validation(val, task["id"])
+        self.log("validation", task=task["id"], summary=val["summary"], verdict=val["verdict"],
+                 goalBlockers=val["goalBlockers"])
         if self.git.has_conflicts():
             raise HumanNeeded("Git conflict appeared in the working tree during this task.", task["id"])
+        if val["verdict"] == "human":
+            raise HumanNeeded("Validation cannot run: " + "; ".join(val["reasons"]), task["id"])
         if val["passed"]:
+            unverified = [st["name"] for st in val["steps"] if st["critical"] and st["status"] not in V.OK_STATES]
+            if unverified:
+                self.ui.say(f"WARNING: security validation did not run for this task: {', '.join(unverified)} (UNVERIFIED). "
+                            "The Goal cannot be marked COMPLETE until it passes.")
+                self.log("security_unverified", task=task["id"], steps=unverified)
             task["phase"] = "checkpoint"
             return
         task["attempts"] += 1
@@ -668,10 +874,16 @@ class Manager:
                 commit = self.git.head() if not self.dry_run else "dry-run"
                 self.ui.say(f"Committed: {msg}")
                 self.log("commit", task=task["id"], commit=commit, message=msg, files=len(paths))
-                if self.cfg["autoPush"] and self.git.has_origin() and not rules_forbid_push(self.rules):
+                forbid = rules_forbid_push(self.rules)
+                if self.cfg["autoPush"] and self.git.has_origin() and not forbid:
                     p = self.git.push()
                     self.log("push", ok=p.ok, detail=(p.err or p.out)[-300:])
                     self.ui.say("Pushed to origin." if p.ok else f"Push failed (will retry next checkpoint): {(p.err or '')[-160:]}")
+                elif self.git.has_origin():
+                    why = "PROJECT_RULES.md forbids push" if forbid else "autoPush is OFF (.aiteam/config.json)"
+                    self.ui.say(f"Committed locally only - not pushed: {why}. Review with 'git show --stat HEAD'; "
+                                "push with 'aiteam push --yes' when satisfied.")
+                    self.log("push_skipped", reason=why, commit=commit)
             else:
                 self.log("commit_failed", task=task["id"], detail=(r.err or r.out)[-500:])
                 self.ui.say(f"Commit failed: {(r.err or r.out)[-200:]}")
@@ -690,6 +902,8 @@ class Manager:
         if commit:
             self.state["lastCommit"] = commit
         self.ui.say("Checkpoint saved.")
+        if commit and not self.dry_run:
+            self.ensure_lint_baseline(force=True)  # accepted state becomes the new comparison point
         self.print_progress()
 
     def fail_task(self, task: dict, reason: str) -> None:
@@ -715,8 +929,13 @@ class Manager:
         self.ui.say("")
         self.ui.say("All goal tasks finished -> independent goal evaluation by both agents...")
         checks = self.run_checks()
+        self.show_validation(checks, "goal")
+        if checks["verdict"] == "human":
+            self.to_human("Validation cannot run: " + "; ".join(checks["reasons"]))
+            raise PauseRequested()
+        blockers = checks["goalBlockers"]
         git_sane = not self.git.has_conflicts() and not self.git.user_changes(self.owned())
-        val_text = json.dumps(checks["summary"])
+        val_text = json.dumps({"validation": checks["summary"], "goalBlockers": blockers}, ensure_ascii=False)
         ctx = self.context(diff=False, validation=val_text)
         results = self.run_parallel([("evaluate", ctx, "claude"), ("evaluate", ctx, "codex")])
         evals = [r for r in results if not isinstance(r, Exception)]
@@ -742,9 +961,10 @@ class Manager:
                 evals = second
                 verdicts = [bool(p.get("complete")) and not p.get("critical") for _, _, p in evals]
         independent = len({n for n, _, _ in evals}) == 2 or self.state.get("singleAgentEvalOk")
-        complete = all(verdicts) and checks["passed"] and git_sane and independent
+        complete = all(verdicts) and checks["passed"] and not blockers and git_sane and independent
         self.state["goalEvaluation"] = {"at": iso(utcnow()), "verdicts": {n: v for (n, _, _), v in zip(evals, verdicts)},
-                                        "validation": checks["summary"], "gitSane": git_sane, "complete": complete}
+                                        "validation": checks["summary"], "goalBlockers": blockers, "gitSane": git_sane,
+                                        "complete": complete}
         self.log("goal_evaluation", **self.state["goalEvaluation"])
         if complete:
             return True
@@ -769,12 +989,16 @@ class Manager:
                 new_items.append({"title": f"Fix critical issue: {str(crit)[:120]}", "description": str(crit),
                                   "priority": "high", "impact": "high", "acceptanceCriteria": [str(crit)]})
         if not checks["passed"]:
-            failing = [s["name"] for s in checks["steps"] if not s["ok"]]
+            failing = [s["name"] for s in checks["steps"] if s["status"] in V.FAIL_STATES]
             new_items.append({"title": f"Fix failing validation: {', '.join(failing)}", "priority": "high", "impact": "high",
-                              "description": "\n".join(s["output"][-1500:] for s in checks["steps"] if not s["ok"]),
-                              "acceptanceCriteria": [f"{n} passes" for n in failing]})
-        self.add_tasks(new_items, kind="goal", source="goal-evaluation")
+                              "description": self.failure_text(checks)[-3000:],
+                              "acceptanceCriteria": [f"{n} has no regression" for n in failing]})
+        created = self.add_tasks(new_items, kind="goal", source="goal-evaluation")
         self.save()
+        if created == 0 and blockers:
+            # Nothing the agents can do: e.g. RLS tests cannot run here. Never declare COMPLETE on a skipped check.
+            self.to_human("Goal cannot be marked COMPLETE until these are resolved:\n- " + "\n- ".join(blockers))
+            raise PauseRequested()
         return False
 
     def check_needs_human_project(self, parsed: dict) -> None:
@@ -806,7 +1030,7 @@ class Manager:
                 if isinstance(cand, dict):
                     cand["_from"] = name
                     candidates.append(cand)
-        selected, report = select_improvements(candidates, self.tasks, self.cfg)
+        selected, report = select_improvements(candidates, self.tasks, self.cfg, self.goal.raw if self.goal else None)
         self.store.write_report(f"improvement-round-{rnd:03d}.md", report)
         self.log("improvement_discovery", round=rnd, candidates=len(candidates), selected=[c["title"] for c in selected])
         if not selected:
@@ -909,7 +1133,8 @@ def _norm(title: str) -> str:
     return re.sub(r"[^a-z0-9ก-๙]+", " ", title.lower()).strip()
 
 
-def select_improvements(candidates: list[dict], tasks: list[dict], cfg: dict) -> tuple[list[dict], str]:
+def select_improvements(candidates: list[dict], tasks: list[dict], cfg: dict,
+                        goal_text: str | None = None) -> tuple[list[dict], str]:
     """Keep only meaningful, low-churn improvements tied to the goal. Returns (selected, markdown report)."""
     existing = {_norm(t["title"]) for t in tasks}
     scored, lines = [], ["# Improvement candidates", ""]
@@ -932,7 +1157,7 @@ def select_improvements(candidates: list[dict], tasks: list[dict], cfg: dict) ->
             reasons.append("missing reason/evidence")
         if _norm(title) in existing:
             reasons.append("duplicate of existing task")
-        gate = human_gate_reason(f"{title}\n{cand.get('description', '')}", cfg["allowDeploy"])
+        gate = human_gate_reason(f"{title}\n{cand.get('description', '')}", cfg["allowDeploy"], goal_text=goal_text)
         if gate:
             reasons.append(f"needs human decision ({gate})")
         verdict = "SELECTED" if not reasons else "rejected: " + ", ".join(reasons)

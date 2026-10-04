@@ -84,7 +84,7 @@ class RepoCase(unittest.TestCase):
         self.codex = codex or MockAgent("codex")
         return Manager(self.tmp, self.cfg(**cfg), agents={"claude": self.claude, "codex": self.codex},
                        ui=UI(quiet=True), clock=self.clock, sleeper=self.clock.sleep,
-                       run_validation_fn=lambda cmds: [])
+                       command_runner=lambda argv, cwd, env, timeout: (0, "ok", False, False), pg_globs=[])
 
 
 # 1, 2 -------------------------------------------------------------------------
@@ -346,14 +346,12 @@ class LoopTests(RepoCase):
         self.assertEqual(imp[0]["status"], T.DONE)
 
     def test_validation_failure_triggers_fix_then_fails_safely(self):
-        class R:
-            def __init__(s, ok): s.name, s.argv, s.ok, s.output = "test", ["npm", "test"], ok, "1 failed"
         def implement():
             (self.tmp / "bad.py").write_text("broken\n")
             return {"complete": True}
         m = self.manager(codex=MockAgent("codex", {"implement": implement}), maxTaskRetries=2,
                          validation={"test": ["npm", "test"]})
-        m._validate = lambda cmds: [R(False)]
+        m.runner = lambda argv, cwd, env, timeout: (1, "1 failed", False, False)
         m.preflight()
         m.plan()
         task = T.select_next(m.tasks)

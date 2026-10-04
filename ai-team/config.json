@@ -20,6 +20,11 @@
   "maxContextChars": 20000,
   "validationTimeoutMinutes": 20,
   "validation": {},
+  "validationEnv": {},
+  "requireSecurityValidation": "auto",
+  "lint": {
+    "warnings": null
+  },
   "useWorktrees": false,
   "claude": {
     "command": "claude",
@@ -34,6 +39,18 @@
       "Grep",
       "Bash",
       "TodoWrite"
+    ],
+    "writeDisallowedTools": [
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(git reset:*)",
+      "Bash(git rebase:*)",
+      "Bash(git merge:*)",
+      "Bash(git stash:*)",
+      "Bash(npm publish:*)",
+      "Bash(supabase db push:*)",
+      "Bash(npx supabase db push:*)",
+      "Bash(supabase link:*)"
     ],
     "extraArgs": []
   },

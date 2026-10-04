@@ -31,6 +31,9 @@ DEFAULTS: dict = {
     "maxContextChars": 20000,
     "validationTimeoutMinutes": 20,
     "validation": {},
+    "validationEnv": {},
+    "requireSecurityValidation": "auto",
+    "lint": {"warnings": None},
     "useWorktrees": False,
     "claude": {
         "command": "claude",
@@ -38,6 +41,9 @@ DEFAULTS: dict = {
         "readPermissionMode": "plan",
         "writePermissionMode": "acceptEdits",
         "writeAllowedTools": ["Read", "Edit", "Write", "Glob", "Grep", "Bash", "TodoWrite"],
+        "writeDisallowedTools": ["Bash(git push:*)", "Bash(git commit:*)", "Bash(git reset:*)", "Bash(git rebase:*)",
+                                 "Bash(git merge:*)", "Bash(git stash:*)", "Bash(npm publish:*)",
+                                 "Bash(supabase db push:*)", "Bash(npx supabase db push:*)", "Bash(supabase link:*)"],
         "extraArgs": [],
     },
     "codex": {
@@ -49,8 +55,20 @@ DEFAULTS: dict = {
     },
 }
 
+# Written to <project>/.aiteam/config.json the first time AI-Team touches a project (never overwritten).
+# autoPush starts OFF so the first real cycles can be reviewed before anything reaches origin.
+LOCAL_CONFIG_DEFAULT: dict = {
+    "_comment": "Machine-local AI-Team settings for this project (git-ignored). autoPush is OFF so you can review "
+                "local commits first: 'aiteam push --yes' pushes on demand, 'aiteam config set autoPush true' re-enables.",
+    "autoPush": False,
+}
+
 # Never allow credentials into config; the system is subscription-only.
 _FORBIDDEN_KEY = re.compile(r"(?i)(api[_-]?key|token|secret|password|base[_-]?url)")
+
+
+def is_forbidden_key(key: str) -> bool:
+    return bool(_FORBIDDEN_KEY.search(key))
 
 
 def _merge(base: dict, override: dict) -> dict:

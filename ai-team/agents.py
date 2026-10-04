@@ -157,6 +157,9 @@ class ClaudeAgent(BaseAgent):
                 argv += ["--permission-mode", c.get("writePermissionMode", "acceptEdits")]
             if self.supports("--allowedTools", cwd) and c.get("writeAllowedTools"):
                 argv += ["--allowedTools", *c["writeAllowedTools"]]
+            if self.supports("--disallowedTools", cwd) and c.get("writeDisallowedTools"):
+                # The Manager owns Git and nothing is ever deployed: block push/commit/deploy commands outright.
+                argv += ["--disallowedTools", *c["writeDisallowedTools"]]
         argv += list(c.get("extraArgs", []))
         return argv, True  # prompt via stdin: no Windows command-line length/quoting problems
 

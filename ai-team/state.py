@@ -67,7 +67,7 @@ class ProjectPaths:
         self.checkpoints = self.aidir / "checkpoints"
         self.pause_flag = self.aidir / "PAUSE"
         self.lock = self.aidir / "run.lock"
-        self.local_config = self.aidir / "config.json"
+        self.local_config = self.root / ".aiteam" / "config.json"
 
     def ensure(self) -> None:
         for d in (self.aidir, self.reports, self.checkpoints):
@@ -76,6 +76,9 @@ class ProjectPaths:
         if not gi.exists():
             # AI-Team runtime data is machine-local; never commit it.
             gi.write_text("*\n", encoding="utf-8")
+        if not self.local_config.exists():
+            from config import LOCAL_CONFIG_DEFAULT  # first-cycle safety: autoPush OFF for this project
+            atomic_write_json(self.local_config, LOCAL_CONFIG_DEFAULT)
 
 
 # ---- atomic persistence ---------------------------------------------------

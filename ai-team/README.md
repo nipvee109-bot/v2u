@@ -50,6 +50,8 @@ aiteam start                # real autonomous run
 | `aiteam improve` | Goes straight to improvement mode |
 | `aiteam answer T004 "use Supabase auth"` | Answers a `NEEDS_HUMAN` question. Use `skip` to drop the task or `retry` to retry a failed one |
 | `aiteam doctor` | Shows detected CLI versions and flags. Sends no prompts |
+| `aiteam config [set KEY VALUE \| unset KEY \| show-all]` | Shows or changes this project's machine-local `.aiteam\config.json` (refuses keys that look like secrets) |
+| `aiteam push [--yes]` | Lists local commits not yet on origin; pushes only with `--yes`. Never deploys |
 
 ## How GOAL.md works
 
@@ -115,23 +117,101 @@ After a closed terminal, a Windows restart, a crash or a quota pause, just run `
 
 - At start, AI-Team runs the equivalent of `git status`. If there are uncommitted changes it didn't make, it **stops with `NEEDS_HUMAN`** and never touches them. Commit or stash them first.
 - It commits only files AI-Team changed, with conventional messages (`feat(timer): ...`).
-- It pushes after validated checkpoints if `origin` exists, `autoPush` is true and the rules allow it. Pushing never deploys.
+- It pushes after validated checkpoints only if `origin` exists, `autoPush` is on and the rules allow it. Pushing never deploys.
+- **First-cycle safety:** the first time AI-Team touches a project it creates `.aiteam\config.json` with `"autoPush": false`. Commits stay local until you review them (`git show --stat HEAD`) and run `aiteam push --yes`, or switch it on with `aiteam config set autoPush true`. An existing local config is never overwritten.
+- In implementation mode Claude is also denied `git push`/`commit`/`reset`/`rebase`/`merge`/`stash`, `npm publish` and `supabase db push`/`link` outright (`claude.writeDisallowedTools`).
 - A task that keeps failing has its changes parked in `git stash` (`aiteam-failed-T003`), not deleted.
 - `.aiteam\` stays local and git-ignored.
 - The agents are told not to commit, push, reset or stash. Git belongs to the manager.
 
+## Validation results (no fake PASS)
+
+After each task, and before the goal can count as complete, AI-Team runs the project's own checks: `typecheck`, `lint`, `test`, security checks such as `test:rls`, and `build`. They are auto-detected from `package.json` or set in `validation`. Each check gets an honest state:
+
+| State | Meaning | Effect |
+|---|---|---|
+| `PASS` | Ran and passed (a partly skipped suite that still ran tests shows a `partial:` note) | OK |
+| `PASS_WITH_BASELINE_DEBT` | Lint still has only the pre-existing findings | OK |
+| `FAIL` / `FAIL_REGRESSION` | Failed, or the task added lint findings | The task goes back to the fix step |
+| `SKIPPED` | Exited 0 but said it skipped (missing prerequisite) | Reported, never shown as PASS |
+| `BLOCKED` | Could not run: tool missing, or a **security** check skipped | Tool missing → `NEEDS_HUMAN`. Security check blocked → the task may continue but is flagged UNVERIFIED, and **the goal cannot be COMPLETE** |
+| `NOT_RUN` | Dry run, or no commands configured | Reported |
+
+### Lint baseline (pre-existing lint debt)
+
+Before the first task, AI-Team records the current lint findings as **BASELINE_DEBT** in `.aiteam\lint-baseline.json` and `.aiteam\reports\lint-baseline.md`. After each task:
+
+- Findings are compared by file, rule, severity and message. Line numbers are mapped through `git diff`, so code that only shifted is still debt.
+- **PASS** if there are no new errors and no baseline error grew. Removing old errors is fine.
+- **FAIL_REGRESSION** if there is a new error, or an old error moved because the task rewrote its line (`MOVED`).
+- New warnings are always shown. By default they are warning-only. Set `"lint": {"warnings": "fail"}`, or write "no new lint warnings" in PROJECT_RULES.md, to make them fail.
+- The fix agent is shown **only** the regressions and told not to touch the old debt.
+- After each validated checkpoint the baseline moves forward to the accepted state. `aiteam status` still shows the counts from the start of the session.
+
+```
+Lint:
+Baseline errors: 10
+Current errors: 11
+New errors: 1
+Status: FAIL_REGRESSION
+```
+
+### Security / RLS checks and PostgreSQL (`PG_BIN`)
+
+Scripts named like `test:rls` or `test:security` are treated as **critical** security checks. If the Definition of Done mentions RLS or security tests, the goal also needs one of these checks configured and passing (`requireSecurityValidation`: `auto`, `true` or `false`).
+
+For these checks AI-Team passes `PG_BIN` to the command:
+
+1. from `validationEnv.PG_BIN` in the config, or the environment;
+2. otherwise by looking in known install folders, picking the highest version found. On Windows these are `%ProgramFiles%\PostgreSQL\*\bin`, `%LOCALAPPDATA%\Programs\PostgreSQL\*\bin` and scoop.
+
+```powershell
+aiteam config set validationEnv.PG_BIN "C:\Program Files\PostgreSQL\17\bin"
+```
+
+Finding PostgreSQL does not make the check pass: the command's own output decides. If it still says `SKIPPED`, the result is:
+
+```
+RLS security validation:
+Status: BLOCKED
+Reason: PostgreSQL test runtime unavailable
+Required action: install/configure PostgreSQL or set PG_BIN
+```
+
+When `PG_BIN` holds `initdb.exe` but the script still skips, AI-Team adds a note: the script probably doesn't support native Windows. In that case either approve a change to the test script, or run only that check inside WSL. For WSL, Ubuntu needs `nodejs` and `postgresql` installed. Setting `validation` explicitly turns off auto-detection, so list every step:
+
+```json
+{
+  "validation": {
+    "lint":  ["npm", "run", "lint"],
+    "test":  ["npm", "test"],
+    "build": ["npm", "run", "build"],
+    "test:rls": {"command": ["wsl", "--cd", "C:\\path\\to\\project", "--", "bash", "-lc", "npm run test:rls"], "critical": true}
+  }
+}
+```
+
 ## Human decision gate
 
-Work stops for you (`NEEDS_HUMAN`) when it involves any of these:
+The gate looks at what the task actually does, not at single keywords. Local changes that can be undone with Git and that GOAL.md already asks for don't stop, for example:
 
-- production deploy
-- destructive migrations or deleting user data
-- secrets or credentials
-- paid services
-- irreversible actions
-- large rewrites or replacements
-- changing auth or the security model
-- an agent explicitly asks a question
+- "Remove obsolete Firebase auth provider"
+- "Switch login calls to Supabase Auth", when the goal names Supabase Auth
+- "Ensure no secrets are committed"
+
+Constraint wording such as "do not deploy" or "without deleting data" doesn't count either.
+
+Work stops for you (`NEEDS_HUMAN`) when the task would actually:
+
+- deploy, or touch production data or infrastructure (including `supabase db push`)
+- run a destructive migration or delete user or learner data
+- turn on a paid service
+- need a secret or credential the agent doesn't have
+- make an irreversible security decision, such as disabling RLS, making storage public or force-pushing
+- move auth or the backend to something GOAL.md doesn't name
+- rewrite the whole architecture
+- change product direction, such as the primary navigation or stable IDs
+- or when an agent explicitly asks a question
 
 Questions are listed by `aiteam status` and saved in `.aiteam\reports\NEEDS_HUMAN.md`. Answer with `aiteam answer`. Other tasks keep going when that is safe.
 
@@ -152,12 +232,15 @@ Questions are listed by `aiteam status` and saved in `.aiteam\reports\NEEDS_HUMA
 | `parallelAnalysis` | Run read-only evaluation and discovery in parallel |
 | `maxTaskRetries` | Retries before a task is marked failed |
 | `preferredPlanner`, `preferredImplementer`, `preferredReviewer` | Which agent normally takes each role |
-| `validation` | Explicit commands, e.g. `{"test": ["npm","test"], "build": ["npm","run","build"]}`; otherwise auto-detected from `package.json`, pytest, cargo or go |
-| `claude.writeAllowedTools` | Tools Claude may use when implementing |
+| `validation` | Explicit commands, e.g. `{"test": ["npm","test"], "test:rls": {"command": ["npm","run","test:rls"], "critical": true}}`. Otherwise auto-detected from `package.json`, pytest, cargo or go |
+| `validationEnv` | Extra environment for validation commands, e.g. `{"PG_BIN": "C:\\Program Files\\PostgreSQL\\17\\bin"}`. Secret-like keys are refused |
+| `lint.warnings` | `null` (follow PROJECT_RULES.md, default warning-only), `"warn"` or `"fail"` |
+| `requireSecurityValidation` | `"auto"` (from the Definition of Done), `true` or `false` |
+| `claude.writeAllowedTools` / `writeDisallowedTools` | Tools Claude may / may not use when implementing |
 | `codex.writeSandbox` | Codex sandbox mode when implementing |
 | `maxCycles`, `maxImprovementRounds` | Safety limits |
 
-Per-project overrides go in `<project>\.aiteam\config.json`.
+Per-project overrides go in `<project>\.aiteam\config.json`. It is machine-local and git-ignored; edit it with `aiteam config`.
 
 ## Worktrees and parallel work
 

@@ -89,6 +89,21 @@ class GitManager:
     def status_short(self) -> str:
         return self.git("status", "--short", "--branch").out.strip()
 
+    def head_full(self) -> str | None:
+        r = self.git("rev-parse", "HEAD")
+        return r.out.strip() if r.ok else None
+
+    def unpushed(self) -> tuple[str | None, str]:
+        """(upstream ref or None, `git log --oneline` of commits not yet on it)."""
+        up = self.git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
+        ref = up.out.strip() if up.ok else None
+        if ref is None:
+            br = self.branch()
+            if br and self.git("rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{br}").ok:
+                ref = f"origin/{br}"
+        log = self.git("log", "--oneline", f"{ref}..HEAD") if ref else self.git("log", "--oneline", "-20")
+        return ref, log.out.strip()
+
     def head(self) -> str | None:
         r = self.git("rev-parse", "--short", "HEAD")
         return r.out.strip() if r.ok else None

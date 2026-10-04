@@ -15,6 +15,8 @@ Hard safety rules (never violate):
 - Never disable, skip or weaken tests to make them pass. Never fake a PASS. Never hide errors.
 - Only modify files inside this repository. Do not run git commit/push/reset/checkout/stash: the Manager owns Git.
 - Do not call paid APIs or create API keys.
+- Pre-existing lint debt recorded in the baseline (BASELINE_DEBT) is not part of your task: do not fix or
+  reformat it unless your task changes that code. Only NEW_REGRESSION findings must be fixed.
 If a step needs a human decision (unclear direction, conflicting requirements, destructive migration,
 deleting data, production deploy, secrets, paid services, irreversible actions, changing the core goal,
 major auth/security changes), STOP and set "needsHuman" to a concrete question in your JSON.
@@ -142,25 +144,92 @@ def extract_json(text: str) -> dict | None:
     return None
 
 
-# ---- human decision gate (static check on top of agents' own needsHuman flag) ----
-HUMAN_GATE_PATTERNS = [
-    (r"\b(deploy|release|publish)\w*\b.{0,30}\bproduction\b|\bproduction\b.{0,20}\b(deploy|release)", "production deployment"),
-    (r"\bdrop\s+(table|database|column|schema)\b|\btruncate\s+table\b|\bdestructive\s+migration", "destructive database migration"),
-    (r"\b(delete|wipe|purge|erase|remove)\b.{0,25}\buser(s'|'s)?\s*(data|accounts?|records?)", "deleting user data"),
-    (r"\b(api[_ -]?key|secret|credential|private key|access token)s?\b.{0,40}\b(require|need|add|create|provide|obtain)", "secrets/credentials required"),
-    (r"\b(require|need|add|create|provide|obtain)\w*\b.{0,40}\b(api[_ -]?key|secret|credential|private key|access token)s?\b", "secrets/credentials required"),
-    (r"\b(paid|billing|subscription plan|purchase|credit card)\b.{0,30}\b(service|plan|tier|account|activation|activate|enable)", "paid service activation"),
-    (r"\b(rewrite|replace|migrate)\b.{0,30}\b(entire|whole|all of the)\b.{0,30}\b(architecture|app|codebase|framework)", "large architecture replacement"),
-    (r"\b(replace|change|switch|remove)\w*\b.{0,30}\b(authentication|auth provider|login system|security model)", "authentication/security model change"),
-    (r"\bforce[- ]push\b|\brewrite (git )?history\b|\birreversibl", "irreversible action"),
+# ---- human decision gate ---------------------------------------------------------
+# Judges the ACTION a task asks for, not bare keywords. Local, reversible (Git) source changes that the
+# goal already asks for are fine. Stops only for production actions, destructive migrations, deleting
+# user data, paid services, credentials the agent does not have, irreversible security decisions,
+# major product-direction changes and backend/auth changes that go against GOAL.md.
+
+_C = r"[^.;\n]"   # stay inside one clause
+_NEGATION = re.compile(r"\b(no|not|never|nothing|without|avoid\w*|prevent\w*|ensure\s+no|don't|do\s+not|must\s+not|"
+                       r"cannot|can't|forbid\w*|den(?:y|ies)|block\w*|reject\w*|refus\w*|detect\w*|guard\w*\s+against|"
+                       r"protect\w*\s+against|disallow\w*|fail\w*\s+if|stop\w*)\b" + _C + r"{0,40}$", re.I)
+_TESTISH = re.compile(r"\b(tests?|checks?|guards?|scans?|lint|assert\w*|detect\w*|verif\w*)\b", re.I)
+_OBSOLETE = re.compile(r"\b(obsolete|legacy|unused|dead|old|stale|duplicate\w*|redundant|remnants?|leftover|competing|deprecated)\b", re.I)
+_READ_ONLY_LEAD = re.compile(r"^\s*(?:\[[^\]]*\]\s*)?(document|describe|explain|verify|check|audit|inspect|review|test|ensure|"
+                             r"detect|scan|reconcile|investigate|analy[sz]e|assess|report|list|identify|map|confirm|"
+                             r"(?:add|write|create)\s+(?:an?\s+)?(?:\w+\s+){0,2}(?:tests?|checks?|guards?))\b", re.I)
+_SECRET_WORDS = (r"(api[_ -]?keys?|client[_ -]secrets?|secret[_ -]keys?|service[_ -]role[_ -]keys?|credentials?|passwords?|"
+                 r"access[_ -]tokens?|refresh[_ -]tokens?|private[_ -]keys?|oauth[_ -]secrets?|secrets)")
+
+_RULES = [
+    # (reason, pattern, kind)   kind: plain | secrets | removal | auth_target
+    ("production deployment",
+     rf"\b(deploy\w*|release\w*|publish\w*|promot\w*|ship\w*)\b{_C}{{0,40}}\b(production|prod|live site)\b(?!\s+builds?\b)", "plain"),
+    ("production data/infrastructure change",
+     rf"\b(production|prod)\s+(database|db|data|environment|server|infra\w*|project|instance|supabase|config\w*)\b"
+     rf"|\b(run|apply|execute|push|seed|reset|modify|change|update|write|migrate)\w*\b{_C}{{0,40}}\b(against|on|to|in)\s+(the\s+)?(production|prod)\b(?!\s+builds?\b)"
+     rf"|\bsupabase\s+(db\s+push|db\s+reset\s+--linked|link)\b", "plain"),
+    ("destructive database migration",
+     r"\bdrop\s+(table|database|column|schema)\b|\btruncate\s+(table\s+)?\w+|\bdestructive\s+migration|\breset\s+(the\s+)?(database|db)\b", "plain"),
+    ("deleting user data",
+     rf"\b(delet\w*|wip\w*|purg\w*|eras\w*|remov\w*|reset\w*|clear\w*|drop\w*)\b{_C}{{0,30}}\b(user|users'|user's|learner|learners'|"
+     rf"learner's|student|customer|account)s?\b{_C}{{0,15}}\b(data|progress|records?|accounts?|history|state)\b", "plain"),
+    ("paid service activation",
+     rf"\b(enabl\w*|activat\w*|upgrad\w*|subscrib\w*|purchas\w*|buy\w*|start\w*|switch\w*)\b{_C}{{0,30}}\b(paid|billing|pro plan|"
+     rf"team plan|enterprise plan|premium|pay-as-you-go|subscription)\b", "plain"),
+    ("secrets/credentials required",
+     rf"\b(configur\w*|set|sets|setting|add\w*|insert\w*|obtain\w*|request\w*|provid\w*|paste\w*|stor\w*|put|use|using|suppl\w*|"
+     rf"enter\w*|fill\w*|rotat\w*|generat\w*|creat\w*)\b{_C}{{0,40}}\b{_SECRET_WORDS}\b"
+     rf"|\b(requir\w*|need\w*)\b{_C}{{0,30}}\b{_SECRET_WORDS}\b"
+     rf"|\b{_SECRET_WORDS}\b{_C}{{0,30}}\b(to be provided|must be provided|is required|are required|is needed|are needed|"
+     rf"from the (owner|user|human|admin))\b", "secrets"),
+    ("irreversible security decision",
+     rf"\b(disabl\w*|turn\w*\s+off|bypass\w*|remov\w*|drop\w*)\b{_C}{{0,25}}\b(rls|row[- ]level security|authentication|"
+     rf"auth(?:orization)?\s+checks?|authorization|security polic(?:y|ies)|rls polic(?:y|ies))\b"
+     rf"|\bmak\w*\b{_C}{{0,30}}\b(bucket|storage|table|database)\b{_C}{{0,15}}\bpublic\b|\bforce[- ]push\w*|\brewrit\w*\s+(git\s+)?history|\birreversibl\w*",
+     "removal"),
+    ("authentication/backend direction change",
+     rf"\b(switch\w*|migrat\w*|mov\w*|replac\w*|chang\w*|swap\w*|port\w*)\b{_C}{{0,40}}\b(auth\w*|log\s?in|sign[- ]?in|identity provider|"
+     rf"security model|backend)\b{_C}{{0,40}}?\b(?:to|with|onto|for|away from)\s+(?P<target>[\w.\-]+(?:\s+[A-Z][\w.\-]*)?)", "auth_target"),
+    ("authentication/security model change",
+     r"\b(chang\w*|replac\w*|redesign\w*|overhaul\w*)\b\s+(the\s+)?(security|authentication|auth)\s+model\b", "plain"),
+    ("large architecture replacement",
+     rf"\b(rewrit\w*|replac\w*|re-?architect\w*|migrat\w*)\b{_C}{{0,30}}\b(entire|whole|all of the|complete)\b{_C}{{0,30}}\b(architecture|"
+     rf"app|application|codebase|framework|backend|frontend)\b", "plain"),
+    ("major product direction change",
+     rf"\b(chang\w*|replac\w*|remov\w*|add\w*|renam\w*|reorder\w*)\b{_C}{{0,30}}\b(primary|main|bottom|learner)\s+nav(igation)?\b"
+     rf"|\b(chang\w*|renam\w*|renumber\w*)\b{_C}{{0,20}}\b(lesson|skill)\s+ids?\b|\b(chang\w*|rewrit\w*|replac\w*)\b{_C}{{0,15}}\b(core|product)\s+goal\b",
+     "plain"),
 ]
-_HG = [(re.compile(p, re.I | re.S), why) for p, why in HUMAN_GATE_PATTERNS]
+_HG = [(why, re.compile(p, re.I), kind) for why, p, kind in _RULES]
 
 
-def human_gate_reason(text: str, allow_deploy: bool = False) -> str | None:
-    for pattern, why in _HG:
+def _negated(text: str, start: int) -> bool:
+    clause_start = max(text.rfind(c, 0, start) for c in ".;\n") + 1
+    return bool(_NEGATION.search(text[clause_start:start]))
+
+
+def human_gate_reason(text: str, allow_deploy: bool = False, goal_text: str | None = None) -> str | None:
+    """Return why this task needs a human decision, or None if it is a normal local, reversible change."""
+    text = text or ""
+    title = text.splitlines()[0] if text else ""
+    read_only = bool(_READ_ONLY_LEAD.match(title))
+    goal_lower = (goal_text or "").lower()
+    for why, pattern, kind in _HG:
         if why == "production deployment" and allow_deploy:
             continue
-        if pattern.search(text or ""):
+        for m in pattern.finditer(text):
+            if _negated(text, m.start()):
+                continue
+            span = m.group(0)
+            if kind == "secrets" and (read_only or _TESTISH.search(span)):
+                continue  # documenting/testing that secrets are handled correctly needs no secret
+            if kind == "removal" and _OBSOLETE.search(span) and not re.search(r"rls|row[- ]level|force|history|irreversibl|public", span, re.I):
+                continue
+            if kind == "auth_target":
+                target = (m.group("target") or "").strip().lower()
+                if "away from" not in span.lower() and goal_text is not None and target and target in goal_lower:
+                    continue  # moving TO the backend/auth the goal already asks for
             return why
     return None
