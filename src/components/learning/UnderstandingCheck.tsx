@@ -73,6 +73,12 @@ export function UnderstandingCheck({ lesson, state, dispatch, onSubmit, onBack }
                 {f.explanation}
               </p>
             )}
+            {state.finished && !ok && f.misconceptions?.find((m) => m.choice === picked) && (
+              <p className="mt-2 rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm break-words" data-testid="check-misconception">
+                <b>จุดที่มักพลาด:</b> {f.misconceptions.find((m) => m.choice === picked)!.mistake}
+                <span className="mt-1 block text-[var(--ink-2)]">แก้ยังไง: {f.misconceptions.find((m) => m.choice === picked)!.fix}</span>
+              </p>
+            )}
           </fieldset>
         );
       })}
@@ -134,6 +140,27 @@ export function LessonCompletion({ lesson, state, onReviewWeak, onNext, nextLabe
           {passed ? `คุณผ่านภารกิจ “${lesson.mission.title}” แล้ว` : 'ยังมีบางจุดที่ควรทบทวนก่อนไปบทถัดไป'} · เช็กความเข้าใจได้ {s.score}%
         </p>
       </div>
+
+      {(() => {
+        // Phase 66: misconceptions behind the wrong choices actually picked (from the lesson's own mistakes)
+        const seen = lesson.finalCheck
+          .map((f) => f.misconceptions?.find((m) => m.choice === state.finalAnswers[f.id] && m.choice !== f.correctIndex))
+          .filter((m): m is NonNullable<typeof m> => !!m)
+          .filter((m, i, all) => all.findIndex((x) => x.mistake === m.mistake) === i);
+        return seen.length > 0 ? (
+          <div className="rounded-[18px] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]" data-testid="completion-misconceptions">
+            <p className="text-sm font-bold text-[var(--rev)]">จุดที่อาจพลาดจากคำตอบของคุณ</p>
+            <ul className="mt-2 space-y-2 text-sm">
+              {seen.map((m) => (
+                <li key={m.mistake} data-testid="check-misconception" className="break-words">
+                  <b>{m.mistake}</b>
+                  <span className="block text-[var(--ink-2)]">แก้ยังไง: {m.fix}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null;
+      })()}
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-[18px] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow)]">

@@ -25,6 +25,9 @@ export function knowledgeFinalChecks(lessonId: string): FinalCheckItem[] {
     correctIndex: c.correctIndex,
     explanation: c.explanation,
     skillId: c.skillId,
+    ...(c.misconceptions?.length
+      ? { misconceptions: c.misconceptions.map((m) => ({ choice: m.choice, mistake: k.mistakes[m.mistake].mistake, fix: k.mistakes[m.mistake].fix })) }
+      : {}),
   }));
 }
 

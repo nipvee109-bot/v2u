@@ -63,8 +63,8 @@ export const PHYSICS_KNOWLEDGE: LessonKnowledge[] = [
     ],
     checks: [
       { id: 'k-1', skillId: UNITS, prompt: 'หน่วยฐาน SI ของมวลคือข้อใด', choices: ['กรัม (g)', 'กิโลกรัม (kg)', 'นิวตัน (N)', 'ปอนด์'], correctIndex: 1, explanation: 'หน่วยฐานของมวลคือ kg — หน่วยฐานเดียวที่มีคำนำหน้าหน่วยอยู่ในชื่อ ส่วน N เป็นหน่วยของแรง' },
-      { id: 'k-2', skillId: UNITS, prompt: '36 km/h เท่ากับกี่ m/s', choices: ['3.6 m/s', '10 m/s', '36 m/s', '129.6 m/s'], correctIndex: 1, explanation: '36 ÷ 3.6 = 10', verify: { kind: 'value', expr: '36*1000/3600', expected: 10, unit: 'm/s' } },
-      { id: 'k-3', skillId: UNITS, prompt: 'คำนำหน้า "m" (มิลลิ) มีค่าเท่าใด', choices: ['10⁶', '10³', '10⁻³', '10⁻⁶'], correctIndex: 2, explanation: 'มิลลิ = 10⁻³ อย่าสับสนกับ M (เมกะ) = 10⁶', verify: { kind: 'value', expr: '1e-3', expected: 0.001 } },
+      { id: 'k-2', skillId: UNITS, prompt: '36 km/h เท่ากับกี่ m/s', choices: ['3.6 m/s', '10 m/s', '36 m/s', '129.6 m/s'], correctIndex: 1, misconceptions: [{ choice: 3, mistake: 0 }], explanation: '36 ÷ 3.6 = 10', verify: { kind: 'value', expr: '36*1000/3600', expected: 10, unit: 'm/s' } },
+      { id: 'k-3', skillId: UNITS, prompt: 'คำนำหน้า "m" (มิลลิ) มีค่าเท่าใด', choices: ['10⁶', '10³', '10⁻³', '10⁻⁶'], correctIndex: 2, misconceptions: [{ choice: 0, mistake: 1 }], explanation: 'มิลลิ = 10⁻³ อย่าสับสนกับ M (เมกะ) = 10⁶', verify: { kind: 'value', expr: '1e-3', expected: 0.001 } },
       { id: 'k-4', skillId: UNITS, prompt: 'ข้อใด "ไม่ใช่" หน่วยฐาน SI', choices: ['เมตร', 'วินาที', 'นิวตัน', 'แอมแปร์'], correctIndex: 2, explanation: 'นิวตันเป็นหน่วยอนุพัทธ์ 1 N = 1 kg·m/s²' },
     ],
     mistakes: [
@@ -78,7 +78,7 @@ export const PHYSICS_KNOWLEDGE: LessonKnowledge[] = [
     provenance: [
       { sourceId: 'bipm-si-brochure-9', usedFor: 'หน่วยฐาน SI และคำนำหน้าหน่วย', crossChecked: false },
       { sourceId: 'nist-si-prefixes', usedFor: 'ตรวจข้ามค่าคำนำหน้าหน่วย', crossChecked: false },
-      { sourceId: 'openstax-cp-1-2', usedFor: 'วิธีแปลงหน่วยด้วยตัวประกอบการแปลง', crossChecked: false },
+      { sourceId: 'openstax-cp-1-2', usedFor: 'วิธีแปลงหน่วยด้วยตัวประกอบการแปลง', crossChecked: true, evidence: [{ ref: 'openstax:m42091', quote: "A conversion factor is a ratio expressing how many of one unit are equal to another unit.", claim: "ตัวประกอบการแปลงหน่วย (r-factor)" }, { ref: 'openstax:m42091', quote: "giga G ⟦109⟧", claim: "G = 10⁹" }, { ref: 'openstax:m42091', quote: "mega M ⟦106⟧", claim: "M = 10⁶" }, { ref: 'openstax:m42091', quote: "kilo k ⟦103⟧", claim: "k = 10³" }, { ref: 'openstax:m42091', quote: "centi c ⟦10−2⟧", claim: "c = 10⁻²" }, { ref: 'openstax:m42091', quote: "milli m ⟦10−3⟧", claim: "m = 10⁻³" }, { ref: 'openstax:m42091', quote: "micro µ ⟦10−6⟧", claim: "μ = 10⁻⁶" }, { ref: 'openstax:m42091', quote: "nano n ⟦10−9⟧", claim: "n = 10⁻⁹" }] },
       { sourceId: 'ipst-physics-m4-v1', usedFor: 'ลำดับเนื้อหาตามหนังสือเรียนไทย', crossChecked: false },
     ],
     audit: {
@@ -88,9 +88,9 @@ export const PHYSICS_KNOWLEDGE: LessonKnowledge[] = [
       knowledgeCovered: ['หน่วยฐาน 7 หน่วย', 'คำนำหน้าหน่วย', 'ตัวประกอบการแปลง', 'km/h ↔ m/s'],
       knowledgeMissing: [],
       externalResourcesVerified: 0,
-      limitations: ['แหล่งอ้างอิงยังไม่ได้เปิดตรวจหน้าจริง: นโยบายเครือข่ายของสภาพแวดล้อมนี้บล็อก openstax.org, ipst.ac.th, scimath.org, bipm.org, nist.gov — ข้อเท็จจริงจึงยืนยันด้วยการคำนวณและการตรวจความสอดคล้องของสูตรแทน', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)'],
+      limitations: ['BIPM SI Brochure และ NIST ยังเปิดไม่ได้ — ค่าคำนำหน้าหน่วยตรวจข้ามกับตารางคำนำหน้าใน OpenStax College Physics 2e หัวข้อ 1.2 แล้ว แต่ยังไม่ได้ตรวจกับเอกสารมาตรฐานโดยตรง', 'เอกสาร สสวท. / SciMath / โครงการตำราเรียน (proj14) ยังเปิดไม่ได้ (เครือข่ายของสภาพแวดล้อมนี้บล็อก) — ขอบเขตตามหลักสูตรไทยจึงยังเป็น VERIFICATION_PENDING ส่วนเนื้อหาหลักตรวจกับต้นฉบับ OpenStax แล้ว', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)'],
       nonBlocking: ['ยังไม่มีคลิปภายนอกที่ผ่านการตรวจลิงก์ (เปิด YouTube จากสภาพแวดล้อมนี้ไม่ได้)'],
-      verification: ['ทุกการคำนวณคำนวณซ้ำพร้อมหน่วย', 'สูตรตรวจความสอดคล้องกันเองและตรวจมิติของหน่วย (scripts/test-phase-63.js)'],
+      verification: ['Phase 66: เปิดไฟล์ต้นฉบับหนังสือ OpenStax จากคลังทางการ (GitHub, commit ตรึงไว้) และตรวจข้อความอ้างอิงทุกข้อแบบตรงตัว (scripts/research/verify-openstax.py)', 'ทุกการคำนวณคำนวณซ้ำพร้อมหน่วย', 'สูตรตรวจความสอดคล้องกันเองและตรวจมิติของหน่วย (scripts/test-phase-63.js)'],
       readiness: 'READY_WITH_LIMITATIONS',
     },
   },
@@ -150,8 +150,8 @@ export const PHYSICS_KNOWLEDGE: LessonKnowledge[] = [
     ],
     checks: [
       { id: 'k-1', skillId: VEC, prompt: 'ข้อใดเป็นปริมาณเวกเตอร์', choices: ['เวลา', 'มวล', 'ความเร็ว', 'อุณหภูมิ'], correctIndex: 2, explanation: 'ความเร็วมีทั้งขนาดและทิศทาง ข้ออื่นมีแต่ขนาด' },
-      { id: 'k-2', skillId: VEC, prompt: 'เวกเตอร์ขนาด A ทำมุม θ กับแกน x องค์ประกอบแกน x คือข้อใด', choices: ['A sin θ', 'A cos θ', 'A tan θ', 'A/cos θ'], correctIndex: 1, explanation: 'องค์ประกอบแกน x ติดมุม θ (ชิด) จึงใช้ cos' },
-      { id: 'k-3', skillId: VEC, prompt: 'เวกเตอร์ 9 N และ 12 N ตั้งฉากกัน ผลรวมมีขนาดเท่าใด', choices: ['3 N', '15 N', '21 N', '108 N'], correctIndex: 1, explanation: '√(81 + 144) = √225 = 15 N (บวกตรง ๆ ได้ 21 ซึ่งใช้ได้เฉพาะทิศเดียวกัน)', verify: { kind: 'value', expr: 'Math.hypot(9,12)', expected: 15, unit: 'N' } },
+      { id: 'k-2', skillId: VEC, prompt: 'เวกเตอร์ขนาด A ทำมุม θ กับแกน x องค์ประกอบแกน x คือข้อใด', choices: ['A sin θ', 'A cos θ', 'A tan θ', 'A/cos θ'], correctIndex: 1, misconceptions: [{ choice: 0, mistake: 1 }], explanation: 'องค์ประกอบแกน x ติดมุม θ (ชิด) จึงใช้ cos' },
+      { id: 'k-3', skillId: VEC, prompt: 'เวกเตอร์ 9 N และ 12 N ตั้งฉากกัน ผลรวมมีขนาดเท่าใด', choices: ['3 N', '15 N', '21 N', '108 N'], correctIndex: 1, misconceptions: [{ choice: 2, mistake: 0 }], explanation: '√(81 + 144) = √225 = 15 N (บวกตรง ๆ ได้ 21 ซึ่งใช้ได้เฉพาะทิศเดียวกัน)', verify: { kind: 'value', expr: 'Math.hypot(9,12)', expected: 15, unit: 'N' } },
       { id: 'k-4', skillId: VEC, prompt: 'แรง 5 N สองแรงกระทำในทิศตรงข้ามกัน แรงลัพธ์เป็นเท่าใด', choices: ['0 N', '5 N', '10 N', '25 N'], correctIndex: 0, explanation: '+5 − 5 = 0 แรงหักล้างกัน', verify: { kind: 'value', expr: '5-5', expected: 0, unit: 'N' } },
     ],
     mistakes: [
@@ -163,7 +163,7 @@ export const PHYSICS_KNOWLEDGE: LessonKnowledge[] = [
     afterLesson: ['แยกปริมาณสเกลาร์และเวกเตอร์ได้', 'แยกเวกเตอร์เป็นองค์ประกอบ x, y ได้', 'หาขนาดผลรวมของเวกเตอร์ตั้งฉากได้'],
     next: ['phy-kin-1d'],
     provenance: [
-      { sourceId: 'openstax-cp2e-3-3', usedFor: 'องค์ประกอบเวกเตอร์และการรวมแบบวิเคราะห์', crossChecked: false },
+      { sourceId: 'openstax-cp2e-3-3', usedFor: 'องค์ประกอบเวกเตอร์และการรวมแบบวิเคราะห์', crossChecked: true, evidence: [{ ref: 'openstax:m42128', quote: "⟦Ax=Acosθ⟧ and ⟦Ay=Asinθ.⟧", claim: "Aₓ = A cos θ, Aᵧ = A sin θ (r-comp)" }, { ref: 'openstax:m42128', quote: "⟦Rx=Ax+Bx⟧ and ⟦Ry=Ay+By.⟧", claim: "รวมองค์ประกอบแต่ละแกน (r-sum)" }, { ref: 'openstax:m42128', quote: "To get the magnitude ⟦R⟧ of the resultant, use the Pythagorean theorem", claim: "ขนาดผลรวมจากพีทาโกรัส (r-mag)" }, { ref: 'openstax:m42128', quote: "⟦θ=tan−1(Ry/Rx).⟧", claim: "ทิศของผลรวม (r-mag)" }] },
       { sourceId: 'ipst-physics-m4-v1', usedFor: 'นิยามปริมาณสเกลาร์และเวกเตอร์ตามหนังสือไทย', crossChecked: false },
     ],
     audit: {
@@ -173,9 +173,9 @@ export const PHYSICS_KNOWLEDGE: LessonKnowledge[] = [
       knowledgeCovered: ['สเกลาร์/เวกเตอร์', 'การรวมแนวเดียวกัน', 'องค์ประกอบ', 'ผลรวมตั้งฉาก'],
       knowledgeMissing: [],
       externalResourcesVerified: 0,
-      limitations: ['แหล่งอ้างอิงยังไม่ได้เปิดตรวจหน้าจริง: นโยบายเครือข่ายของสภาพแวดล้อมนี้บล็อก openstax.org, ipst.ac.th, scimath.org, bipm.org, nist.gov — ข้อเท็จจริงจึงยืนยันด้วยการคำนวณและการตรวจความสอดคล้องของสูตรแทน', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)'],
+      limitations: ['เอกสาร สสวท. / SciMath / โครงการตำราเรียน (proj14) ยังเปิดไม่ได้ (เครือข่ายของสภาพแวดล้อมนี้บล็อก) — ขอบเขตตามหลักสูตรไทยจึงยังเป็น VERIFICATION_PENDING ส่วนเนื้อหาหลักตรวจกับต้นฉบับ OpenStax แล้ว', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)'],
       nonBlocking: ['ยังไม่มีคลิปภายนอกที่ผ่านการตรวจลิงก์ (เปิด YouTube จากสภาพแวดล้อมนี้ไม่ได้)'],
-      verification: ['ทุกการคำนวณคำนวณซ้ำพร้อมหน่วย', 'สูตรตรวจความสอดคล้องกันเองและตรวจมิติของหน่วย (scripts/test-phase-63.js)'],
+      verification: ['Phase 66: เปิดไฟล์ต้นฉบับหนังสือ OpenStax จากคลังทางการ (GitHub, commit ตรึงไว้) และตรวจข้อความอ้างอิงทุกข้อแบบตรงตัว (scripts/research/verify-openstax.py)', 'ทุกการคำนวณคำนวณซ้ำพร้อมหน่วย', 'สูตรตรวจความสอดคล้องกันเองและตรวจมิติของหน่วย (scripts/test-phase-63.js)'],
       readiness: 'READY_WITH_LIMITATIONS',
     },
   },
@@ -251,8 +251,8 @@ export const PHYSICS_KNOWLEDGE: LessonKnowledge[] = [
     afterLesson: ['เลือกสมการการเคลื่อนที่ได้ตรงกับข้อมูล', 'คำนวณความเร็ว ระยะทาง และเวลาได้', 'อ่านความเร่งและการกระจัดจากกราฟ v–t ได้'],
     next: ['phy-dyn-newton'],
     provenance: [
-      { sourceId: 'openstax-cp2e-2-5', usedFor: 'สมการการเคลื่อนที่เมื่อความเร่งคงตัว', crossChecked: false },
-      { sourceId: 'openstax-cp2e-2-8', usedFor: 'ความชันและพื้นที่ของกราฟ v–t', crossChecked: false },
+      { sourceId: 'openstax-cp2e-2-5', usedFor: 'สมการการเคลื่อนที่เมื่อความเร่งคงตัว', crossChecked: true, evidence: [{ ref: 'openstax:m42099', quote: "Solving for ⟦v⟧ yields ⟦v=v0+at(constanta).⟧", claim: "v = u + at (r-1)" }, { ref: 'openstax:m42099', quote: "⟦x=x0+v0t+12at2(constanta).⟧", claim: "s = ut + ½at² (r-2)" }, { ref: 'openstax:m42099', quote: "⟦v2=v02+2ax−x0(constanta).⟧", claim: "v² = u² + 2as (r-3)" }, { ref: 'openstax:m42099', quote: "where the average velocity is ⟦v-=v0+v2(constanta).⟧", claim: "s = (u + v)t/2 (r-4)" }] },
+      { sourceId: 'openstax-cp2e-2-8', usedFor: 'ความชันของกราฟ v–t คือความเร่ง', crossChecked: true, evidence: [{ ref: 'openstax:m42103', quote: "The slope of a graph of velocity ⟦v⟧ vs. time ⟦t⟧ is acceleration ⟦a⟧ .", claim: "ความชันของกราฟ v–t = a (r-graph)" }] },
       { sourceId: 'ipst-physics-m4-v1', usedFor: 'สัญลักษณ์ u v a t s และหัวข้อการตกอย่างอิสระตามหนังสือไทย', crossChecked: false },
     ],
     audit: {
@@ -262,9 +262,9 @@ export const PHYSICS_KNOWLEDGE: LessonKnowledge[] = [
       knowledgeCovered: ['4 สมการความเร่งคงตัว', 'การเลือกสมการ', 'การตกอย่างอิสระ', 'กราฟ v–t'],
       knowledgeMissing: [],
       externalResourcesVerified: 0,
-      limitations: ['แหล่งอ้างอิงยังไม่ได้เปิดตรวจหน้าจริง: นโยบายเครือข่ายของสภาพแวดล้อมนี้บล็อก openstax.org, ipst.ac.th, scimath.org, bipm.org, nist.gov — ข้อเท็จจริงจึงยืนยันด้วยการคำนวณและการตรวจความสอดคล้องของสูตรแทน', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)'],
+      limitations: ['“พื้นที่ใต้กราฟ v–t = การกระจัด” ไม่พบเป็นข้อความในหัวข้อ OpenStax ที่เปิด (2.5, 2.8) — ยืนยันด้วยการคำนวณเทียบกับสมการการเคลื่อนที่ในชุดทดสอบเท่านั้น', 'เอกสาร สสวท. / SciMath / โครงการตำราเรียน (proj14) ยังเปิดไม่ได้ (เครือข่ายของสภาพแวดล้อมนี้บล็อก) — ขอบเขตตามหลักสูตรไทยจึงยังเป็น VERIFICATION_PENDING ส่วนเนื้อหาหลักตรวจกับต้นฉบับ OpenStax แล้ว', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)'],
       nonBlocking: ['ยังไม่มีคลิปภายนอกที่ผ่านการตรวจลิงก์ (เปิด YouTube จากสภาพแวดล้อมนี้ไม่ได้)'],
-      verification: ['ทุกการคำนวณคำนวณซ้ำพร้อมหน่วย', 'สูตรตรวจความสอดคล้องกันเองและตรวจมิติของหน่วย (scripts/test-phase-63.js)'],
+      verification: ['Phase 66: เปิดไฟล์ต้นฉบับหนังสือ OpenStax จากคลังทางการ (GitHub, commit ตรึงไว้) และตรวจข้อความอ้างอิงทุกข้อแบบตรงตัว (scripts/research/verify-openstax.py)', 'ทุกการคำนวณคำนวณซ้ำพร้อมหน่วย', 'สูตรตรวจความสอดคล้องกันเองและตรวจมิติของหน่วย (scripts/test-phase-63.js)'],
       readiness: 'READY_WITH_LIMITATIONS',
     },
   },
@@ -328,7 +328,7 @@ export const PHYSICS_KNOWLEDGE: LessonKnowledge[] = [
       { id: 'k-1', skillId: N2, prompt: 'ถ้าแรงลัพธ์ที่กระทำต่อวัตถุเป็นศูนย์ ข้อใดถูก', choices: ['วัตถุต้องหยุดนิ่งเท่านั้น', 'วัตถุหยุดนิ่งหรือเคลื่อนที่ด้วยความเร็วคงตัว', 'วัตถุต้องช้าลงจนหยุด', 'วัตถุมีความเร่งคงตัว'], correctIndex: 1, explanation: 'กฎข้อ 1: ΣF = 0 แปลว่า a = 0 ความเร็วไม่เปลี่ยน (อาจเป็นศูนย์หรือไม่ก็ได้)' },
       { id: 'k-2', skillId: N2, prompt: 'แรงลัพธ์ 8 N กระทำต่อมวล 2 kg ความเร่งเท่าใด', choices: ['4 m/s²', '6 m/s²', '10 m/s²', '16 m/s²'], correctIndex: 0, explanation: 'a = ΣF/m = 8/2 = 4 m/s²', verify: { kind: 'value', expr: '8/2', expected: 4, unit: 'm/s²' } },
       { id: 'k-3', skillId: FBD, prompt: 'ทำไมแรงกิริยาและปฏิกิริยาจึงไม่หักล้างกัน', choices: ['เพราะขนาดไม่เท่ากัน', 'เพราะกระทำต่อวัตถุคนละก้อน', 'เพราะทิศเดียวกัน', 'จริง ๆ หักล้างกันเสมอ'], correctIndex: 1, explanation: 'สองแรงนี้อยู่บนวัตถุคนละก้อน จึงไม่ปรากฏในแผนภาพแรงของวัตถุเดียวกัน' },
-      { id: 'k-4', skillId: FBD, prompt: 'วัตถุมวล 10 kg มีน้ำหนักเท่าใด (g = 9.8 m/s²)', choices: ['10 N', '9.8 N', '98 N', '980 N'], correctIndex: 2, explanation: 'W = mg = 10 × 9.8 = 98 N', verify: { kind: 'value', expr: '10*9.8', expected: 98, tol: 1e-9, unit: 'N' } },
+      { id: 'k-4', skillId: FBD, prompt: 'วัตถุมวล 10 kg มีน้ำหนักเท่าใด (g = 9.8 m/s²)', choices: ['10 N', '9.8 N', '98 N', '980 N'], correctIndex: 2, misconceptions: [{ choice: 0, mistake: 1 }], explanation: 'W = mg = 10 × 9.8 = 98 N', verify: { kind: 'value', expr: '10*9.8', expected: 98, tol: 1e-9, unit: 'N' } },
     ],
     mistakes: [
       { mistake: 'ใช้แรงตัวใดตัวหนึ่งแทนแรงลัพธ์ใน F = ma', why: 'เห็นแรงในโจทย์แล้วแทนทันที ลืมแรงเสียดทานหรือแรงทิศตรงข้าม', fix: 'วาดแผนภาพแรงก่อน รวมทุกแรงในแนวเดียวกันแบบมีเครื่องหมายเป็น ΣF' },
@@ -339,7 +339,8 @@ export const PHYSICS_KNOWLEDGE: LessonKnowledge[] = [
     afterLesson: ['เขียนแผนภาพแรงของวัตถุก้อนเดียวได้ถูกต้อง', 'ใช้ ΣF = ma หาความเร่งหรือแรงได้', 'อธิบายกฎข้อ 3 ด้วยตัวอย่างที่ถูกต้อง'],
     next: [],
     provenance: [
-      { sourceId: 'openstax-up1-5-3', usedFor: 'กฎข้อ 2 และแผนภาพแรง', crossChecked: false },
+      { sourceId: 'openstax-up1-5-3', usedFor: 'กฎข้อ 2 และแผนภาพแรง', crossChecked: true, evidence: [{ ref: 'openstax:m58297', quote: "The acceleration of a system is directly proportional to and in the same direction as the net external force acting on the system and is inversely proportional to its mass.", claim: "a แปรผันตรงกับแรงลัพธ์ แปรผกผันกับมวล (r-n2)" }, { ref: 'openstax:m58301', quote: "Draw the object under consideration; it does not have to be artistic.", claim: "วาดแผนภาพแรงของวัตถุ" }] },
+      { sourceId: 'openstax-cp2e-4-5', usedFor: 'กฎข้อ 1–3 น้ำหนัก w = mg และแรงเสียดทาน f = μN', crossChecked: true, evidence: [{ ref: 'openstax:m42130', quote: "A body at rest remains at rest, or, if in motion, remains in motion at a constant velocity unless acted on by a net external force.", claim: "กฎข้อ 1 (r-n1)" }, { ref: 'openstax:m42073', quote: "This is often written in the more familiar form ⟦Fnet=ma.⟧", claim: "ΣF = ma (r-n2)" }, { ref: 'openstax:m42073', quote: "This is the equation for weight —the gravitational force on a mass ⟦m⟧ : ⟦w=mg.⟧", claim: "W = mg (r-w)" }, { ref: 'openstax:m42073', quote: "Since ⟦g=9.80m/s2⟧ on Earth", claim: "g ≈ 9.8 m/s² (r-w)" }, { ref: 'openstax:m42074', quote: "Whenever one body exerts a force on a second body, the first body experiences a force that is equal in magnitude and opposite in direction to the force that it exerts.", claim: "กฎข้อ 3 (r-n3)" }, { ref: 'openstax:m42139', quote: "the magnitude of kinetic friction ⟦fk⟧ is given by ⟦fk=μkN,⟧", claim: "f = μN (r-f)" }, { ref: 'openstax:m42139', quote: "⟦N⟧ is the magnitude of the normal force (the force perpendicular to the surface)", claim: "N คือแรงตั้งฉากกับผิว (r-f)" }] },
       { sourceId: 'ipst-physics-m4-v1', usedFor: 'ขอบเขตแรงและกฎการเคลื่อนที่ตามหนังสือไทย', crossChecked: false },
     ],
     audit: {
@@ -349,9 +350,9 @@ export const PHYSICS_KNOWLEDGE: LessonKnowledge[] = [
       knowledgeCovered: ['กฎ 3 ข้อ', 'แผนภาพแรง', 'น้ำหนัก', 'แรงเสียดทานบนพื้นราบ'],
       knowledgeMissing: [],
       externalResourcesVerified: 0,
-      limitations: ['แหล่งอ้างอิงยังไม่ได้เปิดตรวจหน้าจริง: นโยบายเครือข่ายของสภาพแวดล้อมนี้บล็อก openstax.org, ipst.ac.th, scimath.org, bipm.org, nist.gov — ข้อเท็จจริงจึงยืนยันด้วยการคำนวณและการตรวจความสอดคล้องของสูตรแทน', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)'],
+      limitations: ['เอกสาร สสวท. / SciMath / โครงการตำราเรียน (proj14) ยังเปิดไม่ได้ (เครือข่ายของสภาพแวดล้อมนี้บล็อก) — ขอบเขตตามหลักสูตรไทยจึงยังเป็น VERIFICATION_PENDING ส่วนเนื้อหาหลักตรวจกับต้นฉบับ OpenStax แล้ว', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)'],
       nonBlocking: ['ยังไม่มีคลิปภายนอกที่ผ่านการตรวจลิงก์ (เปิด YouTube จากสภาพแวดล้อมนี้ไม่ได้)'],
-      verification: ['ทุกการคำนวณคำนวณซ้ำพร้อมหน่วย', 'สูตรตรวจความสอดคล้องกันเองและตรวจมิติของหน่วย (scripts/test-phase-63.js)'],
+      verification: ['Phase 66: เปิดไฟล์ต้นฉบับหนังสือ OpenStax จากคลังทางการ (GitHub, commit ตรึงไว้) และตรวจข้อความอ้างอิงทุกข้อแบบตรงตัว (scripts/research/verify-openstax.py)', 'ทุกการคำนวณคำนวณซ้ำพร้อมหน่วย', 'สูตรตรวจความสอดคล้องกันเองและตรวจมิติของหน่วย (scripts/test-phase-63.js)'],
       readiness: 'READY_WITH_LIMITATIONS',
     },
   },

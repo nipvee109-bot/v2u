@@ -76,10 +76,10 @@ export const MATH_KNOWLEDGE: LessonKnowledge[] = [
       { id: 'i-6', skillId: S2, level: 3, prompt: '(x + 2)/4 = (x − 1)/3 แล้วตรวจคำตอบ', answer: 'x = 10', explanation: 'คูณไขว้ (คูณด้วย 12): 3(x + 2) = 4(x − 1) → 3x + 6 = 4x − 4 → x = 10 ตรวจ: 12/4 = 3 และ 9/3 = 3 ✓', verify: { kind: 'holds', vars: { x: 10 }, holds: ['(x+2)/4 == (x-1)/3'] } },
     ],
     checks: [
-      { id: 'k-1', skillId: S1, prompt: 'คำตอบของ 2x + 7 = 1 คือข้อใด', choices: ['x = 4', 'x = −3', 'x = 3', 'x = −4'], correctIndex: 1, explanation: '2x = 1 − 7 = −6 จึงได้ x = −3 ตรวจ: 2(−3) + 7 = 1 ✓', verify: { kind: 'holds', vars: { x: -3 }, holds: ['2*x+7 == 1'] } },
+      { id: 'k-1', skillId: S1, prompt: 'คำตอบของ 2x + 7 = 1 คือข้อใด', choices: ['x = 4', 'x = −3', 'x = 3', 'x = −4'], correctIndex: 1, misconceptions: [{ choice: 0, mistake: 0 }], explanation: '2x = 1 − 7 = −6 จึงได้ x = −3 ตรวจ: 2(−3) + 7 = 1 ✓', verify: { kind: 'holds', vars: { x: -3 }, holds: ['2*x+7 == 1'] } },
       { id: 'k-2', skillId: S1, prompt: 'นักเรียนแก้ 3(x + 4) = 18 ได้ 3x + 4 = 18 ผิดตรงไหน', choices: ['ควรหารด้วย 3 ก่อน ถึงจะถูก', 'กระจายวงเล็บไม่ครบ ต้องเป็น 3x + 12', 'ต้องย้าย 18 ไปข้างซ้าย', 'ไม่ผิด'], correctIndex: 1, explanation: '3 ต้องคูณทุกพจน์ในวงเล็บ: 3(x + 4) = 3x + 12 แล้วจะได้ x = 2' },
       { id: 'k-3', skillId: S2, prompt: 'x = 2 เป็นคำตอบของ 4x − 1 = 2x + 3 หรือไม่', choices: ['เป็น เพราะแทนแล้วทั้งสองข้างได้ 7', 'ไม่เป็น เพราะข้างซ้ายได้ 8', 'ไม่เป็น เพราะข้างขวาได้ 5', 'บอกไม่ได้ถ้าไม่แก้สมการก่อน'], correctIndex: 0, explanation: 'ข้างซ้าย 4(2) − 1 = 7 ข้างขวา 2(2) + 3 = 7 เท่ากัน จึงเป็นคำตอบ', verify: { kind: 'holds', vars: { x: 2 }, holds: ['4*x-1 == 2*x+3'] } },
-      { id: 'k-4', skillId: S1, prompt: 'ขั้นแรกที่ดีที่สุดในการแก้ x/4 + 1 = x/2 คืออะไร', choices: ['คูณทุกพจน์ด้วย 4', 'บวก 1 ทั้งสองข้าง', 'หารทั้งสองข้างด้วย x', 'ย้าย x/2 ไปข้างซ้ายโดยไม่เปลี่ยนเครื่องหมาย'], correctIndex: 0, explanation: 'ค.ร.น. ของ 4 และ 2 คือ 4 คูณแล้วได้ x + 4 = 2x → x = 4 (หารด้วย x ห้ามทำ เพราะ x อาจเป็น 0)', verify: { kind: 'holds', vars: { x: 4 }, holds: ['x/4+1 == x/2'] } },
+      { id: 'k-4', skillId: S1, prompt: 'ขั้นแรกที่ดีที่สุดในการแก้ x/4 + 1 = x/2 คืออะไร', choices: ['คูณทุกพจน์ด้วย 4', 'บวก 1 ทั้งสองข้าง', 'หารทั้งสองข้างด้วย x', 'ย้าย x/2 ไปข้างซ้ายโดยไม่เปลี่ยนเครื่องหมาย'], correctIndex: 0, misconceptions: [{ choice: 3, mistake: 0 }], explanation: 'ค.ร.น. ของ 4 และ 2 คือ 4 คูณแล้วได้ x + 4 = 2x → x = 4 (หารด้วย x ห้ามทำ เพราะ x อาจเป็น 0)', verify: { kind: 'holds', vars: { x: 4 }, holds: ['x/4+1 == x/2'] } },
     ],
     mistakes: [
       { mistake: 'ย้ายข้างแต่ลืมเปลี่ยนเครื่องหมาย เช่น x + 5 = 9 → x = 9 + 5', why: 'จำเป็นสูตร "ย้ายข้าง" แต่ไม่ได้คิดว่าจริง ๆ คือการลบ 5 ทั้งสองข้าง', fix: 'เขียนสิ่งที่ทำทั้งสองข้างจริง ๆ: x + 5 − 5 = 9 − 5 จนคล่องแล้วค่อยย่อ' },
@@ -91,7 +91,7 @@ export const MATH_KNOWLEDGE: LessonKnowledge[] = [
     next: ['math-alg-linear-system', 'math-alg-linear-ineq', 'phy-kin-1d'],
     provenance: [
       { sourceId: 'ipst-math-indicators-2560', usedFor: 'ขอบเขตเนื้อหาสมการเชิงเส้นตัวแปรเดียว', crossChecked: false },
-      { sourceId: 'openstax-ea2e-2-4', usedFor: 'ลำดับขั้นการแก้สมการและการตรวจคำตอบ', crossChecked: false },
+      { sourceId: 'openstax-ea2e-2-4', usedFor: 'ลำดับขั้นการแก้สมการและการตรวจคำตอบ', crossChecked: true, evidence: [{ ref: 'openstax:m82463', quote: "When you subtract the same quantity from both sides of an equation, you still have equality.", claim: "ลบจำนวนเดียวกันทั้งสองข้าง สมการยังเท่ากัน (r-add)" }, { ref: 'openstax:m82463', quote: "When you add the same quantity to both sides of an equation, you still have equality.", claim: "บวกจำนวนเดียวกันทั้งสองข้าง (r-add)" }, { ref: 'openstax:m82464', quote: "When you divide both sides of an equation by any non-zero number, you still have equality.", claim: "หารด้วยจำนวนที่ไม่ใช่ศูนย์ทั้งสองข้าง (r-mul)" }, { ref: 'openstax:m82464', quote: "if we start with two equal quantities and multiply both by the same number, the results are equal.", claim: "คูณทั้งสองข้างด้วยจำนวนเดียวกัน (r-mul)" }, { ref: 'openstax:m82467', quote: "Use the Distributive Property to remove any parentheses.", claim: "กระจายวงเล็บก่อน (r-dist)" }, { ref: 'openstax:m82467', quote: "Collect all the variable terms on one side of the equation. Use the Addition or Subtraction Property of Equality.", claim: "รวมตัวแปรไว้ข้างเดียว" }, { ref: 'openstax:m82467', quote: "Substitute the solution into the original equation to make sure the result is a true statement.", claim: "ตรวจคำตอบโดยแทนในสมการเดิม (r-check)" }] },
     ],
     audit: {
       sourcesFound: ['ipst-math-indicators-2560', 'openstax-ea2e-2-4', 'งานวิจัย ThaiJO เรื่องการสอนสมการ (หลายชิ้น)'],
@@ -100,9 +100,9 @@ export const MATH_KNOWLEDGE: LessonKnowledge[] = [
       knowledgeCovered: ['สมบัติการเท่ากัน', 'การแจกแจง', 'สมการมีเศษส่วน', 'การตรวจคำตอบ'],
       knowledgeMissing: [],
       externalResourcesVerified: 0,
-      limitations: ['แหล่งอ้างอิงยังไม่ได้เปิดตรวจหน้าจริง: นโยบายเครือข่ายของสภาพแวดล้อมนี้บล็อก openstax.org, ipst.ac.th, scimath.org, bipm.org, nist.gov — ข้อเท็จจริงจึงยืนยันด้วยการคำนวณและการตรวจความสอดคล้องของสูตรแทน', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)'],
+      limitations: ['เอกสาร สสวท. / SciMath / โครงการตำราเรียน (proj14) ยังเปิดไม่ได้ (เครือข่ายของสภาพแวดล้อมนี้บล็อก) — ขอบเขตตามหลักสูตรไทยจึงยังเป็น VERIFICATION_PENDING ส่วนเนื้อหาหลักตรวจกับต้นฉบับ OpenStax แล้ว', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)'],
       nonBlocking: ['ยังไม่มีคลิปภายนอกที่ผ่านการตรวจลิงก์ (เปิด YouTube จากสภาพแวดล้อมนี้ไม่ได้)'],
-      verification: ['ทุกคำตอบตรวจด้วยการแทนค่า/คำนวณในชุดทดสอบ', 'กฎและนิยามตรวจความสอดคล้องเชิงคำนวณ (scripts/test-phase-63.js)'],
+      verification: ['Phase 66: เปิดไฟล์ต้นฉบับหนังสือ OpenStax จากคลังทางการ (GitHub, commit ตรึงไว้) และตรวจข้อความอ้างอิงทุกข้อแบบตรงตัว (scripts/research/verify-openstax.py)', 'ทุกคำตอบตรวจด้วยการแทนค่า/คำนวณในชุดทดสอบ', 'กฎและนิยามตรวจความสอดคล้องเชิงคำนวณ (scripts/test-phase-63.js)'],
       readiness: 'READY_WITH_LIMITATIONS',
     },
   },
@@ -171,7 +171,7 @@ export const MATH_KNOWLEDGE: LessonKnowledge[] = [
     checks: [
       { id: 'k-1', skillId: SYS, prompt: 'คำตอบของ x + y = 7 และ x − y = 1 คือข้อใด', choices: ['x = 4, y = 3', 'x = 3, y = 4', 'x = 5, y = 2', 'x = 6, y = 1'], correctIndex: 0, explanation: 'บวกกัน 2x = 8 → x = 4 แล้ว y = 3 (ข้อ x = 3, y = 4 ทำให้ x − y = −1 ไม่ใช่ 1)', verify: { kind: 'holds', vars: { x: 4, y: 3 }, holds: ['x+y == 7', 'x-y == 1'] } },
       { id: 'k-2', skillId: SYS, prompt: 'ระบบ y = 3x − 1 และ 2x + y = 9 ควรใช้วิธีใดจึงสั้นที่สุด', choices: ['แทนค่า เพราะสมการแรกเขียน y ไว้แล้ว', 'กำจัดตัวแปร เพราะต้องบวกสมการเสมอ', 'คูณทั้งสองสมการด้วย 3', 'ใช้เมทริกซ์'], correctIndex: 0, explanation: 'แทน y = 3x − 1 ได้ 2x + 3x − 1 = 9 → x = 2, y = 5', verify: { kind: 'holds', vars: { x: 2, y: 5 }, holds: ['y == 3*x-1', '2*x+y == 9'] } },
-      { id: 'k-3', skillId: SYS, prompt: 'จาก 2x + y = 8 และ 2x − 3y = 0 ถ้านำสมการแรกลบสมการที่สอง จะได้อะไร', choices: ['4y = 8', '−2y = 8', '4x = 8', '4y = −8'], correctIndex: 0, explanation: '(2x + y) − (2x − 3y) = y + 3y = 4y และ 8 − 0 = 8 จึงได้ 4y = 8 → y = 2, x = 3', verify: { kind: 'holds', vars: { x: 3, y: 2 }, holds: ['2*x+y == 8', '2*x-3*y == 0', '4*y == 8'] } },
+      { id: 'k-3', skillId: SYS, prompt: 'จาก 2x + y = 8 และ 2x − 3y = 0 ถ้านำสมการแรกลบสมการที่สอง จะได้อะไร', choices: ['4y = 8', '−2y = 8', '4x = 8', '4y = −8'], correctIndex: 0, misconceptions: [{ choice: 1, mistake: 0 }], explanation: '(2x + y) − (2x − 3y) = y + 3y = 4y และ 8 − 0 = 8 จึงได้ 4y = 8 → y = 2, x = 3', verify: { kind: 'holds', vars: { x: 3, y: 2 }, holds: ['2*x+y == 8', '2*x-3*y == 0', '4*y == 8'] } },
       { id: 'k-4', skillId: WORD, prompt: 'ส้ม 2 ผลกับแอปเปิล 1 ผล ราคา 40 บาท ส้ม 1 ผลกับแอปเปิล 1 ผล ราคา 25 บาท ส้มผลละกี่บาท', choices: ['10 บาท', '15 บาท', '20 บาท', '25 บาท'], correctIndex: 1, explanation: '2s + a = 40 ลบ s + a = 25 ได้ s = 15 แล้ว a = 10', verify: { kind: 'holds', vars: { s: 15, a: 10 }, holds: ['2*s+a == 40', 's+a == 25'] } },
     ],
     mistakes: [
@@ -184,7 +184,7 @@ export const MATH_KNOWLEDGE: LessonKnowledge[] = [
     next: ['math-fn-linear'],
     provenance: [
       { sourceId: 'ipst-math-indicators-2560', usedFor: 'ขอบเขตระบบสมการเชิงเส้นสองตัวแปร', crossChecked: false },
-      { sourceId: 'openstax-ea-5-systems', usedFor: 'ขั้นตอนวิธีแทนค่าและกำจัดตัวแปร', crossChecked: false },
+      { sourceId: 'openstax-ea-5-systems', usedFor: 'ขั้นตอนวิธีแทนค่าและกำจัดตัวแปร', crossChecked: true, evidence: [{ ref: 'openstax:m82494', quote: "Solve one of the equations for either variable. Substitute the expression from Step 1 into the other equation.", claim: "วิธีแทนค่า" }, { ref: 'openstax:m82494', quote: "Check that the ordered pair is a solution to both original equations.", claim: "คำตอบต้องทำให้ทั้งสองสมการเป็นจริง (r-check2)" }, { ref: 'openstax:m82495', quote: "We want to have the coefficients of one variable be opposites, so that we can add the equations together and eliminate that variable.", claim: "วิธีกำจัดตัวแปรโดยบวกสมการ (r-add-eq)" }, { ref: 'openstax:m82495', quote: "We must multiply every term on both sides of the equation by −2.", claim: "คูณทุกพจน์ทั้งสองข้าง (r-scale)" }] },
     ],
     audit: {
       sourcesFound: ['ipst-math-indicators-2560', 'openstax-ea-5-systems', 'LibreTexts (มิเรอร์ OpenStax)'],
@@ -193,9 +193,9 @@ export const MATH_KNOWLEDGE: LessonKnowledge[] = [
       knowledgeCovered: ['วิธีแทนค่า', 'วิธีกำจัดตัวแปรแบบคูณสมการ', 'การตั้งระบบจากโจทย์', 'การตรวจคำตอบ'],
       knowledgeMissing: [],
       externalResourcesVerified: 0,
-      limitations: ['แหล่งอ้างอิงยังไม่ได้เปิดตรวจหน้าจริง: นโยบายเครือข่ายของสภาพแวดล้อมนี้บล็อก openstax.org, ipst.ac.th, scimath.org, bipm.org, nist.gov — ข้อเท็จจริงจึงยืนยันด้วยการคำนวณและการตรวจความสอดคล้องของสูตรแทน', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)'],
+      limitations: ['เอกสาร สสวท. / SciMath / โครงการตำราเรียน (proj14) ยังเปิดไม่ได้ (เครือข่ายของสภาพแวดล้อมนี้บล็อก) — ขอบเขตตามหลักสูตรไทยจึงยังเป็น VERIFICATION_PENDING ส่วนเนื้อหาหลักตรวจกับต้นฉบับ OpenStax แล้ว', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)'],
       nonBlocking: ['ยังไม่มีคลิปภายนอกที่ผ่านการตรวจลิงก์ (เปิด YouTube จากสภาพแวดล้อมนี้ไม่ได้)'],
-      verification: ['ทุกคำตอบตรวจด้วยการแทนค่า/คำนวณในชุดทดสอบ', 'กฎและนิยามตรวจความสอดคล้องเชิงคำนวณ (scripts/test-phase-63.js)'],
+      verification: ['Phase 66: เปิดไฟล์ต้นฉบับหนังสือ OpenStax จากคลังทางการ (GitHub, commit ตรึงไว้) และตรวจข้อความอ้างอิงทุกข้อแบบตรงตัว (scripts/research/verify-openstax.py)', 'ทุกคำตอบตรวจด้วยการแทนค่า/คำนวณในชุดทดสอบ', 'กฎและนิยามตรวจความสอดคล้องเชิงคำนวณ (scripts/test-phase-63.js)'],
       readiness: 'READY_WITH_LIMITATIONS',
     },
   },
@@ -247,8 +247,8 @@ export const MATH_KNOWLEDGE: LessonKnowledge[] = [
       { id: 'i-6', skillId: INEQ, level: 3, prompt: '3(2 − x) ≥ 2x − 9', answer: 'x ≤ 3 หรือ (−∞, 3]', explanation: '6 − 3x ≥ 2x − 9 → −5x ≥ −15 → x ≤ 3', verify: { kind: 'inequality', holds: '3*(2-x) >= 2*x-9', op: '<=', bound: 3 } },
     ],
     checks: [
-      { id: 'k-1', skillId: INEQ, prompt: 'คำตอบของ −5x > 15 คือข้อใด', choices: ['x > −3', 'x < −3', 'x > 3', 'x < 3'], correctIndex: 1, explanation: 'หารด้วย −5 ต้องกลับทิศ: x < −3', verify: { kind: 'inequality', holds: '-5*x > 15', op: '<', bound: -3 } },
-      { id: 'k-2', skillId: INEQ, prompt: 'x ≥ 2 เขียนเป็นช่วงได้อย่างไร', choices: ['(2, ∞)', '[2, ∞)', '[2, ∞]', '(−∞, 2]'], correctIndex: 1, explanation: 'รวม 2 จึงใช้ [ และ ∞ ใช้วงเล็บโค้งเสมอเพราะไม่ใช่จำนวน' },
+      { id: 'k-1', skillId: INEQ, prompt: 'คำตอบของ −5x > 15 คือข้อใด', choices: ['x > −3', 'x < −3', 'x > 3', 'x < 3'], correctIndex: 1, misconceptions: [{ choice: 0, mistake: 0 }], explanation: 'หารด้วย −5 ต้องกลับทิศ: x < −3', verify: { kind: 'inequality', holds: '-5*x > 15', op: '<', bound: -3 } },
+      { id: 'k-2', skillId: INEQ, prompt: 'x ≥ 2 เขียนเป็นช่วงได้อย่างไร', choices: ['(2, ∞)', '[2, ∞)', '[2, ∞]', '(−∞, 2]'], correctIndex: 1, misconceptions: [{ choice: 0, mistake: 2 }], explanation: 'รวม 2 จึงใช้ [ และ ∞ ใช้วงเล็บโค้งเสมอเพราะไม่ใช่จำนวน' },
       { id: 'k-3', skillId: INEQ, prompt: 'x = 4 อยู่ในเซตคำตอบของ 2x − 1 < 7 หรือไม่', choices: ['อยู่ เพราะ 7 < 7', 'ไม่อยู่ เพราะ 2(4) − 1 = 7 และ 7 < 7 เป็นเท็จ', 'อยู่ เพราะ 4 < 7', 'บอกไม่ได้'], correctIndex: 1, explanation: 'คำตอบของอสมการคือ x < 4 ซึ่งไม่รวม 4', verify: { kind: 'inequality', holds: '2*x-1 < 7', op: '<', bound: 4 } },
       { id: 'k-4', skillId: INEQ, prompt: 'ทำไมต้องกลับทิศเมื่อคูณด้วยจำนวนลบ', choices: ['เป็นข้อตกลงที่ไม่มีเหตุผล', 'เพราะจำนวนลบสลับลำดับ เช่น 1 < 2 แต่ −1 > −2', 'เพราะต้องย้ายข้าง', 'ไม่ต้องกลับทิศ'], correctIndex: 1, explanation: 'ถ้าไม่กลับทิศ 1 < 2 จะกลายเป็น −1 < −2 ซึ่งเป็นเท็จ' },
     ],
@@ -262,7 +262,7 @@ export const MATH_KNOWLEDGE: LessonKnowledge[] = [
     next: [],
     provenance: [
       { sourceId: 'ipst-math-indicators-2560', usedFor: 'ขอบเขตอสมการเชิงเส้นตัวแปรเดียว', crossChecked: false },
-      { sourceId: 'openstax-ea2e-2-7', usedFor: 'สมบัติการไม่เท่ากันและการกลับทิศ (ตรวจข้ามกับ Algebra 1 ของ OpenStax)', crossChecked: false },
+      { sourceId: 'openstax-ea2e-2-7', usedFor: 'สมบัติการไม่เท่ากันและการกลับทิศ (ตรวจข้ามกับ Algebra 1 ของ OpenStax)', crossChecked: true, evidence: [{ ref: 'openstax:m82470', quote: "ifa<bthena+c<b+c", claim: "บวกจำนวนเดียวกัน ทิศไม่เปลี่ยน (r-add)" }, { ref: 'openstax:m82470', quote: "When we divide or multiply an inequality by a positive number, the inequality sign stays the same.", claim: "คูณ/หารด้วยจำนวนบวก ทิศเดิม (r-pos)" }, { ref: 'openstax:m82470', quote: "When we divide or multiply an inequality by a negative number, the inequality sign reverses.", claim: "คูณ/หารด้วยจำนวนลบ กลับทิศ (r-neg)" }] },
     ],
     audit: {
       sourcesFound: ['ipst-math-indicators-2560', 'openstax-ea2e-2-7', 'OpenStax Algebra 1 2.10.5', 'mathplanet', 'virtualnerd'],
@@ -271,9 +271,9 @@ export const MATH_KNOWLEDGE: LessonKnowledge[] = [
       knowledgeCovered: ['สมบัติการไม่เท่ากัน', 'การกลับทิศ', 'การเขียนช่วง', 'การตรวจคำตอบด้วยค่าทดสอบ'],
       knowledgeMissing: [],
       externalResourcesVerified: 0,
-      limitations: ['แหล่งอ้างอิงยังไม่ได้เปิดตรวจหน้าจริง: นโยบายเครือข่ายของสภาพแวดล้อมนี้บล็อก openstax.org, ipst.ac.th, scimath.org, bipm.org, nist.gov — ข้อเท็จจริงจึงยืนยันด้วยการคำนวณและการตรวจความสอดคล้องของสูตรแทน', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)'],
+      limitations: ['เอกสาร สสวท. / SciMath / โครงการตำราเรียน (proj14) ยังเปิดไม่ได้ (เครือข่ายของสภาพแวดล้อมนี้บล็อก) — ขอบเขตตามหลักสูตรไทยจึงยังเป็น VERIFICATION_PENDING ส่วนเนื้อหาหลักตรวจกับต้นฉบับ OpenStax แล้ว', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)'],
       nonBlocking: ['ยังไม่มีคลิปภายนอกที่ผ่านการตรวจลิงก์ (เปิด YouTube จากสภาพแวดล้อมนี้ไม่ได้)'],
-      verification: ['ทุกคำตอบตรวจด้วยการแทนค่า/คำนวณในชุดทดสอบ', 'กฎและนิยามตรวจความสอดคล้องเชิงคำนวณ (scripts/test-phase-63.js)'],
+      verification: ['Phase 66: เปิดไฟล์ต้นฉบับหนังสือ OpenStax จากคลังทางการ (GitHub, commit ตรึงไว้) และตรวจข้อความอ้างอิงทุกข้อแบบตรงตัว (scripts/research/verify-openstax.py)', 'ทุกคำตอบตรวจด้วยการแทนค่า/คำนวณในชุดทดสอบ', 'กฎและนิยามตรวจความสอดคล้องเชิงคำนวณ (scripts/test-phase-63.js)'],
       readiness: 'READY_WITH_LIMITATIONS',
     },
   },
@@ -328,7 +328,7 @@ export const MATH_KNOWLEDGE: LessonKnowledge[] = [
     ],
     checks: [
       { id: 'k-1', skillId: EXP, prompt: 'a⁰ เมื่อ a ≠ 0 มีค่าเท่าใด', choices: ['0', '1', 'a', 'ไม่มีค่า'], correctIndex: 1, explanation: 'aⁿ ÷ aⁿ = 1 = a⁰', verify: { kind: 'value', expr: '9**0', expected: 1 } },
-      { id: 'k-2', skillId: EXP, prompt: '2⁻² เท่ากับข้อใด', choices: ['−4', '1/4', '−1/4', '4'], correctIndex: 1, explanation: '2⁻² = 1/2² = 1/4 เลขชี้กำลังลบไม่ได้ทำให้ค่าติดลบ', verify: { kind: 'value', expr: '2**-2', expected: 0.25 } },
+      { id: 'k-2', skillId: EXP, prompt: '2⁻² เท่ากับข้อใด', choices: ['−4', '1/4', '−1/4', '4'], correctIndex: 1, misconceptions: [{ choice: 0, mistake: 1 }], explanation: '2⁻² = 1/2² = 1/4 เลขชี้กำลังลบไม่ได้ทำให้ค่าติดลบ', verify: { kind: 'value', expr: '2**-2', expected: 0.25 } },
       { id: 'k-3', skillId: EXP, prompt: '(x²)³ จัดรูปได้เป็นข้อใด', choices: ['x⁵', 'x⁶', 'x⁸', '6x'], correctIndex: 1, explanation: 'ยกกำลังซ้อนให้คูณเลขชี้กำลัง 2 × 3 = 6', verify: { kind: 'value', expr: '(x**2)**3 - x**6', expected: 0, vars: { x: 2 } } },
       { id: 'k-4', skillId: EXP, prompt: '9^(3/2) มีค่าเท่าใด', choices: ['27', '13.5', '18', '81'], correctIndex: 0, explanation: '√9 = 3 แล้วยกกำลัง 3 ได้ 27', verify: { kind: 'value', expr: '9**(3/2)', expected: 27, tol: 1e-9 } },
     ],
@@ -341,9 +341,9 @@ export const MATH_KNOWLEDGE: LessonKnowledge[] = [
     afterLesson: ['จัดรูปนิพจน์ด้วยสมบัติเลขยกกำลังได้', 'หาค่าเลขชี้กำลังศูนย์ ลบ และเศษส่วนได้', 'แปลงรากเป็นเลขยกกำลังเศษส่วนได้'],
     next: ['math-trig-ratios'],
     provenance: [
-      { sourceId: 'openstax-ia-8-3', usedFor: 'เลขชี้กำลังเศษส่วน: ตัวส่วนคือราก ถอดรากก่อนยกกำลัง', crossChecked: false },
+      { sourceId: 'openstax-ia-8-3', usedFor: 'เลขชี้กำลังเศษส่วน: ตัวส่วนคือราก ถอดรากก่อนยกกำลัง', crossChecked: true, evidence: [{ ref: 'openstax:m81396', quote: "The denominator of the rational exponent is the index of the radical.", claim: "ตัวส่วนของเลขชี้กำลังคืออันดับของราก (r-frac)" }, { ref: 'openstax:m81396', quote: "We usually take the root first—that way we keep the numbers in the radicand smaller", claim: "ถอดรากก่อนแล้วค่อยยกกำลัง" }] },
       { sourceId: 'ipst-math-indicators-2560', usedFor: 'ขอบเขตเลขยกกำลังและราก', crossChecked: false },
-      { sourceId: 'openstax-exponents', usedFor: 'สมบัติเลขยกกำลัง ศูนย์ และลบ', crossChecked: false },
+      { sourceId: 'openstax-exponents', usedFor: 'สมบัติเลขยกกำลัง ศูนย์ และลบ', crossChecked: true, evidence: [{ ref: 'openstax:m82504', quote: "⟦am·an=am+n⟧", claim: "aᵐ·aⁿ = aᵐ⁺ⁿ (r-mul)" }, { ref: 'openstax:m82504', quote: "To multiply with like bases, add the exponents.", claim: "ฐานเดียวกันคูณกัน เลขชี้กำลังบวกกัน (r-mul)" }, { ref: 'openstax:m82504', quote: "To raise a power to a power, multiply the exponents.", claim: "(aᵐ)ⁿ = aᵐⁿ (r-pow)" }, { ref: 'openstax:m82504', quote: "To raise a product to a power, raise each factor to that power.", claim: "(ab)ⁿ = aⁿbⁿ (r-prod)" }, { ref: 'openstax:m81384', quote: "Quotient Property for Exponents If a is a real number,", claim: "สมบัติการหาร (r-div)" }, { ref: 'openstax:m82509', quote: "Any nonzero number raised to the zero power is 1.", claim: "a⁰ = 1 (r-zero)" }, { ref: 'openstax:m82514', quote: "The negative exponent tells us we can re-write the expression by taking the reciprocal of the base and then changing the sign of the exponent.", claim: "a⁻ⁿ = 1/aⁿ (r-zero)" }] },
     ],
     audit: {
       sourcesFound: ['ipst-math-indicators-2560', 'openstax-exponents', 'OpenStax Algebra 1 5.1.x', 'OpenStax Prealgebra 2e 10.4'],
@@ -352,9 +352,9 @@ export const MATH_KNOWLEDGE: LessonKnowledge[] = [
       knowledgeCovered: ['สมบัติการคูณ หาร ยกกำลังซ้อน ผลคูณ', 'เลขชี้กำลังศูนย์และลบ', 'รากและเลขชี้กำลังเศษส่วน'],
       knowledgeMissing: [],
       externalResourcesVerified: 0,
-      limitations: ['แหล่งอ้างอิงยังไม่ได้เปิดตรวจหน้าจริง: นโยบายเครือข่ายของสภาพแวดล้อมนี้บล็อก openstax.org, ipst.ac.th, scimath.org, bipm.org, nist.gov — ข้อเท็จจริงจึงยืนยันด้วยการคำนวณและการตรวจความสอดคล้องของสูตรแทน', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)', 'แหล่งเรื่องเลขชี้กำลังเศษส่วน (OpenStax Intermediate Algebra 8.3) พบจากการค้นหาแล้วแต่ยังเปิดตรวจไม่ได้ — เนื้อหายืนยันด้วยการตรวจเชิงคำนวณ a^(m/n) = (ⁿ√a)^m = ⁿ√(a^m)'],
+      limitations: ['เอกสาร สสวท. / SciMath / โครงการตำราเรียน (proj14) ยังเปิดไม่ได้ (เครือข่ายของสภาพแวดล้อมนี้บล็อก) — ขอบเขตตามหลักสูตรไทยจึงยังเป็น VERIFICATION_PENDING ส่วนเนื้อหาหลักตรวจกับต้นฉบับ OpenStax แล้ว', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)', 'แหล่งเรื่องเลขชี้กำลังเศษส่วน (OpenStax Intermediate Algebra 8.3) พบจากการค้นหาแล้วแต่ยังเปิดตรวจไม่ได้ — เนื้อหายืนยันด้วยการตรวจเชิงคำนวณ a^(m/n) = (ⁿ√a)^m = ⁿ√(a^m)'],
       nonBlocking: ['ยังไม่มีคลิปภายนอกที่ผ่านการตรวจลิงก์ (เปิด YouTube จากสภาพแวดล้อมนี้ไม่ได้)'],
-      verification: ['ทุกคำตอบตรวจด้วยการแทนค่า/คำนวณในชุดทดสอบ', 'กฎและนิยามตรวจความสอดคล้องเชิงคำนวณ (scripts/test-phase-63.js)'],
+      verification: ['Phase 66: เปิดไฟล์ต้นฉบับหนังสือ OpenStax จากคลังทางการ (GitHub, commit ตรึงไว้) และตรวจข้อความอ้างอิงทุกข้อแบบตรงตัว (scripts/research/verify-openstax.py)', 'ทุกคำตอบตรวจด้วยการแทนค่า/คำนวณในชุดทดสอบ', 'กฎและนิยามตรวจความสอดคล้องเชิงคำนวณ (scripts/test-phase-63.js)'],
       readiness: 'READY_WITH_LIMITATIONS',
     },
   },
@@ -418,7 +418,7 @@ export const MATH_KNOWLEDGE: LessonKnowledge[] = [
       { id: 'i-6', skillId: GRAPH, level: 3, prompt: 'ถังมีน้ำ 50 ลิตร น้ำไหลออกนาทีละ 2 ลิตร เขียนสมการปริมาณน้ำ y เมื่อผ่านไป x นาที และน้ำหมดเมื่อไร', answer: 'y = −2x + 50 และน้ำหมดที่ 25 นาที', explanation: 'ลดลง 2 ลิตร/นาที จึง m = −2 ค่าเริ่มต้น 50 ให้ y = 0: x = 25', verify: { kind: 'holds', vars: { x: 25 }, holds: ['-2*x+50 == 0'] } },
     ],
     checks: [
-      { id: 'k-1', skillId: SLOPE, prompt: 'ความชันของเส้นผ่าน (0, 0) และ (2, 6)', choices: ['2', '3', '6', '1/3'], correctIndex: 1, explanation: '(6 − 0)/(2 − 0) = 3', verify: { kind: 'value', expr: '(6-0)/(2-0)', expected: 3 } },
+      { id: 'k-1', skillId: SLOPE, prompt: 'ความชันของเส้นผ่าน (0, 0) และ (2, 6)', choices: ['2', '3', '6', '1/3'], correctIndex: 1, misconceptions: [{ choice: 3, mistake: 2 }], explanation: '(6 − 0)/(2 − 0) = 3', verify: { kind: 'value', expr: '(6-0)/(2-0)', expected: 3 } },
       { id: 'k-2', skillId: GRAPH, prompt: 'กราฟของ y = −x + 4 เป็นอย่างไรเมื่อ x เพิ่มขึ้น', choices: ['y เพิ่มขึ้น', 'y ลดลง', 'y คงที่', 'ขึ้นแล้วลง'], correctIndex: 1, explanation: 'ความชัน −1 เป็นลบ เส้นลงจากซ้ายไปขวา' },
       { id: 'k-3', skillId: SLOPE, prompt: 'เส้นที่ผ่าน (0, 2) และมีความชัน −3 คือข้อใด', choices: ['y = 2x − 3', 'y = −3x + 2', 'y = 3x + 2', 'y = −3x − 2'], correctIndex: 1, explanation: 'm = −3 และ c = 2 จึงได้ y = −3x + 2', verify: { kind: 'holds', vars: { m: -3, c: 2 }, holds: ['m*0+c == 2'] } },
       { id: 'k-4', skillId: GRAPH, prompt: 'ค่าใช้จ่าย y = 15x + 100 บาท (x = จำนวนชิ้น) เลข 100 หมายถึงอะไร', choices: ['ราคาต่อชิ้น', 'ค่าใช้จ่ายเริ่มต้นแม้ยังไม่ซื้อสักชิ้น', 'จำนวนชิ้นสูงสุด', 'ความชัน'], correctIndex: 1, explanation: '100 คือค่า y เมื่อ x = 0 (จุดตัดแกน y) ส่วน 15 คือราคาต่อชิ้น (ความชัน)' },
@@ -433,7 +433,7 @@ export const MATH_KNOWLEDGE: LessonKnowledge[] = [
     next: [],
     provenance: [
       { sourceId: 'ipst-math-indicators-2560', usedFor: 'ขอบเขตฟังก์ชันเชิงเส้นและกราฟ', crossChecked: false },
-      { sourceId: 'openstax-slope-intercept', usedFor: 'ความชันและรูปความชัน–จุดตัด', crossChecked: false },
+      { sourceId: 'openstax-slope-intercept', usedFor: 'ความชันและรูปความชัน–จุดตัด', crossChecked: true, evidence: [{ ref: 'openstax:m82483', quote: "Slope Formula The slope of the line between two points", claim: "สูตรความชันจากสองจุด (r-slope)" }, { ref: 'openstax:m82485', quote: "The slope–intercept form of an equation of a line with slope ⟦m⟧ and y -intercept, ⟦(0,b)⟧ is, ⟦y=mx+b⟧", claim: "y = mx + b (V2U เขียน c ตามหนังสือไทย) (r-form)" }] },
     ],
     audit: {
       sourcesFound: ['ipst-math-indicators-2560', 'openstax-slope-intercept', 'Saylor Academy (สำเนา OpenStax)'],
@@ -442,9 +442,9 @@ export const MATH_KNOWLEDGE: LessonKnowledge[] = [
       knowledgeCovered: ['ความชันจากสองจุด', 'y = mx + c', 'จุดตัดแกน', 'การตีความในบริบท'],
       knowledgeMissing: [],
       externalResourcesVerified: 0,
-      limitations: ['แหล่งอ้างอิงยังไม่ได้เปิดตรวจหน้าจริง: นโยบายเครือข่ายของสภาพแวดล้อมนี้บล็อก openstax.org, ipst.ac.th, scimath.org, bipm.org, nist.gov — ข้อเท็จจริงจึงยืนยันด้วยการคำนวณและการตรวจความสอดคล้องของสูตรแทน', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)'],
+      limitations: ['เอกสาร สสวท. / SciMath / โครงการตำราเรียน (proj14) ยังเปิดไม่ได้ (เครือข่ายของสภาพแวดล้อมนี้บล็อก) — ขอบเขตตามหลักสูตรไทยจึงยังเป็น VERIFICATION_PENDING ส่วนเนื้อหาหลักตรวจกับต้นฉบับ OpenStax แล้ว', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)'],
       nonBlocking: ['ยังไม่มีคลิปภายนอกที่ผ่านการตรวจลิงก์ (เปิด YouTube จากสภาพแวดล้อมนี้ไม่ได้)'],
-      verification: ['ทุกคำตอบตรวจด้วยการแทนค่า/คำนวณในชุดทดสอบ', 'กฎและนิยามตรวจความสอดคล้องเชิงคำนวณ (scripts/test-phase-63.js)'],
+      verification: ['Phase 66: เปิดไฟล์ต้นฉบับหนังสือ OpenStax จากคลังทางการ (GitHub, commit ตรึงไว้) และตรวจข้อความอ้างอิงทุกข้อแบบตรงตัว (scripts/research/verify-openstax.py)', 'ทุกคำตอบตรวจด้วยการแทนค่า/คำนวณในชุดทดสอบ', 'กฎและนิยามตรวจความสอดคล้องเชิงคำนวณ (scripts/test-phase-63.js)'],
       readiness: 'READY_WITH_LIMITATIONS',
     },
   },
@@ -504,8 +504,8 @@ export const MATH_KNOWLEDGE: LessonKnowledge[] = [
       { id: 'i-6', skillId: SPEC, level: 3, prompt: 'มุม 45° ด้านชิดยาว 5 หาด้านฉาก', answer: '5√2 ≈ 7.07', explanation: 'cos 45° = 5/ฉาก = √2/2 จึงฉาก = 10/√2 = 5√2', verify: { kind: 'value', expr: `5/Math.cos(${deg(45)})`, expected: 7.0711, tol: 1e-3 } },
     ],
     checks: [
-      { id: 'k-1', skillId: SPEC, prompt: 'sin 60° มีค่าเท่าใด', choices: ['1/2', '√2/2', '√3/2', '√3'], correctIndex: 2, explanation: 'สามเหลี่ยม 30-60-90: ข้ามมุม 60° คือ √3 ฉากคือ 2', verify: { kind: 'value', expr: `Math.sin(${deg(60)}) - Math.sqrt(3)/2`, expected: 0, tol: 1e-9 } },
-      { id: 'k-2', skillId: TRIG, prompt: 'สามเหลี่ยมด้าน 6, 8, 10 มุม θ อยู่ตรงข้ามด้านยาว 6 sin θ เท่ากับเท่าใด', choices: ['3/4', '3/5', '4/5', '5/3'], correctIndex: 1, explanation: 'sin = ข้าม/ฉาก = 6/10 = 3/5', verify: { kind: 'value', expr: '6/10', expected: 0.6 } },
+      { id: 'k-1', skillId: SPEC, prompt: 'sin 60° มีค่าเท่าใด', choices: ['1/2', '√2/2', '√3/2', '√3'], correctIndex: 2, misconceptions: [{ choice: 0, mistake: 2 }], explanation: 'สามเหลี่ยม 30-60-90: ข้ามมุม 60° คือ √3 ฉากคือ 2', verify: { kind: 'value', expr: `Math.sin(${deg(60)}) - Math.sqrt(3)/2`, expected: 0, tol: 1e-9 } },
+      { id: 'k-2', skillId: TRIG, prompt: 'สามเหลี่ยมด้าน 6, 8, 10 มุม θ อยู่ตรงข้ามด้านยาว 6 sin θ เท่ากับเท่าใด', choices: ['3/4', '3/5', '4/5', '5/3'], correctIndex: 1, misconceptions: [{ choice: 2, mistake: 0 }], explanation: 'sin = ข้าม/ฉาก = 6/10 = 3/5', verify: { kind: 'value', expr: '6/10', expected: 0.6 } },
       { id: 'k-3', skillId: SPEC, prompt: 'tan 45° มีค่าเท่าใด', choices: ['0', '1', '√2', '1/2'], correctIndex: 1, explanation: 'สามเหลี่ยม 45-45-90 ข้ามยาวเท่าชิด จึงได้ 1', verify: { kind: 'value', expr: `Math.tan(${deg(45)})`, expected: 1, tol: 1e-9 } },
       { id: 'k-4', skillId: SPEC, prompt: 'ฉากยาว 12 มุม 30° ด้านตรงข้ามมุม 30° ยาวเท่าใด', choices: ['6', '6√3', '12√3', '24'], correctIndex: 0, explanation: '12 × sin 30° = 12 × 1/2 = 6', verify: { kind: 'value', expr: `12*Math.sin(${deg(30)})`, expected: 6, tol: 1e-9 } },
     ],
@@ -519,7 +519,7 @@ export const MATH_KNOWLEDGE: LessonKnowledge[] = [
     next: ['phy-vec-vectors'],
     provenance: [
       { sourceId: 'ipst-math-indicators-2560', usedFor: 'ขอบเขตอัตราส่วนตรีโกณมิติ', crossChecked: false },
-      { sourceId: 'openstax-at2e-7-2', usedFor: 'นิยาม sin cos tan และค่ามุมพิเศษ (ตรวจด้วยการคำนวณ)', crossChecked: false },
+      { sourceId: 'openstax-at2e-7-2', usedFor: 'นิยาม sin cos tan และค่ามุมพิเศษ (ตรวจด้วยการคำนวณ)', crossChecked: true, evidence: [{ ref: 'openstax:m51284', quote: "⟦Sinesint=oppositehypotenuse⟧", claim: "sin = ข้าม/ฉาก (r-sin)" }, { ref: 'openstax:m51284', quote: "⟦Cosinecost=adjacenthypotenuse⟧", claim: "cos = ชิด/ฉาก (r-cos)" }, { ref: 'openstax:m51284', quote: "⟦Tangenttant=oppositeadjacent⟧", claim: "tan = ข้าม/ชิด (r-tan)" }, { ref: 'openstax:m51284', quote: "The adjacent side is the side closest to the angle", claim: "ด้านชิดคือด้านที่ติดมุม" }, { ref: 'openstax:m51284', quote: "It is helpful to evaluate the trigonometric functions as they relate to the special angles", claim: "มุมพิเศษ 30° 45° 60° (r-special)" }] },
     ],
     audit: {
       sourcesFound: ['ipst-math-indicators-2560', 'openstax-at2e-7-2', 'OpenStax Precalculus 2e 5.4', 'algebralab'],
@@ -528,9 +528,9 @@ export const MATH_KNOWLEDGE: LessonKnowledge[] = [
       knowledgeCovered: ['ข้าม ชิด ฉาก', 'sin cos tan', 'มุมพิเศษ', 'พีทาโกรัส', 'การหาด้าน'],
       knowledgeMissing: [],
       externalResourcesVerified: 0,
-      limitations: ['แหล่งอ้างอิงยังไม่ได้เปิดตรวจหน้าจริง: นโยบายเครือข่ายของสภาพแวดล้อมนี้บล็อก openstax.org, ipst.ac.th, scimath.org, bipm.org, nist.gov — ข้อเท็จจริงจึงยืนยันด้วยการคำนวณและการตรวจความสอดคล้องของสูตรแทน', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)'],
+      limitations: ['เอกสาร สสวท. / SciMath / โครงการตำราเรียน (proj14) ยังเปิดไม่ได้ (เครือข่ายของสภาพแวดล้อมนี้บล็อก) — ขอบเขตตามหลักสูตรไทยจึงยังเป็น VERIFICATION_PENDING ส่วนเนื้อหาหลักตรวจกับต้นฉบับ OpenStax แล้ว', 'ยังยืนยันความสอดคล้องกับเอกสารหลักสูตร สสวท. จากต้นฉบับไม่ได้ (เปิดไม่ได้)'],
       nonBlocking: ['ยังไม่มีคลิปภายนอกที่ผ่านการตรวจลิงก์ (เปิด YouTube จากสภาพแวดล้อมนี้ไม่ได้)'],
-      verification: ['ทุกคำตอบตรวจด้วยการแทนค่า/คำนวณในชุดทดสอบ', 'กฎและนิยามตรวจความสอดคล้องเชิงคำนวณ (scripts/test-phase-63.js)'],
+      verification: ['Phase 66: เปิดไฟล์ต้นฉบับหนังสือ OpenStax จากคลังทางการ (GitHub, commit ตรึงไว้) และตรวจข้อความอ้างอิงทุกข้อแบบตรงตัว (scripts/research/verify-openstax.py)', 'ทุกคำตอบตรวจด้วยการแทนค่า/คำนวณในชุดทดสอบ', 'กฎและนิยามตรวจความสอดคล้องเชิงคำนวณ (scripts/test-phase-63.js)'],
       readiness: 'READY_WITH_LIMITATIONS',
     },
   },

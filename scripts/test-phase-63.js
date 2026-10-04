@@ -56,6 +56,7 @@ console.log('1. Python content against official documentation (opened locally)')
 await test(`Every evidence quote exists verbatim in the Python ${DOCS.version} reference / docstrings`, () => {
   let n = 0;
   for (const k of KS) for (const p of k.provenance) for (const e of p.evidence ?? []) {
+    if (e.ref.startsWith('openstax:')) continue; // checked against the OpenStax source files (test-phase-66)
     assert(DOCS[e.ref] !== undefined, `${k.lessonId}: unknown reference ${e.ref}`);
     assert(norm(DOCS[e.ref]).includes(norm(e.quote)), `${k.lessonId}: "${e.quote}" not found in ${e.ref}`);
     n++;
@@ -85,13 +86,13 @@ console.log('\n2. Provenance and readiness are honest');
 await test('Sources: "opened-local" only for documents actually read here; unopened URLs stay "search-indexed"', () => {
   for (const s of K.SOURCES) {
     if (s.verification === 'opened-local') assert(!s.foundUrl, `${s.id}: an opened-local source must not pretend to be a web page`);
-    if (s.foundUrl) assert.strictEqual(s.verification, 'search-indexed', s.id);
+    if (s.foundUrl) assert(['search-indexed', 'opened-repo'].includes(s.verification), s.id);
   }
 });
 await test('Claims backed only by unopened sources are not marked cross-checked', () => {
   for (const k of KS) for (const p of k.provenance) {
     const s = SRC.get(p.sourceId);
-    if (s.verification !== 'opened-local') assert.strictEqual(p.crossChecked, false, `${k.lessonId}/${p.sourceId}`);
+    if (!['opened-local', 'opened-repo'].includes(s.verification)) assert.strictEqual(p.crossChecked, false, `${k.lessonId}/${p.sourceId}`);
     if (p.crossChecked) assert((p.evidence ?? []).length > 0, `${k.lessonId}/${p.sourceId}: cross-checked without evidence`);
   }
 });
@@ -99,7 +100,7 @@ await test('READY only when every source was opened, evidence exists, no limitat
   for (const k of KS) {
     const a = k.audit;
     if (a.readiness === 'READY') {
-      assert(k.provenance.every((p) => SRC.get(p.sourceId).verification === 'opened-local'), `${k.lessonId}: READY with an unopened source`);
+      assert(k.provenance.every((p) => ['opened-local', 'opened-repo'].includes(SRC.get(p.sourceId).verification)), `${k.lessonId}: READY with an unopened source`);
       assert(k.provenance.every((p) => (p.evidence ?? []).length > 0), `${k.lessonId}: READY without evidence`);
       assert.strictEqual(a.limitations.length, 0, `${k.lessonId}: READY but has limitations`);
       assert((a.verification ?? []).length > 0, k.lessonId);
@@ -110,8 +111,9 @@ await test('READY only when every source was opened, evidence exists, no limitat
 });
 await test('Math and physics are NOT READY-claimed while their sources remain unopened', () => {
   for (const k of KS.filter((x) => !x.lessonId.startsWith('prog-'))) {
+    if (k.provenance.every((p) => ['opened-local', 'opened-repo'].includes(SRC.get(p.sourceId).verification))) continue;
     assert.notStrictEqual(k.audit.readiness, 'READY', k.lessonId);
-    assert(k.audit.limitations.some((l) => l.includes('ยังไม่ได้เปิดตรวจหน้าจริง')), `${k.lessonId}: limitation must name the unopened sources`);
+    assert(k.audit.limitations.some((l) => /ยังไม่ได้เปิดตรวจหน้าจริง|ยังเปิดไม่ได้/.test(l)), `${k.lessonId}: limitation must name the unopened sources`);
   }
 });
 await test('No external video is claimed as verified (YouTube could not be opened)', () => {

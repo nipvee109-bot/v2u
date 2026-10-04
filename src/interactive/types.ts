@@ -106,6 +106,8 @@ export interface FinalCheckItem {
   skillId: string;
   /** Code shown with the question (programming) */
   code?: string;
+  /** Phase 66: misconception behind a wrong choice, from the lesson's own mistakes */
+  misconceptions?: { choice: number; mistake: string; fix: string }[];
 }
 
 export interface InteractiveLesson {

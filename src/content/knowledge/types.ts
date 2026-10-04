@@ -44,6 +44,8 @@ export interface KnowledgeCheck {
   choices: string[];
   correctIndex: number;
   explanation: string;
+  /** Phase 66: wrong choices that come straight from one of this lesson's `mistakes` (index into mistakes) */
+  misconceptions?: { choice: number; mistake: number }[];
   verify?: Verify;
 }
 
@@ -206,7 +208,20 @@ export type SourceVerification =
   /** URL returned by a web search on the check date; the page itself was not opened */
   | 'search-indexed'
   /** No URL kept — locate by title/locator only */
-  | 'locator-only';
+  | 'locator-only'
+  /** The publisher's own source files were opened (cloned from its official repository at a pinned commit);
+   *  the web page at foundUrl itself was not fetched. Evidence quotes are checked against those files. */
+  | 'opened-repo';
+
+export interface SourceRepo {
+  /** Official repository of the publisher */
+  url: string;
+  commit: string;
+  /** Book collection inside the repository */
+  collection: string;
+  /** Sections actually opened: module id, section number, section title (as in the book) */
+  modules: { id: string; section: string; title: string }[];
+}
 
 export interface KnowledgeSource {
   id: string;
@@ -221,5 +236,7 @@ export interface KnowledgeSource {
   authoritative: boolean;
   checkedAt: string;
   verification: SourceVerification;
+  /** Required for 'opened-repo' */
+  repo?: SourceRepo;
   notes: string;
 }

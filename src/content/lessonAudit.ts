@@ -11,6 +11,7 @@ import { getStudioScript } from '../interactive/studio/scripts';
 import { practiceFields } from '../interactive/studio/practiceCheck';
 import { allResources } from '../resources/engine';
 import { registryStatus } from '../resources/registryView';
+import { DISCOVERED_RESOURCES } from '../resources/discovered';
 
 export type PartStatus = 'READY' | 'LIMITATION';
 export type VideoStatus = 'VERIFIED' | 'PENDING' | 'NONE';
@@ -64,9 +65,10 @@ export function auditLessonCompletion(lessonId: string): LessonCompletion | unde
   const video: VideoStatus = videos.some((r) => registryStatus(r) === 'VERIFIED') ? 'VERIFIED' : videos.length > 0 ? 'PENDING' : 'NONE';
   if (video === 'PENDING') gaps.push('คลิป: มีตัวเลือก แต่ยังไม่ได้เปิดดูเนื้อหาจริง (SUMMARY_PENDING)');
   if (video === 'NONE') gaps.push('คลิป: ยังไม่มีคลิปที่คัดไว้');
+  for (const d of DISCOVERED_RESOURCES.filter((x) => x.lessonIds.includes(lessonId))) gaps.push(`ตัวเลือกเสริม (${d.type}): ${d.title} — ตรวจจากต้นฉบับแล้ว แต่ยังไม่ได้เปิดหน้าจริง (VERIFICATION_PENDING)`);
 
   const srcIds = k.provenance.map((p) => p.sourceId);
-  const opened = srcIds.filter((id) => getSource(id)?.verification === 'opened-local').length;
+  const opened = srcIds.filter((id) => ['opened-local', 'opened-repo'].includes(getSource(id)?.verification ?? '')).length;
   if (opened < srcIds.length) gaps.push(`แหล่งอ้างอิง: เปิดอ่านจริง ${opened}/${srcIds.length} (ที่เหลือ VERIFICATION_PENDING)`);
 
   const core = [reading, learnWithV2U, practice, quizStatus];

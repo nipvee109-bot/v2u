@@ -191,9 +191,11 @@ await test('No URLs inside lesson content; source URLs only in the source regist
   for (const s of K.SOURCES) {
     if (s.foundUrl) {
       assert(/^https:\/\/(www\.)?(openstax\.org|docs\.python\.org|bipm\.org|www\.bipm\.org|nist\.gov|www\.nist\.gov|ipst\.ac\.th|www\.ipst\.ac\.th|scimath\.org|www\.scimath\.org)\//.test(s.foundUrl), `${s.id}: unexpected domain ${s.foundUrl}`);
-      assert.strictEqual(s.verification, 'search-indexed', `${s.id}: a URL that was never fetched cannot claim more than search-indexed`);
-    } else assert(['locator-only', 'opened-local'].includes(s.verification), s.id); // Phase 63: documents opened locally have no URL
-    assert(s.locator.length > 5 && s.checkedAt === '2026-10-03', s.id);
+      // Phase 66: 'opened-repo' = the publisher's source files were opened; the web page itself still was not fetched
+      assert(['search-indexed', 'opened-repo'].includes(s.verification), `${s.id}: a URL that was never fetched cannot claim more than search-indexed`);
+      if (s.verification === 'opened-repo') assert(/^https:\/\/github\.com\/openstax\//.test(s.repo?.url) && /^[0-9a-f]{40}$/.test(s.repo.commit) && s.repo.modules.length > 0, s.id);
+    } else assert(['locator-only', 'opened-local', 'opened-repo'].includes(s.verification), s.id); // Phase 63: documents opened locally have no URL
+    assert(s.locator.length > 5 && (s.checkedAt === '2026-10-03' || (s.verification === 'opened-repo' && s.checkedAt === '2026-10-04')), s.id);
   }
   const ui = ['src/components/learning/ReadingExperience.tsx', 'src/components/learning/KnowledgeBlocks.tsx'].filter((f) => fs.existsSync(path.join(root, f))).map(read).join('\n');
   assert(!ui.includes('foundUrl'), 'UI must not render unfetched URLs');

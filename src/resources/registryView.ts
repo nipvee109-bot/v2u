@@ -9,6 +9,8 @@
 import { allResources } from './engine';
 import type { CuratedResource } from './types';
 import { CURRICULUM } from '../curriculum/data';
+import { DISCOVERED_RESOURCES } from './discovered';
+import type { DiscoveredResource } from './discovered';
 
 export type RegistryStatus = 'DISCOVERED' | 'VERIFICATION_PENDING' | 'VERIFIED' | 'DEPRECATED' | 'UNAVAILABLE';
 export type SummaryStatus = 'SUMMARY_READY' | 'SUMMARY_PENDING' | 'NOT_A_VIDEO';
@@ -19,7 +21,7 @@ export interface RegistryRecord {
   publisher: string;
   /** Only a checked url, or a search-found candidate (labelled by status) */
   url?: string;
-  type: CuratedResource['type'];
+  type: CuratedResource['type'] | 'simulation';
   language: CuratedResource['language'];
   subjectId?: string;
   topicIds: string[];
@@ -76,4 +78,29 @@ export function toRegistryRecord(r: CuratedResource): RegistryRecord {
   };
 }
 
-export const registryRecords = (): RegistryRecord[] => allResources().map(toRegistryRecord);
+/** Research backlog: content inspected from the publisher's source, live page not opened → never VERIFIED. */
+export function discoveredToRecord(d: DiscoveredResource): RegistryRecord {
+  const lessons = CURRICULUM.lessons.filter((l) => d.lessonIds.includes(l.id));
+  return {
+    id: d.id,
+    title: d.title,
+    publisher: d.publisher,
+    url: d.url,
+    type: d.type,
+    language: d.language,
+    subjectId: lessons[0]?.subjectId,
+    topicIds: [...new Set(lessons.map((l) => l.topicId))],
+    lessonIds: d.lessonIds,
+    skillIds: [...new Set(lessons.flatMap((l) => l.skillIds))],
+    dateChecked: d.dateChecked,
+    verificationStatus: 'VERIFICATION_PENDING',
+    actualContentInspected: false,
+    summaryStatus: d.type === 'video' ? 'SUMMARY_PENDING' : 'NOT_A_VIDEO',
+    embedSupport: 'none',
+    qualityNotes: d.qualityNotes,
+    limitations: d.limitations,
+    provenance: d.contentInspected,
+  };
+}
+
+export const registryRecords = (): RegistryRecord[] => [...allResources().map(toRegistryRecord), ...DISCOVERED_RESOURCES.map(discoveredToRecord)];
