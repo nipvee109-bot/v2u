@@ -302,10 +302,18 @@ await test('audit events redact token-like strings and are clipped', () => {
 
 await test('no hardcoded owner email or secrets in client source; .env.example has placeholders only', () => {
   const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((x) => (x.isDirectory() ? walk(path.join(d, x.name)) : [path.join(d, x.name)]));
+  const hasRealEmail = (s) => (s.match(/[\w.+-]+@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}\b/gi) ?? []).some((email) => !email.toLowerCase().endsWith('.invalid'));
+  assert(hasRealEmail('owner@school.ac.th'), 'custom domains must be detected');
+  assert(hasRealEmail('OWNER@EXAMPLE.COM'), 'email matching is case insensitive');
+  assert(!hasRealEmail('student@example.invalid'), 'reserved fixture domains are allowed');
   for (const f of walk(path.join(root, 'src'))) {
     const s = fs.readFileSync(f, 'utf-8');
-    assert(!/[\w.+-]+@(gmail|hotmail|outlook|yahoo)\.com/i.test(s), `email in ${f}`);
+    assert(!hasRealEmail(s), `email in ${f}`);
     assert(!/AIza[0-9A-Za-z_-]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY|"private_key"|client_secret|sb_secret_[A-Za-z0-9]{8,}|SUPABASE_SERVICE_ROLE_KEY\s*=|service_role"\s*:/.test(s), `secret in ${f}`);
+  }
+  const dist = path.join(root, 'dist');
+  if (fs.existsSync(dist)) for (const f of walk(dist).filter((f) => /\.(?:html|js|mjs|css|json|map|svg|txt)$/i.test(f))) {
+    assert(!hasRealEmail(fs.readFileSync(f, 'utf-8')), `email in ${f}`);
   }
   const env = read('.env.example');
   assert(/VITE_SUPABASE_URL=https:\/\/your-/.test(env) && /VITE_SUPABASE_ANON_KEY=your-/.test(env));

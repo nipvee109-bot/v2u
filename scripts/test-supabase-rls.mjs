@@ -111,7 +111,75 @@ try {
     const { rows } = await db.query(`insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id`, [`${r.toLowerCase()}@example.invalid`, { full_name: r, role: 'SUPER_ADMIN', avatar_url: 'javascript:alert(1)' }]);
     U[r] = rows[0].id;
   }
-  // bootstrap (owner in SQL editor): the only way to set roles without the RPC
+  const setupDoc = fs.readFileSync(path.join(root, 'docs/supabase-setup.md'), 'utf-8');
+  const bootstrapSql = setupDoc.match(/<!-- v2u-owner-bootstrap-sql:[^\n]*-->\s*```sql\s*([\s\S]*?)```/)?.[1];
+  assert(bootstrapSql, 'setup docs must include the tested owner bootstrap SQL');
+  const bootstrap = async (uid) => {
+    try {
+      const results = await db.query(bootstrapSql.replaceAll('<your-uuid>', uid));
+      return results.find((r) => r.command === 'UPDATE');
+    } catch (err) {
+      await db.query('rollback');
+      throw err;
+    }
+  };
+  const superCount = async () => Number((await db.query(`select count(*) from public.profiles where role = 'SUPER_ADMIN' and status = 'ACTIVE'`)).rows[0].count);
+  const denyClientBootstrap = async () => {
+    for (const uid of [null, U.STUDENT, U.ADMIN]) {
+      for (const target of [uid ?? U.STUDENT, U.SUPER_ADMIN_2]) {
+        await denied(as(uid, `select public.set_user_role($1, 'SUPER_ADMIN')`, [target]));
+        await denied(as(uid, `update public.profiles set role = 'SUPER_ADMIN', status = 'ACTIVE' where id = $1`, [target]), /permission denied/);
+      }
+      await denied(as(uid, `select public.set_user_status($1, 'ACTIVE')`, [uid ?? U.STUDENT]));
+      await denied(as(uid, `lock table public.profiles in exclusive mode`), /permission denied/);
+    }
+  };
+
+  await test('clients cannot bootstrap the first SUPER_ADMIN, even with no existing owner', async () => {
+    assert.strictEqual(await superCount(), 0);
+    assert((await db.query(`select role, status from public.profiles`)).rows.every((p) => p.role === 'STUDENT' && p.status === 'ACTIVE'));
+    await denyClientBootstrap();
+    // An ADMIN without an existing SUPER_ADMIN still cannot claim ownership.
+    await db.query(`update public.profiles set role = 'ADMIN' where id = $1`, [U.ADMIN]);
+    await denyClientBootstrap();
+    assert.strictEqual(await superCount(), 0);
+  });
+
+  await test('documented owner SQL bootstraps once; clients and repeat owner attempts cannot re-bootstrap', async () => {
+    assert.strictEqual((await bootstrap('00000000-0000-0000-0000-000000000000')).rowCount, 0, 'missing profile is not created');
+    assert.strictEqual(await superCount(), 0);
+    const first = await bootstrap(U.SUPER_ADMIN);
+    assert.strictEqual(first.rowCount, 1);
+    assert.deepStrictEqual(first.rows, [{ id: U.SUPER_ADMIN, role: 'SUPER_ADMIN', status: 'ACTIVE' }]);
+    for (const target of [U.SUPER_ADMIN, U.SUPER_ADMIN_2]) assert.strictEqual((await bootstrap(target)).rowCount, 0);
+    await denyClientBootstrap();
+    assert.strictEqual(await superCount(), 1);
+    assert.strictEqual((await db.query(`select role from public.profiles where id = $1`, [U.SUPER_ADMIN_2])).rows[0].role, 'STUDENT');
+  });
+
+  await test('documented owner recovery restores an inactive SUPER_ADMIN only when no active owner remains', async () => {
+    for (const status of ['SUSPENDED', 'DISABLED']) {
+      await db.query(`update public.profiles set status = $2 where id = $1`, [U.SUPER_ADMIN, status]);
+      assert.strictEqual(await superCount(), 0);
+      await denyClientBootstrap();
+      assert.strictEqual((await bootstrap(U.SUPER_ADMIN)).rowCount, 1);
+      assert.strictEqual(await superCount(), 1);
+      assert.strictEqual((await bootstrap(U.SUPER_ADMIN_2)).rowCount, 0);
+    }
+  });
+
+  await test('client-executable public functions match the allowlist; no bootstrap RPC is exposed', async () => {
+    const helpers = ['v2u_can(text)', 'v2u_current_role()', 'v2u_https_url(text)', 'v2u_is_client()', 'v2u_lesson_id(text)', 'v2u_role_can(app_role,text)'];
+    const rpcs = ['cms_transition(text,uuid,text,text)', 'cms_verify_source(text,uuid)', 'set_user_role(uuid,app_role)', 'set_user_status(uuid,account_status)'];
+    for (const role of ['anon', 'authenticated']) {
+      const { rows } = await db.query(`select p.oid::regprocedure::text signature from pg_proc p
+        where p.pronamespace = 'public'::regnamespace and has_function_privilege($1, p.oid, 'EXECUTE')
+        order by signature`, [role]);
+      assert.deepStrictEqual(rows.map((r) => r.signature).sort(), [...helpers, ...(role === 'authenticated' ? rpcs : [])].sort(), role);
+    }
+  });
+
+  // Owner-only fixture setup for the remaining role matrix tests.
   for (const r of ROLES) await db.query(`update public.profiles set role = $2 where id = $1`, [U[r], r]);
   await db.query(`update public.profiles set role = 'ADMIN', status = 'SUSPENDED' where id = $1`, [U.SUSPENDED_ADMIN]);
   const L = 'prog-ctrl-loops';

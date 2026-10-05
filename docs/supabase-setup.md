@@ -133,14 +133,34 @@ GameContent always comes from the V2U adapter. Pixel Code Battle is unchanged an
    - `supabase link --project-ref <ref>` then `supabase db push` (Supabase CLI); or
    - paste `supabase/migrations/*.sql` into the SQL Editor, in filename order.
 9. **First SUPER_ADMIN.**
-   1. Sign in once on the site with Google. This creates your `profiles` row as STUDENT.
-   2. In Authentication → Users, copy your user UUID.
-   3. In the SQL Editor, run this once:
+   1. After configuring Google OAuth, sign in once on the site. The database sign-up trigger creates your `profiles` row as STUDENT/ACTIVE. Real Google sign-in readiness is verified separately in T006; the local RLS suite tests the trigger, not Google credentials or redirects.
+   2. In Authentication → Users, confirm the intended owner's identity and copy that user's UUID. Confirm the profile exists with `select id, role, status from public.profiles where id = '<your-uuid>';` in the SQL Editor. Do not proceed if no row is returned.
+   3. Replace `<your-uuid>` below with that UUID. Run the entire block in the SQL Editor **as the project owner (`postgres`)**, or through an equivalent database-privileged connection. Never put this SQL or database credentials in the browser. There is no client bootstrap/claim RPC.
+
+      <!-- v2u-owner-bootstrap-sql: tested verbatim by test-supabase-rls.mjs -->
       ```sql
-      update public.profiles set role = 'SUPER_ADMIN' where id = '<your-uuid>';
+      begin;
+      -- Serialize bootstrap attempts, including when no SUPER_ADMIN row exists yet.
+      lock table public.profiles in exclusive mode;
+      update public.profiles
+      set role = 'SUPER_ADMIN', status = 'ACTIVE'
+      where id = '<your-uuid>'
+        and not exists (
+          select 1 from public.profiles
+          where role = 'SUPER_ADMIN' and status = 'ACTIVE'
+        )
+      returning id, role, status;
+      commit;
       ```
-      This works because the SQL Editor runs as the project owner, not as a browser user.
-   4. Reload `/admin`. From then on, change every role from **ผู้ใช้และบทบาท**, which uses the protected RPCs.
+
+   4. In the SQL Editor result grid, check for exactly one returned row showing the intended UUID with role SUPER_ADMIN and status ACTIVE. No returned rows means an active SUPER_ADMIN already exists, or the UUID has no profile. Query the profiles to distinguish these cases; do not remove the guard to force bootstrap. Repeating this block while an active SUPER_ADMIN exists changes nothing.
+   5. Reload `/admin`. From then on, change every role/status from **ผู้ใช้และบทบาท**, which uses the protected, audited RPCs.
+
+### Recovery when no active SUPER_ADMIN remains
+
+Only the project owner may use the same guarded transaction above to restore a verified owner's profile to SUPER_ADMIN/ACTIVE. It also works when an existing SUPER_ADMIN is suspended or disabled. If any active SUPER_ADMIN remains, use **ผู้ใช้และบทบาท** instead; the recovery block deliberately does nothing.
+
+Owner SQL bypasses client RLS, the RPC last-SUPER_ADMIN checks and RPC audit logging. Use it only for bootstrap or recovery, retain an owner operations record of the UUID and reason, and use the application for all subsequent role/status changes. The table lock serializes concurrent bootstrap transactions. Clients have neither this lock privilege nor permission to write role/status, even on a project with no SUPER_ADMIN.
 
 No owner email is stored in code.
 
@@ -179,6 +199,7 @@ The fixture is reachable only under `import.meta.env.DEV`, so production bundles
   - mapping.
 - **`npm run test:rls`** applies the real migration to a throwaway PostgreSQL 16 cluster, using `supabase/tests/supabase-shim.sql` to stand in for Supabase's roles and `auth` schema. It then:
   - acts as anon or authenticated users exactly like PostgREST does;
+  - executes the owner bootstrap SQL above directly from this document, checking first bootstrap, missing profiles, repeat attempts, recovery, client denial before/after bootstrap, and an exact allowlist of client-executable public functions;
   - if a PostgREST binary is available (`POSTGREST_BIN`), runs the app's repository through **supabase-js → PostgREST → PostgreSQL** end to end.
   - It needs PostgreSQL server binaries (`PG_BIN`). Missing dependencies are reported as SKIPPED, PARTIAL or BLOCKED, never as a complete pass.
 
