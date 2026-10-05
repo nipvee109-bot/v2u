@@ -262,6 +262,12 @@ export function VideosSection({ c }: { c: AdminCtx }) {
   );
 }
 
+// Publishing a hidden or unverified video/resource succeeds but stays invisible to learners — say so.
+const publishBody = (d: DraftDoc) =>
+  isLearnerVisibleData(d.kind, d.data)
+    ? 'ผู้เรียนจะเห็นฉบับนี้ทันที (ฉบับก่อนหน้าเก็บไว้ในประวัติ)'
+    : `เผยแพร่ได้ แต่ผู้เรียนจะยังไม่เห็น — ${(d.data as VideoData).visibility !== 'VISIBLE' ? 'ซ่อนอยู่' : 'ยังไม่ได้ยืนยันแหล่ง'}`;
+
 function TransitionButtons({ c, d, pub }: { c: AdminCtx; d: DraftDoc; pub: PublishedDoc | null }) {
   const actor = { uid: c.me.uid, role: c.me.role, status: c.me.status };
   const ts = (['submit', 'approve', 'reject', 'publish', 'unpublish', 'reopen', 'archive'] as Transition[]).filter((t) => transitionResult(actor, d, t, !!pub).ok);
@@ -270,7 +276,7 @@ function TransitionButtons({ c, d, pub }: { c: AdminCtx; d: DraftDoc; pub: Publi
       {ts.map((t) => {
         const run = () => c.act(TRANSITION_LABEL[t], () => c.svc.transition(d, t, null, pub));
         return (
-          <button key={t} type="button" className={DANGEROUS.includes(t) ? btnDanger : t === 'publish' ? btnPrimary : btnLine} onClick={() => DANGEROUS.includes(t) || t === 'publish' ? c.confirm({ title: `${TRANSITION_LABEL[t]}?`, body: t === 'publish' ? 'ผู้เรียนจะเห็นฉบับนี้ทันที (ฉบับก่อนหน้าเก็บไว้ในประวัติ)' : 'ยืนยันการทำรายการนี้', confirmLabel: TRANSITION_LABEL[t], danger: DANGEROUS.includes(t), run }) : void run()}>
+          <button key={t} type="button" className={DANGEROUS.includes(t) ? btnDanger : t === 'publish' ? btnPrimary : btnLine} onClick={() => DANGEROUS.includes(t) || t === 'publish' ? c.confirm({ title: `${TRANSITION_LABEL[t]}?`, body: t === 'publish' ? publishBody(d) : 'ยืนยันการทำรายการนี้', confirmLabel: TRANSITION_LABEL[t], danger: DANGEROUS.includes(t), run }) : void run()}>
             {TRANSITION_LABEL[t]}
           </button>
         );

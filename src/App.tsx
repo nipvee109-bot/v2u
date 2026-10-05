@@ -1,5 +1,6 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useSyncExternalStore } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { getCmsOverlay, subscribeCmsOverlay } from './cms/overlay';
 
 // Admin CMS (Phase 72) — its own shell, outside the learner Layout; loaded only on /admin
 const AdminApp = lazy(() => import('./admin/AdminApp').then((m) => ({ default: m.AdminApp })));
@@ -48,6 +49,8 @@ function App() {
 }
 
 function LearnerApp() {
+  // Published CMS data arrives after the first render; re-render learner pages when it lands.
+  useSyncExternalStore(subscribeCmsOverlay, getCmsOverlay);
   return (
     <Layout>
       <PageErrorBoundary>
