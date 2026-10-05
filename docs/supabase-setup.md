@@ -5,8 +5,10 @@ Firebase was never deployed and has been removed.
 
 Learning without an account (guest mode) works exactly as before.
 
-**REAL GOOGLE OAUTH: NOT YET VERIFIED.** Local session, callback, UI and RLS
-tests do not verify Google credentials, provider configuration or real redirects.
+**REAL GOOGLE OAUTH: VERIFIED LOCALLY (T006, 2026-10-05)** against Supabase
+project `rnerufxwzfhugurlfhce` from `http://localhost:5173`. Production is not
+configured or deployed; physical mobile devices were not tested. See
+[Real Google OAuth validation (T006)](#real-google-oauth-validation-t006).
 
 ## Architecture
 
@@ -223,6 +225,49 @@ local test databases and did not run `supabase db push`.
 Sign-in/sign-out do not migrate, clear or overwrite onboarding, diagnostic,
 progress, review or learning-evidence data. Cloud learner sync remains deferred.
 Local validation evidence and limitations are in `docs/t005-auth-validation.md`.
+
+### Real Google OAuth validation (T006)
+
+Configuration used (no credentials are stored in this repository):
+
+| Setting | Value |
+|---|---|
+| Supabase project ref | `rnerufxwzfhugurlfhce` |
+| Project URL | `https://rnerufxwzfhugurlfhce.supabase.co` |
+| Google OAuth callback (Authorized redirect URI) | `https://rnerufxwzfhugurlfhce.supabase.co/auth/v1/callback` |
+| Authorized JavaScript origin | `http://localhost:5173` |
+| Site URL / redirect allowlist | `http://localhost:5173` / `http://localhost:5173/**` |
+| Frontend env (`.env.local`, gitignored) | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (public `sb_publishable_` key only) |
+
+The callback URL was confirmed from the `redirect_uri` of Google's real sign-in
+request. The four migrations were applied by the owner and verified read-only to
+match the local files exactly (tables, functions, triggers, policies, grants).
+
+Verified with a real Google account:
+
+- First login created exactly one `auth.users` row and one `profiles` row with
+  role/status **STUDENT / ACTIVE**. OAuth metadata contained no role and did not
+  escalate privileges; `/admin` shows the access-denied gate.
+- Callback leaves no `?code=` or OAuth error parameters in the URL.
+- Reload restores the session (`loading` → `signed-in`, no signed-out flash,
+  no admin link); a second tab shares the session and follows sign-out.
+- Sign-out removes the local session; reload and `/admin` stay signed out.
+- Second login reuses the same user/profile/identity, keeps the role, and
+  updates `last_login_at`.
+- Failed callbacks (provider `access_denied`; invalid/expired `?code=`) show
+  Thai messages, clean the OAuth parameters, keep unrelated query/hash values,
+  create no session and allow retry.
+- Guest learner data (onboarding, profile, lessons, review, evidence) was
+  byte-identical before and after login, reload, logout and second login.
+- BFCache (T005 M1): Back from Google left the sign-in button usable. The
+  in-app test browser reloaded rather than restoring from BFCache; the owner
+  checked manually and it did not reproduce.
+
+Open low-priority findings: the OAuth return keeps the path but drops the query
+string (`redirectTo` is origin + path); the Email provider is still enabled
+although NextStep signs in with Google only; abandoned sign-in attempts leave
+PKCE verifier entries in localStorage until the next sign-in/sign-out; physical
+mobile devices and a production origin were not tested.
 
 ## Development fixture (DEVELOPMENT ONLY)
 

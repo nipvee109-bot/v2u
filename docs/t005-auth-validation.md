@@ -4,9 +4,12 @@ Baseline verified before edits: local Windows repository
 `C:\Users\com\.gemini\antigravity\scratch\engineering-study-hub`, branch
 `master`, clean HEAD `622ab1481c5bd6dde609ba019e46cabdebd9c8c1`.
 
-**REAL GOOGLE OAUTH: NOT YET VERIFIED / NOT TESTED.** No owner project,
-Google credentials or real Google login was used. Simulated callback tests and
-local PostgreSQL/PostgREST tests do not prove Google provider readiness.
+**At T005: real Google OAuth was not tested.** No owner project, Google
+credentials or real Google login was used. Simulated callback tests and local
+PostgreSQL/PostgREST tests did not prove Google provider readiness.
+
+**Update (T006, 2026-10-05): REAL GOOGLE OAUTH VERIFIED LOCALLY.** See
+[T006 real Google OAuth follow-up](#t006-real-google-oauth-follow-up) below.
 
 | Check | Actual result |
 |---|---|
@@ -96,3 +99,35 @@ No cloud learner sync, unrelated CMS changes, UX redesign or historical lint
 cleanup was performed. Old migrations/commits remain unchanged. No secrets,
 `.env` files or generated output are part of this checkpoint. No push,
 deployment, remote database mutation or `supabase db push` was performed.
+
+## T006 real Google OAuth follow-up
+
+Run on 2026-10-05 from `http://localhost:5173` against Supabase project
+`rnerufxwzfhugurlfhce`. Google callback (Authorized redirect URI):
+`https://rnerufxwzfhugurlfhce.supabase.co/auth/v1/callback`, confirmed from the
+`redirect_uri` of Google's real sign-in request. Only the public
+`sb_publishable_` key was used locally (gitignored `.env.local`); no credential
+values are recorded here.
+
+| Check | Actual result |
+|---|---|
+| Remote schema | Owner applied the 4 migrations; read-only check matched local exactly |
+| First real login | One `auth.users` row and one `profiles` row, **STUDENT / ACTIVE**, provider google |
+| Role escalation | None; OAuth metadata had no role; `/admin` denied |
+| Callback URL cleanup | No `?code=` or OAuth error parameters remained |
+| Reload / session restore | `loading` → `signed-in`, no signed-out flash or admin link |
+| Cross-tab | Second tab shared the session and followed sign-out |
+| Sign-out | Local session removed; reload and `/admin` stayed signed out |
+| Second login | Same user/profile/identity; role kept; `last_login_at` updated |
+| Failed callbacks | `access_denied` and invalid/expired `?code=`: Thai message, parameters cleaned, unrelated query/hash kept, no session, retry possible |
+| Learner data | Guest state fingerprint identical across login, reload, logout and second login |
+| BFCache (M1) | Did not reproduce; in-app browser reloaded instead of restoring; owner checked manually |
+| Responsive account UI | No horizontal overflow at 390, 768 and 1440 CSS pixels |
+| Tests / build | `npm test` 57/57, T005 auth tests 28/28, `npm run build` PASS; lint unchanged (10 errors / 176 warnings, historical) |
+
+Not tested: physical mobile devices, a production origin. Open low-priority
+findings: the OAuth return keeps the path but drops the query string; the Email
+provider remains enabled although sign-in is Google-only; abandoned sign-in
+attempts leave PKCE verifier entries in localStorage until the next
+sign-in/sign-out. No code, migration or remote data was changed by T006; no push,
+deployment or `supabase db push` was performed by the agent.
