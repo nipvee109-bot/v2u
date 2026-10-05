@@ -23,5 +23,7 @@ export function getBackend(): Promise<CmsBackend | null> {
   if (cfg) pending = import('./supabase').then((m) => m.createSupabaseBackend(cfg));
   else if (import.meta.env.DEV && import.meta.env.VITE_V2U_DEV_ADMIN === '1') pending = import('./devFixture').then((m) => m.createDevFixtureBackend());
   else pending = Promise.resolve(null);
+  // A transient SDK/callback initialization failure must be retryable.
+  pending = pending.catch((err) => { pending = null; throw err; });
   return pending;
 }

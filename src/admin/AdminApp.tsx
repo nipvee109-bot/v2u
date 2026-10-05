@@ -74,12 +74,18 @@ export function AdminApp() {
         <p className="text-sm">หน้าผู้ดูแลต้องใช้ระบบบัญชี (Supabase) ซึ่งยังไม่ได้ตั้งค่าในเว็บนี้ ดูวิธีตั้งค่าที่ docs/supabase-setup.md</p>
       </Gate>
     );
-  if (a.status === 'error') return <Gate title="เชื่อมต่อระบบบัญชีไม่ได้"><p className="text-sm">ลองใหม่อีกครั้งเมื่อออนไลน์</p></Gate>;
+  if (a.status === 'error') return <Gate title="โหลดบัญชีไม่สำเร็จ">
+    <p role="alert" className="text-sm">{a.error}</p>
+    <div className="flex flex-wrap gap-2">
+      <button type="button" className="min-h-[44px] rounded-xl border px-4" onClick={() => void a.refreshProfile()}>ลองอีกครั้ง</button>
+      <button type="button" className="min-h-[44px] rounded-xl border px-4" disabled={a.signingOut} onClick={() => void a.signOut()}>ออกจากระบบ</button>
+    </div>
+  </Gate>;
   if (a.status === 'signed-out')
     return (
       <Gate title="เข้าสู่ระบบผู้ดูแล">
         <p className="text-sm">เข้าสู่ระบบด้วยบัญชี Google ที่ได้รับสิทธิ์ผู้ดูแล</p>
-        <button type="button" className="min-h-[44px] rounded-xl bg-[#1a2490] px-4 font-semibold text-white" onClick={() => void a.signIn()}>เข้าสู่ระบบด้วย Google</button>
+        <button type="button" className="min-h-[44px] rounded-xl bg-[#1a2490] px-4 font-semibold text-white" disabled={!a.online || a.signingIn} onClick={() => void a.signIn()}>{a.signingIn ? 'กำลังไปยัง Google…' : 'เข้าสู่ระบบด้วย Google'}</button>
         {a.error && <p role="alert" className="text-sm">{a.error}</p>}
       </Gate>
     );

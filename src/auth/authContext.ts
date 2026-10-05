@@ -2,6 +2,7 @@ import { createContext, useContext } from 'react';
 import type { CmsBackend, SignInResult } from '../backend/types';
 import type { UserProfile } from '../cms/types';
 import type { Actor } from './permissions';
+import type { AuthErrorKind } from './sessionController';
 
 export type AuthStatus = 'loading' | 'unconfigured' | 'signed-out' | 'signed-in' | 'error';
 
@@ -14,6 +15,9 @@ export interface AuthState {
   backend: CmsBackend | null;
   online: boolean;
   error: string | null;
+  errorKind: AuthErrorKind;
+  signingIn: boolean;
+  signingOut: boolean;
   signIn(): Promise<SignInResult>;
   signOut(): Promise<void>;
   refreshProfile(): Promise<void>;

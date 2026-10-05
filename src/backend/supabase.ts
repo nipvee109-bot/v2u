@@ -1,5 +1,5 @@
 /* Supabase backend (Phase 72B): Supabase Auth (Google OAuth, PKCE) + PostgreSQL with RLS.
-   Loaded lazily (dynamic import) so guests never download the SDK.
+   Loaded lazily when Supabase is configured, including for returning sessions.
    The browser holds only the public anon/publishable key. Every write is authorized by
    Row Level Security, guard triggers and SECURITY DEFINER RPCs (supabase/migrations);
    the audit log is written by the database. No provider/access tokens are read or logged. */
@@ -31,25 +31,56 @@ export function readAuthRedirectError(loc: { search: string; hash: string }): Si
   return { ok: false, reason: 'error', message: desc.slice(0, 120) || err };
 }
 
+/** Explicit PKCE exchange lets us handle failed callbacks before restoring auth. */
+export async function completeOAuthRedirect(
+  auth: Pick<SupabaseClient['auth'], 'exchangeCodeForSession'>,
+  loc: { href: string },
+  history: Pick<History, 'replaceState' | 'state'>,
+): Promise<SignInResult | null> {
+  const url = new URL(loc.href);
+  const providerError = readAuthRedirectError(url);
+  const code = url.searchParams.get('code');
+  if (!providerError && code === null) return null;
+  let result = providerError;
+  try {
+    if (!providerError && code !== null) {
+      const exchange = await auth.exchangeCodeForSession(code);
+      if (exchange.error || !exchange.data.session) result = { ok: false, reason: 'callback' };
+    }
+  } catch { result = { ok: false, reason: 'callback' }; }
+  finally {
+    for (const name of ['code', 'error', 'error_code', 'error_description']) url.searchParams.delete(name);
+    const hash = new URLSearchParams(url.hash.replace(/^#/, ''));
+    if (['error', 'error_code', 'error_description', 'code'].some((name) => hash.has(name))) {
+      for (const name of ['code', 'error', 'error_code', 'error_description']) hash.delete(name);
+      url.hash = hash.toString();
+    }
+    // A relative, same-origin path; redirect/query values are never navigated.
+    history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+  }
+  return result;
+}
+
 export async function createSupabaseBackend(cfg: SupabaseEnv): Promise<CmsBackend> {
   const { createClient } = await import('@supabase/supabase-js');
-  return supabaseBackendFromClient(
-    createClient(cfg.url, cfg.anonKey, {
-      auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
-    })
-  );
+  const sb = createClient(cfg.url, cfg.anonKey, {
+    auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+  });
+  const redirectError = await completeOAuthRedirect(sb.auth, window.location, window.history);
+  return supabaseBackendFromClient(sb, redirectError);
 }
 
 /** The repository implementation over a Supabase client (also used by the end-to-end test against real PostgREST). */
-export function supabaseBackendFromClient(sb: SupabaseClient): CmsBackend {
+export function supabaseBackendFromClient(sb: SupabaseClient, redirectError: SignInResult | null = null): CmsBackend {
   const drafts = async (kind: EntityKind) => (check(await sb.from(TABLE[kind]).select('*')) as Row[]).map((r) => rowToDraft(kind, r));
 
   return {
     kind: 'supabase',
     onAuthChanged(cb) {
-      // Supabase advises against awaiting other client calls inside this callback — defer.
-      const { data } = sb.auth.onAuthStateChange((_event, session) => {
-        setTimeout(() => cb(info(session?.user)), 0);
+      // Notify identity changes immediately. The auth controller defers I/O
+      // outside this SDK callback, which must not await other client calls.
+      const { data } = sb.auth.onAuthStateChange((event, session) => {
+        cb(info(session?.user), event);
       });
       return () => data.subscription.unsubscribe();
     },
@@ -60,17 +91,13 @@ export function supabaseBackendFromClient(sb: SupabaseClient): CmsBackend {
       return { ok: true, redirecting: true };
     },
     consumeAuthRedirectError() {
-      const r = readAuthRedirectError(window.location);
-      if (r) {
-        const url = new URL(window.location.href);
-        for (const k of ['error', 'error_code', 'error_description']) url.searchParams.delete(k);
-        url.hash = '';
-        window.history.replaceState(window.history.state, '', url.pathname + url.search);
-      }
+      const r = redirectError;
+      redirectError = null;
       return r;
     },
     async signOut() {
-      await sb.auth.signOut();
+      const { error } = await sb.auth.signOut();
+      if (error) throw error;
     },
     async getProfile(uid) {
       const r = check(await sb.from('profiles').select('*').eq('id', uid).maybeSingle()) as Row | null;

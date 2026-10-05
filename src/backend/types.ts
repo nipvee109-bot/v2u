@@ -18,12 +18,12 @@ export interface AuthUserInfo {
   photoURL: string | null;
 }
 
-export type SignInResult = { ok: true; redirecting?: boolean } | { ok: false; reason: 'cancelled' | 'popup-blocked' | 'network' | 'not-configured' | 'error'; message?: string };
+export type SignInResult = { ok: true; redirecting?: boolean } | { ok: false; reason: 'cancelled' | 'popup-blocked' | 'network' | 'not-configured' | 'callback' | 'error'; message?: string };
 
 export interface CmsBackend {
   kind: 'supabase' | 'memory-dev';
   /* auth */
-  onAuthChanged(cb: (u: AuthUserInfo | null) => void): () => void;
+  onAuthChanged(cb: (u: AuthUserInfo | null, event?: string) => void): () => void;
   signInWithGoogle(): Promise<SignInResult>;
   signOut(): Promise<void>;
   /** An OAuth error the provider returned in the URL (e.g. the user cancelled), consumed once */

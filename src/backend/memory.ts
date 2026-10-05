@@ -29,8 +29,8 @@ export function createMemoryBackend(seed: MemorySeed = {}): CmsBackend & { _dump
   const assignments = new Map<string, LessonGameAssignment>();
   const audit: AuditEvent[] = [];
   let current: AuthUserInfo | null = null;
-  const listeners = new Set<(u: AuthUserInfo | null) => void>();
-  const emit = () => listeners.forEach((l) => l(current));
+  const listeners = new Set<(u: AuthUserInfo | null, event?: string) => void>();
+  const emit = (event: string) => listeners.forEach((l) => l(current, event));
   const clone = <T,>(x: T): T => structuredClone(x);
   const now = () => new Date().toISOString();
   let seq = 0;
@@ -50,7 +50,7 @@ export function createMemoryBackend(seed: MemorySeed = {}): CmsBackend & { _dump
     kind: 'memory-dev',
     onAuthChanged(cb) {
       listeners.add(cb);
-      cb(current);
+      cb(current, 'INITIAL_SESSION');
       return () => listeners.delete(cb);
     },
     async signInWithGoogle() {
@@ -61,12 +61,12 @@ export function createMemoryBackend(seed: MemorySeed = {}): CmsBackend & { _dump
         const at = now();
         users.set(current.uid, { uid: current.uid, displayName: current.displayName, email: current.email, photoURL: current.photoURL, role: 'STUDENT', status: 'ACTIVE', createdAt: at, updatedAt: at, lastLoginAt: at, onboardingCompleted: false, learnerData: { location: 'local-device' }, schemaVersion: 1 });
       }
-      emit();
+      emit('SIGNED_IN');
       return { ok: true };
     },
     async signOut() {
       current = null;
-      emit();
+      emit('SIGNED_OUT');
     },
     async getProfile(uid) {
       return clone(users.get(uid) ?? null);

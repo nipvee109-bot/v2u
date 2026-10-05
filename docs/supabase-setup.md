@@ -5,6 +5,9 @@ Firebase was never deployed and has been removed.
 
 Learning without an account (guest mode) works exactly as before.
 
+**REAL GOOGLE OAUTH: NOT YET VERIFIED.** Local session, callback, UI and RLS
+tests do not verify Google credentials, provider configuration or real redirects.
+
 ## Architecture
 
 ```
@@ -129,16 +132,16 @@ GameContent always comes from the V2U adapter. Pixel Code Battle is unchanged an
 
 1. **Create a project.** In supabase.com, choose New project. Pick a region close to the learners, and keep the database password in your password manager. Never commit it.
 2. **Project URL.** Find it under Project Settings → API (`https://<ref>.supabase.co`).
-3. **Anon key.** Copy the anon / publishable key from Project Settings → API. **Never** use the `service_role` or `sb_secret_…` key in V2U: the app refuses it, and it bypasses RLS.
+3. **Anon key.** Copy the anon / publishable key from Project Settings → API. **Never** use the `service_role` or `sb_secret_…` key in V2U: the build and runtime refuse it, and it bypasses RLS. The build guard checks all exposed `VITE_*` values, including unused key variables, and reports only the unsafe variable name.
 4. **Google OAuth client.** In Google Cloud Console → APIs & Services → Credentials, create an OAuth client ID of type *Web application*.
-   - Authorized JavaScript origins: `http://localhost:5173` for local development, plus the production origin later.
+   - Authorized JavaScript origins: `http://localhost:5173` for local development, plus `https://<prod-origin>` later.
    - Authorized redirect URI: `https://<ref>.supabase.co/auth/v1/callback`.
 5. **Google provider in Supabase.** In Authentication → Sign In / Providers → Google, enable it and paste the client ID and client secret. The secret stays in Supabase and is never placed in this repository.
 6. **Redirect URLs.** In Authentication → URL Configuration:
    - Site URL: `http://localhost:5173` for now.
    - Additional redirect URLs: `http://localhost:5173/**`.
-   - Add the production URL (e.g. `https://<domain>/**`) when V2U is deployed.
-7. **Local environment.** Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+   - When production is approved, set Site URL to `https://<prod-origin>` and add only the intended application redirect paths to the allowlist (production placeholder: `https://<prod-origin>/**`). Replace the placeholder with the owned origin; do not use unrestricted host wildcards.
+7. **Local environment.** Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and either `VITE_SUPABASE_ANON_KEY` or `VITE_SUPABASE_PUBLISHABLE_KEY`. Never put the Google client secret in any frontend environment variable; it belongs only in Supabase's Google provider configuration.
 8. **Migrations.** Apply them with either:
    - `supabase link --project-ref <ref>` then `supabase db push` (Supabase CLI); or
    - paste `supabase/migrations/*.sql` into the SQL Editor, in filename order.
@@ -188,6 +191,38 @@ No owner email is stored in code.
 - the Google OAuth client secret.
 
 `.gitignore` blocks `.env*` (except `.env.example`) and Supabase CLI local state.
+
+### Auth session and recovery (T005)
+
+The configured client uses persistent PKCE sessions. It explicitly exchanges
+`?code=` and handles invalid/expired callbacks before restoring the session;
+`history.replaceState` removes OAuth code/error parameters while keeping the
+application path and unrelated query/hash values. Sign-in redirects to the
+current origin/path; URL-supplied redirect targets are not used. See the
+[Supabase PKCE documentation](https://supabase.com/docs/guides/auth/sessions/pkce-flow).
+
+Profile work is guarded by current UID and generation. Logout, account switches
+and disposal invalidate old results, including refresh/retry results and errors.
+INITIAL_SESSION and SIGNED_IN can record last_login_at; TOKEN_REFRESHED does
+not reload or write the current profile, and unrelated events/retries read only.
+Duplicate same-user SIGNED_IN notifications are ignored after the profile loads.
+
+Missing-profile and backend/network profile failures show different Thai errors.
+Both Account and Admin error views offer **ลองอีกครั้ง** and **ออกจากระบบ**;
+retry uses the session UID even when no profile is loaded. Redirect start shows
+**กำลังไปยัง Google…** and disables repeat sign-in clicks. Suspended/disabled
+profiles remain readable and cannot access Admin; STUDENT cannot access Admin.
+
+`20261005020000_v2u_existing_auth_profiles.sql` creates profiles for legacy
+auth.users that predate the profile trigger. It takes role/status from database
+defaults (STUDENT/ACTIVE), ignores privileged OAuth metadata, sanitizes avatars,
+and preserves all existing profile rows. It is safe to repeat. Applying it to an
+owner project is a separate human operation; T005 applied it only to disposable
+local test databases and did not run `supabase db push`.
+
+Sign-in/sign-out do not migrate, clear or overwrite onboarding, diagnostic,
+progress, review or learning-evidence data. Cloud learner sync remains deferred.
+Local validation evidence and limitations are in `docs/t005-auth-validation.md`.
 
 ## Development fixture (DEVELOPMENT ONLY)
 

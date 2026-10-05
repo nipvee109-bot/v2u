@@ -15,13 +15,19 @@ export function AccountCard() {
       <h2 id="acct-h" className="font-display text-lg font-bold">บัญชี</h2>
       {a.status === 'unconfigured' && <p className="text-sm text-[var(--ink-2)]">ตอนนี้ใช้งานแบบผู้เยี่ยมชม — ข้อมูลการเรียนเก็บไว้ในเครื่องนี้ และเรียนได้ครบทุกส่วน</p>}
       {a.status === 'loading' && <p className="text-sm text-[var(--ink-2)]" role="status">กำลังตรวจสอบบัญชี…</p>}
-      {a.status === 'error' && <p className="text-sm" role="alert" style={{ color: 'var(--danger, #b42318)' }}>เชื่อมต่อระบบบัญชีไม่ได้ ยังเรียนต่อแบบผู้เยี่ยมชมได้ตามปกติ</p>}
+      {a.status === 'error' && <>
+        <p className="text-sm">ยังเรียนต่อแบบผู้เยี่ยมชมได้ตามปกติ ข้อมูลการเรียนในเครื่องยังอยู่ครบ</p>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={btn} style={{ border: '1px solid var(--line)' }} onClick={() => void a.refreshProfile()}>ลองอีกครั้ง</button>
+          <button type="button" className={btn} style={{ border: '1px solid var(--line)' }} disabled={a.signingOut} onClick={() => void a.signOut()}>ออกจากระบบ</button>
+        </div>
+      </>}
       {a.status === 'signed-out' && (
         <>
           <p className="text-sm text-[var(--ink-2)]">เข้าสู่ระบบเพื่อเชื่อมบัญชีของคุณ (ไม่บังคับ) — ข้อมูลการเรียนในเครื่องนี้ยังอยู่ครบ</p>
           {!a.online && <p className="text-sm" role="status">ออฟไลน์อยู่ — เข้าสู่ระบบได้เมื่อกลับมาออนไลน์</p>}
-          <button type="button" className={`${btn} self-start text-white`} style={{ background: 'var(--brand, #1a2490)' }} disabled={!a.online} onClick={() => void a.signIn()}>
-            เข้าสู่ระบบด้วย Google
+          <button type="button" className={`${btn} self-start text-white`} style={{ background: 'var(--brand, #1a2490)' }} disabled={!a.online || a.signingIn} onClick={() => void a.signIn()}>
+            {a.signingIn ? 'กำลังไปยัง Google…' : 'เข้าสู่ระบบด้วย Google'}
           </button>
         </>
       )}
@@ -40,7 +46,7 @@ export function AccountCard() {
           {a.actor && can(a.actor, 'admin.access') && (
             <Link to="/admin" className={btn} style={{ border: '1px solid var(--line)' }}>ไปหน้าผู้ดูแล</Link>
           )}
-          <button type="button" className={btn} style={{ border: '1px solid var(--line)' }} onClick={() => void a.signOut()}>ออกจากระบบ</button>
+          <button type="button" className={btn} style={{ border: '1px solid var(--line)' }} disabled={a.signingOut} onClick={() => void a.signOut()}>ออกจากระบบ</button>
         </div>
       )}
       {a.error && <p className="text-sm" role="alert">{a.error}</p>}

@@ -19,7 +19,16 @@ function jwtRole(key: string): string | null {
 }
 
 /** True for keys that must never reach a browser. */
-export const isSecretKey = (key: string) => key.startsWith('sb_secret_') || jwtRole(key) === 'service_role';
+export const isSecretKey = (key: string) => key.trim().startsWith('sb_secret_') || jwtRole(key.trim()) === 'service_role';
+
+/** Run before Vite transforms any browser code. Report names only, never values. */
+export function assertSafeFrontendEnv(env: Record<string, string | boolean | undefined>): void {
+  for (const [name, value] of Object.entries(env)) {
+    if (name.startsWith('VITE_') && typeof value === 'string' && isSecretKey(value)) {
+      throw new Error(`Unsafe frontend environment variable: ${name}. Use a public anon/publishable key.`);
+    }
+  }
+}
 
 export function readSupabaseEnv(env: Record<string, string | boolean | undefined>): SupabaseEnv | null {
   const url = String(env.VITE_SUPABASE_URL ?? '').trim();

@@ -176,6 +176,38 @@ try {
       assert.strictEqual((await legacy.query('select count(*)::int n from public.audit_logs')).rows[0].n, auditCount);
     });
   } finally { await legacy.end(); }
+  await test('existing auth users receive one default profile; backfill is repeatable and preserves existing profiles', async () => {
+    await db.query('create database t005_profiles');
+    const profiles = new pg.Client({ host: conn.clientHost, port: PORT, user: 'postgres', database: 't005_profiles' });
+    try {
+      await profiles.connect();
+      await profiles.query(fs.readFileSync(path.join(root, 'supabase/tests/supabase-shim.sql'), 'utf-8').replace(/^create role .*;\r?$/gm, ''));
+      // Identities predate the profile table and trigger, just like legacy auth.
+      const users = (await profiles.query(`insert into auth.users(email,raw_user_meta_data) values
+        ('legacy@example.invalid','{"full_name":"Legacy learner","role":"SUPER_ADMIN","status":"DISABLED","avatar_url":"javascript:alert(1)"}'),
+        ('existing@example.invalid','{"role":"SUPER_ADMIN","status":"ACTIVE"}'),
+        ('avatar@example.invalid','{"name":"Learner","avatar_url":"https://example.invalid/avatar.png","role":"ADMIN"}') returning id`)).rows;
+      for (const m of migrations.filter((m) => m < '20261005020000')) await profiles.query(fs.readFileSync(path.join(root, 'supabase/migrations', m), 'utf-8'));
+      await profiles.query(`insert into public.profiles(id,email,display_name,role,status,onboarding_completed,last_login_at)
+        values ($1,'preserved@example.invalid','Existing profile','REVIEWER','SUSPENDED',true,'2026-10-01T00:00:00Z')`, [users[1].id]);
+      const existing = (await profiles.query('select * from public.profiles where id=$1', [users[1].id])).rows[0];
+      const backfill = fs.readFileSync(path.join(root, 'supabase/migrations/20261005020000_v2u_existing_auth_profiles.sql'), 'utf-8');
+      for (let run = 0; run < 2; run++) {
+        await profiles.query(backfill);
+        assert.deepStrictEqual((await profiles.query('select * from public.profiles where id=$1', [users[1].id])).rows[0], existing);
+        const rows = (await profiles.query('select id,role,status,avatar_url from public.profiles order by id')).rows;
+        assert.strictEqual(rows.length, 3);
+        for (const uid of [users[0].id, users[2].id]) {
+          const p = rows.find((r) => r.id === uid);
+          assert.strictEqual(p.role, 'STUDENT');
+          assert.strictEqual(p.status, 'ACTIVE');
+        }
+        assert.strictEqual(rows.find((r) => r.id === users[0].id).avatar_url, null);
+        assert.strictEqual(rows.find((r) => r.id === users[2].id).avatar_url, 'https://example.invalid/avatar.png');
+        assert((await profiles.query('select id,count(*)::int n from public.profiles group by id')).rows.every((r) => r.n === 1));
+      }
+    } finally { await profiles.end(); }
+  });
   for (const m of migrations) await db.query(fs.readFileSync(path.join(root, 'supabase/migrations', m), 'utf-8'));
   console.log(`=== Supabase RLS (${migrations.length} migration(s), PostgreSQL ${(await db.query('show server_version')).rows[0].server_version}, ${conn.transport}, ${runtime.source === 'PG_BIN' ? 'PG_BIN' : BIN}) ===\n`);
 
