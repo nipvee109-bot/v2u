@@ -115,6 +115,8 @@ export interface DraftDoc<K extends EntityKind = EntityKind> {
   reviewNote: string | null;
   /** Reviewer who approved (recorded by the database) */
   approvedBy?: string | null;
+  /** Optimistic-concurrency counter: an edit must be based on the current revision */
+  revision: number;
 }
 
 export interface PublishedDoc<K extends EntityKind = EntityKind> {
@@ -153,6 +155,8 @@ export interface GameDoc {
   createdAt: string;
   updatedAt: string;
   updatedBy: string;
+  /** Optimistic-concurrency counter (0 = not yet created) */
+  revision: number;
 }
 
 export interface LessonGameAssignment {

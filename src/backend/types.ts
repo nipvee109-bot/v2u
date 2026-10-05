@@ -40,13 +40,16 @@ export interface CmsBackend {
   /** learnerOnly: only learner-visible snapshots (what RLS lets learners and guests read) */
   listPublished(opts?: { learnerOnly?: boolean }): Promise<PublishedDoc[]>;
   listVersions(kind: EntityKind, id: string): Promise<PublishedDoc[]>;
+  getDraft<K extends EntityKind>(kind: K, id: string): Promise<DraftDoc<K> | null>;
   insertDraft<K extends EntityKind>(by: Actor, kind: K, data: EntityDataMap[K]): Promise<DraftDoc<K>>;
-  updateDraft<K extends EntityKind>(by: Actor, kind: K, id: string, data: EntityDataMap[K]): Promise<DraftDoc<K>>;
-  verifySource(by: Actor, kind: 'video' | 'resource', id: string): Promise<void>;
-  transition(by: Actor, kind: EntityKind, id: string, t: Transition, note: string | null): Promise<ContentState>;
+  /** `revision` = the revision the edit is based on; a newer row is refused as stale (never overwritten) */
+  updateDraft<K extends EntityKind>(by: Actor, kind: K, id: string, data: EntityDataMap[K], revision: number): Promise<DraftDoc<K>>;
+  verifySource(by: Actor, kind: 'video' | 'resource', id: string, revision?: number): Promise<void>;
+  transition(by: Actor, kind: EntityKind, id: string, t: Transition, note: string | null, revision?: number): Promise<ContentState>;
   /* games */
   listGames(opts?: { learnerOnly?: boolean }): Promise<GameDoc[]>;
   insertGame(by: Actor, g: GameDoc): Promise<GameDoc>;
+  /** Based on `g.revision`; a newer row is refused as stale */
   updateGame(by: Actor, g: GameDoc): Promise<GameDoc>;
   listAssignments(opts?: { learnerOnly?: boolean }): Promise<LessonGameAssignment[]>;
   /** Insert or update by (lessonId, gameId) */

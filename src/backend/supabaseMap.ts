@@ -56,7 +56,7 @@ export function dataToRow<K extends EntityKind>(kind: K, data: EntityDataMap[K])
 }
 
 export function rowToDraft<K extends EntityKind>(kind: K, r: Row): DraftDoc<K> {
-  return { id: s(r.id), kind, lessonId: sn(r.lesson_id), data: rowToData(kind, r), state: r.state as ContentState, publishedVersion: Number(r.published_version ?? 0), createdAt: s(r.created_at), createdBy: s(r.created_by), updatedAt: s(r.updated_at), updatedBy: s(r.updated_by), reviewNote: sn(r.review_note), approvedBy: sn(r.approved_by) };
+  return { id: s(r.id), kind, lessonId: sn(r.lesson_id), data: rowToData(kind, r), state: r.state as ContentState, publishedVersion: Number(r.published_version ?? 0), createdAt: s(r.created_at), createdBy: s(r.created_by), updatedAt: s(r.updated_at), updatedBy: s(r.updated_by), reviewNote: sn(r.review_note), approvedBy: sn(r.approved_by), revision: Number(r.revision ?? 1) };
 }
 
 export function rowToPublished(r: Row): PublishedDoc {
@@ -65,7 +65,7 @@ export function rowToPublished(r: Row): PublishedDoc {
 }
 
 export function rowToGame(r: Row): GameDoc {
-  return { gameId: s(r.game_id), name: s(r.name), description: s(r.description), subjects: (r.subjects as string[]) ?? [], skillIds: (r.skill_ids as string[]) ?? [], gameVersion: s(r.game_version), contentContract: '1.1', evidenceContract: '1.1', launchType: (r.launch_type as GameDoc['launchType']) ?? 'none', launchUrl: s(r.launch_path), thumbnail: s(r.thumbnail_url), status: r.status as GameDoc['status'], enabled: !!r.enabled, published: !!r.published, createdAt: s(r.created_at), updatedAt: s(r.updated_at), updatedBy: s(r.updated_by) };
+  return { gameId: s(r.game_id), name: s(r.name), description: s(r.description), subjects: (r.subjects as string[]) ?? [], skillIds: (r.skill_ids as string[]) ?? [], gameVersion: s(r.game_version), contentContract: '1.1', evidenceContract: '1.1', launchType: (r.launch_type as GameDoc['launchType']) ?? 'none', launchUrl: s(r.launch_path), thumbnail: s(r.thumbnail_url), status: r.status as GameDoc['status'], enabled: !!r.enabled, published: !!r.published, createdAt: s(r.created_at), updatedAt: s(r.updated_at), updatedBy: s(r.updated_by), revision: Number(r.revision ?? 1) };
 }
 
 export function gameToRow(g: GameDoc): Row {

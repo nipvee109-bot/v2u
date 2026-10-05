@@ -128,19 +128,24 @@ export function supabaseBackendFromClient(sb: SupabaseClient, redirectError: Sig
     async listVersions(kind, id) {
       return (check(await sb.from('cms_versions').select('*').eq('kind', kind).eq('entity_id', id)) as Row[]).map((r) => ({ ...rowToPublished(r), previousVersion: null }));
     },
+    async getDraft(kind, id) {
+      const r = check(await sb.from(TABLE[kind]).select('*').eq('id', id).maybeSingle()) as Row | null;
+      return r ? rowToDraft(kind, r) : null;
+    },
     async insertDraft(_by, kind, data) {
       const r = check(await sb.from(TABLE[kind]).insert(dataToRow(kind, data)).select('*').single()) as Row;
       return rowToDraft(kind, r);
     },
-    async updateDraft(_by, kind, id, data) {
-      const r = check(await sb.from(TABLE[kind]).update(dataToRow(kind, data)).eq('id', id).select('*').single()) as Row;
+    async updateDraft(_by, kind, id, data, revision) {
+      // The guard trigger accepts only the next revision of the copy this edit was based on.
+      const r = check(await sb.from(TABLE[kind]).update({ ...dataToRow(kind, data), revision: revision + 1 }).eq('id', id).select('*').single()) as Row;
       return rowToDraft(kind, r);
     },
-    async verifySource(_by, kind, id) {
-      check(await sb.rpc('cms_verify_source', { p_kind: kind, p_id: id }));
+    async verifySource(_by, kind, id, revision) {
+      check(await sb.rpc('cms_verify_source', { p_kind: kind, p_id: id, p_expected_revision: revision ?? null }));
     },
-    async transition(_by, kind, id, t, note) {
-      return check(await sb.rpc('cms_transition', { p_kind: kind, p_id: id, p_transition: t, p_note: note })) as never;
+    async transition(_by, kind, id, t, note, revision) {
+      return check(await sb.rpc('cms_transition', { p_kind: kind, p_id: id, p_transition: t, p_note: note, p_expected_revision: revision ?? null })) as never;
     },
     async listGames(opts) {
       const q = sb.from('games').select('*').order('created_at');
@@ -151,7 +156,7 @@ export function supabaseBackendFromClient(sb: SupabaseClient, redirectError: Sig
     },
     async updateGame(_by, g) {
       const { game_id: gameId, ...rest } = gameToRow(g);
-      return rowToGame(check(await sb.from('games').update(rest).eq('game_id', gameId as string).select('*').single()) as Row);
+      return rowToGame(check(await sb.from('games').update({ ...rest, revision: g.revision + 1 }).eq('game_id', gameId as string).select('*').single()) as Row);
     },
     async listAssignments(opts) {
       const q = sb.from('lesson_game_assignments').select('*').order('sort_order');

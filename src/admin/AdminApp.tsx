@@ -11,7 +11,7 @@ import { can, ROLE_LABEL } from '../auth/permissions';
 import type { Permission } from '../auth/permissions';
 import { CURRICULUM } from '../curriculum/data';
 import { LESSON_KNOWLEDGE } from '../content/knowledge';
-import { CmsService } from '../cms/service';
+import { CmsError, CmsService } from '../cms/service';
 import type { AuditEvent, DraftDoc, GameDoc, LessonGameAssignment, PublishedDoc, UserProfile } from '../cms/types';
 import type { ValidationContext } from '../cms/workflow';
 import { ConfirmDialog } from './ui';
@@ -33,8 +33,8 @@ export interface AdminCtx {
   svc: CmsService;
   allowed: (p: Permission) => boolean;
   reload: () => Promise<void>;
-  /** Run an action; shows success/error in the live region */
-  act: (label: string, fn: () => Promise<unknown>) => Promise<void>;
+  /** Run an action; shows success/error in the live region. Resolves true on success. */
+  act: (label: string, fn: () => Promise<unknown>) => Promise<boolean>;
   confirm: (r: ConfirmRequest) => void;
   me: UserProfile;
 }
@@ -106,7 +106,7 @@ function AdminShell() {
   const svc = useMemo(() => new CmsService(backend, actor, validationContext()), [backend, actor]);
   const allowed = useCallback((p: Permission) => can(actor, p), [actor]);
   const [data, setData] = useState<AdminData>({ drafts: [], published: [], games: [], assignments: [], users: [], audit: [], loaded: false });
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string; stale?: boolean } | null>(null);
   const [confirmReq, setConfirmReq] = useState<ConfirmRequest | null>(null);
   const [navOpen, setNavOpen] = useState(false);
 
@@ -132,8 +132,10 @@ function AdminShell() {
         await fn();
         await reload();
         setMsg({ ok: true, text: `${label} สำเร็จ` });
+        return true;
       } catch (e) {
-        setMsg({ ok: false, text: `${label} ไม่สำเร็จ: ${(e as Error).message}` });
+        setMsg({ ok: false, text: `${label} ไม่สำเร็จ: ${(e as Error).message}`, stale: e instanceof CmsError && e.stale });
+        return false;
       }
     },
     [reload]
@@ -170,6 +172,11 @@ function AdminShell() {
         <main id="admin-main" className="min-w-0 flex-1">
           <div aria-live="polite" role="status" className="mb-2 min-h-6 text-sm" data-admin-msg={msg ? (msg.ok ? 'ok' : 'error') : ''} style={{ color: msg && !msg.ok ? '#b42318' : undefined }}>
             {msg?.text}
+            {msg?.stale && (
+              <button type="button" className="ml-2 min-h-[44px] rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--ink)]" onClick={() => void reload().then(() => setMsg({ ok: true, text: 'โหลดข้อมูลล่าสุดแล้ว — ตรวจสอบการเปลี่ยนแปลงก่อนบันทึกอีกครั้ง' }))}>
+                โหลดข้อมูลล่าสุด
+              </button>
+            )}
           </div>
           {!data.loaded ? (
             <p role="status">กำลังโหลด…</p>

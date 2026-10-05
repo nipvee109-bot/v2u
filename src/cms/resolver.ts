@@ -8,7 +8,7 @@ import type { GameDoc, LessonGameAssignment, PublishedDoc, ResourceData, VideoDa
 import { OVERRIDABLE_FIELDS } from './types';
 import type { OverridableField } from './types';
 
-import { isLearnerVisibleData } from './workflow';
+import { isLearnerVisibleData, isSnapshotLearnerVisible } from './workflow';
 
 /** Learner policy: published + VISIBLE + VERIFIED (explicitly) + safe https link. */
 export const isLearnerVisible = (d: VideoData | ResourceData) => isLearnerVisibleData('video', d);
@@ -16,7 +16,8 @@ export const isLearnerVisible = (d: VideoData | ResourceData) => isLearnerVisibl
 function toCurated(p: PublishedDoc): CuratedResource | null {
   if (p.kind !== 'video' && p.kind !== 'resource') return null;
   const d = p.data as VideoData | ResourceData;
-  if (!p.learnerVisible || !isLearnerVisible(d)) return null;
+  // learnerVisible was decided by the server from the full row; the snapshot itself has no verifier metadata
+  if (!p.learnerVisible || !isSnapshotLearnerVisible(p.kind, d)) return null;
   const isVideo = p.kind === 'video';
   const v = d as VideoData;
   const r = d as ResourceData;
@@ -37,11 +38,11 @@ function toCurated(p: PublishedDoc): CuratedResource | null {
     curriculumLessonIds: [d.lessonId],
     coveredOutcomes: [],
     whyV2USelected: isVideo ? (v.purpose === 'REVIEW' ? 'คลิปทบทวนที่ทีม V2U ตรวจแล้ว' : v.purpose === 'PRACTICE_SUPPORT' ? 'คลิปช่วยฝึกที่ทีม V2U ตรวจแล้ว' : 'คลิปเรียนครั้งแรกที่ทีม V2U ตรวจแล้ว') : 'แหล่งเรียนรู้ที่ทีม V2U ตรวจแล้ว',
-    lastChecked: (d.verifiedAt ?? p.publishedAt).slice(0, 10),
+    lastChecked: p.publishedAt.slice(0, 10),
     language: 'th',
     isFree: true,
     status: 'verified',
-    verification: { checkedAt: (d.verifiedAt ?? p.publishedAt).slice(0, 10), method: `V2U reviewer ${d.verifiedBy}`, note: `published v${p.version}`, httpStatus: 200, titleMatches: true, coverageChecked: true, legalSource: true },
+    verification: { checkedAt: p.publishedAt.slice(0, 10), method: 'V2U reviewer', note: `published v${p.version}`, httpStatus: 200, titleMatches: true, coverageChecked: true, legalSource: true },
   };
 }
 

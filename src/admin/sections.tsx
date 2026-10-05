@@ -11,11 +11,11 @@ import { GAME_REGISTRY } from '../learning/games/registry';
 import { effectiveGameAvailability, isLearnerVisible, learnerResources } from '../cms/resolver';
 import { isLearnerVisibleData, transitionResult } from '../cms/workflow';
 import type { Transition } from '../cms/workflow';
-import { GAME_STATES, OVERRIDABLE_FIELDS, VIDEO_PURPOSES } from '../cms/types';
+import { ENTITY_CATEGORY, GAME_STATES, OVERRIDABLE_FIELDS, VIDEO_PURPOSES } from '../cms/types';
 import type { DraftDoc, GameDoc, GameState, OverridableField, PublishedDoc, ResourceData, VideoData, VideoPurpose } from '../cms/types';
 import { parseYouTubeVideoId } from '../video/youtube';
 import type { AdminCtx } from './AdminApp';
-import { btnDanger, btnLine, btnPrimary, Field, field, move, panel, StateBadge, UpDown } from './ui';
+import { btnDanger, btnLine, btnPrimary, Field, field, move, Notice, panel, StateBadge, UpDown } from './ui';
 
 const LESSONS = CURRICULUM.lessons;
 const lessonTitle = (id: string | null) => LESSONS.find((l) => l.id === id)?.title ?? id ?? '—';
@@ -24,6 +24,24 @@ const PURPOSE_LABEL: Record<VideoPurpose, string> = { FIRST_LEARNING: 'เรี
 const TRANSITION_LABEL: Record<Transition, string> = { submit: 'ส่งตรวจ', approve: 'อนุมัติ', reject: 'ตีกลับ', reopen: 'เปิดแก้ใหม่', publish: 'เผยแพร่', unpublish: 'ถอนการเผยแพร่', archive: 'เก็บถาวร' };
 const DANGEROUS: Transition[] = ['unpublish', 'archive', 'reject'];
 const pubOf = (c: AdminCtx, id: string) => c.data.published.find((p) => p.id === id) ?? null;
+const FIELD_LABEL: Record<OverridableField, string> = { summary: 'สรุป', analogy: 'การเปรียบเทียบ', whyItMatters: 'ทำไมต้องเรียน' };
+const RESOURCE_TYPES: ResourceData['type'][] = ['article', 'book', 'documentation', 'course', 'other'];
+const RESOURCE_TYPE_LABEL: Record<ResourceData['type'], string> = { article: 'บทความ', book: 'หนังสือ', documentation: 'เอกสารอ้างอิง', course: 'คอร์สเรียน', other: 'อื่น ๆ' };
+/** Editing these states makes a new draft that must be submitted again (database rule). */
+const RESETS_TO_DRAFT = ['IN_REVIEW', 'APPROVED', 'PUBLISHED', 'REJECTED'];
+const RESET_WARNING = 'การแก้ไขรายการนี้จะนำกลับไปเป็นฉบับร่าง และต้องส่งตรวจใหม่';
+/** Long ids/titles wrap instead of pushing badges off narrow screens */
+const itemTitle = 'min-w-0 w-full font-semibold [overflow-wrap:anywhere] sm:w-auto sm:flex-1';
+
+/** Shown inside an edit form when the item changed after the form was opened (never overwritten silently). */
+function StaleCopyNotice({ onRebase }: { onRebase: () => void }) {
+  return (
+    <div className="flex flex-col gap-2 md:col-span-2">
+      <Notice>รายการนี้ถูกแก้ไขโดยผู้ใช้อื่นหลังจากคุณเปิดฟอร์ม — การบันทึกจากฉบับเดิมจะถูกปฏิเสธ</Notice>
+      <button type="button" className={`${btnLine} self-start`} onClick={onRebase}>เริ่มแก้จากฉบับล่าสุด</button>
+    </div>
+  );
+}
 
 function Table({ caption, head, children }: { caption: string; head: string[]; children: React.ReactNode }) {
   return (
@@ -165,16 +183,19 @@ export function VideosSection({ c }: { c: AdminCtx }) {
   const lessonId = sp.get('lesson') ?? LESSONS[0].id;
   const items = c.data.drafts.filter((d) => (d.kind === 'video' || d.kind === 'resource') && d.lessonId === lessonId && d.state !== 'ARCHIVED').sort((a, b) => (a.data as VideoData).order - (b.data as VideoData).order);
   const [form, setForm] = useState<VideoData>(() => emptyVideo(lessonId));
+  const [rform, setRform] = useState<ResourceData>(() => emptyResource(lessonId));
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   const canDraft = c.allowed('content.draft');
   const set = <K extends keyof VideoData>(k: K, v: VideoData[K]) => setForm((f) => ({ ...f, [k]: v }));
+  const rset = <K extends keyof ResourceData>(k: K, v: ResourceData[K]) => setRform((f) => ({ ...f, [k]: v }));
 
   return (
     <section className="flex flex-col gap-4">
       <H1>วิดีโอ / แหล่งเรียนรู้</H1>
       <div className="max-w-md">
         <Field label="บทเรียน">
-          <select className={field} value={lessonId} onChange={(e) => { setSp({ lesson: e.target.value }); setForm(emptyVideo(e.target.value)); }}>
+          <select className={field} value={lessonId} onChange={(e) => { setSp({ lesson: e.target.value }); setForm(emptyVideo(e.target.value)); setRform(emptyResource(e.target.value)); setEditId(null); }}>
             {LESSONS.map((l) => <option key={l.id} value={l.id}>{l.title}</option>)}
           </select>
         </Field>
@@ -189,13 +210,14 @@ export function VideosSection({ c }: { c: AdminCtx }) {
             return (
               <li key={d.id} className={`${panel} flex flex-col gap-2`} data-cms-item={d.id}>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="min-w-0 flex-1 font-semibold">{i + 1}. {v.title}</span>
+                  <span className={itemTitle}>{i + 1}. {v.title}</span>
                   <StateBadge value={d.state} /> <StateBadge value={v.verification} /> <StateBadge value={v.visibility} />
-                  {d.kind === 'video' && <span className="text-xs">{PURPOSE_LABEL[(v as VideoData).purpose]}</span>}
+                  <span className="text-xs">{d.kind === 'video' ? `วิดีโอ · ${PURPOSE_LABEL[(v as VideoData).purpose]}` : `แหล่งเรียนรู้ · ${RESOURCE_TYPE_LABEL[(v as ResourceData).type]}`}</span>
                 </div>
                 <span className="break-all font-mono text-xs">{v.url}</span>
                 <div className="flex flex-wrap gap-2">
                   {canDraft && <UpDown label={v.title} index={i} count={items.length} onMove={(f, t) => void c.act('เปลี่ยนลำดับ', () => c.svc.reorder(move(items, f, t)))} />}
+                  {canDraft && <button type="button" className={btnLine} aria-expanded={editId === d.id} onClick={() => setEditId(editId === d.id ? null : d.id)}>แก้ไข<span className="sr-only"> {v.title}</span></button>}
                   {c.allowed('content.verifySource') && v.verification !== 'VERIFIED' && (
                     <button type="button" className={btnLine} onClick={() => c.confirm({ title: 'ยืนยันแหล่งนี้?', body: 'ยืนยันว่าเปิดดูแล้ว เนื้อหาตรงบทเรียน ถูกต้อง และเข้าถึงได้จริง', confirmLabel: 'ยืนยันแล้ว', run: () => c.act('ยืนยันแหล่ง', () => c.svc.verifySource(d as DraftDoc<'video'>)) })}>ยืนยันแหล่ง</button>
                   )}
@@ -210,6 +232,7 @@ export function VideosSection({ c }: { c: AdminCtx }) {
                   <TransitionButtons c={c} d={d} pub={pub} />
                   <button type="button" className={btnLine} aria-expanded={previewId === d.id} onClick={() => setPreviewId(previewId === d.id ? null : d.id)}>มุมมองผู้เรียน</button>
                 </div>
+                {editId === d.id && <EditMediaForm key={d.id} c={c} d={d} onClose={() => setEditId(null)} />}
                 {previewId === d.id && (
                   <div className="rounded-xl border border-dashed border-[var(--line)] p-3 text-sm" data-learner-preview>
                     {isLearnerVisibleData(d.kind, d.data) ? (
@@ -255,10 +278,93 @@ export function VideosSection({ c }: { c: AdminCtx }) {
             </select>
           </Field>
           <Field label="หมายเหตุ"><textarea className={`${field} py-2`} value={form.notes} onChange={(e) => set('notes', e.target.value)} /></Field>
-          <div className="flex items-end"><button type="submit" className={btnPrimary}>บันทึกเป็นฉบับร่าง</button></div>
+          <div className="flex items-end"><button type="submit" className={btnPrimary}>บันทึกวิดีโอเป็นฉบับร่าง</button></div>
+        </form>
+      )}
+
+      {canDraft && (
+        <form className={`${panel} grid gap-3 md:grid-cols-2`} aria-labelledby="new-resource-h" onSubmit={(e) => {
+          e.preventDefault();
+          void c.act('เพิ่มแหล่งเรียนรู้', async () => { await c.svc.createDraft('resource', { ...rform, lessonId, order: items.length }); setRform(emptyResource(lessonId)); });
+        }}>
+          <h2 id="new-resource-h" className="text-lg font-bold md:col-span-2">เพิ่มแหล่งเรียนรู้</h2>
+          <p className="text-xs text-[var(--ink-2)] md:col-span-2">บทความ เอกสาร หรือคอร์สภายนอก — บันทึกเป็นฉบับร่างก่อน ผู้เรียนเห็นเมื่อผู้ตรวจทานเปิดดู ยืนยันแหล่ง และเผยแพร่แล้วเท่านั้น</p>
+          <ResourceFields value={rform} set={rset} />
+          <Field label="สถานะการตรวจ" hint="VERIFIED ทำได้ผ่านปุ่ม “ยืนยันแหล่ง” เท่านั้น">
+            <select className={field} value={rform.verification} onChange={(e) => rset('verification', e.target.value as ResourceData['verification'])}>
+              {(['DISCOVERED', 'VERIFICATION_PENDING'] as const).map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </Field>
+          <div className="flex items-end"><button type="submit" className={btnPrimary}>บันทึกแหล่งเรียนรู้เป็นฉบับร่าง</button></div>
         </form>
       )}
     </section>
+  );
+}
+
+const emptyResource = (lessonId: string): ResourceData => ({ lessonId, title: '', description: '', url: '', publisher: '', type: 'article', verification: 'DISCOVERED', verifiedBy: null, verifiedAt: null, visibility: 'VISIBLE', order: 0 });
+
+function ResourceFields<T extends ResourceData>({ value, set }: { value: T; set: <K extends keyof T>(k: K, v: T[K]) => void }) {
+  return (
+    <>
+      <Field label="ชื่อแหล่งเรียนรู้"><input className={field} value={value.title} onChange={(e) => set('title', e.target.value as T['title'])} required /></Field>
+      <Field label="ลิงก์ (https)" hint="ต้องขึ้นต้นด้วย https://"><input className={field} type="url" inputMode="url" pattern="https://.+" value={value.url} onChange={(e) => set('url', e.target.value as T['url'])} required /></Field>
+      <Field label="ผู้เผยแพร่ / แหล่งที่มา"><input className={field} value={value.publisher} onChange={(e) => set('publisher', e.target.value as T['publisher'])} /></Field>
+      <Field label="ประเภท">
+        <select className={field} value={value.type} onChange={(e) => set('type', e.target.value as T['type'])}>
+          {RESOURCE_TYPES.map((t) => <option key={t} value={t}>{RESOURCE_TYPE_LABEL[t]}</option>)}
+        </select>
+      </Field>
+      <Field label="คำอธิบายสั้น ๆ ให้ผู้เรียน"><textarea className={`${field} py-2`} rows={2} value={value.description} onChange={(e) => set('description', e.target.value as T['description'])} /></Field>
+    </>
+  );
+}
+
+type MediaForm = VideoData & ResourceData;
+
+/** Edit a video/resource based on the revision that was loaded; a newer server copy is never overwritten. */
+export function EditMediaForm({ c, d, onClose }: { c: AdminCtx; d: DraftDoc; onClose: () => void }) {
+  const [base, setBase] = useState(d);
+  const [form, setForm] = useState(d.data as MediaForm);
+  const latest = c.data.drafts.find((x) => x.id === d.id) ?? base;
+  const isVideo = d.kind === 'video';
+  const set = <K extends keyof MediaForm>(k: K, v: MediaForm[K]) => setForm((f) => ({ ...f, [k]: v }));
+  const h = `edit-${d.id}-h`;
+  return (
+    <form className="grid gap-3 rounded-xl border border-[var(--line)] p-3 md:grid-cols-2" aria-labelledby={h} onSubmit={async (e) => {
+      e.preventDefault();
+      const data = isVideo ? { ...form, videoId: form.provider === 'youtube' ? parseYouTubeVideoId(form.url) : null } : form;
+      if (await c.act('บันทึกการแก้ไข', () => c.svc.updateDraft(base as DraftDoc<'video'>, data as VideoData))) onClose();
+    }}>
+      <h3 id={h} className="font-bold md:col-span-2">แก้ไข{isVideo ? 'วิดีโอ' : 'แหล่งเรียนรู้'}</h3>
+      {RESETS_TO_DRAFT.includes(base.state) && <div className="md:col-span-2"><Notice>{RESET_WARNING}</Notice></div>}
+      {(base.data as VideoData).verification === 'VERIFIED' && <div className="md:col-span-2"><Notice tone="info">ถ้าเปลี่ยนลิงก์ ผู้ตรวจทานต้องยืนยันแหล่งใหม่ก่อนผู้เรียนจะเห็น</Notice></div>}
+      {latest.revision !== base.revision && <StaleCopyNotice onRebase={() => { setBase(latest); setForm(latest.data as MediaForm); }} />}
+      {isVideo ? (
+        <>
+          <Field label="ชื่อคลิป"><input className={field} value={form.title} onChange={(e) => set('title', e.target.value)} required /></Field>
+          <Field label="ลิงก์ (https)"><input className={field} type="url" inputMode="url" pattern="https://.+" value={form.url} onChange={(e) => set('url', e.target.value)} required /></Field>
+          <Field label="ผู้ให้บริการ">
+            <select className={field} value={form.provider} onChange={(e) => set('provider', e.target.value as VideoData['provider'])}>
+              <option value="youtube">YouTube</option><option value="vimeo">Vimeo</option><option value="other">อื่น ๆ</option>
+            </select>
+          </Field>
+          <Field label="ช่อง / ผู้สอน"><input className={field} value={form.channel} onChange={(e) => set('channel', e.target.value)} /></Field>
+          <Field label="จุดประสงค์">
+            <select className={field} value={form.purpose} onChange={(e) => set('purpose', e.target.value as VideoPurpose)}>
+              {VIDEO_PURPOSES.map((p) => <option key={p} value={p}>{PURPOSE_LABEL[p]}</option>)}
+            </select>
+          </Field>
+          <Field label="หมายเหตุ"><textarea className={`${field} py-2`} value={form.notes} onChange={(e) => set('notes', e.target.value)} /></Field>
+        </>
+      ) : (
+        <ResourceFields value={form} set={set} />
+      )}
+      <div className="flex flex-wrap gap-2 md:col-span-2">
+        <button type="submit" className={btnPrimary}>บันทึกการแก้ไข</button>
+        <button type="button" className={btnLine} onClick={onClose}>ยกเลิก</button>
+      </div>
+    </form>
   );
 }
 
@@ -268,11 +374,19 @@ const publishBody = (d: DraftDoc) =>
     ? 'ผู้เรียนจะเห็นฉบับนี้ทันที (ฉบับก่อนหน้าเก็บไว้ในประวัติ)'
     : `เผยแพร่ได้ แต่ผู้เรียนจะยังไม่เห็น — ${(d.data as VideoData).visibility !== 'VISIBLE' ? 'ซ่อนอยู่' : 'ยังไม่ได้ยืนยันแหล่ง'}`;
 
-function TransitionButtons({ c, d, pub }: { c: AdminCtx; d: DraftDoc; pub: PublishedDoc | null }) {
+export function TransitionButtons({ c, d, pub }: { c: AdminCtx; d: DraftDoc; pub: PublishedDoc | null }) {
   const actor = { uid: c.me.uid, role: c.me.role, status: c.me.status };
   const ts = (['submit', 'approve', 'reject', 'publish', 'unpublish', 'reopen', 'archive'] as Transition[]).filter((t) => transitionResult(actor, d, t, !!pub).ok);
+  // A reviewer who wrote/edited learning content sees why approve is unavailable instead of a missing button
+  const selfBlocked = can(actor, 'content.review') && d.state === 'IN_REVIEW' && ENTITY_CATEGORY[d.kind] === 'CONTROLLED' && (d.createdBy === actor.uid || d.updatedBy === actor.uid);
   return (
     <>
+      {selfBlocked && (
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <button type="button" className={btnLine} disabled aria-describedby={`self-${d.id}`}>อนุมัติ</button>
+          <span id={`self-${d.id}`} className="text-xs text-[var(--ink-2)]">คุณเขียนหรือแก้ไขรายการนี้ จึงอนุมัติเองไม่ได้ — ต้องให้ผู้ตรวจคนอื่นอนุมัติ</span>
+        </span>
+      )}
       {ts.map((t) => {
         const run = () => c.act(TRANSITION_LABEL[t], () => c.svc.transition(d, t, null, pub));
         return (
@@ -286,7 +400,7 @@ function TransitionButtons({ c, d, pub }: { c: AdminCtx; d: DraftDoc; pub: Publi
 }
 
 /* ── Games ── */
-const emptyGame = (): GameDoc => ({ gameId: '', name: '', description: '', subjects: [], skillIds: [], gameVersion: '0.1.0', contentContract: '1.1', evidenceContract: '1.1', launchType: 'none', launchUrl: '', thumbnail: '', status: 'DRAFT', enabled: false, published: false, createdAt: '', updatedAt: '', updatedBy: '' });
+const emptyGame = (): GameDoc => ({ gameId: '', name: '', description: '', subjects: [], skillIds: [], gameVersion: '0.1.0', contentContract: '1.1', evidenceContract: '1.1', launchType: 'none', launchUrl: '', thumbnail: '', status: 'DRAFT', enabled: false, published: false, createdAt: '', updatedAt: '', updatedBy: '', revision: 0 });
 
 export function GamesSection({ c }: { c: AdminCtx }) {
   const [form, setForm] = useState<GameDoc>(emptyGame);
@@ -352,6 +466,7 @@ export function PublishingSection({ c }: { c: AdminCtx }) {
   const [value, setValue] = useState('');
   const [reason, setReason] = useState('');
   const [history, setHistory] = useState<{ id: string; list: PublishedDoc[] } | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   return (
     <section className="flex flex-col gap-4">
       <H1>การเผยแพร่</H1>
@@ -367,20 +482,24 @@ export function PublishingSection({ c }: { c: AdminCtx }) {
           {rows.map((d) => (
             <li key={d.id} className={`${panel} flex flex-col gap-2`}>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="min-w-0 flex-1 font-semibold">{(d.data as { title?: string }).title ?? `${d.kind}: ${(d.data as { field?: string }).field}`}</span>
-                <StateBadge value={d.state} /><span className="text-xs">{d.kind} · {lessonTitle(d.lessonId)} · v{d.publishedVersion}</span>
+                <span className={itemTitle}>{(d.data as { title?: string }).title ?? `ข้อความบทเรียน · ${FIELD_LABEL[(d.data as { field: OverridableField }).field] ?? (d.data as { field: string }).field}`}</span>
+                <StateBadge value={d.state} /><span className="text-xs [overflow-wrap:anywhere]">{d.kind} · {lessonTitle(d.lessonId)} · v{d.publishedVersion}</span>
               </div>
               {d.kind === 'contentOverride' && <p className="whitespace-pre-wrap text-sm">{String((d.data as { value: unknown }).value)}</p>}
               <div className="flex flex-wrap gap-2">
+                {d.kind === 'contentOverride' && d.state !== 'ARCHIVED' && c.allowed('content.draft') && (
+                  <button type="button" className={btnLine} aria-expanded={editId === d.id} onClick={() => setEditId(editId === d.id ? null : d.id)}>แก้ไข</button>
+                )}
                 <TransitionButtons c={c} d={d} pub={pubOf(c, d.id)} />
                 <button type="button" className={btnLine} onClick={() => void c.svc.versions(d).then((list) => setHistory({ id: d.id, list }))}>ประวัติเวอร์ชัน</button>
               </div>
+              {editId === d.id && <EditOverrideForm key={d.id} c={c} d={d as DraftDoc<'contentOverride'>} onClose={() => setEditId(null)} />}
               {history?.id === d.id && (
                 <ul className="text-sm" data-version-history>
                   {history.list.length === 0 ? <li>ยังไม่มีเวอร์ชันก่อนหน้า</li> : history.list.map((v) => (
                     <li key={v.version} className="flex flex-wrap items-center gap-2">
                       v{v.version} · {v.publishedAt.slice(0, 16)}
-                      {c.allowed('content.draft') && <button type="button" className={btnLine} onClick={() => c.confirm({ title: `กู้คืน v${v.version}?`, body: 'สร้างฉบับร่างจากเวอร์ชันนี้ (ต้องเผยแพร่ใหม่ถึงจะมีผล)', confirmLabel: 'กู้คืนเป็นร่าง', run: () => c.act('กู้คืนเวอร์ชัน', () => c.svc.updateDraft(d, v.data)) })}>กู้คืนเป็นร่าง</button>}
+                      {c.allowed('content.draft') && <button type="button" className={btnLine} onClick={() => c.confirm({ title: `กู้คืน v${v.version}?`, body: 'สร้างฉบับร่างจากเวอร์ชันนี้ (ต้องเผยแพร่ใหม่ถึงจะมีผล)', confirmLabel: 'กู้คืนเป็นร่าง', run: () => c.act('กู้คืนเวอร์ชัน', () => c.svc.updateDraft(d, restoreData(d, v))) })}>กู้คืนเป็นร่าง</button>}
                     </li>
                   ))}
                 </ul>
@@ -398,13 +517,51 @@ export function PublishingSection({ c }: { c: AdminCtx }) {
           <h2 id="ovr-h" className="text-lg font-bold md:col-span-2">แก้ข้อความบทเรียน (ต้องผ่านการตรวจ)</h2>
           <p className="text-xs text-[var(--ink-2)] md:col-span-2">แก้ได้เฉพาะ สรุป · การเปรียบเทียบ · ทำไมต้องเรียน — ต้องมีผู้ตรวจคนอื่นอนุมัติก่อนเผยแพร่ รหัสทักษะ เกณฑ์ประเมิน และตรรกะการเรียนแก้จากที่นี่ไม่ได้</p>
           <Field label="บทเรียน"><select className={field} value={lessonId} onChange={(e) => setLessonId(e.target.value)}>{LESSONS.map((l) => <option key={l.id} value={l.id}>{l.title}</option>)}</select></Field>
-          <Field label="ช่องที่แก้"><select className={field} value={fieldName} onChange={(e) => setFieldName(e.target.value as OverridableField)}>{OVERRIDABLE_FIELDS.map((f) => <option key={f} value={f}>{f}</option>)}</select></Field>
+          <Field label="ช่องที่แก้"><select className={field} value={fieldName} onChange={(e) => setFieldName(e.target.value as OverridableField)}>{OVERRIDABLE_FIELDS.map((f) => <option key={f} value={f}>{FIELD_LABEL[f]} ({f})</option>)}</select></Field>
           <Field label="เนื้อหาใหม่" hint={fieldName === 'summary' ? 'หนึ่งข้อต่อบรรทัด' : undefined}><textarea className={`${field} py-2`} rows={4} value={value} onChange={(e) => setValue(e.target.value)} required /></Field>
           <Field label="เหตุผลของการแก้ไข"><input className={field} value={reason} onChange={(e) => setReason(e.target.value)} required /></Field>
           <div><button type="submit" className={btnPrimary}>บันทึกเป็นฉบับร่าง</button></div>
         </form>
       )}
     </section>
+  );
+}
+
+/** Snapshots carry no editorial metadata: keep the draft's reason / verification when restoring. */
+function restoreData(d: DraftDoc, v: PublishedDoc) {
+  if (d.kind === 'contentOverride') {
+    const cur = d.data as DraftDoc<'contentOverride'>['data'];
+    return { ...(v.data as typeof cur), reason: (v.data as typeof cur).reason || cur.reason || `กู้คืนจาก v${v.version}` };
+  }
+  const cur = d.data as VideoData;
+  return { ...(v.data as VideoData), verification: cur.verification, verifiedBy: cur.verifiedBy, verifiedAt: cur.verifiedAt };
+}
+
+/** Edit reviewed lesson text. Editing anything past DRAFT returns it to DRAFT (warned before saving). */
+export function EditOverrideForm({ c, d, onClose }: { c: AdminCtx; d: DraftDoc<'contentOverride'>; onClose: () => void }) {
+  const text = (x: DraftDoc<'contentOverride'>) => (Array.isArray(x.data.value) ? x.data.value.join('\n') : x.data.value);
+  const [base, setBase] = useState(d);
+  const [value, setValue] = useState(() => text(d));
+  const [reason, setReason] = useState(d.data.reason);
+  const latest = (c.data.drafts.find((x) => x.id === d.id) as DraftDoc<'contentOverride'> | undefined) ?? base;
+  const summary = base.data.field === 'summary';
+  const h = `edit-${d.id}-h`;
+  return (
+    <form className="grid gap-3 rounded-xl border border-[var(--line)] p-3 md:grid-cols-2" aria-labelledby={h} onSubmit={async (e) => {
+      e.preventDefault();
+      const v = summary ? value.split('\n').map((x) => x.trim()).filter(Boolean) : value;
+      if (await c.act('บันทึกการแก้ไขข้อความ', () => c.svc.updateDraft(base, { ...base.data, value: v, reason }))) onClose();
+    }}>
+      <h3 id={h} className="font-bold md:col-span-2">แก้ไขข้อความบทเรียน · {FIELD_LABEL[base.data.field]} · {lessonTitle(base.lessonId)}</h3>
+      {RESETS_TO_DRAFT.includes(base.state) && <div className="md:col-span-2"><Notice>{RESET_WARNING}</Notice></div>}
+      {latest.revision !== base.revision && <StaleCopyNotice onRebase={() => { setBase(latest); setValue(text(latest)); setReason(latest.data.reason); }} />}
+      <Field label="เนื้อหาใหม่" hint={summary ? 'หนึ่งข้อต่อบรรทัด' : undefined}><textarea className={`${field} py-2`} rows={4} value={value} onChange={(e) => setValue(e.target.value)} required /></Field>
+      <Field label="เหตุผลของการแก้ไข"><input className={field} value={reason} onChange={(e) => setReason(e.target.value)} required /></Field>
+      <div className="flex flex-wrap gap-2 md:col-span-2">
+        <button type="submit" className={btnPrimary}>บันทึกการแก้ไข</button>
+        <button type="button" className={btnLine} onClick={onClose}>ยกเลิก</button>
+      </div>
+    </form>
   );
 }
 
@@ -424,7 +581,7 @@ export function UsersSection({ c }: { c: AdminCtx }) {
             <td className="p-2">{u.displayName}{u.uid === c.me.uid && ' (คุณ)'}</td>
             <td className="p-2">{u.email}</td>
             <td className="p-2">
-              <select aria-label={`บทบาทของ ${u.displayName}`} className={field} value={u.role} disabled={!can(actor, 'users.manageRoles')} onChange={(e) => {
+              <select aria-label={`บทบาทของ ${u.displayName}`} aria-describedby={u.uid === c.me.uid ? 'own-role-hint' : undefined} className={field} value={u.role} disabled={!can(actor, 'users.manageRoles') || u.uid === c.me.uid} onChange={(e) => {
                 const next = e.target.value as Role;
                 const deny = roleChangeDenied(actor, u, next, activeSupers);
                 if (deny) return void c.act('เปลี่ยนบทบาท', () => Promise.reject(new Error(deny)));
@@ -432,6 +589,7 @@ export function UsersSection({ c }: { c: AdminCtx }) {
               }}>
                 {ROLES.map((r) => <option key={r} value={r} disabled={r !== u.role && !!roleChangeDenied(actor, u, r, activeSupers)}>{ROLE_LABEL[r]}</option>)}
               </select>
+              {u.uid === c.me.uid && <span id="own-role-hint" className="mt-1 block text-xs text-[var(--ink-2)]">เปลี่ยนบทบาทและสถานะของตัวเองไม่ได้ — ให้ผู้ดูแลระบบสูงสุดคนอื่นเปลี่ยนให้</span>}
             </td>
             <td className="p-2">
               <select aria-label={`สถานะของ ${u.displayName}`} className={field} value={u.status} disabled={!can(actor, 'users.setStatus') || u.uid === c.me.uid} onChange={(e) => {
@@ -464,11 +622,47 @@ export function AuditSection({ c }: { c: AdminCtx }) {
             <td className="p-2 text-xs">{c.data.users.find((u) => u.uid === e.actorUid)?.displayName ?? e.actorUid} · {e.actorRole}</td>
             <td className="p-2 font-mono text-xs">{e.action}</td>
             <td className="p-2 text-xs">{e.entityType}: {e.entityId}</td>
-            <td className="max-w-[320px] break-all p-2 font-mono text-xs">{e.before ?? '—'} → {e.after ?? '—'}</td>
+            <td className="max-w-[360px] p-2 text-xs"><AuditChange before={e.before} after={e.after} /></td>
           </tr>
         ))}
       </Table>
     </section>
+  );
+}
+
+/** Audit summaries are length-limited, so long JSON is often cut off: keep every complete "key": value pair. */
+const parseSummary = (s: string | null): unknown => {
+  if (s === null) return null;
+  try { return JSON.parse(s); } catch { /* truncated */ }
+  if (!s.startsWith('{')) return s;
+  const out: Record<string, unknown> = {};
+  for (const m of s.matchAll(/"([\w]+)"\s*:\s*("(?:[^"\\]|\\.)*"|-?\d+(?:\.\d+)?|true|false|null)\s*(?=[,}])/g)) out[m[1]] = JSON.parse(m[2]);
+  return Object.keys(out).length ? out : s;
+};
+const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x);
+const show = (x: unknown) => { const t = x === null || x === undefined ? '—' : typeof x === 'string' ? x : JSON.stringify(x); return t.length > 80 ? `${t.slice(0, 80)}…` : t; };
+
+/** Readable audit change: only the fields that changed; the raw summary stays one click away. */
+export function AuditChange({ before, after }: { before: string | null; after: string | null }) {
+  const b = parseSummary(before);
+  const a = parseSummary(after);
+  if (!isObj(a) || (b !== null && !isObj(b))) return <span className="[overflow-wrap:anywhere]">{show(b)} → {show(a)}</span>;
+  const prev = (b ?? {}) as Record<string, unknown>;
+  // a key cut off one side of a truncated summary is unknown, not changed
+  const keys = [...new Set([...Object.keys(prev), ...Object.keys(a)])].filter((k) => (b === null || (k in prev && k in a)) && JSON.stringify(prev[k]) !== JSON.stringify(a[k]));
+  const rows = b === null ? keys.filter((k) => a[k] !== null && a[k] !== '') : keys;
+  return (
+    <div className="flex flex-col gap-1">
+      {b === null && <span className="font-semibold">สร้างรายการใหม่</span>}
+      <ul className="flex flex-col gap-0.5">
+        {rows.slice(0, 8).map((k) => (
+          <li key={k} className="[overflow-wrap:anywhere]"><span className="font-mono">{k}</span>: {b === null ? show(a[k]) : <>{show(prev[k])} → {show(a[k])}</>}</li>
+        ))}
+        {rows.length > 8 && <li>และอีก {rows.length - 8} ช่อง</li>}
+        {rows.length === 0 && <li>ไม่มีฟิลด์ที่เปลี่ยน</li>}
+      </ul>
+      <details><summary className="cursor-pointer">ข้อมูลเต็ม</summary><pre className="whitespace-pre-wrap break-all font-mono">{`${before ?? '—'}\n→ ${after ?? '—'}`}</pre></details>
+    </div>
   );
 }
 

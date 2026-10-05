@@ -11,16 +11,51 @@ import { transitionResult, validateEntity, verificationChangeDenied } from './wo
 import type { Transition, ValidationContext } from './workflow';
 import { GAME_STATES } from './types';
 
-export class CmsError extends Error {}
+export class CmsError extends Error {
+  /** The item changed since it was loaded: reload before acting again */
+  stale: boolean;
+  constructor(message: string, stale = false) {
+    super(message);
+    this.stale = stale;
+  }
+}
+
+export const STALE_MESSAGE = 'ข้อมูลนี้ถูกแก้ไขโดยผู้ใช้อื่นแล้ว กรุณาโหลดข้อมูลล่าสุดก่อนบันทึก';
+const RELOAD_HINT = ' — ข้อมูลอาจเปลี่ยนแล้ว ลองโหลดข้อมูลล่าสุด';
+
+/** Known database/RPC messages → Thai. Order matters: specific before generic. */
+const KNOWN: [RegExp, string][] = [
+  [/learning content must be approved by someone else/i, 'เนื้อหาการเรียนต้องให้ผู้ตรวจคนอื่นอนุมัติ (ผู้เขียนหรือผู้แก้ไขอนุมัติเองไม่ได้)'],
+  [/learning content must be approved before publishing/i, 'เนื้อหาการเรียนต้องผ่านการอนุมัติก่อนเผยแพร่'],
+  [/only drafts can be submitted/i, `ส่งตรวจได้เฉพาะฉบับร่าง${RELOAD_HINT}`],
+  [/only items in review can be approved/i, `อนุมัติได้เฉพาะรายการที่รอตรวจ${RELOAD_HINT}`],
+  [/cannot reject from this state/i, `ตีกลับได้เฉพาะรายการที่รอตรวจหรืออนุมัติแล้ว${RELOAD_HINT}`],
+  [/cannot reopen from this state/i, `เปิดแก้ใหม่ได้เฉพาะรายการที่ถูกตีกลับหรือเก็บถาวร${RELOAD_HINT}`],
+  [/cannot publish from this state/i, `เผยแพร่ไม่ได้จากสถานะนี้${RELOAD_HINT}`],
+  [/not published/i, `รายการนี้ยังไม่ได้เผยแพร่${RELOAD_HINT}`],
+  [/already archived/i, 'รายการนี้ถูกเก็บถาวรแล้ว'],
+  [/unpublish before archiving/i, 'ต้องถอนการเผยแพร่ก่อนเก็บถาวร'],
+  [/archived — reopen it first/i, 'รายการนี้ถูกเก็บถาวร — เปิดแก้ใหม่ก่อน'],
+  [/VERIFIED requires an explicit reviewer verification/i, 'สถานะ “ยืนยันแล้ว” ตั้งได้ผ่านปุ่มยืนยันแหล่งของผู้ตรวจทานเท่านั้น'],
+  [/you cannot change your own role/i, 'เปลี่ยนบทบาทของตัวเองไม่ได้'],
+  [/you cannot change your own status/i, 'เปลี่ยนสถานะบัญชีของตัวเองไม่ได้'],
+  [/managed by the publishing workflow|cannot change/i, 'ช่องนี้ระบบจัดการเอง แก้ตรงไม่ได้'],
+  [/at least one active SUPER_ADMIN is required/i, 'ต้องมีผู้ดูแลระบบสูงสุดที่ใช้งานได้อย่างน้อย 1 คนเสมอ'],
+  [/only SUPER_ADMIN can/i, 'เฉพาะผู้ดูแลระบบสูงสุดจัดการสิทธิ์ ADMIN / SUPER_ADMIN ได้'],
+  [/permission denied|row-level security|42501/i, 'ไม่มีสิทธิ์ทำรายการนี้'],
+  [/not found|P0002/i, `ไม่พบรายการนี้${RELOAD_HINT}`],
+  [/check constraint|violates/i, 'ข้อมูลไม่ผ่านเงื่อนไขของระบบ'],
+  [/fetch|network/i, 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'],
+];
 
 /** Database/RPC errors → short Thai messages (never raw internals). */
-function friendly(e: unknown): CmsError {
+export function friendly(e: unknown): CmsError {
   if (e instanceof CmsError) return e;
-  const m = (e as { message?: string })?.message ?? String(e);
-  if (/permission denied|row-level security|42501/i.test(m)) return new CmsError(`ไม่มีสิทธิ์ทำรายการนี้ (${m.slice(0, 120)})`);
-  if (/check constraint|violates/i.test(m)) return new CmsError('ข้อมูลไม่ผ่านเงื่อนไขของระบบ');
-  if (/fetch|network/i.test(m)) return new CmsError('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
-  return new CmsError(m.slice(0, 200));
+  const err = e as { message?: string; code?: string };
+  const m = err?.message ?? String(e);
+  if (err?.code === 'PT409' || /stale revision/i.test(m)) return new CmsError(STALE_MESSAGE, true);
+  const known = KNOWN.find(([re]) => re.test(m));
+  return new CmsError(known ? known[1] : 'ทำรายการไม่สำเร็จ กรุณาลองใหม่');
 }
 
 export class CmsService {
@@ -65,14 +100,23 @@ export class CmsService {
       const deny = verificationChangeDenied(this.actor, d.data as VideoData, data as VideoData);
       if (deny) throw new CmsError(deny);
     }
-    // editing approved/published content makes a new draft (the database does this too)
-    return this.call(() => this.backend.updateDraft(this.actor, d.kind, d.id, data));
+    // editing approved/published content makes a new draft (the database does this too);
+    // the edit is based on d.revision, so a newer row is refused instead of overwritten
+    return this.call(() => this.backend.updateDraft(this.actor, d.kind, d.id, data, d.revision));
+  }
+
+  /** The current server copy (fresh revision/state) */
+  async fresh<K extends EntityKind>(d: DraftDoc<K>): Promise<DraftDoc<K>> {
+    const cur = await this.call(() => this.backend.getDraft(d.kind, d.id));
+    if (!cur) throw new CmsError('ไม่พบรายการนี้');
+    return cur;
   }
 
   /** Explicit source verification (VERIFIED needs a reviewer — entering a URL never verifies it). */
   async verifySource(d: DraftDoc<'video'> | DraftDoc<'resource'>): Promise<void> {
     this.need('content.verifySource');
-    await this.call(() => this.backend.verifySource(this.actor, d.kind, d.id));
+    // never verify a link this reviewer has not seen: refused if the item changed since it was loaded
+    await this.call(() => this.backend.verifySource(this.actor, d.kind, d.id, d.revision));
   }
 
   async transition(d: DraftDoc, t: Transition, note: string | null, published: PublishedDoc | null) {
@@ -82,8 +126,9 @@ export class CmsService {
       const errs = validateEntity(d.kind, d.data, this.ctx);
       if (errs.length) throw new CmsError(errs.join(' · '));
     }
-    const next = await this.call(() => this.backend.transition(this.actor, d.kind, d.id, t, note));
-    return { ...d, state: next, reviewNote: note ?? d.reviewNote } as DraftDoc;
+    // acting on a stale copy (e.g. approving text you have not seen) is refused by the server
+    const next = await this.call(() => this.backend.transition(this.actor, d.kind, d.id, t, note, d.revision));
+    return (await this.call(() => this.backend.getDraft(d.kind, d.id))) ?? ({ ...d, state: next, reviewNote: note ?? d.reviewNote } as DraftDoc);
   }
 
   /** Store an explicit order for a lesson's items (takes effect for learners when re-published). */
@@ -92,7 +137,7 @@ export class CmsService {
     for (const [i, d] of items.entries()) {
       if (d.kind !== 'video' && d.kind !== 'resource') continue;
       if ((d.data as VideoData).order === i) continue;
-      await this.call(() => this.backend.updateDraft(this.actor, d.kind, d.id, { ...(d.data as VideoData), order: i }));
+      await this.call(() => this.backend.updateDraft(this.actor, d.kind, d.id, { ...(d.data as VideoData), order: i }, d.revision));
     }
   }
 

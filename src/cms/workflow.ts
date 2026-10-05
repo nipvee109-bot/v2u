@@ -29,7 +29,7 @@ export function transitionResult(actor: Actor, d: DraftDoc, t: Transition, isPub
       return d.state === 'DRAFT' ? { ok: true, next: 'IN_REVIEW' } : { ok: false, reason: 'ส่งตรวจได้เฉพาะฉบับร่าง' };
     case 'approve':
       if (d.state !== 'IN_REVIEW') return { ok: false, reason: 'อนุมัติได้เฉพาะรายการที่รอตรวจ' };
-      if (d.updatedBy === actor.uid && controlled) return { ok: false, reason: 'เนื้อหาการเรียนต้องให้คนอื่นตรวจ' };
+      if (controlled && (d.updatedBy === actor.uid || d.createdBy === actor.uid)) return { ok: false, reason: 'เนื้อหาการเรียนต้องให้คนอื่นตรวจ' };
       return { ok: true, next: 'APPROVED' };
     case 'reject':
       return d.state === 'IN_REVIEW' || d.state === 'APPROVED' ? { ok: true, next: 'REJECTED' } : { ok: false, reason: 'ตีกลับได้เฉพาะรายการที่รอตรวจหรืออนุมัติแล้ว' };
@@ -121,9 +121,22 @@ export function isLearnerVisibleData(kind: EntityKind, data: EntityDataMap[Entit
   return true;
 }
 
+/** Learner snapshots carry no editorial metadata (mirrors cms_transition): no reason, verifier or verification time. */
+export function learnerSnapshot<K extends EntityKind>(kind: K, data: EntityDataMap[K]): EntityDataMap[K] {
+  if (kind === 'contentOverride') return { ...(data as EntityDataMap['contentOverride']), reason: '' } as EntityDataMap[K];
+  return { ...(data as VideoData), verifiedBy: null, verifiedAt: null } as EntityDataMap[K];
+}
+
+/** Learner check on a published snapshot (the server decided learnerVisible from the full row at publish time). */
+export function isSnapshotLearnerVisible(kind: EntityKind, data: EntityDataMap[EntityKind]): boolean {
+  if (kind !== 'video' && kind !== 'resource') return true;
+  const d = data as VideoData;
+  return d.visibility === 'VISIBLE' && d.verification === 'VERIFIED' && SAFE_HTTPS_URL.test(d.url);
+}
+
 export function nextPublished<K extends EntityKind>(d: DraftDoc<K>, prev: PublishedDoc<K> | null, actorUid: string, at: string): PublishedDoc<K> {
   const lastVersion = Math.max(prev?.version ?? 0, d.publishedVersion);
-  return { id: d.id, kind: d.kind, lessonId: d.lessonId, data: d.data, version: lastVersion + 1, publishedAt: at, publishedBy: actorUid, previousVersion: lastVersion || null, learnerVisible: isLearnerVisibleData(d.kind, d.data) };
+  return { id: d.id, kind: d.kind, lessonId: d.lessonId, data: learnerSnapshot(d.kind, d.data), version: lastVersion + 1, publishedAt: at, publishedBy: actorUid, previousVersion: lastVersion || null, learnerVisible: isLearnerVisibleData(d.kind, d.data) };
 }
 
 export function auditEvent(actor: Actor, action: AuditAction, entityType: AuditEvent['entityType'], entityId: string, before: string | null, after: string | null, at: string): AuditEvent {

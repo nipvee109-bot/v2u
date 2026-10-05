@@ -175,6 +175,15 @@ try {
       assert.deepStrictEqual((await legacy.query('select * from public.cms_published where entity_id=$1', [o.id])).rows[0], published);
       assert.strictEqual((await legacy.query('select count(*)::int n from public.audit_logs')).rows[0].n, auditCount);
     });
+    await test('T007D migration on populated data: revision 1 everywhere, live snapshots minimized, audit/history untouched', async () => {
+      for (const m of migrations.filter((m) => m >= '20261005020000')) await legacy.query(fs.readFileSync(path.join(root, 'supabase/migrations', m), 'utf-8'));
+      assert.deepStrictEqual((await legacy.query('select revision from public.content_overrides')).rows, [{ revision: 1 }]);
+      const live = (await legacy.query('select data from public.cms_published')).rows;
+      assert(live.length === 1 && !('reason' in live[0].data) && live[0].data.value, 'live snapshot keeps value, drops reason');
+      await assert.rejects(legacyAs(actors[2], `update public.content_overrides set reason='no revision' where id=$1`, [o.id]), (e) => e.code === 'PT409');
+      await legacyAs(actors[2], `update public.content_overrides set reason='with revision', revision = revision + 1 where id=$1`, [o.id]);
+      assert.strictEqual((await legacy.query('select revision from public.content_overrides')).rows[0].revision, 2);
+    });
   } finally { await legacy.end(); }
   await test('existing auth users receive one default profile; backfill is repeatable and preserves existing profiles', async () => {
     await db.query('create database t005_profiles');
@@ -307,7 +316,7 @@ try {
 
   await test('client-executable public functions match the allowlist; no bootstrap RPC is exposed', async () => {
     const helpers = ['v2u_can(text)', 'v2u_current_role()', 'v2u_https_url(text)', 'v2u_is_client()', 'v2u_lesson_id(text)', 'v2u_role_can(app_role,text)'];
-    const rpcs = ['cms_transition(text,uuid,text,text)', 'cms_verify_source(text,uuid)', 'set_user_role(uuid,app_role)', 'set_user_status(uuid,account_status)'];
+    const rpcs = ['cms_transition(text,uuid,text,text,integer)', 'cms_verify_source(text,uuid,integer)', 'set_user_role(uuid,app_role)', 'set_user_status(uuid,account_status)'];
     for (const role of ['anon', 'authenticated']) {
       const { rows } = await db.query(`select p.oid::regprocedure::text signature from pg_proc p
         where p.pronamespace = 'public'::regnamespace and has_function_privilege($1, p.oid, 'EXECUTE')
@@ -359,11 +368,11 @@ try {
     await as(U.GAME_EDITOR, `insert into public.lesson_game_assignments(lesson_id,game_id) values ($1,'matrix-game')`, [L]);
     const cases = [
       ...[['videos', v.id], ['resources', resource.id], ['content_overrides', o.id]].flatMap(([table, id]) => [
-        { name: `${table} update`, perm: 'content.draft', sql: `update public.${table} set lesson_id = lesson_id where id = $1 returning id`, args: [id], update: true },
+        { name: `${table} update`, perm: 'content.draft', sql: `update public.${table} set lesson_id = lesson_id, revision = revision + 1 where id = $1 returning id`, args: [id], update: true },
         { name: `${table} insert`, perm: 'content.draft', sql: table === 'content_overrides' ? `insert into public.${table}(lesson_id,field,value,reason) values ($1,'analogy','"matrix"','matrix') returning id` : `insert into public.${table}(lesson_id,title,url) values ($1,'matrix','https://example.com/m') returning id`, args: [L] },
       ]),
       { name: 'games insert', perm: 'game.manage', sql: `insert into public.games(game_id,name) values ('matrix-new','matrix') returning game_id` },
-      { name: 'games update', perm: 'game.manage', sql: `update public.games set name = name where game_id = 'matrix-game' returning game_id`, update: true },
+      { name: 'games update', perm: 'game.manage', sql: `update public.games set name = name, revision = revision + 1 where game_id = 'matrix-game' returning game_id`, update: true },
       { name: 'assignments insert', perm: 'game.assign', sql: `insert into public.lesson_game_assignments(lesson_id,game_id) values ('prog-matrix-probe','matrix-game') returning id` },
       { name: 'assignments update', perm: 'game.assign', sql: `update public.lesson_game_assignments set visible = visible where game_id = 'matrix-game' returning id`, update: true },
       { name: 'role RPC', perm: 'users.manageRoles', sql: `select public.set_user_role($1,'CONTENT_EDITOR')`, args: [U.SUPER_ADMIN_2], audit: 'ROLE_CHANGED' },
@@ -442,7 +451,7 @@ try {
     const v = await newVideo(U.CONTENT_EDITOR, { title: 'history-1' });
     for (let version = 1; version <= 4; version++) {
       if (version === 3) await as(U.REVIEWER, `select public.cms_transition('video',$1,'unpublish')`, [v.id]);
-      if (version > 1) await as(U.CONTENT_EDITOR, `update public.videos set title = $2 where id = $1`, [v.id, `history-${version}`]);
+      if (version > 1) await as(U.CONTENT_EDITOR, `update public.videos set title = $2, revision = revision + 1 where id = $1`, [v.id, `history-${version}`]);
       await as(U.REVIEWER, `select public.cms_transition('video',$1,'publish')`, [v.id]);
       const p = (await db.query('select * from public.cms_published where entity_id=$1', [v.id])).rows[0];
       assert.strictEqual(p.version, version);
@@ -454,9 +463,9 @@ try {
 
   await test('intermediate edits cannot launder self-approval, including promoted editors', async () => {
     const o = (await as(U.CONTENT_EDITOR, `insert into public.content_overrides(lesson_id,field,value,reason) values ($1,'analogy','"original"','review') returning id`, [L]))[0];
-    await as(U.CONTENT_EDITOR_2, `update public.content_overrides set reason='intermediate editor' where id=$1`, [o.id]);
-    await as(U.ADMIN, `update public.content_overrides set value='"admin text"' where id=$1`, [o.id]);
-    await as(U.CONTENT_EDITOR, `update public.content_overrides set reason='minor edit' where id=$1`, [o.id]);
+    await as(U.CONTENT_EDITOR_2, `update public.content_overrides set reason='intermediate editor', revision = revision + 1 where id=$1`, [o.id]);
+    await as(U.ADMIN, `update public.content_overrides set value='"admin text"', revision = revision + 1 where id=$1`, [o.id]);
+    await as(U.CONTENT_EDITOR, `update public.content_overrides set reason='minor edit', revision = revision + 1 where id=$1`, [o.id]);
     await as(U.CONTENT_EDITOR, `select public.cms_transition('contentOverride',$1,'submit')`, [o.id]);
     await assert.rejects(as(U.ADMIN, `select public.cms_transition('contentOverride',$1,'approve')`, [o.id]), (e) => e.code === '42501');
     const authors = (await db.query('select created_by,updated_by,contributors from public.content_overrides where id=$1', [o.id])).rows[0];
@@ -474,8 +483,8 @@ try {
     await as(U.REVIEWER, `select public.cms_transition('contentOverride',$1,'publish')`, [o.id]);
     const snap = (await as(null, `select data from public.cms_published where entity_id=$1`, [o.id]))[0].data;
     assert(!('contributors' in snap));
-    await as(U.ADMIN, `update public.content_overrides set value='"new admin text"' where id=$1`, [o.id]);
-    await as(U.CONTENT_EDITOR, `update public.content_overrides set reason='minor again' where id=$1`, [o.id]);
+    await as(U.ADMIN, `update public.content_overrides set value='"new admin text"', revision = revision + 1 where id=$1`, [o.id]);
+    await as(U.CONTENT_EDITOR, `update public.content_overrides set reason='minor again', revision = revision + 1 where id=$1`, [o.id]);
     await as(U.REVIEWER, `select public.cms_transition('contentOverride',$1,'unpublish')`, [o.id]);
     await as(U.CONTENT_EDITOR, `select public.cms_transition('contentOverride',$1,'archive')`, [o.id]);
     await as(U.CONTENT_EDITOR, `select public.cms_transition('contentOverride',$1,'reopen')`, [o.id]);
@@ -484,7 +493,7 @@ try {
     await assert.rejects(as(U.ADMIN, `update public.content_overrides set contributors='{}' where id=$1`, [o.id]), (e) => e.code === '42501');
     await as(U.REVIEWER, `select public.cms_transition('contentOverride',$1,'approve')`, [o.id]);
     await as(U.REVIEWER, `select public.cms_transition('contentOverride',$1,'publish')`, [o.id]);
-    await as(U.CONTENT_EDITOR, `update public.content_overrides set reason='independent later cycle' where id=$1`, [o.id]);
+    await as(U.CONTENT_EDITOR, `update public.content_overrides set reason='independent later cycle', revision = revision + 1 where id=$1`, [o.id]);
     await as(U.CONTENT_EDITOR, `select public.cms_transition('contentOverride',$1,'submit')`, [o.id]);
     await as(U.ADMIN, `select public.cms_transition('contentOverride',$1,'approve')`, [o.id]);
     assert.deepStrictEqual((await db.query('select contributors,approved_by from public.content_overrides where id=$1', [o.id])).rows[0], { contributors: [], approved_by: U.ADMIN });
@@ -577,8 +586,8 @@ try {
     const g = await as(U.GAME_EDITOR, `insert into public.games (game_id, name, created_by, updated_by) values ('demo-game', 'Demo', $1, $1) returning *`, [U.SUPER_ADMIN]);
     assert.strictEqual(g[0].created_by, U.GAME_EDITOR, 'created_by not spoofable');
     await denied(as(U.GAME_EDITOR, `update public.games set game_id = 'renamed' where game_id = 'demo-game'`), /cannot change/);
-    await denied(as(U.GAME_EDITOR, `update public.games set game_content_contract_version = '2.0' where game_id = 'demo-game'`), /check constraint/);
-    await denied(as(U.GAME_EDITOR, `update public.games set launch_path = 'javascript:alert(1)' where game_id = 'demo-game'`), /check constraint/);
+    await denied(as(U.GAME_EDITOR, `update public.games set game_content_contract_version = '2.0', revision = revision + 1 where game_id = 'demo-game'`), /check constraint/);
+    await denied(as(U.GAME_EDITOR, `update public.games set launch_path = 'javascript:alert(1)', revision = revision + 1 where game_id = 'demo-game'`), /check constraint/);
     await as(U.GAME_EDITOR, `insert into public.lesson_game_assignments (lesson_id, game_id, visible) values ($1, 'demo-game', true)`, [L]);
     await denied(as(U.GAME_EDITOR, `insert into public.lesson_game_assignments (lesson_id, game_id, optional) values ('math-x', 'demo-game', false)`), /check constraint/);
     await denied(as(U.GAME_EDITOR, `delete from public.lesson_game_assignments`), /permission denied/);
@@ -699,13 +708,13 @@ try {
     const o = (await as(U.CONTENT_EDITOR, `insert into public.content_overrides (lesson_id, field, value, reason) values ($1, 'analogy', '"original"', 'security regression') returning id`, [L]))[0];
     const transition = (who, action) => as(who, `select public.cms_transition('contentOverride', $1, $2) state`, [o.id, action]);
     await transition(U.CONTENT_EDITOR, 'submit');
-    await as(U.CONTENT_EDITOR, `update public.content_overrides set value = '"review edit"' where id = $1`, [o.id]);
+    await as(U.CONTENT_EDITOR, `update public.content_overrides set value = '"review edit"', revision = revision + 1 where id = $1`, [o.id]);
     assert.strictEqual((await db.query(`select state from public.content_overrides where id = $1`, [o.id])).rows[0].state, 'DRAFT');
     await denied(transition(U.REVIEWER, 'approve'), /only items in review/);
     await transition(U.CONTENT_EDITOR, 'submit');
     await transition(U.REVIEWER, 'approve');
     await transition(U.REVIEWER, 'publish');
-    await as(U.CONTENT_EDITOR, `update public.content_overrides set value = '"unreviewed live edit"' where id = $1`, [o.id]);
+    await as(U.CONTENT_EDITOR, `update public.content_overrides set value = '"unreviewed live edit"', revision = revision + 1 where id = $1`, [o.id]);
     assert.strictEqual((await as(null, `select data->>'value' value from public.cms_published where entity_id = $1`, [o.id]))[0].value, 'review edit', 'live snapshot stays unchanged');
     assert.strictEqual((await transition(U.REVIEWER, 'unpublish'))[0].state, 'DRAFT');
     await denied(transition(U.REVIEWER, 'publish'), /approved before publishing/);
@@ -739,9 +748,11 @@ try {
     await as(U.REVIEWER, `select public.cms_transition('video', $1, 'publish')`, [v.id]);
     const seen = await as(null, `select * from public.cms_published where entity_id = $1`, [v.id]);
     assert.strictEqual(seen.length, 1);
-    assert.strictEqual(seen[0].data.verified_by, U.REVIEWER);
+    // T007D: the learner snapshot no longer names the verifier; the staff-only source row still does
+    assert(!('verified_by' in seen[0].data) && !('verified_at' in seen[0].data), 'snapshot has no verifier metadata');
+    assert.strictEqual((await db.query('select verified_by from public.videos where id = $1', [v.id])).rows[0].verified_by, U.REVIEWER);
     assert(!('created_by' in seen[0].data) && !('review_note' in seen[0].data), 'snapshot has no workflow internals');
-    await as(U.CONTENT_EDITOR, `update public.videos set visible = false where id = $1`, [v.id]);
+    await as(U.CONTENT_EDITOR, `update public.videos set visible = false, revision = revision + 1 where id = $1`, [v.id]);
     assert.strictEqual((await db.query(`select state from public.videos where id = $1`, [v.id])).rows[0].state, 'DRAFT', 'edit of published → draft');
     await as(U.REVIEWER, `select public.cms_transition('video', $1, 'publish')`, [v.id]);
     assert.deepStrictEqual(await as(null, `select * from public.cms_published where entity_id = $1`, [v.id]), [], 'hidden not readable');
@@ -749,22 +760,95 @@ try {
     assert.deepStrictEqual(await as(U.STUDENT, `select * from public.cms_versions`), []);
     // changing the URL of a verified video requires re-verification
     await as(U.REVIEWER, `select public.cms_verify_source('video', $1)`, [v.id]);
-    await as(U.CONTENT_EDITOR, `update public.videos set url = 'https://www.youtube.com/watch?v=zzzzzzzzzzz' where id = $1`, [v.id]);
+    await as(U.CONTENT_EDITOR, `update public.videos set url = 'https://www.youtube.com/watch?v=zzzzzzzzzzz', revision = revision + 1 where id = $1`, [v.id]);
     assert.strictEqual((await db.query(`select verification_status from public.videos where id = $1`, [v.id])).rows[0].verification_status, 'VERIFICATION_PENDING');
     await denied(as(U.STUDENT, `update public.cms_published set learner_visible = true`), /permission denied/);
   });
 
   await test('disabled / unpublished games and hidden assignments are not readable by learners', async () => {
-    await as(U.GAME_EDITOR, `update public.games set status = 'AVAILABLE', enabled = true, published = false where game_id = 'demo-game'`);
+    await as(U.GAME_EDITOR, `update public.games set status = 'AVAILABLE', enabled = true, published = false, revision = revision + 1 where game_id = 'demo-game'`);
     assert.deepStrictEqual(await as(null, `select * from public.games`), []);
     for (const uid of [null, U.STUDENT, U.SUSPENDED_ADMIN]) assert.deepStrictEqual(await as(uid, `select * from public.lesson_game_assignments`), [], 'unpublished game assignments are private');
     assert.strictEqual((await as(U.GAME_EDITOR, `select * from public.lesson_game_assignments where game_id = 'demo-game'`)).length, 1, 'staff retains access');
-    await as(U.GAME_EDITOR, `update public.games set published = true, enabled = false, status = 'DISABLED' where game_id = 'demo-game'`);
+    await as(U.GAME_EDITOR, `update public.games set published = true, enabled = false, status = 'DISABLED', revision = revision + 1 where game_id = 'demo-game'`);
     const g = (await as(null, `select status, enabled from public.games`))[0];
     assert.deepStrictEqual(g, { status: 'DISABLED', enabled: false }, 'learner sees it disabled; resolver refuses to launch');
     await as(U.GAME_EDITOR, `update public.lesson_game_assignments set visible = false where game_id = 'demo-game'`);
     assert.deepStrictEqual(await as(null, `select * from public.lesson_game_assignments`), []);
     await denied(as(null, `update public.games set enabled = true`), /permission denied/);
+  });
+
+  await test('T007D: stale client edits are refused (PT409); the current revision succeeds and increments by one', async () => {
+    const v = await newVideo(U.CONTENT_EDITOR, { title: 'rev-1' });
+    assert.strictEqual(v.revision, 1);
+    const auditBefore = Number((await db.query('select count(*) from public.audit_logs')).rows[0].count);
+    for (const sql of [`update public.videos set title = 'no revision' where id = $1`, `update public.videos set title = 'same', revision = revision where id = $1`, `update public.videos set title = 'skip', revision = revision + 2 where id = $1`]) {
+      await assert.rejects(as(U.CONTENT_EDITOR, sql, [v.id]), (e) => e.code === 'PT409' && /stale revision/.test(e.message), sql);
+    }
+    assert.strictEqual(Number((await db.query('select count(*) from public.audit_logs')).rows[0].count), auditBefore, 'refused edits write no audit');
+    // tab A and tab B both loaded revision 1; B saves first
+    assert.deepStrictEqual(await as(U.CONTENT_EDITOR, `update public.videos set title = 'tab B', revision = 2 where id = $1 returning title, revision`, [v.id]), [{ title: 'tab B', revision: 2 }]);
+    await assert.rejects(as(U.CONTENT_EDITOR_2, `update public.videos set title = 'tab A', revision = 2 where id = $1`, [v.id]), (e) => e.code === 'PT409');
+    assert.deepStrictEqual((await db.query('select title, revision from public.videos where id = $1', [v.id])).rows, [{ title: 'tab B', revision: 2 }]);
+    // inserts always start at revision 1, whatever the client sends
+    const forced = (await as(U.CONTENT_EDITOR, `insert into public.resources(lesson_id,title,url,revision) values ($1,'rev','https://example.com/rev',99) returning revision`, [L]))[0];
+    assert.strictEqual(forced.revision, 1);
+    // games use the same contract
+    await as(U.GAME_EDITOR, `insert into public.games(game_id,name,revision) values ('rev-game','rev',50)`);
+    await assert.rejects(as(U.GAME_EDITOR, `update public.games set name = 'stale' where game_id = 'rev-game'`), (e) => e.code === 'PT409');
+    assert.deepStrictEqual(await as(U.GAME_EDITOR, `update public.games set name = 'ok', revision = revision + 1 where game_id = 'rev-game' returning revision`), [{ revision: 2 }]);
+  });
+
+  await test('T007D: workflow RPCs advance the revision; a stale expected revision cannot approve, publish or verify', async () => {
+    const o = (await as(U.CONTENT_EDITOR, `insert into public.content_overrides(lesson_id,field,value,reason) values ($1,'analogy','"seen text"','rev') returning id, revision`, [L]))[0];
+    await as(U.CONTENT_EDITOR, `select public.cms_transition('contentOverride',$1,'submit',null,$2)`, [o.id, o.revision]);
+    const seen = (await db.query('select revision from public.content_overrides where id = $1', [o.id])).rows[0].revision;
+    assert(seen > o.revision, 'submit advanced the revision');
+    // the editor swaps the text and resubmits while the reviewer still has the old copy open
+    await as(U.CONTENT_EDITOR, `update public.content_overrides set value = '"swapped text"', revision = revision + 1 where id = $1`, [o.id]);
+    assert.strictEqual((await db.query('select state from public.content_overrides where id = $1', [o.id])).rows[0].state, 'DRAFT');
+    await as(U.CONTENT_EDITOR, `select public.cms_transition('contentOverride',$1,'submit')`, [o.id]);
+    await assert.rejects(as(U.REVIEWER, `select public.cms_transition('contentOverride',$1,'approve',null,$2)`, [o.id, seen]), (e) => e.code === 'PT409');
+    let row = (await db.query('select state, approved_by, revision from public.content_overrides where id = $1', [o.id])).rows[0];
+    assert.strictEqual(row.state, 'IN_REVIEW');
+    assert.strictEqual(row.approved_by, null);
+    // a correct revision never bypasses self-approval
+    await as(U.ADMIN, `update public.content_overrides set reason = 'admin touch', revision = revision + 1 where id = $1`, [o.id]);
+    await as(U.ADMIN, `select public.cms_transition('contentOverride',$1,'submit')`, [o.id]);
+    row = (await db.query('select revision from public.content_overrides where id = $1', [o.id])).rows[0];
+    await assert.rejects(as(U.ADMIN, `select public.cms_transition('contentOverride',$1,'approve',null,$2)`, [o.id, row.revision]), (e) => e.code === '42501' && /someone else/.test(e.message));
+    await as(U.REVIEWER, `select public.cms_transition('contentOverride',$1,'approve',null,$2)`, [o.id, row.revision]);
+    const approved = (await db.query('select state, approved_by, revision from public.content_overrides where id = $1', [o.id])).rows[0];
+    assert.deepStrictEqual([approved.state, approved.approved_by], ['APPROVED', U.REVIEWER]);
+    await assert.rejects(as(U.REVIEWER, `select public.cms_transition('contentOverride',$1,'publish',null,$2)`, [o.id, row.revision]), (e) => e.code === 'PT409');
+    await as(U.REVIEWER, `select public.cms_transition('contentOverride',$1,'publish',null,$2)`, [o.id, approved.revision]);
+    // verification of a link that changed after the reviewer loaded it
+    const v = await newVideo(U.CONTENT_EDITOR, { title: 'verify-rev' });
+    await as(U.CONTENT_EDITOR, `update public.videos set url = 'https://www.youtube.com/watch?v=bbbbbbbbbbb', revision = revision + 1 where id = $1`, [v.id]);
+    await assert.rejects(as(U.REVIEWER, `select public.cms_verify_source('video',$1,$2)`, [v.id, v.revision]), (e) => e.code === 'PT409');
+    assert.strictEqual((await db.query('select verification_status from public.videos where id = $1', [v.id])).rows[0].verification_status, 'DISCOVERED');
+    await as(U.REVIEWER, `select public.cms_verify_source('video',$1,$2)`, [v.id, v.revision + 1]);
+    assert.strictEqual((await db.query('select verification_status from public.videos where id = $1', [v.id])).rows[0].verification_status, 'VERIFIED');
+  });
+
+  await test('T007D: learner and anon snapshots carry no editorial metadata; staff source rows keep it', async () => {
+    const r = (await as(U.CONTENT_EDITOR, `insert into public.resources(lesson_id,title,url,visible) values ($1,'payload','https://example.com/payload',true) returning id`, [L]))[0];
+    await as(U.REVIEWER, `select public.cms_verify_source('resource',$1)`, [r.id]);
+    await as(U.REVIEWER, `select public.cms_transition('resource',$1,'publish')`, [r.id]);
+    const o = (await as(U.CONTENT_EDITOR, `insert into public.content_overrides(lesson_id,field,value,reason) values ($1,'whyItMatters','"learner text"','internal editorial note') returning id`, ['prog-ctrl-conditions']))[0];
+    await as(U.CONTENT_EDITOR, `select public.cms_transition('contentOverride',$1,'submit')`, [o.id]);
+    await as(U.REVIEWER, `select public.cms_transition('contentOverride',$1,'approve')`, [o.id]);
+    await as(U.REVIEWER, `select public.cms_transition('contentOverride',$1,'publish')`, [o.id]);
+    const internal = ['reason', 'verified_by', 'verified_at', 'revision', 'created_by', 'updated_by', 'approved_by', 'reviewed_by', 'submitted_by', 'review_note', 'contributors', 'state'];
+    for (const uid of [null, U.STUDENT]) {
+      const rows = await as(uid, `select kind, data, learner_visible from public.cms_published where entity_id in ($1, $2) order by kind`, [r.id, o.id]);
+      assert.strictEqual(rows.length, 2, 'both are learner-visible');
+      for (const row of rows) for (const k of internal) assert(!(k in row.data), `${uid ? 'student' : 'anon'}: ${row.kind}.${k} must not be exposed`);
+      assert.strictEqual(rows.find((x) => x.kind === 'contentOverride').data.value, 'learner text');
+      assert.strictEqual(rows.find((x) => x.kind === 'resource').data.verification_status, 'VERIFIED');
+    }
+    assert((await db.query('select verified_by from public.resources where id = $1', [r.id])).rows[0].verified_by, 'source keeps the verifier');
+    assert.strictEqual((await db.query('select reason from public.content_overrides where id = $1', [o.id])).rows[0].reason, 'internal editorial note');
   });
 
   await test('audit log: database-written, actor recorded, append-only for everyone, secrets redacted', async () => {
@@ -858,9 +942,16 @@ try {
         const seen = (await B.GUEST.listPublished({ learnerOnly: true })).find((p) => p.id === d.id);
         assert(seen, 'guest sees verified published video');
         assert.strictEqual(seen.data.title, 'E2E clip');
-        assert.strictEqual(seen.data.verifiedBy, U.REVIEWER);
+        assert.strictEqual(seen.data.verifiedBy, null, 'T007D: guests never see who verified it');
+        assert.strictEqual(seen.data.verification, 'VERIFIED');
         assert.strictEqual(seen.data.visibility, 'VISIBLE');
-        const upd = await B.CONTENT_EDITOR.updateDraft(by('CONTENT_EDITOR'), 'video', d.id, { ...seen.data, visibility: 'HIDDEN' });
+        const upd = await B.CONTENT_EDITOR.updateDraft(by('CONTENT_EDITOR'), 'video', d.id, { ...seen.data, visibility: 'HIDDEN' }, (await B.CONTENT_EDITOR.getDraft('video', d.id)).revision);
+        // T007D: a second edit from the same (now stale) copy is refused over REST with PT409 → Thai stale message
+        const staleErr = await B.CONTENT_EDITOR.updateDraft(by('CONTENT_EDITOR'), 'video', d.id, { ...seen.data, title: 'stale tab' }, upd.revision - 1).then(() => null, (e) => e);
+        assert(staleErr && staleErr.code === 'PT409', 'stale edit refused with PT409');
+        const { friendly, STALE_MESSAGE } = await createJiti(import.meta.url).import(path.join(root, 'src/cms/service.ts'));
+        assert.strictEqual(friendly(staleErr).message, STALE_MESSAGE);
+        assert.strictEqual((await B.CONTENT_EDITOR.getDraft('video', d.id)).data.title, 'E2E clip', 'nothing overwritten');
         assert.strictEqual(upd.state, 'DRAFT');
         await B.REVIEWER.transition(by('REVIEWER'), 'video', d.id, 'publish', null);
         assert(!(await B.GUEST.listPublished({ learnerOnly: true })).some((p) => p.id === d.id), 'hidden → not learner-visible');

@@ -112,6 +112,17 @@ DRAFT → IN_REVIEW → APPROVED → PUBLISHED
 - Every publish increments the highest live, working-copy or historical version and moves the old snapshot to `cms_versions`. Unpublish/republish preserves the version sequence and `previous_version` chain.
 - The forward migration aborts with an explicit owner-repair diagnostic if any live version is less than or equal to its highest stored historical version. It does not renumber legacy history. Duplicate archive versions fail the transition instead of silently dropping the live snapshot. Contributor backfill uses the transaction-local internal-operation flag to avoid fake user audit rows.
 
+### Concurrent edits and learner snapshots (T007D)
+
+`20261006000000_v2u_cms_revisions.sql` (local; apply only after owner review, see below):
+
+- **Optimistic concurrency.** `videos`, `resources`, `content_overrides` and `games` carry a `revision` (starts at 1). A client UPDATE must write exactly `old.revision + 1`. An edit made from an older copy (another admin saved first, or the same admin in a stale tab) is refused with SQLSTATE `PT409` (HTTP 409) and nothing is overwritten. Workflow RPCs and owner writes advance the revision too. Inserts always start at 1. Lesson-game assignments are not revisioned (toggle/upsert only).
+- **Stale workflow actions.** `cms_transition(…, p_expected_revision)` and `cms_verify_source(…, p_expected_revision)` refuse to act on a copy older than the row (e.g. approving text the reviewer has not seen, or verifying a link an editor changed meanwhile). The admin app always sends it; omitting it keeps the previous behaviour. Self-approval rules are unchanged and still apply with a correct revision.
+- **Learner snapshots.** `cms_published.data` no longer contains `reason`, `verified_by`, `verified_at` or `revision` (in addition to the workflow fields already removed). Visibility is still computed from the full source row at publish time; staff keep the metadata on the source rows. The migration strips these keys from existing live snapshots; `cms_versions` history is untouched.
+- **Admin UI.** A refused edit shows “ข้อมูลนี้ถูกแก้ไขโดยผู้ใช้อื่นแล้ว กรุณาโหลดข้อมูลล่าสุดก่อนบันทึก” with **โหลดข้อมูลล่าสุด**; an open edit form then flags the newer copy and offers **เริ่มแก้จากฉบับล่าสุด** (the user's own text stays in the form until they choose).
+
+**Apply order.** The app code that sends `revision` / `p_expected_revision` requires this migration: apply the migration to a project before pointing this build at it, otherwise CMS edits and transitions fail. Use `supabase db push --dry-run` first, as for the initial migrations. Rollback notes are in the migration header.
+
 ### Future-object privileges
 
 `20261005010000_v2u_review_history_privileges.sql` revokes the broad default grants for future `postgres`-owned tables, sequences and functions in `public`. The first migration's privilege block revokes existing-object grants only; its header's reference to default privileges should not be read as protecting future objects.
@@ -292,6 +303,7 @@ The fixture is reachable only under `import.meta.env.DEV`, so production bundles
   - executes the owner bootstrap SQL above directly from this document, checking first bootstrap, missing profiles, repeat attempts, recovery, client denial before/after bootstrap, and an exact allowlist of client-executable public functions;
   - tests all six roles, suspended staff and anon against table reads/writes and each workflow/RPC operation; matrix probes roll back and check database-written audit identity and action;
   - checks forged role claims, future-object default privileges, intermediate-editor self-approval, and history after unpublish/republish;
+  - checks T007D concurrency (stale edits refused with PT409, revision +1, stale approve/publish/verify refused, self-approval unaffected), minimal anon/learner snapshots, and the migration on populated legacy data;
   - if a PostgREST binary is available (`POSTGREST_BIN`), runs the app's repository through **supabase-js → PostgREST → PostgreSQL** end to end.
   - It needs PostgreSQL server binaries (`PG_BIN`). Missing dependencies are reported as SKIPPED, PARTIAL or BLOCKED, never as a complete pass.
 

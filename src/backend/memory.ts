@@ -18,6 +18,11 @@ export interface MemorySeed {
 }
 
 class Denied extends Error {}
+/** Mirrors the guard trigger's PT409: an edit based on an older revision is refused. */
+class Stale extends Error {
+  code = 'PT409';
+  constructor() { super('stale revision: this item was changed by someone else; reload the latest version'); }
+}
 
 export function createMemoryBackend(seed: MemorySeed = {}): CmsBackend & { _dump(): unknown } {
   const users = new Map((seed.users ?? []).map((u) => [u.uid, u]));
@@ -109,18 +114,22 @@ export function createMemoryBackend(seed: MemorySeed = {}): CmsBackend & { _dump
     async listVersions(_kind, id) {
       return clone(versions.filter((v) => v.id === id));
     },
+    async getDraft(kind, id) {
+      const d = drafts.get(id);
+      return d && d.kind === kind ? (clone(d) as DraftDoc<typeof kind>) : null;
+    },
     async insertDraft(by, kind, data) {
       need(by, 'content.draft');
       if ((kind === 'video' || kind === 'resource') && (data as VideoData).verification === 'VERIFIED') throw new Denied('VERIFIED requires an explicit reviewer verification');
       const at = now();
       const clean = kind === 'video' || kind === 'resource' ? { ...data, verifiedBy: null, verifiedAt: null } : data;
-      const d = { id: newId(), kind, lessonId: (data as { lessonId: string }).lessonId, data: clean, state: 'DRAFT', publishedVersion: 0, createdAt: at, createdBy: by.uid, updatedAt: at, updatedBy: by.uid, reviewNote: null, approvedBy: null } as DraftDoc<typeof kind>;
+      const d = { id: newId(), kind, lessonId: (data as { lessonId: string }).lessonId, data: clean, state: 'DRAFT', publishedVersion: 0, createdAt: at, createdBy: by.uid, updatedAt: at, updatedBy: by.uid, reviewNote: null, approvedBy: null, revision: 1 } as DraftDoc<typeof kind>;
       drafts.set(d.id, clone(d));
       if (kind === 'contentOverride') contributors.set(d.id, new Set([by.uid]));
       log(by, kind === 'video' ? 'VIDEO_CREATED' : kind === 'resource' ? 'RESOURCE_CREATED' : 'CONTENT_CREATED', kind, d.id, null, clean);
       return clone(d);
     },
-    async updateDraft(by, kind, id, data) {
+    async updateDraft(by, kind, id, data, revision) {
       need(by, 'content.draft');
       const d = drafts.get(id);
       if (!d || d.kind !== kind) throw new Error('not found');
@@ -129,6 +138,9 @@ export function createMemoryBackend(seed: MemorySeed = {}): CmsBackend & { _dump
       let next = { ...data } as VideoData;
       if (kind === 'video' || kind === 'resource') {
         if (next.verification === 'VERIFIED' && prev.verification !== 'VERIFIED') throw new Denied('VERIFIED requires an explicit reviewer verification');
+      }
+      if (revision !== d.revision) throw new Stale();
+      if (kind === 'video' || kind === 'resource') {
         next = { ...next, verifiedBy: prev.verifiedBy, verifiedAt: prev.verifiedAt };
         if (prev.verification === 'VERIFIED' && next.url !== prev.url) next = { ...next, verification: 'VERIFICATION_PENDING', verifiedBy: null, verifiedAt: null };
       }
@@ -136,31 +148,34 @@ export function createMemoryBackend(seed: MemorySeed = {}): CmsBackend & { _dump
       if (kind === 'contentOverride' && changed) contributors.get(id)?.add(by.uid);
       const onlyOrder = changed && JSON.stringify({ ...next, order: 0 }) === JSON.stringify({ ...prev, order: 0 });
       const state = changed && ['IN_REVIEW', 'APPROVED', 'PUBLISHED', 'REJECTED'].includes(d.state) ? 'DRAFT' : d.state;
-      const out = { ...d, data: next, state, updatedAt: now(), updatedBy: by.uid } as DraftDoc;
+      const out = { ...d, data: next, state, updatedAt: now(), updatedBy: by.uid, revision: d.revision + 1 } as DraftDoc;
       drafts.set(id, clone(out));
       const action: AuditAction = onlyOrder ? 'ORDER_CHANGED' : kind === 'video' ? (prev.visibility === 'VISIBLE' && next.visibility === 'HIDDEN' ? 'VIDEO_HIDDEN' : 'VIDEO_UPDATED') : kind === 'resource' ? 'RESOURCE_UPDATED' : 'CONTENT_UPDATED';
       log(by, action, kind, id, prev, next);
       return clone(out) as DraftDoc<typeof kind>;
     },
-    async verifySource(by, kind, id) {
+    async verifySource(by, kind, id, revision) {
       need(by, 'content.verifySource');
       const d = drafts.get(id);
       if (!d || d.kind !== kind) throw new Error('not found');
+      if (revision !== undefined && revision !== d.revision) throw new Stale();
       const before = (d.data as VideoData).verification;
-      drafts.set(id, { ...d, data: { ...(d.data as VideoData), verification: 'VERIFIED', verifiedBy: by.uid, verifiedAt: now() }, state: d.state === 'PUBLISHED' ? 'DRAFT' : d.state, updatedAt: now(), updatedBy: by.uid });
+      drafts.set(id, { ...d, data: { ...(d.data as VideoData), verification: 'VERIFIED', verifiedBy: by.uid, verifiedAt: now() }, state: d.state === 'PUBLISHED' ? 'DRAFT' : d.state, updatedAt: now(), updatedBy: by.uid, revision: d.revision + 1 });
       log(by, kind === 'video' ? 'VIDEO_VERIFIED' : 'RESOURCE_VERIFIED', kind, id, before, 'VERIFIED');
     },
-    async transition(by, kind, id, t, note) {
+    async transition(by, kind, id, t, note, revision) {
       const d = drafts.get(id);
       if (!d || d.kind !== kind) throw new Error('not found');
       const pub = published.get(id) ?? null;
       const actor = live(by);
+      need(by, ({ submit: 'content.submit', approve: 'content.review', reject: 'content.review', reopen: 'content.draft', publish: 'content.publish', unpublish: 'content.publish', archive: 'content.draft' } as const)[t]);
+      if (revision !== undefined && revision !== d.revision) throw new Stale();
       const r = transitionResult(actor, d, t, !!pub);
       if (!r.ok) throw new Denied(r.reason);
       if (t === 'approve' && ENTITY_CATEGORY[kind] === 'CONTROLLED' && (d.createdBy === by.uid || d.updatedBy === by.uid || contributors.get(id)?.has(by.uid))) throw new Denied('learning content must be approved by someone else');
       if (t === 'approve') contributors.get(id)?.clear();
       const at = now();
-      const next: DraftDoc = { ...d, state: r.next, reviewNote: note ?? d.reviewNote, updatedAt: at, approvedBy: t === 'approve' ? by.uid : d.approvedBy ?? null };
+      const next: DraftDoc = { ...d, state: r.next, reviewNote: note ?? d.reviewNote, updatedAt: at, approvedBy: t === 'approve' ? by.uid : d.approvedBy ?? null, revision: d.revision + 1 };
       if (t === 'publish' || t === 'unpublish' || (t === 'archive' && pub)) if (pub) versions.push(clone(pub));
       if (t === 'publish') {
         const p = nextPublished(next, pub, by.uid, at);
@@ -178,7 +193,7 @@ export function createMemoryBackend(seed: MemorySeed = {}): CmsBackend & { _dump
       need(by, 'game.manage');
       if (games.has(g.gameId)) throw new Error('duplicate gameId');
       const at = now();
-      const out = { ...g, createdAt: at, updatedAt: at, updatedBy: by.uid };
+      const out = { ...g, createdAt: at, updatedAt: at, updatedBy: by.uid, revision: 1 };
       games.set(g.gameId, clone(out));
       log(by, 'GAME_REGISTERED', 'game', g.gameId, null, { status: g.status, enabled: g.enabled, published: g.published });
       return clone(out);
@@ -187,7 +202,8 @@ export function createMemoryBackend(seed: MemorySeed = {}): CmsBackend & { _dump
       need(by, 'game.manage');
       const prev = games.get(g.gameId);
       if (!prev) throw new Error('not found');
-      const out = { ...g, createdAt: prev.createdAt, updatedAt: now(), updatedBy: by.uid };
+      if (g.revision !== prev.revision) throw new Stale();
+      const out = { ...g, createdAt: prev.createdAt, updatedAt: now(), updatedBy: by.uid, revision: prev.revision + 1 };
       games.set(g.gameId, clone(out));
       log(by, prev.enabled && !g.enabled ? 'GAME_DISABLED' : !prev.enabled && g.enabled ? 'GAME_ENABLED' : 'GAME_UPDATED', 'game', g.gameId, { status: prev.status, enabled: prev.enabled, published: prev.published }, { status: g.status, enabled: g.enabled, published: g.published });
       return clone(out);

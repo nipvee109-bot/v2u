@@ -1,7 +1,7 @@
 /* Small accessible admin UI primitives (Phase 72). */
 
-import { useEffect, useRef } from 'react';
-import type { ReactNode } from 'react';
+import { cloneElement, isValidElement, useEffect, useId, useRef } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 
 export const btn = 'inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed';
 export const btnLine = `${btn} border border-[var(--line)] bg-[var(--surface)]`;
@@ -10,13 +10,28 @@ export const btnDanger = `${btn} text-white bg-[#b42318]`;
 export const field = 'min-h-[44px] w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 text-sm';
 export const panel = 'rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4';
 
+/** Label + one control, explicitly associated (for/id) with the hint as its description. */
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
+  const auto = useId();
+  type Ctl = ReactElement<{ id?: string; 'aria-describedby'?: string }>;
+  const id = isValidElement(children) ? ((children as Ctl).props.id ?? auto) : auto;
+  const hintId = hint ? `${id}-hint` : undefined;
+  const control = isValidElement(children) ? cloneElement(children as Ctl, { id, 'aria-describedby': hintId }) : children;
   return (
-    <label className="flex flex-col gap-1 text-sm">
-      <span className="font-semibold">{label}</span>
-      {children}
-      {hint && <span className="text-xs text-[var(--ink-2)]">{hint}</span>}
-    </label>
+    <div className="flex flex-col gap-1 text-sm">
+      <label htmlFor={id} className="font-semibold">{label}</label>
+      {control}
+      {hint && <span id={hintId} className="text-xs text-[var(--ink-2)]">{hint}</span>}
+    </div>
+  );
+}
+
+/** A visible, explicit notice (not colour-only): warnings before saving, stale-copy alerts. */
+export function Notice({ tone = 'warn', children, id }: { tone?: 'warn' | 'info'; children: ReactNode; id?: string }) {
+  return (
+    <p id={id} role={tone === 'warn' ? 'note' : undefined} className={`rounded-xl border px-3 py-2 text-sm ${tone === 'warn' ? 'border-[#b54708] bg-[#fffaeb] text-[#7a2e0e]' : 'border-[var(--line)] bg-[var(--surface-2,#eef0ff)]'}`}>
+      <span aria-hidden>{tone === 'warn' ? '⚠ ' : 'ℹ '}</span>{children}
+    </p>
   );
 }
 
@@ -34,7 +49,7 @@ export interface ConfirmRequest {
   body: string;
   confirmLabel: string;
   danger?: boolean;
-  run: () => Promise<void> | void;
+  run: () => Promise<unknown> | void;
 }
 
 /** Confirmation for dangerous actions (native modal dialog: focus trap + Esc to cancel). */
