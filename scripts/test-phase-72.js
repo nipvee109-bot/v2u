@@ -253,6 +253,43 @@ await test('workflow: controlled content needs approval by someone else; safe co
   await rejects(svc('ADMIN').createDraft('video', video({ lessonId: 'not-a-lesson' })), /บทเรียน/);
 });
 
+await test('intermediate editors cannot approve their own unreviewed content', async () => {
+  const { be, users } = setup();
+  const by = (role) => actor(users.find((u) => u.role === role));
+  const original = { lessonId: L, field: 'analogy', value: 'original', reason: 'review' };
+  const d = await be.insertDraft(by('CONTENT_EDITOR'), 'contentOverride', original);
+  await be.updateDraft(by('ADMIN'), 'contentOverride', d.id, { ...original, value: 'admin text' });
+  await be.updateDraft(by('CONTENT_EDITOR'), 'contentOverride', d.id, { ...original, value: 'admin text', reason: 'minor' });
+  await be.transition(by('CONTENT_EDITOR'), 'contentOverride', d.id, 'submit', null);
+  await rejects(be.transition(by('ADMIN'), 'contentOverride', d.id, 'approve', null), /someone else/);
+  await be.transition(by('REVIEWER'), 'contentOverride', d.id, 'approve', null);
+  await be.transition(by('REVIEWER'), 'contentOverride', d.id, 'publish', null);
+  await be.updateDraft(by('ADMIN'), 'contentOverride', d.id, { ...original, value: 'new admin text' });
+  await be.updateDraft(by('CONTENT_EDITOR'), 'contentOverride', d.id, { ...original, value: 'new admin text', reason: 'minor again' });
+  await be.transition(by('REVIEWER'), 'contentOverride', d.id, 'unpublish', null);
+  await be.transition(by('CONTENT_EDITOR'), 'contentOverride', d.id, 'archive', null);
+  await be.transition(by('CONTENT_EDITOR'), 'contentOverride', d.id, 'reopen', null);
+  await be.transition(by('CONTENT_EDITOR'), 'contentOverride', d.id, 'submit', null);
+  await rejects(be.transition(by('ADMIN'), 'contentOverride', d.id, 'approve', null), /someone else/);
+  await be.transition(by('REVIEWER'), 'contentOverride', d.id, 'approve', null);
+  await be.transition(by('REVIEWER'), 'contentOverride', d.id, 'publish', null);
+});
+
+await test('publish history increases monotonically after unpublish and republish', async () => {
+  const { be, users } = setup();
+  const by = (role) => actor(users.find((u) => u.role === role));
+  const d = await be.insertDraft(by('CONTENT_EDITOR'), 'video', video({ title: 'history-1' }));
+  for (let version = 1; version <= 4; version++) {
+    if (version === 3) await be.transition(by('REVIEWER'), 'video', d.id, 'unpublish', null);
+    if (version > 1) await be.updateDraft(by('CONTENT_EDITOR'), 'video', d.id, video({ title: `history-${version}` }));
+    await be.transition(by('REVIEWER'), 'video', d.id, 'publish', null);
+    const p = (await be.listPublished()).find((x) => x.id === d.id);
+    assert.strictEqual(p.version, version);
+    assert.strictEqual(p.previousVersion, version === 1 ? null : version - 1);
+  }
+  assert.deepStrictEqual((await be.listVersions('video', d.id)).map((x) => [x.version, x.data.title]), [[1, 'history-1'], [2, 'history-2'], [3, 'history-3']]);
+});
+
 await test('unpublished, hidden and unverified content is never shown to learners; versions kept', async () => {
   const { svc, be } = setup();
   const d = await svc('CONTENT_EDITOR').createDraft('video', video());

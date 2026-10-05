@@ -82,6 +82,100 @@ try {
   await db.connect();
   await db.query(fs.readFileSync(path.join(root, 'supabase/tests/supabase-shim.sql'), 'utf-8'));
   const migrations = fs.readdirSync(path.join(root, 'supabase/migrations')).filter((f) => f.endsWith('.sql')).sort();
+  // A separate database proves upgrade behavior with the two old migrations
+  // and real legacy rows, without polluting the normal security fixtures.
+  await db.query('create database t004_legacy');
+  const legacy = new pg.Client({ host: conn.clientHost, port: PORT, user: 'postgres', database: 't004_legacy' });
+  try {
+    await legacy.connect();
+    const shim = fs.readFileSync(path.join(root, 'supabase/tests/supabase-shim.sql'), 'utf-8').replace(/^create role .*;\r?$/gm, '');
+    await legacy.query(shim);
+    for (const m of migrations.slice(0, 2)) await legacy.query(fs.readFileSync(path.join(root, 'supabase/migrations', m), 'utf-8'));
+    const forward = fs.readFileSync(path.join(root, 'supabase/migrations/20261005010000_v2u_review_history_privileges.sql'), 'utf-8');
+    const actors = (await legacy.query(`insert into auth.users(email) values ('creator@example.invalid'), ('middle@example.invalid'),
+      ('last@example.invalid'), ('reviewer@example.invalid') returning id`)).rows.map((r) => r.id);
+    await legacy.query(`update public.profiles set role='ADMIN'`);
+    const legacyAs = async (uid, sql, params = []) => {
+      await legacy.query('begin');
+      try {
+        await legacy.query(`select set_config('request.jwt.claims',$1,true)`, [JSON.stringify({ sub: uid, role: 'authenticated' })]);
+        await legacy.query('set local role authenticated');
+        const result = await legacy.query(sql, params);
+        await legacy.query('commit');
+        return result.rows;
+      } catch (err) { await legacy.query('rollback'); throw err; }
+    };
+    const o = (await legacyAs(actors[0], `insert into public.content_overrides(lesson_id,field,value,reason)
+      values ('prog-ctrl-loops','analogy','"legacy"','legacy') returning id`))[0];
+    await legacyAs(actors[1], `update public.content_overrides set reason='middle edit' where id=$1`, [o.id]);
+    await legacyAs(actors[2], `update public.content_overrides set reason='last edit' where id=$1`, [o.id]);
+    await legacy.query(`insert into public.cms_versions(kind,entity_id,lesson_id,data,version,published_at,published_by,learner_visible)
+      values ('contentOverride',$1,'prog-ctrl-loops','{"value":"historic"}',3,now(),$2,true)`, [o.id, actors[3]]);
+    await legacy.query(`insert into public.cms_published(kind,entity_id,lesson_id,data,version,published_by,learner_visible)
+      values ('contentOverride',$1,'prog-ctrl-loops','{"value":"live"}',3,$2,true)`, [o.id, actors[3]]);
+    const auditBefore = (await legacy.query('select * from public.audit_logs order by id')).rows;
+    const historyBefore = (await legacy.query('select * from public.cms_versions order by id')).rows;
+    await test('populated legacy migration fails closed on equal or lower live versions, preserving all data', async () => {
+      for (const version of [3, 2]) {
+        await legacy.query('update public.cms_published set version=$1', [version]);
+        const publishedBefore = (await legacy.query('select * from public.cms_published')).rows;
+        await assert.rejects(legacy.query(forward), (e) => e.code === '23514' && /T004 history invariant.*explicit owner repair required/.test(e.message));
+        await legacy.query('rollback');
+        assert.deepStrictEqual((await legacy.query('select * from public.cms_published')).rows, publishedBefore);
+        assert.deepStrictEqual((await legacy.query('select * from public.cms_versions order by id')).rows, historyBefore);
+        assert.deepStrictEqual((await legacy.query('select * from public.audit_logs order by id')).rows, auditBefore);
+        assert.strictEqual((await legacy.query(`select count(*)::int n from information_schema.columns
+          where table_schema='public' and table_name='content_overrides' and column_name='contributors'`)).rows[0].n, 0);
+      }
+    });
+    // Explicit test-fixture repair only: retain both distinct snapshots and
+    // place the live snapshot after history. The migration never repairs it.
+    await legacy.query('update public.cms_published set version=4');
+    await legacy.query('begin');
+    await legacy.query(`select set_config('v2u.in_rpc','on',true)`);
+    await legacy.query('update public.content_overrides set published_version=4 where id=$1', [o.id]);
+    await legacy.query('commit');
+    // Owner fixture updates are internal; capture the exact pre-migration audit.
+    const preMigrationAudit = (await legacy.query('select * from public.audit_logs order by id')).rows;
+    await test('populated legacy backfill adds no audit rows; unpublish/republish preserves strictly increasing snapshots', async () => {
+      await legacy.query(forward);
+      assert.deepStrictEqual((await legacy.query('select * from public.audit_logs order by id')).rows, preMigrationAudit);
+      const row = (await legacy.query('select contributors from public.content_overrides where id=$1', [o.id])).rows[0];
+      assert.deepStrictEqual(row.contributors.sort(), [...actors.slice(0, 3)].sort());
+      assert.strictEqual((await legacy.query('select count(*)::int n from public.content_overrides')).rows[0].n, 1);
+      assert.notStrictEqual((await legacy.query(`select current_setting('v2u.in_rpc',true) flag`)).rows[0].flag, 'on');
+      assert.strictEqual((await legacy.query('select count(*)::int n from public.audit_logs where actor_id is null')).rows[0].n, 0);
+      // A normal direct edit still audits, and the recovered middle actor
+      // (neither creator nor last editor) cannot approve.
+      await legacyAs(actors[2], `update public.content_overrides set reason='after migration' where id=$1`, [o.id]);
+      const lastAudit = (await legacy.query('select actor_id,action from public.audit_logs order by id desc limit 1')).rows[0];
+      assert.deepStrictEqual(lastAudit, { actor_id: actors[2], action: 'CONTENT_UPDATED' });
+      await legacyAs(actors[2], `select public.cms_transition('contentOverride',$1,'submit')`, [o.id]);
+      await assert.rejects(legacyAs(actors[1], `select public.cms_transition('contentOverride',$1,'approve')`, [o.id]), (e) => e.code === '42501');
+      await legacyAs(actors[3], `select public.cms_transition('contentOverride',$1,'approve')`, [o.id]);
+      assert.deepStrictEqual((await legacy.query('select contributors from public.content_overrides where id=$1', [o.id])).rows[0].contributors, []);
+      await legacyAs(actors[3], `select public.cms_transition('contentOverride',$1,'unpublish')`, [o.id]);
+      await legacyAs(actors[3], `select public.cms_transition('contentOverride',$1,'publish')`, [o.id]);
+      assert.strictEqual((await legacy.query('select version from public.cms_published where entity_id=$1', [o.id])).rows[0].version, 5);
+      await legacyAs(actors[3], `select public.cms_transition('contentOverride',$1,'unpublish')`, [o.id]);
+      await legacyAs(actors[3], `select public.cms_transition('contentOverride',$1,'publish')`, [o.id]);
+      const published = (await legacy.query('select * from public.cms_published where entity_id=$1', [o.id])).rows[0];
+      assert.strictEqual(published.version, 6);
+      assert.strictEqual(published.previous_version, 5);
+      const history = (await legacy.query(`select version,data->>'value' value from public.cms_versions where entity_id=$1 order by version`, [o.id])).rows;
+      assert.deepStrictEqual(history.map((r) => r.version), [3, 4, 5]);
+      assert.deepStrictEqual(history.slice(0, 2), [{ version: 3, value: 'historic' }, { version: 4, value: 'live' }]);
+      assert.deepStrictEqual((await legacy.query('select * from public.cms_versions where version=3')).rows, historyBefore);
+      // A later invariant violation must fail atomically, with no snapshot or
+      // audit loss, rather than treating a duplicate archive as success.
+      await legacy.query(`insert into public.cms_versions(kind,entity_id,lesson_id,data,version,published_at,published_by,learner_visible)
+        select kind,entity_id,lesson_id,'{"value":"collision"}',version,published_at,published_by,learner_visible from public.cms_published`);
+      const auditCount = (await legacy.query('select count(*)::int n from public.audit_logs')).rows[0].n;
+      await assert.rejects(legacyAs(actors[3], `select public.cms_transition('contentOverride',$1,'unpublish')`, [o.id]), (e) => e.code === '23505');
+      assert.deepStrictEqual((await legacy.query('select * from public.cms_published where entity_id=$1', [o.id])).rows[0], published);
+      assert.strictEqual((await legacy.query('select count(*)::int n from public.audit_logs')).rows[0].n, auditCount);
+    });
+  } finally { await legacy.end(); }
   for (const m of migrations) await db.query(fs.readFileSync(path.join(root, 'supabase/migrations', m), 'utf-8'));
   console.log(`=== Supabase RLS (${migrations.length} migration(s), PostgreSQL ${(await db.query('show server_version')).rows[0].server_version}, ${conn.transport}, ${runtime.source === 'PG_BIN' ? 'PG_BIN' : BIN}) ===\n`);
 
@@ -105,9 +199,20 @@ try {
     assert(err, 'expected the database to refuse');
     assert.match(err.message, re);
   };
+  // Matrix probes must not change fixtures or leave successful RPC audit rows behind.
+  const probe = async (uid, fn, claims = {}) => {
+    await db.query('begin');
+    try {
+      await db.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ role: uid ? 'authenticated' : 'anon', ...claims, sub: uid })]);
+      await db.query(`set local role ${uid ? 'authenticated' : 'anon'}`);
+      return await fn();
+    } finally {
+      await db.query('rollback');
+    }
+  };
   const ROLES = ['STUDENT', 'CONTENT_EDITOR', 'GAME_EDITOR', 'REVIEWER', 'ADMIN', 'SUPER_ADMIN'];
   const U = {};
-  for (const r of [...ROLES, 'SUPER_ADMIN_2', 'SUSPENDED_ADMIN']) {
+  for (const r of [...ROLES, 'SUPER_ADMIN_2', 'SUSPENDED_ADMIN', 'CONTENT_EDITOR_2']) {
     const { rows } = await db.query(`insert into auth.users (email, raw_user_meta_data) values ($1, $2) returning id`, [`${r.toLowerCase()}@example.invalid`, { full_name: r, role: 'SUPER_ADMIN', avatar_url: 'javascript:alert(1)' }]);
     U[r] = rows[0].id;
   }
@@ -181,9 +286,177 @@ try {
 
   // Owner-only fixture setup for the remaining role matrix tests.
   for (const r of ROLES) await db.query(`update public.profiles set role = $2 where id = $1`, [U[r], r]);
+  await db.query(`update public.profiles set role = 'CONTENT_EDITOR' where id = $1`, [U.CONTENT_EDITOR_2]);
   await db.query(`update public.profiles set role = 'ADMIN', status = 'SUSPENDED' where id = $1`, [U.SUSPENDED_ADMIN]);
   const L = 'prog-ctrl-loops';
   const newVideo = (uid, extra = {}) => as(uid, `insert into public.videos (lesson_id, title, url, video_id, channel) values ($1, $2, $3, $4, 'ch') returning *`, [L, extra.title ?? 'คลิป', extra.url ?? 'https://www.youtube.com/watch?v=abcdefghijk', 'abcdefghijk']).then((r) => r[0]);
+
+  await test('future postgres-owned tables, sequences and definer functions fail closed', async () => {
+    await db.query('begin');
+    try {
+      await db.query(`create table public.future_probe(id integer); create sequence public.future_seq;
+        create function public.future_rpc() returns integer language sql security definer set search_path = '' as 'select 1'`);
+      for (const role of ['anon', 'authenticated']) {
+        const { rows } = await db.query(`select
+          has_table_privilege($1, 'public.future_probe', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') t,
+          has_sequence_privilege($1, 'public.future_seq', 'USAGE,SELECT,UPDATE') s,
+          has_function_privilege($1, 'public.future_rpc()', 'EXECUTE') f`, [role]);
+        assert.deepStrictEqual(rows[0], { t: false, s: false, f: false }, role);
+      }
+    } finally { await db.query('rollback'); }
+  });
+
+  await test('JWT and metadata role spoofing cannot grant staff access', async () => {
+    await probe(U.STUDENT, async () => {
+      assert.deepStrictEqual((await db.query(`select public.v2u_current_role() role, public.v2u_can('admin.access') ok`)).rows, [{ role: 'STUDENT', ok: false }]);
+      assert.deepStrictEqual((await db.query('select * from public.content_overrides')).rows, []);
+    }, { role: 'SUPER_ADMIN', user_role: 'SUPER_ADMIN', app_metadata: { role: 'SUPER_ADMIN' }, user_metadata: { role: 'SUPER_ADMIN' } });
+    for (const sql of [
+      `insert into public.videos(lesson_id,title,url) values ('${L}','spoof','https://example.com/v')`,
+      `select public.set_user_role('${U.SUPER_ADMIN_2}', 'SUPER_ADMIN')`,
+    ]) await assert.rejects(probe(U.STUDENT, () => db.query(sql), { app_metadata: { role: 'SUPER_ADMIN' }, user_metadata: { role: 'SUPER_ADMIN' }, user_role: 'SUPER_ADMIN' }), (e) => e.code === '42501');
+  });
+
+  await test('six-role table and RPC operation matrix, plus suspended staff and anon', async () => {
+    const { createJiti } = await import('jiti');
+    const { ROLE_PERMISSIONS } = await createJiti(import.meta.url).import(path.join(root, 'src/auth/permissions.ts'));
+    const v = await newVideo(U.CONTENT_EDITOR);
+    const resource = (await as(U.CONTENT_EDITOR, `insert into public.resources(lesson_id,title,url) values ($1,'matrix','https://example.com/r') returning id`, [L]))[0];
+    const o = (await as(U.CONTENT_EDITOR, `insert into public.content_overrides(lesson_id,field,value,reason) values ($1,'analogy','"matrix"','matrix') returning id`, [L]))[0];
+    await as(U.GAME_EDITOR, `insert into public.games(game_id,name) values ('matrix-game','matrix')`);
+    await as(U.GAME_EDITOR, `insert into public.lesson_game_assignments(lesson_id,game_id) values ($1,'matrix-game')`, [L]);
+    const cases = [
+      ...[['videos', v.id], ['resources', resource.id], ['content_overrides', o.id]].flatMap(([table, id]) => [
+        { name: `${table} update`, perm: 'content.draft', sql: `update public.${table} set lesson_id = lesson_id where id = $1 returning id`, args: [id], update: true },
+        { name: `${table} insert`, perm: 'content.draft', sql: table === 'content_overrides' ? `insert into public.${table}(lesson_id,field,value,reason) values ($1,'analogy','"matrix"','matrix') returning id` : `insert into public.${table}(lesson_id,title,url) values ($1,'matrix','https://example.com/m') returning id`, args: [L] },
+      ]),
+      { name: 'games insert', perm: 'game.manage', sql: `insert into public.games(game_id,name) values ('matrix-new','matrix') returning game_id` },
+      { name: 'games update', perm: 'game.manage', sql: `update public.games set name = name where game_id = 'matrix-game' returning game_id`, update: true },
+      { name: 'assignments insert', perm: 'game.assign', sql: `insert into public.lesson_game_assignments(lesson_id,game_id) values ('prog-matrix-probe','matrix-game') returning id` },
+      { name: 'assignments update', perm: 'game.assign', sql: `update public.lesson_game_assignments set visible = visible where game_id = 'matrix-game' returning id`, update: true },
+      { name: 'role RPC', perm: 'users.manageRoles', sql: `select public.set_user_role($1,'CONTENT_EDITOR')`, args: [U.SUPER_ADMIN_2], audit: 'ROLE_CHANGED' },
+      { name: 'status RPC', perm: 'users.setStatus', sql: `select public.set_user_status($1,'SUSPENDED')`, args: [U.SUPER_ADMIN_2], audit: 'STATUS_CHANGED' },
+      ...[['video', v.id], ['resource', resource.id]].map(([kind, id]) => ({ name: `${kind} verify RPC`, perm: 'content.verifySource', sql: `select public.cms_verify_source($1,$2)`, args: [kind, id], audit: kind === 'video' ? 'VIDEO_VERIFIED' : 'RESOURCE_VERIFIED' })),
+      ...['video', 'resource', 'contentOverride'].flatMap((kind) => ['submit', 'approve', 'reject', 'publish', 'unpublish', 'archive', 'reopen'].map((action) => ({
+        name: `${kind} ${action}`, perm: { submit: 'content.submit', approve: 'content.review', reject: 'content.review', publish: 'content.publish', unpublish: 'content.publish', archive: 'content.draft', reopen: 'content.draft' }[action],
+        sql: `select public.cms_transition($1,$2,$3)`, args: [kind, { video: v.id, resource: resource.id, contentOverride: o.id }[kind], action],
+        setup: async () => {
+          const table = { video: 'videos', resource: 'resources', contentOverride: 'content_overrides' }[kind];
+          const state = { submit: 'DRAFT', approve: 'IN_REVIEW', reject: 'IN_REVIEW', publish: 'APPROVED', unpublish: 'PUBLISHED', archive: 'DRAFT', reopen: 'ARCHIVED' }[action];
+          await db.query(`update public.${table} set state = $2 where id = $1`, [{ video: v.id, resource: resource.id, contentOverride: o.id }[kind], state]);
+          if (action === 'unpublish') await db.query(`insert into public.cms_published(kind,entity_id,lesson_id,data,version,learner_visible,published_by) values ($1,$2,$3,'{}',1,true,$4)`, [kind, { video: v.id, resource: resource.id, contentOverride: o.id }[kind], L, U.REVIEWER]);
+        }, audit: `CONTENT_${{ submit: 'SUBMITTED', approve: 'APPROVED', reject: 'REJECTED', publish: 'PUBLISHED', unpublish: 'UNPUBLISHED', archive: 'ARCHIVED', reopen: 'REOPENED' }[action]}`,
+      }))),
+    ];
+    for (const role of [...ROLES, 'SUSPENDED_ADMIN', 'ANON']) {
+      const uid = U[role] ?? null;
+      const perms = ROLE_PERMISSIONS[role] ?? [];
+      for (const c of cases) {
+        const before = Number((await db.query('select count(*) from public.audit_logs')).rows[0].count);
+        await db.query('begin');
+        try {
+          await c.setup?.();
+          const fixtureAuditCount = Number((await db.query('select count(*) from public.audit_logs')).rows[0].count);
+          await db.query(`select set_config('request.jwt.claims',$1,true)`, [JSON.stringify({ sub: uid, role: uid ? 'authenticated' : 'anon' })]);
+          await db.query(`set local role ${uid ? 'authenticated' : 'anon'}`);
+          if (perms.includes(c.perm)) {
+            const result = await db.query(c.sql, c.args);
+            assert.strictEqual(result.rows.length, 1, `${role}: ${c.name}`);
+            await db.query('set local role postgres');
+            const auditRows = (await db.query('select actor_id,actor_role,action from public.audit_logs order by id desc limit 1')).rows;
+            assert.strictEqual(Number((await db.query('select count(*) from public.audit_logs')).rows[0].count), fixtureAuditCount + 1, `${role}: ${c.name} audit count`);
+            assert.strictEqual(auditRows[0].actor_id, uid);
+            assert.strictEqual(auditRows[0].actor_role, role);
+            if (c.audit) assert.strictEqual(auditRows[0].action, c.audit);
+          } else if (c.update && uid) {
+            assert.deepStrictEqual((await db.query(c.sql, c.args)).rows, [], `${role}: ${c.name} RLS filters writes`);
+          } else {
+            await assert.rejects(db.query(c.sql, c.args), (e) => e.code === '42501', `${role}: ${c.name}`);
+          }
+        } finally { await db.query('rollback'); }
+        assert.strictEqual(Number((await db.query('select count(*) from public.audit_logs')).rows[0].count), before, `${role}: ${c.name} leaves no audit changes`);
+      }
+      for (const table of ['profiles', 'videos', 'resources', 'content_overrides', 'cms_published', 'cms_versions', 'games', 'lesson_game_assignments', 'audit_logs']) {
+        for (const sql of [`delete from public.${table}`, `truncate public.${table}`]) await assert.rejects(probe(uid, () => db.query(sql)), (e) => e.code === '42501', `${role}: ${sql}`);
+        if (role === 'ANON' && !['cms_published', 'games', 'lesson_game_assignments'].includes(table)) {
+          await assert.rejects(probe(uid, () => db.query(`select * from public.${table}`)), (e) => e.code === '42501');
+        } else {
+          const rows = await probe(uid, async () => (await db.query(`select * from public.${table}`)).rows);
+          const staff = perms.includes('admin.access');
+          if (table === 'profiles') assert.strictEqual(rows.length, perms.includes('users.view') ? Object.keys(U).length : 1);
+          else if (table === 'audit_logs') assert.strictEqual(rows.length > 0, perms.includes('audit.view'));
+          else if (!['cms_published', 'games', 'lesson_game_assignments'].includes(table)) assert.strictEqual(rows.length, staff ? Number((await db.query(`select count(*) from public.${table}`)).rows[0].count) : 0);
+          else {
+            const filter = table === 'cms_published' ? 'learner_visible' : table === 'games' ? 'published' : 'attached and visible and exists(select 1 from public.games g where g.game_id = t.game_id and g.published)';
+            const expected = (await db.query(`select * from public.${table} t ${staff ? '' : `where ${filter}`}`)).rows;
+            assert.deepStrictEqual(rows, expected, `${role}: ${table} visibility`);
+          }
+        }
+        if (['profiles', 'cms_published', 'cms_versions', 'audit_logs'].includes(table)) {
+          await assert.rejects(probe(uid, () => db.query(`insert into public.${table} default values`)), (e) => e.code === '42501');
+          const column = { profiles: 'role', cms_published: 'data', cms_versions: 'data', audit_logs: 'action' }[table];
+          await assert.rejects(probe(uid, () => db.query(`update public.${table} set ${column} = ${column}`)), (e) => e.code === '42501');
+        }
+      }
+      if (uid) {
+        const own = await probe(uid, async () => (await db.query(`update public.profiles set display_name='matrix' where id=$1 returning id`, [uid])).rows);
+        assert.deepStrictEqual(own, role === 'SUSPENDED_ADMIN' ? [] : [{ id: uid }], `${role}: own display update`);
+        assert.deepStrictEqual(await probe(uid, async () => (await db.query(`update public.profiles set display_name='IDOR' where id=$1 returning id`, [uid === U.STUDENT ? U.ADMIN : U.STUDENT])).rows), [], `${role}: other profile update`);
+      }
+    }
+  });
+
+  await test('every publish retains history across unpublish and republish', async () => {
+    const v = await newVideo(U.CONTENT_EDITOR, { title: 'history-1' });
+    for (let version = 1; version <= 4; version++) {
+      if (version === 3) await as(U.REVIEWER, `select public.cms_transition('video',$1,'unpublish')`, [v.id]);
+      if (version > 1) await as(U.CONTENT_EDITOR, `update public.videos set title = $2 where id = $1`, [v.id, `history-${version}`]);
+      await as(U.REVIEWER, `select public.cms_transition('video',$1,'publish')`, [v.id]);
+      const p = (await db.query('select * from public.cms_published where entity_id=$1', [v.id])).rows[0];
+      assert.strictEqual(p.version, version);
+      assert.strictEqual(p.previous_version, version === 1 ? null : version - 1);
+    }
+    const history = (await db.query(`select version,data->>'title' title from public.cms_versions where entity_id=$1 order by version`, [v.id])).rows;
+    assert.deepStrictEqual(history, [1, 2, 3].map((version) => ({ version, title: `history-${version}` })));
+  });
+
+  await test('intermediate edits cannot launder self-approval, including promoted editors', async () => {
+    const o = (await as(U.CONTENT_EDITOR, `insert into public.content_overrides(lesson_id,field,value,reason) values ($1,'analogy','"original"','review') returning id`, [L]))[0];
+    await as(U.CONTENT_EDITOR_2, `update public.content_overrides set reason='intermediate editor' where id=$1`, [o.id]);
+    await as(U.ADMIN, `update public.content_overrides set value='"admin text"' where id=$1`, [o.id]);
+    await as(U.CONTENT_EDITOR, `update public.content_overrides set reason='minor edit' where id=$1`, [o.id]);
+    await as(U.CONTENT_EDITOR, `select public.cms_transition('contentOverride',$1,'submit')`, [o.id]);
+    await assert.rejects(as(U.ADMIN, `select public.cms_transition('contentOverride',$1,'approve')`, [o.id]), (e) => e.code === '42501');
+    const authors = (await db.query('select created_by,updated_by,contributors from public.content_overrides where id=$1', [o.id])).rows[0];
+    assert.notStrictEqual(authors.created_by, U.CONTENT_EDITOR_2);
+    assert.notStrictEqual(authors.updated_by, U.CONTENT_EDITOR_2);
+    assert(authors.contributors.includes(U.CONTENT_EDITOR_2));
+    await probe(U.CONTENT_EDITOR_2, async () => {
+      await db.query('set local role postgres');
+      await db.query(`update public.profiles set role='REVIEWER' where id=$1`, [U.CONTENT_EDITOR_2]);
+      await db.query('set local role authenticated');
+      await assert.rejects(db.query(`select public.cms_transition('contentOverride',$1,'approve')`, [o.id]), (e) => e.code === '42501');
+    });
+    await as(U.REVIEWER, `select public.cms_transition('contentOverride',$1,'approve')`, [o.id]);
+    assert.deepStrictEqual((await db.query('select contributors from public.content_overrides where id=$1', [o.id])).rows[0].contributors, []);
+    await as(U.REVIEWER, `select public.cms_transition('contentOverride',$1,'publish')`, [o.id]);
+    const snap = (await as(null, `select data from public.cms_published where entity_id=$1`, [o.id]))[0].data;
+    assert(!('contributors' in snap));
+    await as(U.ADMIN, `update public.content_overrides set value='"new admin text"' where id=$1`, [o.id]);
+    await as(U.CONTENT_EDITOR, `update public.content_overrides set reason='minor again' where id=$1`, [o.id]);
+    await as(U.REVIEWER, `select public.cms_transition('contentOverride',$1,'unpublish')`, [o.id]);
+    await as(U.CONTENT_EDITOR, `select public.cms_transition('contentOverride',$1,'archive')`, [o.id]);
+    await as(U.CONTENT_EDITOR, `select public.cms_transition('contentOverride',$1,'reopen')`, [o.id]);
+    await as(U.CONTENT_EDITOR, `select public.cms_transition('contentOverride',$1,'submit')`, [o.id]);
+    await assert.rejects(as(U.ADMIN, `select public.cms_transition('contentOverride',$1,'approve')`, [o.id]), (e) => e.code === '42501');
+    await assert.rejects(as(U.ADMIN, `update public.content_overrides set contributors='{}' where id=$1`, [o.id]), (e) => e.code === '42501');
+    await as(U.REVIEWER, `select public.cms_transition('contentOverride',$1,'approve')`, [o.id]);
+    await as(U.REVIEWER, `select public.cms_transition('contentOverride',$1,'publish')`, [o.id]);
+    await as(U.CONTENT_EDITOR, `update public.content_overrides set reason='independent later cycle' where id=$1`, [o.id]);
+    await as(U.CONTENT_EDITOR, `select public.cms_transition('contentOverride',$1,'submit')`, [o.id]);
+    await as(U.ADMIN, `select public.cms_transition('contentOverride',$1,'approve')`, [o.id]);
+    assert.deepStrictEqual((await db.query('select contributors,approved_by from public.content_overrides where id=$1', [o.id])).rows[0], { contributors: [], approved_by: U.ADMIN });
+  });
 
   await test('new Google user gets a STUDENT/ACTIVE profile; OAuth metadata cannot set role; unsafe avatar dropped', async () => {
     const { rows } = await db.query(`select * from public.profiles where id = $1`, [U.SUPER_ADMIN_2]);
@@ -353,6 +626,11 @@ try {
   await test('a suspended SUPER_ADMIN is not an active backup; it can be demoted safely', async () => {
     await as(U.SUPER_ADMIN, `select public.set_user_role($1, 'SUPER_ADMIN')`, [U.SUPER_ADMIN_2]);
     await as(U.SUPER_ADMIN, `select public.set_user_status($1, 'SUSPENDED')`, [U.SUPER_ADMIN_2]);
+    for (const caller of [U.SUPER_ADMIN, U.SUPER_ADMIN_2, U.ADMIN]) {
+      await assert.rejects(as(caller, `select public.set_user_role($1,'STUDENT')`, [U.SUPER_ADMIN]), (e) => e.code === '42501');
+      for (const status of ['SUSPENDED', 'DISABLED']) await assert.rejects(as(caller, `select public.set_user_status($1,$2)`, [U.SUPER_ADMIN, status]), (e) => e.code === '42501');
+      assert.strictEqual(await superCount(), 1, 'a suspended backup cannot justify removing the active owner');
+    }
     await denied(as(U.SUPER_ADMIN_2, `select public.set_user_role($1, 'STUDENT')`, [U.SUPER_ADMIN]), /permission denied/);
     await as(U.SUPER_ADMIN, `select public.set_user_role($1, 'STUDENT')`, [U.SUPER_ADMIN_2]);
     assert.strictEqual(Number((await db.query(`select count(*) from public.profiles where role = 'SUPER_ADMIN' and status = 'ACTIVE'`)).rows[0].count), 1);
@@ -448,7 +726,7 @@ try {
     await as(U.GAME_EDITOR, `update public.games set status = 'AVAILABLE', enabled = true, published = false where game_id = 'demo-game'`);
     assert.deepStrictEqual(await as(null, `select * from public.games`), []);
     for (const uid of [null, U.STUDENT, U.SUSPENDED_ADMIN]) assert.deepStrictEqual(await as(uid, `select * from public.lesson_game_assignments`), [], 'unpublished game assignments are private');
-    assert.strictEqual((await as(U.GAME_EDITOR, `select * from public.lesson_game_assignments`)).length, 1, 'staff retains access');
+    assert.strictEqual((await as(U.GAME_EDITOR, `select * from public.lesson_game_assignments where game_id = 'demo-game'`)).length, 1, 'staff retains access');
     await as(U.GAME_EDITOR, `update public.games set published = true, enabled = false, status = 'DISABLED' where game_id = 'demo-game'`);
     const g = (await as(null, `select status, enabled from public.games`))[0];
     assert.deepStrictEqual(g, { status: 'DISABLED', enabled: false }, 'learner sees it disabled; resolver refuses to launch');
@@ -484,6 +762,7 @@ try {
     skippedSections.push('client end-to-end (PostgREST binary not found; set POSTGREST_BIN)');
     console.log('\n  (client end-to-end SKIPPED: PostgREST binary not found — set POSTGREST_BIN)');
   } else {
+    console.log(`PostgREST: ${execFileSync(PGRST, ['--version'], { encoding: 'utf-8', windowsHide: true }).trim()}`);
     const http = await import('node:http');
     const crypto = await import('node:crypto');
     const { createClient } = await import('@supabase/supabase-js');
@@ -512,6 +791,24 @@ try {
       const backendFor = (uid) => supabaseBackendFromClient(createClient(base, anonKey, { accessToken: async () => (uid ? jwt({ sub: uid, role: 'authenticated' }) : anonKey) }));
       const by = (r) => ({ uid: U[r], role: r, status: 'ACTIVE' });
       const B = Object.fromEntries([...ROLES, null].map((r) => [r ?? 'GUEST', backendFor(r ? U[r] : null)]));
+      await test('REST: spoofed JWT metadata and direct self-role updates fail closed', async () => {
+        const raw = createClient(base, anonKey, { accessToken: async () => jwt({ sub: U.STUDENT, role: 'authenticated', user_role: 'SUPER_ADMIN', app_metadata: { role: 'SUPER_ADMIN' }, user_metadata: { role: 'SUPER_ADMIN' } }) });
+        const role = await raw.rpc('v2u_current_role');
+        assert.ifError(role.error);
+        assert.strictEqual(role.data, 'STUDENT');
+        const access = await raw.rpc('v2u_can', { perm: 'admin.access' });
+        assert.ifError(access.error);
+        assert.strictEqual(access.data, false);
+        for (const patch of [{ role: 'SUPER_ADMIN' }, { role: 'ADMIN', status: 'ACTIVE' }]) {
+          const result = await raw.from('profiles').update(patch).eq('id', U.STUDENT).select();
+          assert.strictEqual(result.error?.code, '42501', 'self role PATCH must be rejected by the database');
+        }
+        const grant = await raw.rpc('set_user_role', { target_user_id: U.SUPER_ADMIN_2, new_role: 'SUPER_ADMIN' });
+        assert.strictEqual(grant.error?.code, '42501');
+        const draft = await raw.from('videos').insert({ lesson_id: L, title: 'spoof', url: 'https://example.com/v' });
+        assert.strictEqual(draft.error?.code, '42501');
+        assert.strictEqual((await db.query('select role from public.profiles where id=$1', [U.STUDENT])).rows[0].role, 'STUDENT');
+      });
       const throws = async (p, re) => { let err; try { await p; } catch (e) { err = e; } assert(err, 'expected refusal'); if (re) assert.match(err.message, re); };
       const vdata = (o = {}) => ({ lessonId: L, title: 'E2E clip', provider: 'youtube', url: 'https://www.youtube.com/watch?v=e2eE2Ee2e2E', videoId: 'e2eE2Ee2e2E', channel: 'ch', durationSec: 300, purpose: 'REVIEW', verification: 'DISCOVERED', verifiedBy: null, verifiedAt: null, visibility: 'VISIBLE', order: 3, notes: 'n', ...o });
       console.log('\n=== Client end-to-end (supabase-js → PostgREST → PostgreSQL) ===\n');

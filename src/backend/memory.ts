@@ -22,6 +22,7 @@ class Denied extends Error {}
 export function createMemoryBackend(seed: MemorySeed = {}): CmsBackend & { _dump(): unknown } {
   const users = new Map((seed.users ?? []).map((u) => [u.uid, u]));
   const drafts = new Map<string, DraftDoc>();
+  const contributors = new Map<string, Set<string>>();
   const published = new Map<string, PublishedDoc>();
   const versions: PublishedDoc[] = [];
   const games = new Map<string, GameDoc>();
@@ -115,6 +116,7 @@ export function createMemoryBackend(seed: MemorySeed = {}): CmsBackend & { _dump
       const clean = kind === 'video' || kind === 'resource' ? { ...data, verifiedBy: null, verifiedAt: null } : data;
       const d = { id: newId(), kind, lessonId: (data as { lessonId: string }).lessonId, data: clean, state: 'DRAFT', publishedVersion: 0, createdAt: at, createdBy: by.uid, updatedAt: at, updatedBy: by.uid, reviewNote: null, approvedBy: null } as DraftDoc<typeof kind>;
       drafts.set(d.id, clone(d));
+      if (kind === 'contentOverride') contributors.set(d.id, new Set([by.uid]));
       log(by, kind === 'video' ? 'VIDEO_CREATED' : kind === 'resource' ? 'RESOURCE_CREATED' : 'CONTENT_CREATED', kind, d.id, null, clean);
       return clone(d);
     },
@@ -131,6 +133,7 @@ export function createMemoryBackend(seed: MemorySeed = {}): CmsBackend & { _dump
         if (prev.verification === 'VERIFIED' && next.url !== prev.url) next = { ...next, verification: 'VERIFICATION_PENDING', verifiedBy: null, verifiedAt: null };
       }
       const changed = JSON.stringify(next) !== JSON.stringify(prev);
+      if (kind === 'contentOverride' && changed) contributors.get(id)?.add(by.uid);
       const onlyOrder = changed && JSON.stringify({ ...next, order: 0 }) === JSON.stringify({ ...prev, order: 0 });
       const state = changed && ['IN_REVIEW', 'APPROVED', 'PUBLISHED', 'REJECTED'].includes(d.state) ? 'DRAFT' : d.state;
       const out = { ...d, data: next, state, updatedAt: now(), updatedBy: by.uid } as DraftDoc;
@@ -154,7 +157,8 @@ export function createMemoryBackend(seed: MemorySeed = {}): CmsBackend & { _dump
       const actor = live(by);
       const r = transitionResult(actor, d, t, !!pub);
       if (!r.ok) throw new Denied(r.reason);
-      if (t === 'approve' && ENTITY_CATEGORY[kind] === 'CONTROLLED' && d.createdBy === by.uid) throw new Denied('learning content must be approved by someone else');
+      if (t === 'approve' && ENTITY_CATEGORY[kind] === 'CONTROLLED' && (d.createdBy === by.uid || d.updatedBy === by.uid || contributors.get(id)?.has(by.uid))) throw new Denied('learning content must be approved by someone else');
+      if (t === 'approve') contributors.get(id)?.clear();
       const at = now();
       const next: DraftDoc = { ...d, state: r.next, reviewNote: note ?? d.reviewNote, updatedAt: at, approvedBy: t === 'approve' ? by.uid : d.approvedBy ?? null };
       if (t === 'publish' || t === 'unpublish' || (t === 'archive' && pub)) if (pub) versions.push(clone(pub));

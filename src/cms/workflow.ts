@@ -122,7 +122,8 @@ export function isLearnerVisibleData(kind: EntityKind, data: EntityDataMap[Entit
 }
 
 export function nextPublished<K extends EntityKind>(d: DraftDoc<K>, prev: PublishedDoc<K> | null, actorUid: string, at: string): PublishedDoc<K> {
-  return { id: d.id, kind: d.kind, lessonId: d.lessonId, data: d.data, version: (prev?.version ?? 0) + 1, publishedAt: at, publishedBy: actorUid, previousVersion: prev?.version ?? null, learnerVisible: isLearnerVisibleData(d.kind, d.data) };
+  const lastVersion = Math.max(prev?.version ?? 0, d.publishedVersion);
+  return { id: d.id, kind: d.kind, lessonId: d.lessonId, data: d.data, version: lastVersion + 1, publishedAt: at, publishedBy: actorUid, previousVersion: lastVersion || null, learnerVisible: isLearnerVisibleData(d.kind, d.data) };
 }
 
 export function auditEvent(actor: Actor, action: AuditAction, entityType: AuditEvent['entityType'], entityId: string, before: string | null, after: string | null, at: string): AuditEvent {

@@ -96,14 +96,24 @@ DRAFT → IN_REVIEW → APPROVED → PUBLISHED
 - Changing the URL of a verified item resets it to VERIFICATION_PENDING.
 
 **Controlled content** (`content_overrides`):
-- It must be APPROVED by someone who neither created nor last edited it.
+- It must be APPROVED by someone who neither created nor last edited it, and who made no edits since the last approval. Intermediate edits cannot hide a contributor's identity.
+- The database maintains a protected `contributors` array, clears it on independent approval, and excludes it from learner snapshots. Archive/reopen and unpublish do not clear it. The forward migration recovers existing contributors from creator/editor fields and database-written audit actor IDs since the last approval.
 - The approver is recorded in `approved_by`.
 
 **General rules:**
 - Editing in-review, approved, published or rejected content turns it back into a DRAFT. The live snapshot stays until it is re-published.
 - Unpublishing an unchanged PUBLISHED copy restores APPROVED. Otherwise it preserves the working state, so withdrawing an older snapshot never approves new edits.
 - Role/status RPCs lock SUPER_ADMIN rows in UUID order before checking the caller again; suspended or demoted callers waiting on another change lose their rights.
-- Every publish increments the version and moves the old snapshot to `cms_versions`.
+- Every publish increments the highest live, working-copy or historical version and moves the old snapshot to `cms_versions`. Unpublish/republish preserves the version sequence and `previous_version` chain.
+- The forward migration aborts with an explicit owner-repair diagnostic if any live version is less than or equal to its highest stored historical version. It does not renumber legacy history. Duplicate archive versions fail the transition instead of silently dropping the live snapshot. Contributor backfill uses the transaction-local internal-operation flag to avoid fake user audit rows.
+
+### Future-object privileges
+
+`20261005010000_v2u_review_history_privileges.sql` revokes the broad default grants for future `postgres`-owned tables, sequences and functions in `public`. The first migration's privilege block revokes existing-object grants only; its header's reference to default privileges should not be read as protecting future objects.
+
+PostgreSQL's global PUBLIC function EXECUTE default is also revoked for objects created by `postgres` (across schemas); a schema-specific revoke alone cannot remove it. Future migrations must grant API access explicitly and enable suitable RLS for exposed tables. Existing explicit grants and service-role grants remain intact. Objects created by `supabase_admin` or another owner, including dashboard-created objects under those roles, are not covered and need a separate privilege review.
+
+These defaults affect future objects beyond V2U in a shared database. Applying this migration to a configured Supabase project requires owner approval; local throwaway test application does not authorize `supabase db push` or production changes.
 
 ## Games
 
@@ -200,6 +210,8 @@ The fixture is reachable only under `import.meta.env.DEV`, so production bundles
 - **`npm run test:rls`** applies the real migration to a throwaway PostgreSQL 16 cluster, using `supabase/tests/supabase-shim.sql` to stand in for Supabase's roles and `auth` schema. It then:
   - acts as anon or authenticated users exactly like PostgREST does;
   - executes the owner bootstrap SQL above directly from this document, checking first bootstrap, missing profiles, repeat attempts, recovery, client denial before/after bootstrap, and an exact allowlist of client-executable public functions;
+  - tests all six roles, suspended staff and anon against table reads/writes and each workflow/RPC operation; matrix probes roll back and check database-written audit identity and action;
+  - checks forged role claims, future-object default privileges, intermediate-editor self-approval, and history after unpublish/republish;
   - if a PostgREST binary is available (`POSTGREST_BIN`), runs the app's repository through **supabase-js → PostgREST → PostgreSQL** end to end.
   - It needs PostgreSQL server binaries (`PG_BIN`). Missing dependencies are reported as SKIPPED, PARTIAL or BLOCKED, never as a complete pass.
 
@@ -251,5 +263,6 @@ Startup, migration and assertion errors are never converted into skips. Assertio
 - **Audit log:** append-only for everyone, including the owner (enforced by a trigger). Token-like strings are redacted.
 - **RPC arguments:** whitelisted. `cms_transition` only accepts known kinds and transitions; dynamic SQL uses `format('%I')` with the whitelisted table name only.
 - **Limitations:**
+  - PostgreSQL claim simulation does not prove REST behavior. The direct self-role PATCH and forged-metadata supabase-js attacks run only in the PostgREST section; absence of PostgREST always leaves validation PARTIAL (or BLOCKED when required).
   - The `v2u.in_rpc` transaction flag marks RPC-internal writes. PostgREST clients cannot set it, because `set_config` is not exposed through the API.
   - Do not expose `pg_catalog` functions through PostgREST.
