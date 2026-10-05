@@ -128,7 +128,12 @@ export function supabaseBackendFromClient(sb: SupabaseClient): CmsBackend {
     },
     async listAssignments(opts) {
       const q = sb.from('lesson_game_assignments').select('*').order('sort_order');
-      return (check(await (opts?.learnerOnly ? q.eq('attached', true).eq('visible', true) : q)) as Row[]).map(rowToAssignment);
+      const assignments = (check(await (opts?.learnerOnly ? q.eq('attached', true).eq('visible', true) : q)) as Row[]).map(rowToAssignment);
+      if (!opts?.learnerOnly) return assignments;
+      // Staff RLS also exposes unpublished games; the learner view must use only published ones.
+      const games = check(await sb.from('games').select('game_id').eq('published', true)) as Row[];
+      const published = new Set(games.map((g) => g.game_id));
+      return assignments.filter((a) => published.has(a.gameId));
     },
     async upsertAssignment(_by, a) {
       return rowToAssignment(check(await sb.from('lesson_game_assignments').upsert(assignmentToRow(a), { onConflict: 'lesson_id,game_id' }).select('*').single()) as Row);

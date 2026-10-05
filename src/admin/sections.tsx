@@ -405,7 +405,6 @@ export function PublishingSection({ c }: { c: AdminCtx }) {
 /* ── Users & roles ── */
 export function UsersSection({ c }: { c: AdminCtx }) {
   const actor = { uid: c.me.uid, role: c.me.role, status: c.me.status };
-  const supers = c.data.users.filter((u) => u.role === 'SUPER_ADMIN').length;
   const activeSupers = c.data.users.filter((u) => u.role === 'SUPER_ADMIN' && u.status === 'ACTIVE').length;
   const [q, setQ] = useState('');
   const rows = useMemo(() => c.data.users.filter((u) => !q || `${u.displayName} ${u.email}`.toLowerCase().includes(q.toLowerCase())), [c.data.users, q]);
@@ -421,11 +420,11 @@ export function UsersSection({ c }: { c: AdminCtx }) {
             <td className="p-2">
               <select aria-label={`บทบาทของ ${u.displayName}`} className={field} value={u.role} disabled={!can(actor, 'users.manageRoles')} onChange={(e) => {
                 const next = e.target.value as Role;
-                const deny = roleChangeDenied(actor, u, next, supers);
+                const deny = roleChangeDenied(actor, u, next, activeSupers);
                 if (deny) return void c.act('เปลี่ยนบทบาท', () => Promise.reject(new Error(deny)));
-                c.confirm({ title: 'เปลี่ยนบทบาท?', body: `${u.displayName}: ${ROLE_LABEL[u.role]} → ${ROLE_LABEL[next]}`, confirmLabel: 'เปลี่ยนบทบาท', danger: next === 'ADMIN' || next === 'SUPER_ADMIN' || u.role === 'SUPER_ADMIN' || u.role === 'ADMIN', run: () => c.act('เปลี่ยนบทบาท', () => c.svc.setRole(u, next, supers)) });
+                c.confirm({ title: 'เปลี่ยนบทบาท?', body: `${u.displayName}: ${ROLE_LABEL[u.role]} → ${ROLE_LABEL[next]}`, confirmLabel: 'เปลี่ยนบทบาท', danger: next === 'ADMIN' || next === 'SUPER_ADMIN' || u.role === 'SUPER_ADMIN' || u.role === 'ADMIN', run: () => c.act('เปลี่ยนบทบาท', () => c.svc.setRole(u, next, activeSupers)) });
               }}>
-                {ROLES.map((r) => <option key={r} value={r} disabled={r !== u.role && !!roleChangeDenied(actor, u, r, supers)}>{ROLE_LABEL[r]}</option>)}
+                {ROLES.map((r) => <option key={r} value={r} disabled={r !== u.role && !!roleChangeDenied(actor, u, r, activeSupers)}>{ROLE_LABEL[r]}</option>)}
               </select>
             </td>
             <td className="p-2">

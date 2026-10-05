@@ -69,12 +69,12 @@ const ADMIN_ROLES: Role[] = ['ADMIN', 'SUPER_ADMIN'];
 export const isPrivilegedRole = (r: Role) => ADMIN_ROLES.includes(r);
 
 /** Can `actor` change `target` from its current role to `next`? Returns a reason when not. */
-export function roleChangeDenied(actor: Actor, target: { uid: string; role: Role }, next: Role, superAdminCount: number): string | null {
+export function roleChangeDenied(actor: Actor, target: { uid: string; role: Role; status?: AccountStatus }, next: Role, activeSuperAdmins: number): string | null {
   if (!can(actor, 'users.manageRoles')) return 'ไม่มีสิทธิ์จัดการบทบาท';
   if (!ROLES.includes(next)) return 'บทบาทไม่ถูกต้อง';
   const touchesAdmin = isPrivilegedRole(target.role) || isPrivilegedRole(next);
   if (touchesAdmin && !can(actor, 'users.manageAdmins')) return 'เฉพาะผู้ดูแลระบบสูงสุดเท่านั้นที่ให้หรือถอนสิทธิ์ผู้ดูแลระบบได้';
-  if (target.role === 'SUPER_ADMIN' && next !== 'SUPER_ADMIN' && superAdminCount <= 1) return 'ต้องมีผู้ดูแลระบบสูงสุดอย่างน้อย 1 คน';
+  if (target.role === 'SUPER_ADMIN' && (target.status ?? 'ACTIVE') === 'ACTIVE' && next !== 'SUPER_ADMIN' && activeSuperAdmins <= 1) return 'ต้องมีผู้ดูแลระบบสูงสุดอย่างน้อย 1 คน';
   if (target.uid === actor.uid && next !== actor.role && isPrivilegedRole(actor.role)) return 'ลดสิทธิ์ของตัวเองไม่ได้ — ให้ผู้ดูแลระบบสูงสุดคนอื่นทำ';
   return null;
 }

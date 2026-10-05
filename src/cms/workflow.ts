@@ -41,7 +41,7 @@ export function transitionResult(actor: Actor, d: DraftDoc, t: Transition, isPub
       if (!controlled && (d.state === 'DRAFT' || d.state === 'IN_REVIEW')) return { ok: true, next: 'PUBLISHED' };
       return { ok: false, reason: controlled ? 'เนื้อหาการเรียนต้องผ่านการอนุมัติก่อนเผยแพร่' : 'เผยแพร่ไม่ได้จากสถานะนี้' };
     case 'unpublish':
-      return isPublished ? { ok: true, next: 'APPROVED' } : { ok: false, reason: 'รายการนี้ยังไม่ได้เผยแพร่' };
+      return isPublished ? { ok: true, next: d.state === 'PUBLISHED' ? 'APPROVED' : d.state } : { ok: false, reason: 'รายการนี้ยังไม่ได้เผยแพร่' };
     case 'archive':
       if (isPublished && !can(actor, 'content.publish')) return { ok: false, reason: 'ต้องถอนการเผยแพร่ก่อนเก็บถาวร' };
       return d.state === 'ARCHIVED' ? { ok: false, reason: 'เก็บถาวรแล้ว' } : { ok: true, next: 'ARCHIVED' };

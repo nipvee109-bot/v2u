@@ -132,8 +132,8 @@ export class CmsService {
   }
 
   /* ── users (the database re-checks everything in set_user_role / set_user_status) ── */
-  async setRole(target: { uid: string; role: Role }, next: Role, superAdminCount: number) {
-    const deny = roleChangeDenied(this.actor, target, next, superAdminCount);
+  async setRole(target: { uid: string; role: Role; status?: AccountStatus }, next: Role, activeSuperAdmins: number) {
+    const deny = roleChangeDenied(this.actor, target, next, activeSuperAdmins);
     if (deny) throw new CmsError(deny);
     await this.call(() => this.backend.setUserRole(this.actor, target.uid, next));
   }

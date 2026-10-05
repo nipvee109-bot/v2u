@@ -84,7 +84,7 @@ export function createMemoryBackend(seed: MemorySeed = {}): CmsBackend & { _dump
     async setUserRole(by, uid, role) {
       const t = users.get(uid);
       if (!t) throw new Error('not found');
-      const deny = roleChangeDenied(live(by), t, role, [...users.values()].filter((u) => u.role === 'SUPER_ADMIN').length);
+      const deny = roleChangeDenied(live(by), t, role, [...users.values()].filter((u) => u.role === 'SUPER_ADMIN' && u.status === 'ACTIVE').length);
       if (deny || uid === by.uid) throw new Denied(deny ?? 'you cannot change your own role');
       if (t.role === role) return;
       users.set(uid, { ...t, role, updatedAt: now() });
@@ -132,7 +132,7 @@ export function createMemoryBackend(seed: MemorySeed = {}): CmsBackend & { _dump
       }
       const changed = JSON.stringify(next) !== JSON.stringify(prev);
       const onlyOrder = changed && JSON.stringify({ ...next, order: 0 }) === JSON.stringify({ ...prev, order: 0 });
-      const state = changed && ['APPROVED', 'PUBLISHED', 'REJECTED'].includes(d.state) ? 'DRAFT' : d.state;
+      const state = changed && ['IN_REVIEW', 'APPROVED', 'PUBLISHED', 'REJECTED'].includes(d.state) ? 'DRAFT' : d.state;
       const out = { ...d, data: next, state, updatedAt: now(), updatedBy: by.uid } as DraftDoc;
       drafts.set(id, clone(out));
       const action: AuditAction = onlyOrder ? 'ORDER_CHANGED' : kind === 'video' ? (prev.visibility === 'VISIBLE' && next.visibility === 'HIDDEN' ? 'VIDEO_HIDDEN' : 'VIDEO_UPDATED') : kind === 'resource' ? 'RESOURCE_UPDATED' : 'CONTENT_UPDATED';
@@ -189,7 +189,7 @@ export function createMemoryBackend(seed: MemorySeed = {}): CmsBackend & { _dump
       return clone(out);
     },
     async listAssignments(opts) {
-      return clone([...assignments.values()].filter((a) => !opts?.learnerOnly || (a.attached && a.visible)));
+      return clone([...assignments.values()].filter((a) => !opts?.learnerOnly || (a.attached && a.visible && games.get(a.gameId)?.published)));
     },
     async upsertAssignment(by, a) {
       need(by, 'game.assign');

@@ -126,6 +126,87 @@ await test('last SUPER_ADMIN is protected (no self-demotion, no last demotion/su
   assert.strictEqual(P.roleChangeDenied(actor(user('SUPER_ADMIN', 'other')), sa, 'ADMIN', 2), null);
 });
 
+await test('active SUPER_ADMIN counts ignore suspended backups and allow inactive demotion', async () => {
+  const active = user('SUPER_ADMIN', 'active');
+  const inactive = user('SUPER_ADMIN', 'inactive', 'SUSPENDED');
+  const be = createMemoryBackend({ users: [active, inactive] });
+  assert(P.roleChangeDenied(actor(active), active, 'STUDENT', 1));
+  assert.strictEqual(P.roleChangeDenied(actor(active), inactive, 'STUDENT', 1), null);
+  await rejects(be.setUserRole(actor(inactive), active.uid, 'STUDENT'));
+  await be.setUserRole(actor(active), inactive.uid, 'STUDENT');
+  assert.strictEqual((await be.getProfile(active.uid)).role, 'SUPER_ADMIN');
+  assert.strictEqual((await be.getProfile(inactive.uid)).role, 'STUDENT');
+});
+
+await test('editing during review and withdrawing a snapshot require fresh review', async () => {
+  const { be, svc } = setup();
+  const editor = svc('CONTENT_EDITOR');
+  const reviewer = svc('REVIEWER');
+  const draft = await editor.createDraft('contentOverride', { lessonId: L, field: 'analogy', value: 'original', reason: 'regression' });
+  const review = await editor.transition(draft, 'submit', null, null);
+  const edited = await editor.updateDraft(review, { ...review.data, value: 'review edit' });
+  assert.strictEqual(edited.state, 'DRAFT');
+  await rejects(reviewer.transition(edited, 'approve', null, null));
+  const submitted = await editor.transition(edited, 'submit', null, null);
+  const approved = await reviewer.transition(submitted, 'approve', null, null);
+  const live = await reviewer.transition(approved, 'publish', null, null);
+  const unpublishedEdit = await editor.updateDraft(live, { ...live.data, value: 'unreviewed' });
+  const snapshot = (await be.listPublished())[0];
+  assert.strictEqual(snapshot.data.value, 'review edit');
+  for (const state of ['DRAFT', 'IN_REVIEW', 'REJECTED', 'ARCHIVED', 'APPROVED']) {
+    assert.strictEqual(W.transitionResult(actor(user('REVIEWER')), { ...unpublishedEdit, state }, 'unpublish', true).next, state);
+  }
+  const withdrawn = await reviewer.transition(unpublishedEdit, 'unpublish', null, snapshot);
+  assert.strictEqual(withdrawn.state, 'DRAFT');
+  await rejects(reviewer.transition(withdrawn, 'publish', null, null));
+  assert.strictEqual((await be.listPublished()).length, 0);
+  const resubmitted = await editor.transition(withdrawn, 'submit', null, null);
+  const reapproved = await reviewer.transition(resubmitted, 'approve', null, null);
+  const republished = await reviewer.transition(reapproved, 'publish', null, null);
+  assert.strictEqual((await reviewer.transition(republished, 'unpublish', null, (await be.listPublished())[0])).state, 'APPROVED');
+});
+
+await test('learner assignments require an attached, visible, published game', async () => {
+  const { be, svc } = setup();
+  const gameEditor = svc('GAME_EDITOR');
+  const game = await gameEditor.saveGame({ gameId: 'private-game', name: 'T', description: '', subjects: [], skillIds: [], gameVersion: '0.1', contentContract: '1.1', evidenceContract: '1.1', launchType: 'none', launchUrl: '', thumbnail: '', status: 'DRAFT', enabled: false, published: false, createdAt: '', updatedAt: '', updatedBy: '' }, null);
+  const assignment = await gameEditor.attachGame(L, game, { position: 'after-guided-practice', visible: true, displayTitle: '', description: '' }, []);
+  assert.strictEqual((await be.listAssignments()).length, 1);
+  assert.deepStrictEqual(await be.listAssignments({ learnerOnly: true }), []);
+  const published = await gameEditor.saveGame({ ...game, published: true }, game);
+  assert.strictEqual((await be.listAssignments({ learnerOnly: true }))[0].id, assignment.id);
+  await gameEditor.saveGame({ ...published, published: false }, published);
+  assert.deepStrictEqual(await be.listAssignments({ learnerOnly: true }), []);
+});
+
+await test('Supabase learner assignments hide unpublished games even for staff and fail closed on lookup errors', async () => {
+  const { createClient } = await import('@supabase/supabase-js');
+  const { supabaseBackendFromClient } = await jiti.import(path.join(root, 'src/backend/supabase.ts'));
+  const rows = [
+    { id: 'live', game_id: 'published', attached: true, visible: true },
+    { id: 'private', game_id: 'unpublished', attached: true, visible: true },
+    { id: 'hidden', game_id: 'published', attached: true, visible: false },
+    { id: 'detached', game_id: 'published', attached: false, visible: true },
+  ];
+  let gameLookupFails = false;
+  const sb = createClient('https://example.invalid', 'test-public-key', { global: { fetch: async (url) => {
+    const u = new URL(url);
+    if (u.pathname.endsWith('/games') && gameLookupFails) {
+      return new Response(JSON.stringify({ message: 'game lookup denied', code: '42501' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+    }
+    let data = u.pathname.endsWith('/games') ? [{ game_id: 'published', published: true }, { game_id: 'unpublished', published: false }] : rows;
+    for (const key of ['published', 'attached', 'visible']) {
+      if (u.searchParams.get(key) === 'eq.true') data = data.filter((row) => row[key] === true);
+    }
+    return new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json' } });
+  } } });
+  const be = supabaseBackendFromClient(sb);
+  assert.deepStrictEqual((await be.listAssignments()).map((a) => a.id), ['live', 'private', 'hidden', 'detached']);
+  assert.deepStrictEqual((await be.listAssignments({ learnerOnly: true })).map((a) => a.id), ['live']);
+  gameLookupFails = true;
+  await assert.rejects(be.listAssignments({ learnerOnly: true }), (err) => err.code === '42501');
+});
+
 await test('role spoofing fails: a new identity is always STUDENT/ACTIVE; roles never come from the browser or OAuth metadata', async () => {
   const be = createMemoryBackend({ signInAs: { uid: 'n1', displayName: 'n', email: 'n@example.invalid', photoURL: null, role: 'SUPER_ADMIN' } });
   await be.signInWithGoogle();

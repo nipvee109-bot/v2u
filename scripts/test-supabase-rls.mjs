@@ -239,6 +239,58 @@ try {
     await denied(as(U.SUPER_ADMIN_2, `select public.set_user_role($1, 'STUDENT')`, [U.SUPER_ADMIN]), /permission denied/);
   });
 
+  await test('concurrent admin changes re-check a suspended/demoted caller after the lock', async () => {
+    const originalProfiles = (await db.query(`select id, role, status from public.profiles where id = any($1::uuid[])`, [[U.SUPER_ADMIN, U.SUPER_ADMIN_2]])).rows;
+    const observer = new pg.Client({ host: conn.clientHost, port: PORT, user: 'postgres', database: 'postgres' });
+    const queued = new pg.Client({ host: conn.clientHost, port: PORT, user: 'postgres', database: 'postgres', application_name: 'v2u-hardening-race' });
+    try {
+      await observer.connect();
+      await queued.connect();
+      const queuedPid = (await queued.query('select pg_backend_pid() pid')).rows[0].pid;
+      for (const [first, second] of [['status', 'role'], ['role', 'status']]) {
+        await db.query(`update public.profiles set role = 'SUPER_ADMIN', status = 'ACTIVE' where id = any($1::uuid[])`, [[U.SUPER_ADMIN, U.SUPER_ADMIN_2]]);
+        await db.query('begin');
+        await db.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: U.SUPER_ADMIN_2, role: 'authenticated' })]);
+        await db.query('set local role authenticated');
+        await db.query(`select public.set_user_${first}($1, $2)`, [U.SUPER_ADMIN, first === 'status' ? 'SUSPENDED' : 'STUDENT']);
+        await queued.query('begin');
+        await queued.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: U.SUPER_ADMIN, role: 'authenticated' })]);
+        await queued.query('set local role authenticated');
+        const pending = queued.query(`select public.set_user_${second}($1, $2)`, [U.SUPER_ADMIN_2, second === 'status' ? 'SUSPENDED' : 'STUDENT']).then(() => null, (e) => e);
+        // Prove the second RPC is waiting before releasing the first transaction.
+        let waiting = false;
+        for (let i = 0; i < 200; i++) {
+          // Observe as postgres, outside either caller transaction; authenticated cannot see other sessions' wait details.
+          waiting = (await observer.query(`select exists(select 1 from pg_stat_activity where pid = $1 and wait_event_type = 'Lock') ok`, [queuedPid])).rows[0].ok;
+          if (waiting) break;
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        await db.query('commit');
+        const err = await pending;
+        await queued.query('rollback');
+        assert(waiting, 'second RPC must actually contend on the admin lock');
+        assert.strictEqual(err?.code, '42501', 'revoked caller must fail closed after waiting');
+        assert.strictEqual(Number((await db.query(`select count(*) from public.profiles where role = 'SUPER_ADMIN' and status = 'ACTIVE'`)).rows[0].count), 1);
+      }
+    } finally {
+      await db.query('rollback');
+      await queued.end();
+      await observer.end();
+      for (const profile of originalProfiles) {
+        await db.query(`update public.profiles set role = $2, status = $3 where id = $1`, [profile.id, profile.role, profile.status]);
+      }
+    }
+  });
+
+  await test('a suspended SUPER_ADMIN is not an active backup; it can be demoted safely', async () => {
+    await as(U.SUPER_ADMIN, `select public.set_user_role($1, 'SUPER_ADMIN')`, [U.SUPER_ADMIN_2]);
+    await as(U.SUPER_ADMIN, `select public.set_user_status($1, 'SUSPENDED')`, [U.SUPER_ADMIN_2]);
+    await denied(as(U.SUPER_ADMIN_2, `select public.set_user_role($1, 'STUDENT')`, [U.SUPER_ADMIN]), /permission denied/);
+    await as(U.SUPER_ADMIN, `select public.set_user_role($1, 'STUDENT')`, [U.SUPER_ADMIN_2]);
+    assert.strictEqual(Number((await db.query(`select count(*) from public.profiles where role = 'SUPER_ADMIN' and status = 'ACTIVE'`)).rows[0].count), 1);
+    await as(U.SUPER_ADMIN, `select public.set_user_status($1, 'ACTIVE')`, [U.SUPER_ADMIN_2]);
+  });
+
   await test('suspended/disabled accounts keep their session but lose every staff right', async () => {
     await denied(as(U.SUSPENDED_ADMIN, `select public.set_user_role($1, 'REVIEWER')`, [U.STUDENT]));
     await denied(newVideo(U.SUSPENDED_ADMIN));
@@ -263,6 +315,40 @@ try {
     await as(U.REVIEWER, `select public.cms_transition('contentOverride', $1, 'publish')`, [o.id]);
     assert.strictEqual((await as(null, `select * from public.cms_published where entity_id = $1`, [o.id])).length, 1, 'published override readable by guests');
     await denied(as(U.ADMIN, `insert into public.content_overrides (lesson_id, field, value, reason) values ($1, 'skills', '"x"', 'x')`, [L]), /check constraint/);
+  });
+
+  await test('review edits and withdrawing an older snapshot cannot approve unreviewed text', async () => {
+    const o = (await as(U.CONTENT_EDITOR, `insert into public.content_overrides (lesson_id, field, value, reason) values ($1, 'analogy', '"original"', 'security regression') returning id`, [L]))[0];
+    const transition = (who, action) => as(who, `select public.cms_transition('contentOverride', $1, $2) state`, [o.id, action]);
+    await transition(U.CONTENT_EDITOR, 'submit');
+    await as(U.CONTENT_EDITOR, `update public.content_overrides set value = '"review edit"' where id = $1`, [o.id]);
+    assert.strictEqual((await db.query(`select state from public.content_overrides where id = $1`, [o.id])).rows[0].state, 'DRAFT');
+    await denied(transition(U.REVIEWER, 'approve'), /only items in review/);
+    await transition(U.CONTENT_EDITOR, 'submit');
+    await transition(U.REVIEWER, 'approve');
+    await transition(U.REVIEWER, 'publish');
+    await as(U.CONTENT_EDITOR, `update public.content_overrides set value = '"unreviewed live edit"' where id = $1`, [o.id]);
+    assert.strictEqual((await as(null, `select data->>'value' value from public.cms_published where entity_id = $1`, [o.id]))[0].value, 'review edit', 'live snapshot stays unchanged');
+    assert.strictEqual((await transition(U.REVIEWER, 'unpublish'))[0].state, 'DRAFT');
+    await denied(transition(U.REVIEWER, 'publish'), /approved before publishing/);
+    assert.deepStrictEqual(await as(null, `select * from public.cms_published where entity_id = $1`, [o.id]), []);
+    await transition(U.CONTENT_EDITOR, 'submit');
+    await transition(U.REVIEWER, 'approve');
+    await transition(U.REVIEWER, 'publish');
+    assert.strictEqual((await transition(U.REVIEWER, 'unpublish'))[0].state, 'APPROVED', 'unchanged published content keeps approval');
+  });
+
+  await test('audit_logs and cms_versions reject all direct client mutations with 42501', async () => {
+    for (const uid of [null, ...Object.values(U)]) {
+      for (const table of ['audit_logs', 'cms_versions']) {
+        // Identity columns reject non-DEFAULT updates before privilege checks.
+        // Use a writable column so the assertion exercises client authorization.
+        const column = table === 'audit_logs' ? 'entity_id' : 'data';
+        for (const sql of [`insert into public.${table} default values`, `update public.${table} set ${column} = ${column}`, `delete from public.${table}`]) {
+          await assert.rejects(as(uid, sql), (err) => err.code === '42501', `${uid ?? 'anon'}: ${sql}`);
+        }
+      }
+    }
   });
 
   await test('unpublished / unverified / hidden content is not learner-readable; versions recover history', async () => {
@@ -293,6 +379,8 @@ try {
   await test('disabled / unpublished games and hidden assignments are not readable by learners', async () => {
     await as(U.GAME_EDITOR, `update public.games set status = 'AVAILABLE', enabled = true, published = false where game_id = 'demo-game'`);
     assert.deepStrictEqual(await as(null, `select * from public.games`), []);
+    for (const uid of [null, U.STUDENT, U.SUSPENDED_ADMIN]) assert.deepStrictEqual(await as(uid, `select * from public.lesson_game_assignments`), [], 'unpublished game assignments are private');
+    assert.strictEqual((await as(U.GAME_EDITOR, `select * from public.lesson_game_assignments`)).length, 1, 'staff retains access');
     await as(U.GAME_EDITOR, `update public.games set published = true, enabled = false, status = 'DISABLED' where game_id = 'demo-game'`);
     const g = (await as(null, `select status, enabled from public.games`))[0];
     assert.deepStrictEqual(g, { status: 'DISABLED', enabled: false }, 'learner sees it disabled; resolver refuses to launch');
@@ -408,6 +496,13 @@ try {
         assert(!(await B.GUEST.listAssignments({ learnerOnly: true })).some((a) => a.gameId === 'e2e-game'));
         const lg = (await B.GUEST.listGames({ learnerOnly: true })).find((x) => x.gameId === 'e2e-game');
         assert.deepStrictEqual([lg.enabled, lg.status], [false, 'DISABLED'], 'learners see it disabled → resolver never launches');
+        await B.GAME_EDITOR.upsertAssignment(by('GAME_EDITOR'), { ...a2, attached: true, visible: true });
+        assert((await B.GAME_EDITOR.listAssignments({ learnerOnly: true })).some((a) => a.gameId === 'e2e-game'));
+        await B.GAME_EDITOR.updateGame(by('GAME_EDITOR'), { ...off, published: false });
+        assert((await B.GAME_EDITOR.listAssignments()).some((a) => a.gameId === 'e2e-game'), 'staff keeps the working assignment');
+        for (const caller of [B.GAME_EDITOR, B.GUEST]) {
+          assert(!(await caller.listAssignments({ learnerOnly: true })).some((a) => a.gameId === 'e2e-game'), 'learner view hides unpublished games for staff too');
+        }
       });
 
       await test('e2e: users — RPC role/status rules, own profile only, audit readable by ADMIN only', async () => {

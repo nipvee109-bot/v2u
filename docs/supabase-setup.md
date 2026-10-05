@@ -38,7 +38,7 @@ The database is authoritative. The browser's `can(user, permission)` in `src/aut
 | `cms_published` | Immutable learner snapshot per item, written only by `cms_transition` | `learner_visible = true` |
 | `cms_versions` | Previous snapshots, for recovery. Append-only. | none |
 | `games` | Game registry. Contract columns must be `1.1`. | `published = true` |
-| `lesson_game_assignments` | Lesson ↔ game. `optional` is always true; unique per (lesson, game). | `attached and visible` |
+| `lesson_game_assignments` | Lesson ↔ game. `optional` is always true; unique per (lesson, game). | `attached and visible` with a published game |
 | `audit_logs` | `actor_id`, `actor_role`, `action`, `entity_type`, `entity_id`, before and after summaries. Tokens are redacted. | none (ADMIN+) |
 
 ### Why there is no `publishing_records` table
@@ -74,7 +74,7 @@ There are six roles: STUDENT, CONTENT_EDITOR, GAME_EDITOR, REVIEWER, ADMIN and S
 - the caller needs `users.manageRoles`;
 - only SUPER_ADMIN can grant or remove ADMIN or SUPER_ADMIN;
 - nobody can change their own role;
-- the last SUPER_ADMIN cannot be removed.
+- the last **active** SUPER_ADMIN cannot be demoted; inactive SUPER_ADMINs do not count as backups.
 
 **Status changes** go only through `set_user_status`:
 - the same rules apply;
@@ -100,7 +100,9 @@ DRAFT → IN_REVIEW → APPROVED → PUBLISHED
 - The approver is recorded in `approved_by`.
 
 **General rules:**
-- Editing approved, published or rejected content turns it back into a DRAFT. The live snapshot stays until it is re-published.
+- Editing in-review, approved, published or rejected content turns it back into a DRAFT. The live snapshot stays until it is re-published.
+- Unpublishing an unchanged PUBLISHED copy restores APPROVED. Otherwise it preserves the working state, so withdrawing an older snapshot never approves new edits.
+- Role/status RPCs lock SUPER_ADMIN rows in UUID order before checking the caller again; suspended or demoted callers waiting on another change lose their rights.
 - Every publish increments the version and moves the old snapshot to `cms_versions`.
 
 ## Games
