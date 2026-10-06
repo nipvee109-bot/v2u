@@ -13,6 +13,8 @@ export interface BranchStep {
   /** e.g. "95 >= 80 → True" */
   note: string;
   value?: boolean;
+  /** For 'test' steps: the condition as written, e.g. "score >= 80" (shown before it is substituted) */
+  source?: string;
 }
 
 export interface BranchRun {
@@ -94,7 +96,7 @@ export function runBranches(code: string): BranchRun {
       const left = vars[m[2]];
       if (left === undefined) throw new Error(`unknown name ${m[2]}`);
       const ok = OPS[m[3]](left, Number(m[4]));
-      steps.push({ line: n, kind: 'test', note: `${left} ${m[3]} ${m[4]} → ${ok ? 'True' : 'False'}`, value: ok });
+      steps.push({ line: n, kind: 'test', note: `${left} ${m[3]} ${m[4]} → ${ok ? 'True' : 'False'}`, value: ok, source: `${m[2]} ${m[3]} ${m[4]}` });
       if (ok) { taken = true; inTaken = true; branch = blockIndex; decidedAt = n; }
       continue;
     }

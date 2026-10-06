@@ -240,6 +240,36 @@ function CodeTrace({ code, trace }: { code: string; trace: { run: BranchRun; sho
   );
 }
 
+/** What Python holds and is checking right now: memory, then the current condition
+    as written → with values substituted → True/False (text marks, not colour alone). */
+function StatePanel({ trace }: { trace: { run: BranchRun; shown: number } | null }) {
+  const shown = trace ? trace.run.steps.slice(0, trace.shown) : [];
+  const memory = shown.filter((s) => s.kind === 'assign').map((s) => s.note);
+  const cur = shown[shown.length - 1];
+  return (
+    <div data-testid="robot-state" role="group" aria-label="สิ่งที่ Python กำลังคิด" className="grid gap-3 rounded-2xl border border-[var(--line)] px-3 py-2 text-sm sm:grid-cols-[minmax(7rem,auto)_1fr]">
+      <div>
+        <p className="text-xs font-semibold text-[var(--ink-3)]">หน่วยความจำ</p>
+        {memory.length ? memory.map((v) => <p key={v} className="font-mono text-ink">{v}</p>) : <p className="text-[var(--ink-3)]">ยังว่าง — กด Run</p>}
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-[var(--ink-3)]">{cur ? `บรรทัดที่ ${cur.line + 1}` : 'Python กำลังทำ'}</p>
+        {cur?.kind === 'test' ? (
+          <p className="flex flex-wrap items-center gap-x-2 font-mono text-ink">
+            <span>{cur.source}</span>
+            <span aria-label="แทนค่าได้">→</span>
+            <span>{cur.note.split(' → ')[0]}</span>
+            <span aria-label="ผลคือ">→</span>
+            <span className={`font-semibold ${cur.value ? 'text-[var(--ok)]' : 'text-[var(--err)]'}`}>{cur.value ? 'True ✓ ทำทางนี้' : 'False ✗ ข้ามทางนี้'}</span>
+          </p>
+        ) : (
+          <p className="break-words text-ink">{cur ? cur.note : '—'}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Console({ out }: { out: string | null }) {
   return (
     <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-3)] px-3 py-2 font-mono text-sm" role="status" aria-live="polite" data-testid="console">
@@ -252,16 +282,17 @@ export function RobotRun({ code, values, onDone }: { code: string; values: numbe
   const { trace, start, finished } = useTrace();
   const [value, setValue] = useState(values[0]);
   const [seen, setSeen] = useState<number[]>([]);
+  const seenRef = useRef<number[]>([]);
   const prog = withValue(code, value);
   const doors = doorsOf(code);
   const varName = code.match(/^(\w+)\s*=/)?.[1] ?? 'x';
   const go = () => {
     start(runBranches(prog), () => {
-      setSeen((s) => {
-        const next = s.includes(value) ? s : [...s, value];
-        if (next.length >= 2) onDone();
-        return next;
-      });
+      // Parent update (onDone) must not run inside a state updater
+      const next = seenRef.current.includes(value) ? seenRef.current : [...seenRef.current, value];
+      seenRef.current = next;
+      setSeen(next);
+      if (next.length >= 2) onDone();
     });
   };
   return (
@@ -274,6 +305,7 @@ export function RobotRun({ code, values, onDone }: { code: string; values: numbe
         <button type="button" className={PRIMARY} onClick={go}><Play className="h-4 w-4" /> Run</button>
       </div>
       <CodeTrace code={prog} trace={trace} />
+      <StatePanel trace={trace} />
       <Robot doors={doors} at={finished && trace ? trace.run.branch : null} />
       <Console out={finished && trace ? trace.run.output : null} />
       {finished && trace && <Feedback tone="good" title={`หุ่นเข้าประตู “${trace.run.output}”`}>เงื่อนไขบรรทัดที่ {trace.run.decidedAt + 1} เป็นจริงก่อน Python จึงทำทางนั้นทางเดียว {seen.length < 2 ? 'ลองเปลี่ยนค่าแล้ว Run อีกครั้ง' : ''}</Feedback>}
@@ -294,6 +326,7 @@ export function RobotDebug({ code, explanation, onDone }: { code: string; explan
     <div className="space-y-3" data-testid="robot-debug">
       <button type="button" className={PRIMARY} onClick={() => start(runBranches(prog), fixed ? onDone : undefined)}><Play className="h-4 w-4" /> Run</button>
       <CodeTrace code={prog} trace={trace} />
+      <StatePanel trace={trace} />
       <Robot doors={doors} at={finished && trace ? trace.run.branch : null} />
       <Console out={finished && trace ? trace.run.output : null} />
       {finished && !fixed && (
