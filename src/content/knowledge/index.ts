@@ -4,13 +4,14 @@ import type { FinalCheckItem } from '../../interactive/types';
 import { MATH_KNOWLEDGE } from './math';
 import { PHYSICS_KNOWLEDGE } from './physics';
 import { PROGRAMMING_KNOWLEDGE } from './programming';
+import { WEB_KNOWLEDGE } from './web';
 import type { LessonKnowledge, ReadinessStatus } from './types';
 
 export * from './types';
 import { getCmsOverlay } from '../../cms/overlay';
 export { SOURCES, getSource, REJECTED_SOURCES } from './sources';
 
-export const LESSON_KNOWLEDGE: LessonKnowledge[] = [...MATH_KNOWLEDGE, ...PROGRAMMING_KNOWLEDGE, ...PHYSICS_KNOWLEDGE];
+export const LESSON_KNOWLEDGE: LessonKnowledge[] = [...MATH_KNOWLEDGE, ...PROGRAMMING_KNOWLEDGE, ...PHYSICS_KNOWLEDGE, ...WEB_KNOWLEDGE];
 
 /** Base knowledge, with PUBLISHED reviewed CMS overrides of summary / analogy / whyItMatters only (Phase 72).
  *  Ids, skills, rules, practice and checks always come from the knowledge layer. */

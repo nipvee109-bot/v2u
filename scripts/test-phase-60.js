@@ -80,7 +80,9 @@ await test('2. Every item → existing subject/skill/lesson; 2 per skill (basic 
     assert(C.lessons.find((l) => l.id === it.lessonId)?.skillIds.includes(it.skillId), `${it.id} lesson teaches skill`);
     assert(it.correctIndex >= 0 && it.correctIndex < it.choices.length && it.explanation && new Set(it.choices).size === it.choices.length, it.id);
   }
-  for (const s of C.skills) assert.deepStrictEqual(ITEMS.filter((i) => i.skillId === s.id).map((i) => i.level).sort(), ['basic', 'core'], s.id);
+  for (const s of C.skills.filter((x) => x.subjectId !== 'web')) assert.deepStrictEqual(ITEMS.filter((i) => i.skillId === s.id).map((i) => i.level).sort(), ['basic', 'core'], s.id);
+  // The optional web track is NOT in the live Diagnostic
+  assert(!ITEMS.some((i) => i.subjectId === 'web' || i.skillId.startsWith('skill-web-')), 'no web diagnostic items');
   assert.strictEqual(new Set(ITEMS.map((i) => i.id)).size, ITEMS.length);
 });
 await test('Diagnostic is not a copy of lesson quizzes / exercises / try-its', () => {
@@ -290,7 +292,7 @@ await test('Home / Route / Me show per-subject status, target and diagnostic; na
   assert.strictEqual(PRIMARY_NAV.length, 5);
 });
 await test('Non-goals: no new lessons, no game/XP systems, no invented admission data', () => {
-  assert.strictEqual(C.lessons.length, 15);
+  assert.strictEqual(C.lessons.filter((l) => l.subjectId !== 'web').length, 15, 'admission curriculum unchanged');
   const src = read('src/diagnostic/engine.ts') + read('src/diagnostic/items.ts') + read('src/components/pathway/PathwayBits.tsx');
   assert(!/leaderboard|\bXP\b|combat|https?:\/\//i.test(src));
   assert(!read('src/diagnostic/engine.ts').includes('admission'));

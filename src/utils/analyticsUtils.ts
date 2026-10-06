@@ -395,6 +395,7 @@ export function computeLearningAnalytics(params: ComputeAnalyticsParams): Learni
     physics: { minutes: 0, lessonsCount: 0, sessionsCount: 0, quizScores: [] },
     tgat3: { minutes: 0, lessonsCount: 0, sessionsCount: 0, quizScores: [] },
     ai: { minutes: 0, lessonsCount: 0, sessionsCount: 0, quizScores: [] },
+    web: { minutes: 0, lessonsCount: 0, sessionsCount: 0, quizScores: [] },
   };
 
   dailyStudyPoints.forEach((p) => {

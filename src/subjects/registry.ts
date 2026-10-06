@@ -5,12 +5,14 @@
 
    status:
      active    has curriculum + diagnostic in V2U; shown to learners
+     track     optional skill/career track: has curriculum and lessons, but is NOT part of
+               the Diagnostic and NEVER counts toward university admission readiness
      proposed  researched candidate only — NO curriculum, never shown
    Later, University → Faculty → Major → Admission requirements will decide
    which active subjects a learner needs; nothing here assumes a fixed count.
    ========================================================================= */
 
-export type SubjectStatus = 'active' | 'proposed';
+export type SubjectStatus = 'active' | 'track' | 'proposed';
 
 export interface SubjectDefinition {
   id: string;
@@ -33,6 +35,16 @@ export const SUBJECT_REGISTRY: SubjectDefinition[] = [
   { id: 'math', label: 'คณิตศาสตร์', emoji: '🧮', color: 'var(--math)', soft: 'var(--math-soft)', icon: 'sigma', status: 'active', pathwayRole: 'พื้นฐานของทุกสายวิทย์–วิศวะ และวิชาสอบเข้า' },
   { id: 'physics', label: 'ฟิสิกส์', emoji: '⚛️', color: 'var(--phy)', soft: 'var(--phy-soft)', icon: 'atom', status: 'active', pathwayRole: 'วิชาหลักของคณะวิศวกรรมศาสตร์และวิทยาศาสตร์' },
   { id: 'programming', label: 'Programming', emoji: '💻', color: 'var(--prog)', soft: 'var(--prog-soft)', icon: 'code', status: 'active', pathwayRole: 'ทักษะหลักของสาย Computer / Software / AI' },
+  {
+    id: 'web',
+    label: 'เว็บ (HTML)',
+    emoji: '🌐',
+    color: 'var(--web)',
+    soft: 'var(--web-soft)',
+    icon: 'code',
+    status: 'track',
+    pathwayRole: 'ทักษะเสริมสายอาชีพ: สร้างหน้าเว็บด้วย HTML — เรียนได้ตามสนใจ ไม่นับรวมความพร้อมสอบเข้ามหาวิทยาลัย',
+  },
   {
     id: 'english',
     label: 'ภาษาอังกฤษ',
@@ -60,6 +72,14 @@ export function activeSubjectIds<T extends string>(curriculumSubjectIds: readonl
   const have = new Set<string>(curriculumSubjectIds);
   return registry.filter((s) => s.status === 'active' && have.has(s.id)).map((s) => s.id as T);
 }
+
+/** Optional skill/career tracks (status `track`) that the given curriculum has — never admission subjects. */
+export function trackSubjectIds<T extends string>(curriculumSubjectIds: readonly T[], registry: SubjectDefinition[] = SUBJECT_REGISTRY): T[] {
+  const have = new Set<string>(curriculumSubjectIds);
+  return registry.filter((s) => s.status === 'track' && have.has(s.id)).map((s) => s.id as T);
+}
+
+export const isTrackSubject = (id: string): boolean => byId.get(id)?.status === 'track';
 
 /** Display identity for any subject id — unknown ids get a neutral identity, never a crash. */
 export function subjectIdentity(id: string): { label: string; emoji: string; color: string; soft: string; icon: string } {

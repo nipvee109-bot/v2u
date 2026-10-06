@@ -92,7 +92,8 @@ console.log('\n2. Provenance and readiness are honest');
 await test('Sources: "opened-local" only for documents actually read here; unopened URLs stay "search-indexed"', () => {
   for (const s of K.SOURCES) {
     if (s.verification === 'opened-local') assert(!s.foundUrl, `${s.id}: an opened-local source must not pretend to be a web page`);
-    if (s.foundUrl) assert(['search-indexed', 'opened-repo'].includes(s.verification), s.id);
+    if (s.foundUrl) assert(['search-indexed', 'opened-repo', 'fetched-web'].includes(s.verification), s.id);
+    if (s.verification === 'fetched-web') assert(/^https:\/\/(developer\.mozilla\.org|html\.spec\.whatwg\.org)\//.test(s.foundUrl ?? ''), `${s.id}: fetched-web only for the pages actually fetched`);
   }
 });
 await test('Claims backed only by unopened sources are not marked cross-checked', () => {
@@ -116,7 +117,7 @@ await test('READY only when every source was opened, evidence exists, no limitat
   }
 });
 await test('Math and physics are NOT READY-claimed while their sources remain unopened', () => {
-  for (const k of KS.filter((x) => !x.lessonId.startsWith('prog-'))) {
+  for (const k of KS.filter((x) => x.lessonId.startsWith('math-') || x.lessonId.startsWith('phy-'))) {
     if (k.provenance.every((p) => ['opened-local', 'opened-repo'].includes(SRC.get(p.sourceId).verification))) continue;
     assert.notStrictEqual(k.audit.readiness, 'READY', k.lessonId);
     assert(k.audit.limitations.some((l) => /ยังไม่ได้เปิดตรวจหน้าจริง|ยังเปิดไม่ได้/.test(l)), `${k.lessonId}: limitation must name the unopened sources`);

@@ -120,7 +120,7 @@ await test('YouTube candidates: real watch URLs from search, all PENDING, uninsp
     assert.strictEqual(y.watchUrl, `https://www.youtube.com/watch?v=${y.videoId}`);
     assert(y.status === 'PENDING' && y.actualContentInspected === false && y.transcriptStatus === 'UNKNOWN' && y.embedStatus === 'UNKNOWN' && y.summaryStatus === 'SUMMARY_PENDING' && y.channelConfirmed === false && y.provenance.query && y.candidateRank >= 1);
   }
-  for (const l of C.lessons) assert(YOUTUBE_CANDIDATES.some((y) => y.lessonId === l.id), `${l.id} has a candidate`);
+  for (const l of C.lessons.filter((x) => x.subjectId !== 'web')) assert(YOUTUBE_CANDIDATES.some((y) => y.lessonId === l.id), `${l.id} has a candidate`);
   const src = ['src/components', 'src/pages', 'src/video'].flatMap((d) => fs.readdirSync(path.join(root, d), { recursive: true }).map((f) => path.join(d, f))).filter((f) => /\.tsx?$/.test(f)).map(read).join('\n');
   assert(!src.includes('youtubeCandidates') && !src.includes('discovered'), 'backlog never imported by UI');
   for (const r of RV.registryRecords().filter((x) => x.id.startsWith('yt-'))) assert(r.verificationStatus === 'VERIFICATION_PENDING' && r.summaryStatus === 'SUMMARY_PENDING');
@@ -156,7 +156,8 @@ await test('subjects come from one registry: same three today, any number tomorr
   const five = [...C.subjects.map((s) => s.id), 'english', 'reasoning'];
   assert.deepStrictEqual(SR.activeSubjectIds(five), ['math', 'physics', 'programming'], 'proposed subjects stay hidden');
   const enabled = SR.SUBJECT_REGISTRY.map((s) => ({ ...s, status: 'active' }));
-  assert.deepStrictEqual(SR.activeSubjectIds(five, enabled), ['math', 'physics', 'programming', 'english', 'reasoning']);
+  assert.deepStrictEqual(SR.activeSubjectIds(five, enabled), ['math', 'physics', 'programming', 'web', 'english', 'reasoning']);
+  assert.deepStrictEqual(SR.trackSubjectIds(C.subjects.map((s) => s.id)), ['web'], 'web is an optional track, not a Diagnostic subject');
   assert.deepStrictEqual(SR.activeSubjectIds(['math'], enabled), ['math'], 'one subject works');
   assert.strictEqual(SR.subjectIdentity('chemistry').label, 'chemistry', 'unknown subject gets a neutral identity');
   for (const s of SR.SUBJECT_REGISTRY.filter((x) => x.status === 'proposed')) assert(!C.subjects.some((c) => c.id === s.id), `${s.id}: no curriculum added`);

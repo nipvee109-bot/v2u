@@ -40,7 +40,9 @@ export type StudioWidget =
   /** VARIABLE_EXPLORER + GRAPH_EXPLORER (kinematics): u, a, t → motion + v–t graph */
   | { kind: 'motion-explorer'; exampleId: string; u: number; a: number; t: number }
   /** CODE_TRACE (+ predict): step through a python3-generated trace */
-  | { kind: 'code-trace'; traceId: string; mode: 'memory' | 'loop' | 'io' | 'call'; predictStep?: number };
+  | { kind: 'code-trace'; traceId: string; mode: 'memory' | 'loop' | 'io' | 'call'; predictStep?: number }
+  /** Web: HTML Live Web Builder for an authored `html` step (code ↔ live page) */
+  | { kind: 'html-builder'; stepId: string };
 
 export type StudioChunk =
   | { id: string; phase: StudioPhase; kind: 'hook'; tutor: string }
@@ -58,7 +60,7 @@ export type StudioChunk =
 
 export interface StudioScript {
   lessonId: string;
-  subject: 'math' | 'physics' | 'programming';
+  subject: 'math' | 'physics' | 'programming' | 'web';
   /** Teaching identity of this subject (design check) */
   principle: string;
   /** A = full interactive / game-like, B = interactive teaching, C = smart reading */

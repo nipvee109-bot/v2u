@@ -216,6 +216,7 @@ const SUBJECT_QUESTION_BANK: Record<SubjectId, Array<{ keywords: string[]; quest
       ],
     },
   ],
+  web: [],
   ai: [
     {
       keywords: ['ai', 'machine learning', 'ml', 'การเรียนรู้ของเครื่อง'],

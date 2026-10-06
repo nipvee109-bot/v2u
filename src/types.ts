@@ -1,4 +1,4 @@
-export type SubjectId = 'math' | 'programming' | 'physics' | 'tgat3' | 'ai';
+export type SubjectId = 'math' | 'programming' | 'physics' | 'tgat3' | 'ai' | 'web';
 
 export type ResourceType = 'youtube' | 'website' | 'pdf' | 'document' | 'image' | 'other';
 
@@ -207,6 +207,7 @@ export const SUBJECTS: Record<SubjectId, SubjectInfo> = {
   physics: { id: 'physics', name: 'ฟิสิกส์', color: 'bg-physics' },
   tgat3: { id: 'tgat3', name: 'TGAT 3', color: 'bg-tgat' },
   ai: { id: 'ai', name: 'AI / Machine Learning', color: 'bg-ai' },
+  web: { id: 'web', name: 'Web (HTML)', color: 'bg-web' },
 };
 
 /* ==================================================

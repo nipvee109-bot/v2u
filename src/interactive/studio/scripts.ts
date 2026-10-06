@@ -70,7 +70,86 @@ const PROGRAMMING: StudioScript = {
   ],
 };
 
-export const STUDIO_SCRIPTS: StudioScript[] = [MATH, PHYSICS, PROGRAMMING];
+/* ── Web track: HTML reference (HTML Live Web Builder) ──
+   SEE → PLACE → RESULT → WHY → MODIFY → BUILD. Explanations come AFTER the learner has seen the page change. */
+const WEB_PRINCIPLE = 'ทำให้โค้ดกลายเป็นหน้าเว็บตรงหน้า';
+const html = (id: string, phase: StudioChunk['phase'], title: string, tutor: string): StudioChunk => ({ id, phase, kind: 'widget', title, tutor, widget: { kind: 'html-builder', stepId: id } });
+
+const WEB_HTML: StudioScript[] = [
+  {
+    lessonId: 'web-html-elements', subject: 'web', principle: WEB_PRINCIPLE, experience: 'A',
+    chunks: [
+      { id: 'hook', phase: 'understand', kind: 'hook', tutor: 'ยังไม่ต้องรู้อะไรเลย — วางบล็อกแรก แล้วดูว่าหน้าเว็บเปลี่ยนอย่างไร' },
+      html('place-h1', 'understand', 'วางบล็อกแรก', 'ลองวางก่อน แล้วค่อยมาดูว่ามันคืออะไร'),
+      html('place-p', 'understand', 'เพิ่มย่อหน้า', 'เทียบดู: หัวข้อกับย่อหน้าหน้าตาต่างกัน เพราะหน้าที่ต่างกัน'),
+      { id: 'idea', phase: 'understand', kind: 'explain', title: 'สิ่งที่คุณเพิ่งทำ', concepts: ['c-element', 'c-tag'], rules: ['r-element'], analogy: true, tutor: 'โค้ดแต่ละบรรทัดสร้างชิ้นส่วนหนึ่งชิ้นบนหน้าเว็บ' },
+      { id: 'what-shows', phase: 'try', kind: 'step', stepId: 'what-shows' },
+      html('edit-text', 'try', 'แก้เนื้อหาเป็นของคุณ', 'แตะ <h1> ในแผนผังโค้ดก่อน จะเห็นว่าส่วนไหนแก้ได้'),
+      { id: 'recover', phase: 'practice', kind: 'mistakes', title: 'จุดที่มือใหม่มักพลาด' },
+      html('own-page', 'practice', 'หน้าแรกของคุณ', 'คราวนี้คุณพิมพ์เนื้อหาเอง ถ้าติดค่อยขอคำใบ้'),
+      { id: 'drill', phase: 'practice', kind: 'practice', title: 'ลองเขียน HTML เอง', practiceIds: ['g-1', 'g-2', 'g-3'], tutor: 'พิมพ์โค้ดของคุณเอง — ข้อความต่างจากเฉลยได้ ขอแค่โครงสร้างถูก' },
+      { id: 'summary', phase: 'practice', kind: 'summary' },
+    ],
+  },
+  {
+    lessonId: 'web-html-text', subject: 'web', principle: WEB_PRINCIPLE, experience: 'A',
+    chunks: [
+      { id: 'hook', phase: 'understand', kind: 'hook', tutor: 'หน้าเว็บที่อ่านง่ายมีหัวข้อเป็นลำดับ — และทุกแท็กปิดครบ ลองดูว่าถ้าไม่ปิดจะเกิดอะไร' },
+      html('levels', 'understand', 'หัวข้อหลายระดับ', 'วางหัวข้อรองก่อน แล้วค่อยวางย่อหน้า'),
+      { id: 'order', phase: 'understand', kind: 'explain', title: 'หัวข้อคือสารบัญของหน้า', concepts: ['c-levels'], rules: ['r-one-h1', 'r-order'], analogy: true },
+      html('fix-close', 'try', 'ส่วนไหนยังไม่ได้ปิด?', 'ย่อหน้าตัวใหญ่ผิดปกติ — หาแท็กที่ยังไม่มีคู่'),
+      { id: 'pairs', phase: 'try', kind: 'explain', title: 'ทุกแท็กมีคู่ และข้างในปิดก่อน', concepts: ['c-pair', 'c-nesting'], rules: ['r-close', 'r-nest'], tutor: 'ถ้าไม่ปิด เบราว์เซอร์ต้องเดาเอง — และมักเดาผิด' },
+      html('nesting', 'try', 'กล่องซ้อนกล่อง', 'แท็กไหนเปิดทีหลัง?'),
+      { id: 'recover', phase: 'practice', kind: 'mistakes', title: 'จุดที่มักพลาด' },
+      html('intro', 'practice', 'ส่วนแนะนำตัวของคุณ', 'ใช้ทุกอย่างในบทนี้ — ข้อความเป็นของคุณเอง'),
+      { id: 'drill', phase: 'practice', kind: 'practice', title: 'ลองเขียน HTML เอง', practiceIds: ['g-1', 'g-2', 'g-3'], tutor: 'พิมพ์โค้ดของคุณเอง — ข้อความต่างจากเฉลยได้ ขอแค่โครงสร้างถูก' },
+      { id: 'summary', phase: 'practice', kind: 'summary' },
+    ],
+  },
+  {
+    lessonId: 'web-html-links-images', subject: 'web', principle: WEB_PRINCIPLE, experience: 'A',
+    chunks: [
+      { id: 'hook', phase: 'understand', kind: 'hook', tutor: 'บางข้อมูลไม่ได้แสดงเป็นข้อความ แต่เปลี่ยนสิ่งที่ element ทำ — ลองเปลี่ยนค่าแล้วดูรูปเปลี่ยน' },
+      html('img-src', 'understand', 'src → รูปไหน', 'เปลี่ยนค่าเดียว แล้วดูหน้าเว็บ'),
+      { id: 'attr', phase: 'understand', kind: 'explain', title: 'attribute คือข้อมูลในแท็กเปิด', concepts: ['c-attribute', 'c-src'], rules: ['r-attr', 'r-img'], analogy: true },
+      html('img-alt', 'try', 'alt → คำอธิบายรูป', 'ลองทำให้รูปโหลดไม่ได้ด้วย แล้วดูว่า alt ไปโผล่ตรงไหน'),
+      html('link-href', 'try', 'href → ลิงก์ไปไหน', 'กดลิงก์บนหน้าเว็บเพื่อดูปลายทาง (ในบทเรียนลิงก์จะไม่เปิดจริง)'),
+      { id: 'recover', phase: 'practice', kind: 'mistakes', title: 'จุดที่มักพลาด' },
+      html('own-media', 'practice', 'รูป + ข้อความ + ลิงก์', 'บล็อกยังไม่ครบ — เติม attribute ให้ครบเอง'),
+      { id: 'drill', phase: 'practice', kind: 'practice', title: 'ลองเขียน HTML เอง', practiceIds: ['g-1', 'g-2', 'g-3'], tutor: 'พิมพ์โค้ดของคุณเอง — ข้อความต่างจากเฉลยได้ ขอแค่โครงสร้างถูก' },
+      { id: 'summary', phase: 'practice', kind: 'summary' },
+    ],
+  },
+  {
+    lessonId: 'web-html-page-structure', subject: 'web', principle: WEB_PRINCIPLE, experience: 'A',
+    chunks: [
+      { id: 'hook', phase: 'understand', kind: 'hook', tutor: 'หน้าเว็บจริงแบ่งเป็นพื้นที่ — แตะโค้ดแล้วดูว่าพื้นที่ไหนบนหน้าสว่างขึ้น' },
+      html('regions', 'understand', 'แต่ละส่วนคือพื้นที่ไหน', 'แตะ <header> <main> <footer> ทีละอัน'),
+      { id: 'areas', phase: 'understand', kind: 'explain', title: 'ส่วนหัว เนื้อหาหลัก ส่วนท้าย', concepts: ['c-regions', 'c-section', 'c-div'], rules: ['r-one-main'], analogy: true },
+      html('skeleton', 'try', 'โครงเอกสาร', 'ดูชื่อบนแท็บของหน้าเว็บเปลี่ยน'),
+      { id: 'head-header', phase: 'try', kind: 'step', stepId: 'head-header' },
+      { id: 'doc', phase: 'try', kind: 'explain', title: 'head ไม่แสดง · body คือสิ่งที่เห็น', concepts: ['c-document'], rules: ['r-head-header', 'r-skeleton'] },
+      html('arrange', 'practice', 'จัดหน้าให้เป็นพื้นที่', 'คลิกตำแหน่งในโค้ดก่อน แล้วค่อยกดบล็อก'),
+      { id: 'recover', phase: 'practice', kind: 'mistakes', title: 'จุดที่มักพลาด' },
+      { id: 'drill', phase: 'practice', kind: 'practice', title: 'ลองเขียน HTML เอง', practiceIds: ['g-1', 'g-2', 'g-3'], tutor: 'พิมพ์โค้ดของคุณเอง — ข้อความต่างจากเฉลยได้ ขอแค่โครงสร้างถูก' },
+      { id: 'summary', phase: 'practice', kind: 'summary' },
+    ],
+  },
+  {
+    lessonId: 'web-html-project', subject: 'web', principle: WEB_PRINCIPLE, experience: 'A',
+    chunks: [
+      { id: 'hook', phase: 'understand', kind: 'hook', tutor: 'ถึงเวลาสร้างหน้าเว็บของคุณเอง — ไม่มีคำตอบเดียว ขอแค่ผ่านข้อกำหนด' },
+      { id: 'plan', phase: 'understand', kind: 'explain', title: 'วางโครงก่อน แล้วเติมทีละส่วน', concepts: ['c-requirement', 'c-plan', 'c-check'], rules: ['r-structure', 'r-accessible', 'r-free'] },
+      html('project', 'try', 'หน้าเว็บแนะนำตัวของคุณ', 'ทำทีละข้อในรายการ แล้วดูหน้าเว็บเปลี่ยนทุกครั้ง'),
+      { id: 'review', phase: 'practice', kind: 'step', stepId: 'review' },
+      { id: 'recover', phase: 'practice', kind: 'mistakes', title: 'จุดที่มักพลาด' },
+      { id: 'drill', phase: 'practice', kind: 'practice', title: 'ลองเขียน HTML เอง', practiceIds: ['g-1', 'g-2', 'g-3'], tutor: 'พิมพ์โค้ดของคุณเอง — ข้อความต่างจากเฉลยได้ ขอแค่โครงสร้างถูก' },
+      { id: 'summary', phase: 'practice', kind: 'summary' },
+    ],
+  },
+];
+
+export const STUDIO_SCRIPTS: StudioScript[] = [MATH, PHYSICS, PROGRAMMING, ...WEB_HTML];
 
 const SUBJECT: Record<string, { subject: StudioScript['subject']; principle: string; hook: string; practice: string }> = {
   math: { subject: 'math', principle: 'ทำให้เรื่องยากมองเห็นได้', hook: 'ดูภาพรวมก่อนว่าบทนี้ช่วยให้ทำอะไรได้ แล้วค่อยลงมือทีละขั้น', practice: 'ทำบนกระดาษก่อน แล้วพิมพ์คำตอบ — ถ้าผิด V2U จะใบ้ให้' },

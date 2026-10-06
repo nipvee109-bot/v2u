@@ -56,7 +56,8 @@ const P = ({ minutes = 30, months, preset = true, lessons = fresh, records, extr
     records: records ?? lessons.map((l) => rec(l)),
   },
 });
-const totalMinutes = C.lessons.reduce((s, l) => s + l.estimatedMinutes, 0);
+// The roadmap plans only the route's admission subjects — optional-track (web) lessons never add time to it
+const totalMinutes = C.lessons.filter((l) => C.pathway.requirements.some((r) => r.subjectId === l.subjectId)).reduce((s, l) => s + l.estimatedMinutes, 0);
 
 console.log('1. Horizon model');
 await test('Profile horizon: presets and custom, validated; absent = default (not "chosen")', () => {

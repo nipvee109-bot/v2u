@@ -11,6 +11,7 @@
    ========================================================================= */
 
 import type { LessonDepth } from './types';
+import { WEB_DEPTH } from './webOriginals';
 
 export const LESSON_DEPTH: Record<string, LessonDepth> = {
   /* ── Math ─────────────────────────────────────────────────────────── */
@@ -341,4 +342,6 @@ export const LESSON_DEPTH: Record<string, LessonDepth> = {
       { prompt: 'กล่อง 4 kg ถูกดึง 25 N มีแรงเสียดทาน 5 N ความเร่งเท่าไร', answer: '5 m/s²' },
     ],
   },
+  /* ── Web (optional track) ── */
+  ...WEB_DEPTH,
 };

@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert';
+import { JSDOM } from 'jsdom';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { createJiti } from 'jiti';
@@ -44,9 +45,9 @@ const RESOURCE_REGISTRY = (await jiti.import(path.join(root, 'src/resources/engi
 const LESSONS = CURRICULUM.lessons.map((l) => l.id);
 
 await test('every curriculum lesson has a Learn-with-V2U script (curriculum ids unchanged)', () => {
-  assert.strictEqual(LESSONS.length, 15);
+  assert.strictEqual(LESSONS.length, 20); // 15 admission + 5 optional web
   for (const id of LESSONS) assert(getStudioScript(id), id);
-  assert.strictEqual(STUDIO_SCRIPTS.length, 3);
+  assert.strictEqual(STUDIO_SCRIPTS.length, 8); // 3 subject references + 5 authored HTML lessons
 });
 
 await test('every script id exists in knowledge / the lesson’s steps; nothing new invented', () => {
@@ -87,14 +88,16 @@ await test('learning loop order per script: understand → try → practice; hoo
   }
 });
 
-const inputFor = (v) => v.kind === 'holds' ? Object.fromEntries(Object.entries(v.vars).map(([k, x]) => [k, String(x)])) : v.kind === 'value' ? { v: String(v.expected) } : v.kind === 'inequality' ? { op: v.op, bound: String(v.bound) } : { out: v.output };
+// HTML practice is checked on a real DOM (jsdom stands in for the browser's DOMParser)
+globalThis.DOMParser = new JSDOM('').window.DOMParser;
+const inputFor = (v) => v.kind === 'html' ? { html: v.html } : v.kind === 'holds' ? Object.fromEntries(Object.entries(v.vars).map(([k, x]) => [k, String(x)])) : v.kind === 'value' ? { v: String(v.expected) } : v.kind === 'inequality' ? { op: v.op, bound: String(v.bound) } : { out: v.output };
 await test('practice checker: the verified answer is accepted, a wrong one rejected (all 135 items)', () => {
   let n = 0;
   for (const k of K.LESSON_KNOWLEDGE) for (const p of [...k.guided, ...k.independent]) {
     if (!p.verify || PC.practiceFields(p).length === 0) continue;
     n++;
     assert.strictEqual(PC.checkPractice(p, inputFor(p.verify)), 'correct', `${k.lessonId} ${p.id}`);
-    const bad = p.verify.kind === 'python' ? { out: p.verify.output + 'x' } : p.verify.kind === 'inequality' ? { op: p.verify.op, bound: String(p.verify.bound + 1) } : Object.fromEntries(Object.entries(inputFor(p.verify)).map(([a, b]) => [a, String(Number(b) + 7)]));
+    const bad = p.verify.kind === 'html' ? { html: '<div></div>' } : p.verify.kind === 'python' ? { out: p.verify.output + 'x' } : p.verify.kind === 'inequality' ? { op: p.verify.op, bound: String(p.verify.bound + 1) } : Object.fromEntries(Object.entries(inputFor(p.verify)).map(([a, b]) => [a, String(Number(b) + 7)]));
     assert.strictEqual(PC.checkPractice(p, bad), 'wrong', `${k.lessonId} ${p.id} wrong`);
   }
   assert(n >= 130, `checked ${n}`);
@@ -121,7 +124,7 @@ await test('parseNumber accepts only plain numbers and fractions (no expressions
 
 await test('lesson audit: honest per-part statuses for all 15 lessons', () => {
   const all = A.auditAllLessons();
-  assert.strictEqual(all.length, 15);
+  assert.strictEqual(all.length, 20); // 15 admission + 5 optional web
   for (const a of all) {
     for (const part of [a.reading, a.learnWithV2U, a.practice, a.quiz]) assert.strictEqual(part, 'READY', `${a.lessonId}`);
     assert.notStrictEqual(a.video, 'VERIFIED', 'no video content could be inspected in this environment');

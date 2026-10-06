@@ -7,6 +7,8 @@
    add their own kinds later without touching the player.
    ========================================================================= */
 
+import type { HtmlRequirement } from '../web/html';
+
 /** How the learner chose to study this sitting. */
 export type LearningMode = 'read' | 'video' | 'v2u';
 
@@ -60,6 +62,24 @@ export interface LabInteraction {
   question: { prompt: string; choices: string[]; correctIndex: number; hint: string; explanation: string };
 }
 
+/** Web track: build or fix HTML in the Live Web Builder; checked on the parsed DOM (src/web/html.ts). */
+export interface HtmlBuildInteraction {
+  kind: 'html';
+  prompt: string;
+  /** What the builder emphasises: placing prepared blocks, tag anatomy, attributes, page regions, or free building */
+  focus: 'blocks' | 'anatomy' | 'attributes' | 'regions' | 'free';
+  /** HTML already in the editor when the step opens */
+  starter: string;
+  /** Prepared real-HTML blocks the learner can place (drag, tap or keyboard) */
+  blocks?: { label: string; html: string }[];
+  requirements: HtmlRequirement[];
+  /** A model answer (shown only if the learner chooses to reveal) — any HTML meeting the requirements is accepted */
+  solution: string;
+  hint: string;
+  /** WHY it works — shown once solved */
+  explanation: string;
+}
+
 export interface OrderInteraction {
   kind: 'order';
   prompt: string;
@@ -76,7 +96,7 @@ export interface SelfCheckInteraction {
   answer: string;
 }
 
-export type Interaction = ChoiceInteraction | TypedInteraction | OrderInteraction | SelfCheckInteraction | CodeInteraction | LabInteraction;
+export type Interaction = ChoiceInteraction | TypedInteraction | OrderInteraction | SelfCheckInteraction | CodeInteraction | LabInteraction | HtmlBuildInteraction;
 
 export type StepType = 'concept' | 'example' | 'think' | 'try' | 'challenge';
 

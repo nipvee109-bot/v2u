@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import type { Dispatch } from 'react';
 import type { PlayerAction } from '../../../interactive/engine';
@@ -21,6 +21,7 @@ import { getGameSlotStatus } from '../../../learning/gameBridge';
 import { gamesForLesson } from '../../../learning/games/registry';
 import type { StudioWidget } from '../../../interactive/studio/types';
 import { BalanceWidget, CartLab, RobotDebug, RobotRun } from './Widgets';
+import { HtmlBuilder } from './HtmlBuilder';
 
 /* "เรียนกับ V2U" as a teaching studio (Phase 64):
    HOOK → EXPLAIN → TRY → OBSERVE → WHY → RETRY → INDEPENDENT → SUMMARY → (existing check).
@@ -39,6 +40,8 @@ const LOOK: Record<StudioScript['subject'], React.CSSProperties> = {
   math: { backgroundImage: 'linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px)', backgroundSize: '28px 28px', backgroundPosition: '-1px -1px' },
   physics: { backgroundImage: 'radial-gradient(var(--line) 1.2px, transparent 1.2px)', backgroundSize: '18px 18px' },
   programming: { backgroundImage: 'repeating-linear-gradient(0deg, transparent 0 7px, var(--line) 7px 8px)', backgroundSize: '100% 8px' },
+  // Web: a page wireframe
+  web: { backgroundImage: 'linear-gradient(var(--web-soft) 0 18px, transparent 18px), linear-gradient(90deg, var(--line) 1px, transparent 1px)', backgroundSize: '100% 64px, 33.3% 100%' },
 };
 
 interface SavedStudio { idx: number; done: string[] }
@@ -269,6 +272,10 @@ function ChunkBody({ chunk, k, lesson, state, dispatch, subject, step, onWidgetD
         if (s?.interaction?.kind !== 'lab') return null;
         return <CartLab lab={s.interaction} vary={w.vary} result={state.results[w.stepId] ?? EMPTY_RESULT} onAnswer={(c) => dispatch({ type: 'answer', stepId: w.stepId, correct: c })} />;
       }
+      if (w.kind === 'html-builder') {
+        const s = lesson.steps.find((x) => x.id === w.stepId);
+        return s ? <StepBody key={s.id} step={s} state={state} dispatch={dispatch} saveKey={`${lesson.lessonId}/${s.id}`} /> : null;
+      }
       if (w.kind === 'robot-run') {
         const code = w.codeFrom.exampleId ? k.workedExamples.find((e) => e.id === w.codeFrom.exampleId)?.code : [...k.guided, ...k.independent].find((p) => p.id === w.codeFrom.practiceId)?.code;
         return code ? <RobotRun code={code} values={w.values} onDone={onWidgetDone} /> : null;
@@ -331,7 +338,7 @@ function ExampleBody({ k, id }: { k: LessonKnowledge; id: string }) {
   );
 }
 
-function StepBody({ step, state, dispatch }: { step: InteractiveStep; state: PlayerState; dispatch: Dispatch<PlayerAction> }) {
+function StepBody({ step, state, dispatch, saveKey }: { step: InteractiveStep; state: PlayerState; dispatch: Dispatch<PlayerAction>; saveKey?: string }) {
   const result = state.results[step.id] ?? EMPTY_RESULT;
   const handlers = {
     result,
@@ -353,6 +360,7 @@ function StepBody({ step, state, dispatch }: { step: InteractiveStep; state: Pla
           {i.kind === 'self' && <SelfCheck key={step.id} interaction={i} {...handlers} />}
           {i.kind === 'code' && <CodeQuestion key={step.id} interaction={i} {...handlers} />}
           {i.kind === 'lab' && <LabQuestion key={step.id} interaction={i} {...handlers} />}
+          {i.kind === 'html' && <HtmlBuilder key={step.id} interaction={i} saveKey={saveKey ?? step.id} {...handlers} />}
         </div>
       )}
       {step.afterVisual && (result.solved || result.revealed) && <div className="mt-3"><EquationCard lines={step.afterVisual.lines} caption={step.afterVisual.caption} tone="solved" /></div>}
@@ -365,13 +373,15 @@ const SMALL_BTN = 'inline-flex min-h-[44px] items-center rounded-xl px-4 text-sm
 
 function PracticeBody({ items, code, onDone }: { items: KnowledgePractice[]; code: boolean; onDone: () => void }) {
   const [settled, setSettled] = useState<string[]>([]);
-  const settle = (id: string) =>
-    setSettled((s) => {
-      if (s.includes(id)) return s;
-      const next = [...s, id];
-      if (next.length >= items.length) onDone();
-      return next;
-    });
+  const settledRef = useRef<string[]>([]);
+  // Parent update (onDone) must not run inside a state updater
+  const settle = (id: string) => {
+    if (settledRef.current.includes(id)) return;
+    const next = [...settledRef.current, id];
+    settledRef.current = next;
+    setSettled(next);
+    if (next.length >= items.length) onDone();
+  };
   return (
     <div className="space-y-4" data-testid="studio-practice">
       <p className="text-xs text-[var(--ink-3)]">ทำแล้ว {settled.length}/{items.length} ข้อ · การฝึกตรงนี้ไม่นับเป็นคะแนน</p>
@@ -480,7 +490,7 @@ function DebugBody({ d, onDone }: { d: KnowledgeDebug; onDone: () => void }) {
 }
 
 /** Phase 69 teaching patterns — every value comes from the lesson's knowledge (ids checked by tests). */
-function PatternWidget({ w, k, onDone }: { w: Exclude<StudioWidget, { kind: 'balance' | 'cart-lab' | 'robot-run' | 'robot-debug' }>; k: LessonKnowledge; onDone: () => void }) {
+function PatternWidget({ w, k, onDone }: { w: Exclude<StudioWidget, { kind: 'balance' | 'cart-lab' | 'robot-run' | 'robot-debug' | 'html-builder' }>; k: LessonKnowledge; onDone: () => void }) {
   const ex = 'exampleId' in w ? k.workedExamples.find((e) => e.id === w.exampleId) : undefined;
   switch (w.kind) {
     case 'order-steps':

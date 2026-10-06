@@ -55,9 +55,9 @@ await test('matrix independent challenges quote the lesson\'s own level-3 items'
   }
 });
 
-await test('curriculum still has only math / programming / physics', () => {
-  assert.deepStrictEqual([...new Set(C.lessons.map((l) => l.subjectId))].sort(), ['math', 'physics', 'programming']);
-  assert.strictEqual(C.lessons.length, 15);
+await test('admission curriculum unchanged (15 lessons); web is the only other subject (optional track)', () => {
+  assert.deepStrictEqual([...new Set(C.lessons.map((l) => l.subjectId))].sort(), ['math', 'physics', 'programming', 'web']);
+  assert.strictEqual(C.lessons.filter((l) => l.subjectId !== 'web').length, 15);
 });
 
 await test('game registry unchanged: only Pixel Code Battle, PREPARING, no learning effects', () => {

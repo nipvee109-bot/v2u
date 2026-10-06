@@ -43,6 +43,7 @@ const subjectColorMap: Record<SubjectId, { bg: string; border: string; text: str
   physics: { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', icon: 'bg-orange-500' },
   tgat3: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', icon: 'bg-purple-500' },
   ai: { bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', icon: 'bg-rose-500' },
+  web: { bg: 'bg-web-soft', border: 'border-web/30', text: 'text-web', icon: 'bg-web' },
 };
 
 const learningTypeIcons: Record<LearningType, typeof BookOpen> = {

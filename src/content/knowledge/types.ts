@@ -7,6 +7,8 @@
    the test suite runs, so no answer is trusted on wording alone.
    ========================================================================= */
 
+import type { HtmlRequirement } from '../../web/html';
+
 /** Machine-checkable proof that an answer is right (run by scripts/test-phase-62.js). */
 export type Verify =
   /** Every expression must be true with these variable values (equations, systems). */
@@ -16,7 +18,9 @@ export type Verify =
   /** The inequality `holds` (in x) must be true exactly when x `op` bound. */
   | { kind: 'inequality'; holds: string; op: '<' | '>' | '<=' | '>='; bound: number }
   /** Python code; stdout must equal `output` exactly (or stderr must contain `error`). */
-  | { kind: 'python'; code: string; stdin?: string; output?: string; error?: string };
+  | { kind: 'python'; code: string; stdin?: string; output?: string; error?: string }
+  /** HTML; `html` must satisfy every requirement when parsed as a DOM (jsdom in tests). Structure, not string equality. */
+  | { kind: 'html'; html: string; require: HtmlRequirement[] };
 
 export type PracticeLevel = 1 | 2 | 3;
 
@@ -211,7 +215,10 @@ export type SourceVerification =
   | 'locator-only'
   /** The publisher's own source files were opened (cloned from its official repository at a pinned commit);
    *  the web page at foundUrl itself was not fetched. Evidence quotes are checked against those files. */
-  | 'opened-repo';
+  | 'opened-repo'
+  /** The page itself was fetched and read on `checkedAt` (Web track, 2026-10-06). No quotes are stored;
+   *  what each page supports is recorded in docs/sources/html-curriculum-sources.md. */
+  | 'fetched-web';
 
 export interface SourceRepo {
   /** Official repository of the publisher */

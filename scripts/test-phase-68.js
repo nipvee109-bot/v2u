@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert';
+import { JSDOM } from 'jsdom';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { createJiti } from 'jiti';
@@ -58,7 +59,7 @@ await test('candidate counts reconciled: 6 user-requested videos (not 7), 50 bac
 
 await test('every lesson is independently learnable without video; video stays non-blocking', () => {
   const all = A.auditAllLessons();
-  assert.strictEqual(all.length, 15);
+  assert.strictEqual(all.length, 20); // 15 admission + 5 optional web
   for (const a of all) {
     assert(a.independentlyLearnable, a.lessonId);
     assert.notStrictEqual(a.video, 'VERIFIED');
@@ -67,7 +68,8 @@ await test('every lesson is independently learnable without video; video stays n
 });
 
 await test('wrong-answer diagnosis: the verified answer never triggers it; known error patterns do', () => {
-  const right = (v) => v.kind === 'holds' ? Object.fromEntries(Object.entries(v.vars).map(([a, b]) => [a, String(b)])) : v.kind === 'value' ? { v: String(v.expected) } : v.kind === 'inequality' ? { op: v.op, bound: String(v.bound) } : { out: v.output };
+  globalThis.DOMParser = new JSDOM('').window.DOMParser; // HTML practice is checked on a real DOM
+  const right = (v) => v.kind === 'html' ? { html: v.html } : v.kind === 'holds' ? Object.fromEntries(Object.entries(v.vars).map(([a, b]) => [a, String(b)])) : v.kind === 'value' ? { v: String(v.expected) } : v.kind === 'inequality' ? { op: v.op, bound: String(v.bound) } : { out: v.output };
   let flips = 0, signs = 0;
   for (const { k, p } of items) {
     if (!p.verify || PC.practiceFields(p).length === 0) continue;

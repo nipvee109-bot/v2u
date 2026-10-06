@@ -5,6 +5,7 @@
 
 import type { OriginalLesson } from './types';
 import { LESSON_DEPTH } from './depth';
+import { WEB_ORIGINALS } from './webOriginals';
 
 const META = { author: 'V2U' as const, version: '1.0.0', createdAt: '2026-10-02', updatedAt: '2026-10-02' };
 
@@ -342,6 +343,8 @@ const BASE_LESSONS: OriginalLesson[] = [
     check: [{ prompt: 'แรงคู่กริยา–ปฏิกิริยาหักล้างกันหรือไม่ เพราะอะไร', answer: 'ไม่ เพราะกระทำต่อคนละวัตถุ' }],
     next: 'ทบทวนฟิสิกส์ทั้งชุด แล้วลองทำข้อสอบเก่าแบบจับเวลา',
   }),
+  // ── Web (optional track) ──
+  ...WEB_ORIGINALS.map(o),
 ];
 
 /** Base lesson + Phase 59 depth layer (examples/mistakes are appended, never replaced). */

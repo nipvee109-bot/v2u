@@ -107,6 +107,9 @@ export function auditLesson(l: CurriculumLesson, dup = duplicatedTexts()): Lesso
   );
   if (l.subjectId === 'programming') {
     need(!!o?.code?.length && o.code.every((c) => len(c.code) && c.output !== undefined && len(c.does) && len(c.why) && len(c.whatIf)) && !!o.errorExample, 'SUBJECT');
+  } else if (l.subjectId === 'web') {
+    // Web: the lesson must be built around the HTML Live Web Builder (code → page), not reading alone
+    need(!!il?.steps.some((s) => s.interaction?.kind === 'html'), 'SUBJECT');
   } else if (l.subjectId === 'physics') {
     need(!!o?.formulas?.length && o.formulas.every((f) => f.vars.length > 0 && f.vars.every((v) => len(v.unit) && len(v.meaning)) && len(f.relation)), 'SUBJECT');
   }

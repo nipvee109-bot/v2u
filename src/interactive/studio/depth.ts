@@ -19,7 +19,9 @@ export type PatternId =
   | 'CODE_WHAT_IF'
   | 'DEBUGGING'
   | 'MATCH_REPRESENTATIONS'
-  | 'SMART_READING';
+  | 'SMART_READING'
+  /** Web: code ↔ live page (HTML Live Web Builder) — every edit redraws the page */
+  | 'LIVE_BUILDER';
 
 export type DepthClass = 'REFERENCE_COMPLETE' | 'DEPTH_UPGRADE_NEEDED' | 'SMART_READING_SUFFICIENT';
 
@@ -198,6 +200,13 @@ export const DEPTH_PLANS: DepthPlan[] = [
       { replace: 'example-b', chunk: w('trace-dict', 'practice', 'dict เปลี่ยนทีละขั้น', 'ดู key ใหม่ที่ถูกเพิ่ม แล้วลูปแสดงทุกคู่', { kind: 'code-trace', traceId: 'fn-we-2', mode: 'memory' }) },
     ],
   },
+
+  /* ── Web track: HTML reference lessons (authored with the HTML Live Web Builder) ── */
+  { lessonId: 'web-html-elements', hardConcepts: ['แท็กไม่แสดงบนหน้า', 'element = แท็กเปิด + เนื้อหา + แท็กปิด'], before: 'REFERENCE_COMPLETE', after: 'REFERENCE_COMPLETE', patterns: ['LIVE_BUILDER', 'PREDICT_OBSERVE_EXPLAIN', 'FIND_THE_MISTAKE'], why: 'วางบล็อกแล้วเห็นหน้าเว็บเกิดทันที ก่อนจะอธิบายว่าแท็กคืออะไร', interaction: true, visualization: true, simulation: false, codeExecution: false, limitation: 'หน้าเว็บในบทเรียนวาดจากแท็กที่บทเรียนอนุญาตเท่านั้น (ไม่รันสคริปต์ ลิงก์ไม่เปิดจริง รูปมาจากชุดที่เตรียมไว้)', inserts: [] },
+  { lessonId: 'web-html-text', hardConcepts: ['ลำดับหัวข้อ', 'แท็กที่ไม่ปิดทำให้หน้าเพี้ยน', 'เปิดทีหลังปิดก่อน'], before: 'REFERENCE_COMPLETE', after: 'REFERENCE_COMPLETE', patterns: ['LIVE_BUILDER', 'FIND_THE_MISTAKE', 'VISUAL_REASONING'], why: 'เห็นย่อหน้ากลายเป็นตัวใหญ่เมื่อหัวข้อไม่ปิด และเห็นคู่แท็กพร้อมป้าย แท็กเปิด/เนื้อหา/แท็กปิด', interaction: true, visualization: true, simulation: false, codeExecution: false, limitation: 'หน้าเว็บในบทเรียนวาดจากแท็กที่บทเรียนอนุญาตเท่านั้น (ไม่รันสคริปต์ ลิงก์ไม่เปิดจริง รูปมาจากชุดที่เตรียมไว้)', inserts: [] },
+  { lessonId: 'web-html-links-images', hardConcepts: ['attribute อยู่ในแท็กเปิด', 'alt คือคำอธิบายรูป', 'img ไม่มีแท็กปิด'], before: 'REFERENCE_COMPLETE', after: 'REFERENCE_COMPLETE', patterns: ['LIVE_BUILDER', 'VARIABLE_EXPLORER', 'FIND_THE_MISTAKE'], why: 'เปลี่ยนค่า src / href / alt แล้วรูปและลิงก์เปลี่ยนตาม รวมถึงเห็น alt แทนรูปที่โหลดไม่ได้', interaction: true, visualization: true, simulation: false, codeExecution: false, limitation: 'หน้าเว็บในบทเรียนวาดจากแท็กที่บทเรียนอนุญาตเท่านั้น (ไม่รันสคริปต์ ลิงก์ไม่เปิดจริง รูปมาจากชุดที่เตรียมไว้)', inserts: [] },
+  { lessonId: 'web-html-page-structure', hardConcepts: ['head ≠ header', 'โค้ดซ้อนกัน = พื้นที่ซ้อนกัน'], before: 'REFERENCE_COMPLETE', after: 'REFERENCE_COMPLETE', patterns: ['LIVE_BUILDER', 'VISUAL_REASONING', 'MATCH_REPRESENTATIONS'], why: 'แตะโค้ดแล้วพื้นที่บนหน้าไฮไลต์ (และกลับกัน) จนเห็นว่าโครงโค้ดคือโครงหน้า', interaction: true, visualization: true, simulation: false, codeExecution: false, limitation: 'หน้าเว็บในบทเรียนวาดจากแท็กที่บทเรียนอนุญาตเท่านั้น (ไม่รันสคริปต์ ลิงก์ไม่เปิดจริง รูปมาจากชุดที่เตรียมไว้)', inserts: [] },
+  { lessonId: 'web-html-project', hardConcepts: ['สร้างจากข้อกำหนด ไม่ใช่ลอกภาพ'], before: 'REFERENCE_COMPLETE', after: 'REFERENCE_COMPLETE', patterns: ['LIVE_BUILDER', 'FIND_THE_MISTAKE'], why: 'สร้างหน้าแนะนำตัวเองโดยมีรายการข้อกำหนดที่ติ๊กเองเมื่อโครงสร้างครบ', interaction: true, visualization: true, simulation: false, codeExecution: false, limitation: 'หน้าเว็บในบทเรียนวาดจากแท็กที่บทเรียนอนุญาตเท่านั้น (ไม่รันสคริปต์ ลิงก์ไม่เปิดจริง รูปมาจากชุดที่เตรียมไว้)', inserts: [] },
 ];
 
 export const getDepthPlan = (lessonId: string) => DEPTH_PLANS.find((p) => p.lessonId === lessonId);

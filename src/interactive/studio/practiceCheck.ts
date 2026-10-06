@@ -3,6 +3,8 @@
    which the test suite already checks against the maths / real python3. */
 
 import type { KnowledgePractice } from '../../content/knowledge';
+import { checkHtml } from '../../web/html';
+import type { DomParserLike } from '../../web/html';
 
 export type PracticeField = { key: string; label: string; kind: 'number' | 'op' | 'text' };
 export type PracticeVerdict = 'correct' | 'wrong' | 'unchecked';
@@ -31,6 +33,8 @@ export function practiceFields(p: KnowledgePractice): PracticeField[] {
       return [{ key: 'op', label: 'x', kind: 'op' }, { key: 'bound', label: 'ค่า', kind: 'number' }];
     case 'python':
       return v.error ? [] : [{ key: 'out', label: 'ผลลัพธ์ที่แสดง', kind: 'text' }];
+    case 'html':
+      return [{ key: 'html', label: 'โค้ด HTML ของคุณ', kind: 'text' }];
   }
 }
 
@@ -40,7 +44,7 @@ export const valueTolerance = (expected: number, tol?: number) =>
   Number.isInteger(expected) ? Math.max(tol ?? 0, 1e-9) : Math.max(tol ?? 0, Math.abs(expected) * 0.01, 0.005);
 const normOut = (s: string) => s.replace(/\r/g, '').split('\n').map((l) => l.replace(/\s+$/, '')).join('\n').trim();
 
-export function checkPractice(p: KnowledgePractice, input: Record<string, string>): PracticeVerdict {
+export function checkPractice(p: KnowledgePractice, input: Record<string, string>, parser?: DomParserLike): PracticeVerdict {
   const v = p.verify;
   if (!v || practiceFields(p).length === 0) return 'unchecked';
   switch (v.kind) {
@@ -61,5 +65,8 @@ export function checkPractice(p: KnowledgePractice, input: Record<string, string
     }
     case 'python':
       return normOut(input.out ?? '') === normOut(v.output ?? '') ? 'correct' : 'wrong';
+    case 'html':
+      // Any HTML that meets the requirements is right — structure, not the exact text of the model answer
+      return checkHtml(input.html ?? '', v.require, parser).passed ? 'correct' : 'wrong';
   }
 }

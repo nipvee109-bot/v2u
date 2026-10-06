@@ -67,7 +67,7 @@ await test('Link checker never edits the registry and treats network refusals as
   assert(!/writeFileSync\([^)]*registry/.test(s));
 });
 await test('Every lesson still has a usable path after cleanup', () => {
-  for (const l of C.lessons) assert(CE.getLearningPath(l.id)?.primary, l.id);
+  for (const l of C.lessons) assert(l.subjectId === 'web' ? CE.getLearningPath(l.id)?.original : CE.getLearningPath(l.id)?.primary, l.id);
 });
 
 console.log('\n2. UX/UI');

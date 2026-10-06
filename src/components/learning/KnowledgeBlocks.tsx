@@ -232,7 +232,7 @@ export function KnowledgeSummary({ k }: { k: LessonKnowledge }) {
   );
 }
 
-const VERIFY_LABEL = { 'opened-local': 'เปิดอ่านเอกสารทางการแล้ว', 'search-indexed': 'พบจากการค้นหา ยังไม่ได้เปิดตรวจหน้า', 'locator-only': 'ระบุตำแหน่งในเอกสาร', 'opened-repo': 'เปิดอ่านไฟล์ต้นฉบับของหนังสือแล้ว' } as const;
+const VERIFY_LABEL = { 'opened-local': 'เปิดอ่านเอกสารทางการแล้ว', 'search-indexed': 'พบจากการค้นหา ยังไม่ได้เปิดตรวจหน้า', 'locator-only': 'ระบุตำแหน่งในเอกสาร', 'opened-repo': 'เปิดอ่านไฟล์ต้นฉบับของหนังสือแล้ว', 'fetched-web': 'เปิดอ่านหน้าเอกสารทางการแล้ว' } as const;
 
 /** Where the content comes from — names and locations only (no unchecked links). */
 export function KnowledgeSources({ k }: { k: LessonKnowledge }) {

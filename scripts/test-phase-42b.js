@@ -35,6 +35,8 @@ const { RESOURCE_REGISTRY: R } = await jiti.import(path.join(root, 'src/resource
 const E = await jiti.import(path.join(root, 'src/resources/engine.ts'));
 const { TIME_BUDGETS } = await jiti.import(path.join(root, 'src/resources/types.ts'));
 const { CURRICULUM: C } = await jiti.import(path.join(root, 'src/curriculum/data.ts'));
+/** Admission-subject lessons (curated resources required). Optional-track web lessons have none yet — they teach through the HTML builder. */
+const ADMISSION_LESSONS = C.lessons.filter((l) => l.subjectId !== 'web');
 const { getNextStep } = await jiti.import(path.join(root, 'src/utils/nextStep.ts'));
 const { initialLessons } = await jiti.import(path.join(root, 'src/data/initialData.ts'));
 
@@ -47,11 +49,12 @@ await test('Every resource has all required fields', () => {
     'coveredOutcomes', 'whyV2USelected', 'lastChecked', 'language', 'isFree', 'status'];
   for (const r of R) for (const f of fields) assert(r[f] !== undefined, `${r.id} missing ${f}`);
 });
-await test('Every one of the 15 curriculum lessons has at least one curated resource', () => {
-  for (const l of C.lessons) assert(E.getResourcesForLesson(l.id).length > 0, l.id);
+await test('Every one of the 15 admission-subject lessons has at least one curated resource', () => {
+  assert.strictEqual(ADMISSION_LESSONS.length, 15);
+  for (const l of ADMISSION_LESSONS) assert(E.getResourcesForLesson(l.id).length > 0, l.id);
 });
-await test('Every lesson has an explanation-role resource', () => {
-  for (const l of C.lessons) assert(E.getResourcesForLesson(l.id).some((r) => r.role === 'explanation'), l.id);
+await test('Every admission lesson has an explanation-role resource', () => {
+  for (const l of ADMISSION_LESSONS) assert(E.getResourcesForLesson(l.id).some((r) => r.role === 'explanation'), l.id);
 });
 await test('No invented URLs: unverified resources carry no url / videoId', () => {
   for (const r of R) {
@@ -150,8 +153,15 @@ await test('Plans are coherent sequences, not truncated lists', () => {
   assert.deepStrictEqual(kinds(60), ['learn', 'example', 'practice', 'recap']);
   assert.deepStrictEqual(kinds(120), ['learn', 'example', 'deepen', 'practice', 'check', 'recap']);
 });
+await test('Optional web lessons without curated resources learn from V2U content (no external link invented)', () => {
+  for (const l of C.lessons.filter((x) => x.subjectId === 'web')) {
+    assert.deepStrictEqual(E.getResourcesForLesson(l.id), [], l.id);
+    const p = E.buildLearningPlan(l.id, 60);
+    assert(p.steps[0].contentId && !p.steps.some((s) => s.resourceId), l.id);
+  }
+});
 await test('Learn step uses an explanation; example uses a different resource', () => {
-  for (const l of C.lessons) {
+  for (const l of ADMISSION_LESSONS) {
     const p = E.buildLearningPlan(l.id, 60);
     const learn = R.find((r) => r.id === p.steps[0].resourceId);
     assert.strictEqual(learn.role, 'explanation', l.id);

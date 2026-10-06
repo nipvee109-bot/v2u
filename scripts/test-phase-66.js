@@ -78,7 +78,7 @@ await test(dir ? 'every OpenStax quote exists verbatim in the publisher source f
 });
 
 await test('every math and physics lesson now has opened textbook evidence; Thai curriculum stays pending', () => {
-  for (const k of KS.filter((x) => !x.lessonId.startsWith('prog-'))) {
+  for (const k of KS.filter((x) => x.lessonId.startsWith('math-') || x.lessonId.startsWith('phy-'))) {
     assert(k.provenance.some((p) => SRC.get(p.sourceId).verification === 'opened-repo'), k.lessonId);
     const thai = k.provenance.filter((p) => p.sourceId.startsWith('ipst-'));
     for (const p of thai) assert.notStrictEqual(SRC.get(p.sourceId).verification, 'opened-repo');

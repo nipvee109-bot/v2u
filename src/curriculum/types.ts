@@ -12,7 +12,7 @@
 
 import type { SubjectId } from '../types';
 
-export type CurriculumSubjectId = Extract<SubjectId, 'math' | 'programming' | 'physics'>;
+export type CurriculumSubjectId = Extract<SubjectId, 'math' | 'programming' | 'physics' | 'web'>;
 
 export type CurriculumLevel = 'foundation' | 'core' | 'advanced';
 

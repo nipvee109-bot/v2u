@@ -4,7 +4,7 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { usePathway } from '../../hooks/usePathway';
 import { AutoRecommendation, ManualPicker } from '../../components/pathway/PathwayBits';
 import type { CurriculumSubjectId } from '../../curriculum/types';
-import { Calculator, Code2, Atom, Brain, Cpu, BookMarked, LayoutGrid, PlayCircle, Route as RouteIcon } from 'lucide-react';
+import { Calculator, Code2, Atom, Brain, Cpu, Globe, BookMarked, LayoutGrid, PlayCircle, Route as RouteIcon } from 'lucide-react';
 import { KIcon, Pill } from '../../components/v2u/kit';
 import { ST, stOf, subOf } from '../../components/v2u/tokens';
 import { SUBJECT_LABEL, SUBJECT_ORDER, getCurriculumMap } from '../../diagnostic/engine';
@@ -12,6 +12,8 @@ import { isCurriculumLessonCompleted } from '../../curriculum/engine';
 import { useStore } from '../../store/useStore';
 import { SUBJECTS } from '../../types';
 import type { SubjectId } from '../../types';
+import { CURRICULUM } from '../../curriculum/data';
+import { subjectIdentity, trackSubjectIds } from '../../subjects/registry';
 import { HubLinkList } from '../../components/navigation/HubLinkList';
 import type { HubLink } from '../../components/navigation/HubLinkList';
 import { RowGroup, Section, LoopStrip } from '../../components/ui';
@@ -22,6 +24,7 @@ const SUBJECT_ICONS: Record<SubjectId, HubLink['icon']> = {
   physics: Atom,
   tgat3: Brain,
   ai: Cpu,
+  web: Globe,
 };
 
 /** เรียน — continue where you are, find anything, then browse subjects. */
@@ -50,7 +53,8 @@ export function LearnHub() {
     ? { to: liveHref, eyebrow: 'กำลังเรียนอยู่', title: liveLesson.title, meta: 'กลับไปเรียนบทนี้', stage: 'learn' as const }
     : null;
 
-  const subjectItems = (Object.keys(SUBJECTS) as SubjectId[]).map((id) => {
+  // Optional tracks have their own section below (one entry point, clearly outside admission readiness)
+  const subjectItems = (Object.keys(SUBJECTS) as SubjectId[]).filter((id) => !trackSubjectIds([id]).length).map((id) => {
     const subjectLessons = lessons.filter((l) => l.subjectId === id);
     const done = subjectLessons.filter((l) => l.status === 'COMPLETED').length;
     return {
@@ -80,6 +84,12 @@ export function LearnHub() {
     const rec = pathway.bySubject.find((b) => b.subjectId === id)?.rec;
     return { id, sub: subOf(id), st: ST[stOf(profile?.status ?? 'not-assessed')], count: rows.length, doneN, rec: rec?.lesson.title };
   });
+  // Optional skill/career tracks (subject registry status 'track'): never part of the Diagnostic or admission readiness
+  const tracks = trackSubjectIds(CURRICULUM.subjects.map((s) => s.id)).map((id) => ({
+    id,
+    who: subjectIdentity(id),
+    lessons: CURRICULUM.subjects.find((s) => s.id === id)!.topicIds.flatMap((t) => CURRICULUM.topics.find((x) => x.id === t)?.lessonIds ?? []).map((lid) => CURRICULUM.lessons.find((l) => l.id === lid)!),
+  }));
   const h1 = { fontSize: 'clamp(24px,1.6vw + 18px,34px)', color: 'var(--ink)' } as const;
 
   return (
@@ -166,6 +176,38 @@ export function LearnHub() {
               ))}
             </div>
           </section>
+
+          {tracks.map((t) => (
+            <section key={t.id} aria-labelledby={`track-${t.id}-h`} className="flex flex-col gap-3" data-testid="track-section">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 id={`track-${t.id}-h`} className="font-display text-lg font-semibold" style={{ color: 'var(--ink)' }}>ทักษะเสริมสายอาชีพ</h2>
+                <Pill c="var(--ink-2)" soft="var(--surface-3)" size="sm">ไม่นับรวมความพร้อมสอบเข้า</Pill>
+                <span className="h-px flex-1" style={{ background: 'linear-gradient(90deg,var(--line-2),transparent)' }} />
+              </div>
+              <div className="flex flex-col gap-3 p-4 sm:p-5" style={{ borderRadius: 20, background: 'var(--surface)', border: '1px solid var(--line)', boxShadow: 'var(--shadow)' }}>
+                <div className="flex items-center gap-3">
+                  <span className="grid h-[46px] w-[46px] place-items-center rounded-[14px]" style={{ background: t.who.soft, color: t.who.color }}><KIcon name="code" size={24} /></span>
+                  <span className="min-w-0">
+                    <span className="block font-display text-lg font-semibold" style={{ color: 'var(--ink)' }}>{t.who.label}</span>
+                    <span className="block text-xs" style={{ color: 'var(--ink-3)' }}>เรียนได้ตามสนใจ — สร้างหน้าเว็บด้วยตัวเอง ไม่มีผลกับแบบวัดพื้นฐานหรือเส้นทางสอบเข้า</span>
+                  </span>
+                </div>
+                <ol className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))]">
+                  {t.lessons.map((l, i) => {
+                    const done = isCurriculumLessonCompleted(l, lessons);
+                    return (
+                      <li key={l.id}>
+                        <Link to={`/learn/curriculum/${l.id}?mode=v2u`} data-track-lesson={l.id} className="flex min-h-[52px] items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition-colors hover:bg-[var(--surface-2)]" style={{ border: '1px solid var(--line)' }}>
+                          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full font-mono text-xs font-bold" style={done ? { background: 'var(--ok-soft)', color: 'var(--ok)' } : { background: t.who.soft, color: t.who.color }}>{done ? '✓' : i + 1}</span>
+                          <span className="min-w-0 break-words font-semibold" style={{ color: 'var(--ink)' }}>{l.title}{done && <span className="sr-only"> (เรียนจบแล้ว)</span>}</span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+            </section>
+          ))}
 
           <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
             <div className="flex flex-col gap-4">

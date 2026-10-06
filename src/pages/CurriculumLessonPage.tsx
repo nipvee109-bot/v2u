@@ -20,6 +20,7 @@ import { LoopResult } from '../components/pathway/LoopResult';
 import { recordCheckEvidence } from '../hooks/learningLoop';
 import type { LoopOutcome } from '../hooks/learningLoop';
 import { nextStepParamsFromState } from '../hooks/useNextStep';
+import { isTrackSubject } from '../subjects/registry';
 
 const MODES: LearningMode[] = ['read', 'video', 'v2u'];
 
@@ -57,6 +58,7 @@ export function CurriculumLessonPage() {
   const studyLesson = findStudyLesson(lesson, lessons);
   const missing = getMissingPrerequisites(lesson, lessons);
   const done = isCurriculumLessonCompleted(lesson, lessons);
+  const track = isTrackSubject(lesson.subjectId);
   const weakSkillIds = getSkillGaps({ storeLessons: lessons, records }).filter((g) => g.status === 'needs-review').map((g) => g.skill.id);
 
   // Finishing here records the sitting through the normal study flow (mastery, review, next step)
@@ -77,10 +79,12 @@ export function CurriculumLessonPage() {
    */
   const recordEvidence = (c: UnderstandingSummary) => {
     lastCheck.current = c;
-    if (!studyLesson) return;
+    // Optional tracks get their study lesson only when the learner actually does the work (additive, idempotent)
+    const studyLessonId = studyLesson?.id ?? (track ? useStore.getState().ensureStudyLesson({ title: lesson.studyLessonTitle, subjectId: lesson.subjectId, description: CURRICULUM.subjects.find((s) => s.id === lesson.subjectId)?.description }) : undefined);
+    if (!studyLessonId) return;
     setOutcome(
       recordCheckEvidence({
-        studyLessonId: studyLesson.id,
+        studyLessonId,
         curriculumLessonId: lesson.id,
         skillIds: lesson.skillIds,
         summary: c,
@@ -108,6 +112,12 @@ export function CurriculumLessonPage() {
             curriculumLessonId={lesson.id}
             backTo={fromNext ? '/' : '/learn'}
             notice={<>
+      {track && (
+        <p className="flex items-start gap-2 rounded-[14px] px-3.5 py-2.5 text-[13px]" style={{ background: 'var(--web-soft)', color: 'var(--ink)' }} data-testid="track-notice">
+          <span style={{ color: 'var(--web)', marginTop: 2 }}><KIcon name="code" size={16} /></span>
+          <span><b>เส้นทางทักษะเสริม</b> — เรียนตามสนใจได้เลย บทนี้ไม่นับรวมความพร้อมสอบเข้ามหาวิทยาลัย</span>
+        </p>
+      )}
       {missing.length > 0 && (
         <p className="flex items-start gap-2 rounded-[14px] px-3.5 py-2.5 text-[13px]" style={{ background: 'var(--rev-soft)', color: 'var(--ink)' }}>
           <span style={{ color: 'var(--rev)', marginTop: 2 }}><KIcon name="lock" size={16} /></span>

@@ -3,6 +3,7 @@ import type { InteractiveLesson, InteractiveStep, PlayerState } from '../../inte
 import { canContinue, EMPTY_RESULT } from '../../interactive/engine';
 import type { PlayerAction } from '../../interactive/engine';
 import { ChoiceQuestion, CodeQuestion, LabQuestion, OrderQuestion, SelfCheck, TypedQuestion } from './Questions';
+import { HtmlBuilder } from './studio/HtmlBuilder';
 import { ThemeBanner } from './ThemeBanner';
 
 const TYPE_LABEL: Record<InteractiveStep['type'], string> = {
@@ -135,6 +136,7 @@ export function InteractivePlayer({ lesson, state, dispatch, onToCheck }: Player
                 {step.interaction.kind === 'self' && <SelfCheck key={step.id} interaction={step.interaction} {...handlers} />}
                 {step.interaction.kind === 'code' && <CodeQuestion key={step.id} interaction={step.interaction} {...handlers} />}
                 {step.interaction.kind === 'lab' && <LabQuestion key={step.id} interaction={step.interaction} {...handlers} />}
+                {step.interaction.kind === 'html' && <HtmlBuilder key={step.id} interaction={step.interaction} saveKey={`${lesson.lessonId}/${step.id}`} {...handlers} />}
               </div>
             )}
 

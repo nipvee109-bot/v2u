@@ -5,6 +5,7 @@
 
 import type { KnowledgePractice } from '../../content/knowledge';
 import { parseNumber, valueTolerance } from './practiceCheck';
+import { checkHtml } from '../../web/html';
 
 const near = (a: number, b: number, tol: number) => Math.abs(a - b) <= tol;
 const FLIP: Record<string, string> = { '<': '>', '>': '<', '<=': '>=', '>=': '<=' };
@@ -53,5 +54,8 @@ export function diagnoseWrong(p: KnowledgePractice, input: Record<string, string
       if (got.length < want.length) return `โปรแกรมพิมพ์ ${want.length} บรรทัด — ไล่ทุกคำสั่ง print ให้ครบ`;
       return undefined;
     }
+    case 'html':
+      // The first requirement the learner's own HTML misses, explained in terms of structure
+      return checkHtml(input.html ?? '', v.require).results.find((r) => !r.ok)?.message;
   }
 }

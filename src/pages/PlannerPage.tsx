@@ -198,6 +198,7 @@ export function PlannerPage() {
       physics: { plannedMin: 0, completedMin: 0 },
       tgat3: { plannedMin: 0, completedMin: 0 },
       ai: { plannedMin: 0, completedMin: 0 },
+      web: { plannedMin: 0, completedMin: 0 },
     };
 
     weekSessions.forEach((s) => {

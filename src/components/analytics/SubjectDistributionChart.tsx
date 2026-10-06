@@ -14,6 +14,7 @@ const SUBJECT_BAR_COLORS: Record<SubjectId, string> = {
   physics: 'bg-orange-500',
   tgat3: 'bg-purple-500',
   ai: 'bg-rose-500',
+  web: 'bg-web',
 };
 
 export const SubjectDistributionChart: React.FC<SubjectDistributionChartProps> = React.memo(({

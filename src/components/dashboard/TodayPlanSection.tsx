@@ -22,6 +22,7 @@ const subjectIconColor: Record<SubjectId, string> = {
   physics: 'text-orange-600 bg-orange-50 border-orange-100',
   tgat3: 'text-purple-600 bg-purple-50 border-purple-100',
   ai: 'text-rose-600 bg-rose-50 border-rose-100',
+  web: 'text-web bg-web-soft border-web/30',
 };
 
 const priorityStyles: Record<string, string> = {

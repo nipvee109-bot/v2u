@@ -55,6 +55,7 @@ const subjectRawColor: Record<SubjectId, string> = {
   physics: '#f97316',
   tgat3: '#a855f7',
   ai: '#ef4444',
+  web: '#b4307e',
 };
 
 const subjectBgClass: Record<SubjectId, string> = {
@@ -63,6 +64,7 @@ const subjectBgClass: Record<SubjectId, string> = {
   physics: 'bg-physics',
   tgat3: 'bg-tgat',
   ai: 'bg-ai',
+  web: 'bg-web',
 };
 
 export function Dashboard() {

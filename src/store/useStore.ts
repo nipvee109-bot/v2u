@@ -444,6 +444,8 @@ interface StoreState {
   
   // Lesson actions
   addLesson: (lesson: Lesson) => void;
+  /** Additive + idempotent: make sure a trackable study lesson exists (optional tracks are added only when the learner opens them). Never edits or removes existing lessons. Returns its id. */
+  ensureStudyLesson: (spec: { title: string; subjectId: Lesson['subjectId']; description?: string }) => string;
   updateLesson: (id: string, lesson: Partial<Lesson>) => void;
   deleteLesson: (id: string) => void;
   setLessonConfidence: (lessonId: string, confidence: ConfidenceLevel) => void;
@@ -681,6 +683,13 @@ export const useStore = create<StoreState>()(
       // Lesson Actions
       addLesson: (lesson) =>
         set((state) => ({ lessons: [...state.lessons, lesson] })),
+      ensureStudyLesson: (spec) => {
+        const existing = get().lessons.find((l) => l.title === spec.title && l.subjectId === spec.subjectId);
+        if (existing) return existing.id;
+        const lesson: Lesson = { id: uuidv4(), title: spec.title, subjectId: spec.subjectId, month: 1, week: 1, durationHours: 4, description: spec.description, status: 'NOT STARTED', difficulty: 'Easy', notes: '', resources: [], images: [], completedCurriculumLessonIds: [] };
+        set((state) => ({ lessons: [...state.lessons, lesson] }));
+        return lesson.id;
+      },
       updateLesson: (id, updatedLesson) =>
         set((state) => ({
           lessons: state.lessons.map((lesson) => {

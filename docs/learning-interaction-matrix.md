@@ -14,7 +14,8 @@ No curriculum was invented. Nothing below adds a lesson, skill, practice item or
 | Math | 6 | yes |
 | Programming (Python) | 5 | yes |
 | Physics | 4 | yes |
-| HTML · CSS · JavaScript · SQL · Networking | 0 | **no** — design/spec only (section 5) |
+| Web — HTML (optional track) | 5 | **yes** (added 2026-10-06; not in Diagnostic / admission readiness) |
+| CSS · JavaScript · SQL · Networking | 0 | **no** — design/spec only (section 5) |
 
 `CurriculumSubjectId` is `'math' | 'programming' | 'physics'`. English and Reasoning exist only as `proposed`
 registry entries (see `docs/subject-expansion-audit.md`).
@@ -149,6 +150,45 @@ Legend — **Optional game**: *no* = core interaction already shows the idea; a 
 - Representation: cart lab — **predict → change F (or m) → run → watch → measurement table → answer from table** (`cart-lab`, two experiments). Unfair test (changing both) is flagged.
 - Scaffold: L1 predict → L2 parameter → L3 calc steps → L4 friction step → L5.
 - Independent: i-5 4 kg, μ = 0.25, 20 N; i-6 1,200 kg at 2.5 m/s².
+- Optional game: no.
+
+### Web — HTML (optional skill/career track, added 2026-10-06)
+
+Not part of the Diagnostic or admission readiness (subject registry status `track`). Core experience: **HTML Live Web Builder** (code ↔ live page, DOM-checked requirements).
+
+**web-html-elements** · HTML ทำให้หน้าเว็บเกิดขึ้นได้อย่างไร · skill `skill-web-html-element` · authored
+- Hard/abstract: tags are never shown; element = opening tag + content + closing tag.
+- Interaction: place prepared blocks (drag, tap or keyboard) → page draws instantly → short explanation after.
+- Scaffold: L1 prepared blocks → L2 edit content (anatomy view) → L5 own page with empty blocks.
+- Independent: i-5 club announcement page, i-6 short self-introduction.
+- Optional game: no.
+
+**web-html-text** · ข้อความและโครงสร้างเนื้อหา · skills `skill-web-html-text-structure`, `skill-web-html-nesting` · authored
+- Hard: heading order; an unclosed heading swallows the next paragraph; inner tag closes first.
+- Interaction: tag map with labelled pairs; unclosed tag marked “ยังไม่มีคู่” + “ส่วนไหนยังไม่ได้ปิด?”.
+- Scaffold: L1 place headings → L3 fix missing / overlapping close → L4 own intro section.
+- Independent: i-5 paragraph with strong + em nested correctly, i-6 full intro section.
+- Optional game: optional (tag pairing) — not built.
+
+**web-html-links-images** · ลิงก์ รูปภาพ และ Attributes · skills `skill-web-html-attributes`, `skill-web-html-links-images` · authored
+- Hard: attributes live in the opening tag; alt describes the picture; img has no closing tag.
+- Interaction: attribute panel (src → รูปไหน, alt → คำอธิบายรูป, href → ลิงก์ไปไหน); broken src shows the alt text.
+- Scaffold: L2 change one attribute → L3 add the missing alt → L4 own image + text + link.
+- Independent: i-5 image + paragraph + link, i-6 replace “คลิกที่นี่” with descriptive link text.
+- Optional game: no.
+
+**web-html-page-structure** · โครงสร้างของหน้าเว็บ · skill `skill-web-html-page-structure` · authored
+- Hard: head ≠ header; nested code = nested page regions.
+- Interaction: regions view — tap code region ↔ page region highlight; tab title from `<title>`.
+- Scaffold: L2 move one line into footer → L3 wrap content in a document skeleton → L4 arrange a page into regions.
+- Independent: i-5 header/main/section/footer page, i-6 one main with two sections.
+- Optional game: no.
+
+**web-html-project** · Mini Project — หน้าเว็บแรกของฉัน · skill `skill-web-html-page-build` · authored
+- Hard: building from requirements, not copying a picture.
+- Interaction: free builder with a live requirement checklist (structure only; any text, image and order).
+- Scaffold: L5 (starter skeleton + three optional templates).
+- Independent: i-5 full self-introduction page, i-6 small shop page (new situation).
 - Optional game: no.
 
 ## 4. Subject approaches (what is implemented)

@@ -40,6 +40,8 @@
   --color-phy-soft: #e0f4f7;
   --color-prog: #d24a22;
   --color-prog-soft: #fdede6;
+  --color-web: #b4307e;
+  --color-web-soft: #fbe9f3;
   --shadow-card: 0 1px 2px rgba(13, 19, 48, 0.04), 0 10px 28px -18px rgba(13, 19, 48, 0.22);
   --shadow-lift: 0 2px 4px rgba(13, 19, 48, 0.05), 0 22px 44px -22px rgba(23, 33, 122, 0.35);
   --font-sans: 'IBM Plex Sans Thai', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -58,7 +60,7 @@
   --dest: #d99a14; --dest-ink: #8a5d00; --dest-soft: #fdf3dc;
   --ok: #0b8a64; --ok-soft: #e1f5ee; --dev: #3b55e0; --dev-soft: #eceffd; --rev: #a86300; --rev-soft: #fdf0d8;
   --none: #5f6889; --none-soft: #eef0f6; --err: #c2353b; --err-soft: #fde8e8;
-  --math: #6a48f5; --math-soft: #f0ecff; --phy: #0a8499; --phy-soft: #e0f4f7; --prog: #d24a22; --prog-soft: #fdede6;
+  --math: #6a48f5; --math-soft: #f0ecff; --phy: #0a8499; --phy-soft: #e0f4f7; --prog: #d24a22; --prog-soft: #fdede6; --web: #b4307e; --web-soft: #fbe9f3;
   --skel: #e9ecf5; --skel-hi: #f5f6fb;
   --shadow: 0 1px 2px rgba(13, 19, 48, .04), 0 10px 28px -18px rgba(13, 19, 48, .22);
   --shadow-lg: 0 2px 4px rgba(13, 19, 48, .05), 0 22px 44px -22px rgba(23, 33, 122, .35);

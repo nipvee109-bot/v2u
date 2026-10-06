@@ -88,11 +88,11 @@ export function ReadingExperience({
   content: OriginalLesson;
   outcomes: string[];
   onDone: () => void;
-  subjectId?: 'math' | 'programming' | 'physics';
+  subjectId?: 'math' | 'programming' | 'physics' | 'web';
   /** Titles of the lessons to know first (from the curriculum) */
   prerequisites?: string[];
 }) {
-  const isCode = subjectId === 'programming';
+  const isCode = subjectId === 'programming' || subjectId === 'web';
   // Phase 62: researched knowledge for this lesson (same data the understanding check uses)
   const k = getLessonKnowledge(content.lessonId);
   const [seen, mark] = useReadingProgress(content.lessonId);

@@ -42,15 +42,17 @@ const { initialLessons } = await jiti.import(path.join(root, 'src/data/initialDa
 console.log('=== Phase 51: Real Learning Content + Resource Curation ===\n');
 
 console.log('1. Every lesson has a usable path');
-await test('All 15 curriculum lessons have a learning path with original, practice and check', () => {
-  assert.strictEqual(C.lessons.length, 15);
+await test('All curriculum lessons (15 admission + 5 optional web) have a learning path with original, practice and check', () => {
+  assert.strictEqual(C.lessons.length, 20);
+  assert.strictEqual(C.lessons.filter((l) => l.subjectId !== 'web').length, 15);
   for (const l of C.lessons) {
     const p = CE.getLearningPath(l.id);
     assert(p, l.id);
     assert(p.original && p.original.lessonId === l.id, `${l.id} original`);
     assert(p.practiceExerciseId && C.exercises.some((x) => x.id === p.practiceExerciseId), `${l.id} practice`);
     assert(p.checkQuizId && C.quizzes.some((x) => x.id === p.checkQuizId), `${l.id} check`);
-    assert(p.primary, `${l.id} primary`);
+    // Web lessons have no curated external resource yet: they start from V2U's own content + the HTML builder
+    if (l.subjectId !== 'web') assert(p.primary, `${l.id} primary`);
   }
 });
 await test('V2U originals: all 8 sections + traceability, validateOriginals() clean', () => {

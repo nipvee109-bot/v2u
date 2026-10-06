@@ -39,8 +39,10 @@ await test('Pathway is Computer Engineering with requirements for math, programm
   assert.strictEqual(C.pathway.id, 'pathway-computer-engineering');
   assert.deepStrictEqual(C.pathway.requirements.map((r) => r.subjectId).sort(), ['math', 'physics', 'programming']);
 });
-await test('Subjects are Mathematics, Programming, Physics', () => {
-  assert.deepStrictEqual(C.subjects.map((s) => s.id), ['math', 'programming', 'physics']);
+await test('Admission subjects are Mathematics, Programming, Physics; Web is only an optional track', () => {
+  assert.deepStrictEqual(C.subjects.map((s) => s.id), ['math', 'programming', 'physics', 'web']);
+  // The pathway's admission requirements never include the optional track
+  assert.deepStrictEqual([...new Set(C.pathway.requirements.map((r) => r.subjectId))].sort(), ['math', 'physics', 'programming']);
 });
 await test('Small but meaningful foundation (not hundreds of lessons)', () => {
   assert(C.lessons.length >= 10 && C.lessons.length <= 60, `lessons=${C.lessons.length}`);
@@ -102,9 +104,11 @@ await test('Quiz answers point at a valid choice', () => {
   for (const q of C.quizzes) for (const x of q.questions) assert(x.correctIndex >= 0 && x.correctIndex < x.choices.length, q.id);
 });
 await test('Every curriculum lesson links to a real seed study lesson', () => {
-  for (const l of C.lessons) {
+  for (const l of C.lessons.filter((x) => x.subjectId !== 'web')) {
     assert(initialLessons.some((s) => s.title === l.studyLessonTitle && s.subjectId === l.subjectId), `${l.id} → "${l.studyLessonTitle}"`);
   }
+  // Optional track: never seeded for new learners — its study lesson is added only when the learner works on it (ensureStudyLesson)
+  assert(!initialLessons.some((s) => s.subjectId === 'web'));
 });
 
 console.log('\n3. Next Step integration');

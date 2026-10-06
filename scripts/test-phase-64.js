@@ -42,7 +42,8 @@ const E = await jiti.import(path.join(root, 'src/interactive/engine.ts'));
 const lessonOf = (id) => AUTHORED_LESSONS.find((l) => l.lessonId === id);
 
 await test('three reference scripts: math, physics, programming — each with its teaching principle', () => {
-  assert.deepStrictEqual(STUDIO_SCRIPTS.map((s) => s.subject).sort(), ['math', 'physics', 'programming']);
+  assert.deepStrictEqual([...new Set(STUDIO_SCRIPTS.map((s) => s.subject))].sort(), ['math', 'physics', 'programming', 'web']);
+  assert.strictEqual(getStudioScript('web-html-elements').principle, 'ทำให้โค้ดกลายเป็นหน้าเว็บตรงหน้า');
   assert.strictEqual(getStudioScript('math-alg-linear-eq').principle, 'ทำให้เรื่องยากมองเห็นได้');
   assert.strictEqual(getStudioScript('phy-dyn-newton').principle, 'ทำให้สูตรทดลองได้');
   assert.strictEqual(getStudioScript('prog-ctrl-conditions').principle, 'ทำให้โค้ดมีชีวิต');

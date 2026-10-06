@@ -68,8 +68,8 @@ await test('Registry and curriculum both validate cleanly', () => {
 });
 
 console.log('\n2. Mappings');
-await test('Every curriculum lesson resolves recommendable resources', () => {
-  for (const l of C.lessons) assert(E.getResourcesForLesson(l.id).length > 0, l.id);
+await test('Every admission-subject lesson resolves recommendable resources', () => {
+  for (const l of C.lessons.filter((x) => x.subjectId !== 'web')) assert(E.getResourcesForLesson(l.id).length > 0, l.id);
 });
 await test('Lesson.resourceIds and resource.curriculumLessonIds agree in both directions', () => {
   for (const l of C.lessons) for (const id of l.resourceIds) assert(R.find((r) => r.id === id).curriculumLessonIds.includes(l.id), `${l.id}→${id}`);

@@ -47,9 +47,10 @@ const widgets = (id) => S.getStudioScript(id).chunks.filter((c) => c.kind === 'w
 const W = (id, kind) => widgets(id).find((w) => w.kind === kind);
 const ex = (id, eid) => get(id).workedExamples.find((e) => e.id === eid);
 
-await test('Teaching Depth Matrix covers all 15 lessons once; 3 reference + 12 upgraded', () => {
+await test('Teaching Depth Matrix covers all 20 lessons once; 3 subject references + 5 HTML references + 12 upgraded', () => {
   assert.deepStrictEqual(D.DEPTH_PLANS.map((p) => p.lessonId).sort(), [...LESSONS].sort());
-  assert.strictEqual(D.DEPTH_PLANS.filter((p) => p.after === 'REFERENCE_COMPLETE').length, 3);
+  assert.strictEqual(D.DEPTH_PLANS.filter((p) => p.after === 'REFERENCE_COMPLETE').length, 8);
+  for (const p of D.DEPTH_PLANS.filter((x) => x.lessonId.startsWith('web-'))) assert(p.patterns.includes('LIVE_BUILDER') && p.inserts.length === 0, p.lessonId);
   assert.strictEqual(D.DEPTH_PLANS.filter((p) => p.after === 'DEPTH_UPGRADED').length, 12);
   for (const p of D.DEPTH_PLANS) assert(p.patterns.length > 0 && p.why.length > 10 && p.hardConcepts.length > 0, p.lessonId);
 });

@@ -11,9 +11,10 @@ import type { FinalCheckItem, InteractiveLesson, InteractiveStep } from './types
 import { LINEAR_EQUATION_LESSON } from './lessons/linearEquation';
 import { CODE_BATTLE_LESSON } from './lessons/codeBattle';
 import { NEWTON_LAB_LESSON } from './lessons/newtonLab';
+import { HTML_LESSONS } from './lessons/html';
 import { knowledgeFinalChecks } from '../content/knowledge';
 
-export const AUTHORED_LESSONS: InteractiveLesson[] = [LINEAR_EQUATION_LESSON, CODE_BATTLE_LESSON, NEWTON_LAB_LESSON];
+export const AUTHORED_LESSONS: InteractiveLesson[] = [LINEAR_EQUATION_LESSON, CODE_BATTLE_LESSON, NEWTON_LAB_LESSON, ...HTML_LESSONS];
 
 const nextOf = (lessonId: string) => {
   const order = CURRICULUM.topics.flatMap((t) => t.lessonIds);
@@ -98,6 +99,7 @@ export function validateInteractiveLessons(): string[] {
       if ((i?.kind === 'typed' || i?.kind === 'code') && i.accept.length === 0) errors.push(`${l.id}/${s.id}: no accepted answer`);
       if (i?.kind === 'code' && (i.template.match(/____/g) || []).length !== 1) errors.push(`${l.id}/${s.id}: code needs exactly one blank`);
       if (i?.kind === 'lab' && (i.question.correctIndex < 0 || i.question.correctIndex >= i.question.choices.length)) errors.push(`${l.id}/${s.id}: bad lab question`);
+      if (i?.kind === 'html' && (i.requirements.length === 0 || !i.solution.trim() || !i.hint || !i.explanation)) errors.push(`${l.id}/${s.id}: html step needs requirements, solution, hint and explanation`);
     }
     for (const f of il.finalCheck) {
       if (!skills.has(f.skillId)) errors.push(`${l.id}/${f.id}: unknown skill`);
