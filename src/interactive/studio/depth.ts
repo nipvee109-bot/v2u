@@ -21,7 +21,13 @@ export type PatternId =
   | 'MATCH_REPRESENTATIONS'
   | 'SMART_READING'
   /** Web: code ↔ live page (HTML Live Web Builder) — every edit redraws the page */
-  | 'LIVE_BUILDER';
+  | 'LIVE_BUILDER'
+  /* P0 per-lesson mechanics (docs/teaching-mechanic-library.md) */
+  | 'MOTION_OVER_TIME'
+  | 'CANCELLATION_TILES'
+  | 'SUBSTITUTION_MACHINE'
+  | 'STORY_TO_MODEL'
+  | 'BE_THE_USER';
 
 export type DepthClass = 'REFERENCE_COMPLETE' | 'DEPTH_UPGRADE_NEEDED' | 'SMART_READING_SUFFICIENT';
 
@@ -57,18 +63,7 @@ export const DEPTH_PLANS: DepthPlan[] = [
   { lessonId: 'prog-ctrl-conditions', hardConcepts: ['ลำดับ if/elif', '= กับ =='], before: 'REFERENCE_COMPLETE', after: 'REFERENCE_COMPLETE', patterns: ['CODE_TRACE', 'CODE_WHAT_IF', 'DEBUGGING', 'FIND_THE_MISTAKE'], why: 'เห็นเงื่อนไขที่จริงก่อนชนะ และแก้ลำดับเงื่อนไขเอง', interaction: true, visualization: true, simulation: false, codeExecution: true, inserts: [] },
 
   /* ── Batch A: Mathematics ── */
-  {
-    lessonId: 'math-alg-linear-system',
-    hardConcepts: ['คำตอบต้องจริงทั้งสองสมการพร้อมกัน', 'แทนค่าให้ครบทุกพจน์'],
-    before: 'DEPTH_UPGRADE_NEEDED', after: 'DEPTH_UPGRADED',
-    patterns: ['VISUAL_REASONING', 'MISSING_STEP', 'FIND_THE_MISTAKE'],
-    why: 'ลองคู่ (x, y) แล้วเห็นแต่ละสมการจริง/เท็จทันที — ทำให้ “คำตอบของระบบ” เป็นรูปธรรม (ไม่ใช้กราฟ เพราะการแก้ด้วยกราฟยังไม่อยู่ในบทนี้)',
-    interaction: true, visualization: true, simulation: false, codeExecution: false,
-    inserts: [
-      { after: 'idea', chunk: w('pair', 'understand', 'คู่ไหนทำให้จริงทั้งสองสมการ?', 'ลองขยับ x กับ y แล้วดูว่าสมการไหนจริงบ้าง', { kind: 'pair-check', exampleId: 'we-1', eqs: [[3, 2, 16], [1, -1, 2]] }) },
-      { after: 'example-a', chunk: w('missing', 'try', 'ขั้นไหนหายไป?', 'ขั้นนี้คือหัวใจของวิธีแทนค่า', { kind: 'missing-step', exampleId: 'we-1', index: 1 }) },
-    ],
-  },
+  { lessonId: 'math-alg-linear-system', hardConcepts: ['คำตอบต้องจริงทั้งสองสมการพร้อมกัน', 'แทนค่าให้ครบทุกพจน์'], before: 'DEPTH_UPGRADE_NEEDED', after: 'REFERENCE_COMPLETE', patterns: ['VISUAL_REASONING', 'SUBSTITUTION_MACHINE', 'STORY_TO_MODEL', 'FIND_THE_MISTAKE'], why: 'ไฟสองดวงทำให้ “จริงพร้อมกัน” เห็นได้ · เครื่องแทนค่าแทน x ทุกตัวด้วยสิ่งที่ x เท่ากับ · ผู้เรียนแปลงเรื่องราวเป็นสมการเองและได้รู้ว่าสมการที่ผิด “หมายความว่าอะไร”', interaction: true, visualization: true, simulation: false, codeExecution: false, inserts: [] },
   {
     lessonId: 'math-alg-linear-ineq',
     hardConcepts: ['คูณ/หารด้วยจำนวนลบต้องกลับทิศ', 'วงเล็บเปิด/ปิดของช่วง'],
@@ -119,18 +114,7 @@ export const DEPTH_PLANS: DepthPlan[] = [
   },
 
   /* ── Batch B: Physics ── */
-  {
-    lessonId: 'phy-vec-units',
-    hardConcepts: ['คูณหรือหาร 3.6', 'ให้หน่วยเดิมตัดกัน'],
-    before: 'DEPTH_UPGRADE_NEEDED', after: 'DEPTH_UPGRADED',
-    patterns: ['PREDICT_OBSERVE_EXPLAIN', 'MISSING_STEP', 'FIND_THE_MISTAKE'],
-    why: 'ทายก่อนว่าตัวเลขจะมากขึ้นหรือน้อยลง แล้วแปลงทีละตัวประกอบ — กันจุดพลาด “คูณแทนหาร”',
-    interaction: true, visualization: true, simulation: false, codeExecution: false,
-    inserts: [
-      { after: 'rules', chunk: w('ladder', 'understand', '72 km/h เป็น m/s', 'ทายก่อนนะ แล้วค่อยแปลงทีละขั้น', { kind: 'unit-ladder', exampleId: 'we-1', value: 72, from: 'km/h', to: 'm/s' }) },
-      { after: 'example-a', chunk: w('missing', 'try', 'ขั้นไหนหายไป?', 'ก่อนคูณ ต้องรู้อะไรเกี่ยวกับ k ก่อน?', { kind: 'missing-step', exampleId: 'we-2', index: 0 }) },
-    ],
-  },
+  { lessonId: 'phy-vec-units', hardConcepts: ['คูณหรือหาร 3.6', 'ให้หน่วยเดิมตัดกัน'], before: 'DEPTH_UPGRADE_NEEDED', after: 'REFERENCE_COMPLETE', patterns: ['CANCELLATION_TILES', 'PREDICT_OBSERVE_EXPLAIN', 'FIND_THE_MISTAKE'], why: 'ผู้เรียนเลือกตัวประกอบและด้านที่วางเอง หน่วยที่ตรงกันตัดกันต่อหน้า วางกลับด้านแล้วหน่วยไม่หาย — คือจุดพลาด ×3.6/÷3.6 โดยตรง', interaction: true, visualization: true, simulation: false, codeExecution: false, inserts: [] },
   {
     lessonId: 'phy-vec-vectors',
     hardConcepts: ['องค์ประกอบด้วย cos/sin', 'รวมเวกเตอร์ตั้งฉากไม่ใช่บวกขนาด'],
@@ -143,19 +127,7 @@ export const DEPTH_PLANS: DepthPlan[] = [
       { after: 'example-a', chunk: w('order', 'try', 'เรียงขั้นหาเวกเตอร์ลัพธ์', 'แยกแกน → รวม → หาขนาด', { kind: 'order-steps', exampleId: 'we-2' }) },
     ],
   },
-  {
-    lessonId: 'phy-kin-1d',
-    hardConcepts: ['เลือกสมการจากตัวแปรที่รู้', 'ความชัน/พื้นที่ของกราฟ v–t', 'เครื่องหมายของความเร่งตอนเบรก'],
-    before: 'DEPTH_UPGRADE_NEEDED', after: 'DEPTH_UPGRADED',
-    patterns: ['PREDICT_OBSERVE_EXPLAIN', 'VARIABLE_EXPLORER', 'GRAPH_EXPLORER', 'STEP_ORDERING', 'FIND_THE_MISTAKE'],
-    why: 'ทาย v ก่อน แล้วปรับ u, a, t ดูกราฟ v–t: ความชันคือ a และพื้นที่คือ s ตามสมการของบท',
-    interaction: true, visualization: true, simulation: true, codeExecution: false,
-    limitation: '“พื้นที่ใต้กราฟ = การกระจัด” ยืนยันด้วยการคำนวณ ไม่พบเป็นข้อความในหัวข้อ OpenStax ที่เปิด',
-    inserts: [
-      { after: 'rules', chunk: w('motion', 'understand', 'ความเร็วเปลี่ยนอย่างไรเมื่อมีความเร่ง', 'ทายก่อน แล้วลองปรับค่าดูกราฟ', { kind: 'motion-explorer', exampleId: 'we-1', u: 0, a: 2, t: 5 }) },
-      { after: 'example-a', chunk: w('order', 'try', 'เรียงขั้นแก้โจทย์เบรก', 'เริ่มจากกำหนดทิศและสิ่งที่รู้', { kind: 'order-steps', exampleId: 'we-2' }) },
-    ],
-  },
+  { lessonId: 'phy-kin-1d', hardConcepts: ['เลือกสมการจากตัวแปรที่รู้', 'ความชัน/พื้นที่ของกราฟ v–t', 'เครื่องหมายของความเร่งตอนเบรก'], before: 'DEPTH_UPGRADE_NEEDED', after: 'REFERENCE_COMPLETE', patterns: ['MOTION_OVER_TIME', 'PREDICT_OBSERVE_EXPLAIN', 'GRAPH_EXPLORER', 'FIND_THE_MISTAKE'], why: 'รถวิ่งจริงและทิ้งรอยทุกวินาที ผู้เรียนทายตำแหน่งก่อนแล้วเทียบกับของจริง ระยะห่างรอยที่ยาวขึ้นคือความเร่งที่มองเห็น กราฟ v–t วาดไปพร้อมกัน', interaction: true, visualization: true, simulation: true, codeExecution: false, limitation: '“พื้นที่ใต้กราฟ = การกระจัด” ยืนยันด้วยการคำนวณ ไม่พบเป็นข้อความในหัวข้อ OpenStax ที่เปิด · รถในบทเรียนเบรกแล้วหยุด ไม่ถอยหลัง (ความเร่งคงตัวใช้ได้จนรถหยุด)', inserts: [] },
 
   /* ── Batch C: Programming ── */
   {
@@ -167,15 +139,7 @@ export const DEPTH_PLANS: DepthPlan[] = [
     interaction: true, visualization: true, simulation: false, codeExecution: true,
     inserts: [{ replace: 'example-a', chunk: w('trace', 'understand', 'ดูหน่วยความจำทีละบรรทัด', 'ทายผลลัพธ์ก่อน แล้วกดถัดไปทีละขั้น', { kind: 'code-trace', traceId: 'var-we-1', mode: 'memory' }) }],
   },
-  {
-    lessonId: 'prog-py-io',
-    hardConcepts: ['input() ได้ str เสมอ', 'f-string'],
-    before: 'DEPTH_UPGRADE_NEEDED', after: 'DEPTH_UPGRADED',
-    patterns: ['CODE_TRACE', 'CODE_WHAT_IF', 'DEBUGGING', 'FIND_THE_MISTAKE'],
-    why: 'เห็นจังหวะที่ input() แสดงข้อความ รอผู้ใช้ แล้วเก็บค่าเป็นสตริงในหน่วยความจำ',
-    interaction: true, visualization: true, simulation: false, codeExecution: true,
-    inserts: [{ replace: 'example-a', chunk: w('trace', 'understand', 'input → ตัวแปร → output', 'ทายก่อนว่าหน้าจอจะแสดงอะไร', { kind: 'code-trace', traceId: 'io-we-1', mode: 'io' }) }],
-  },
+  { lessonId: 'prog-py-io', hardConcepts: ['input() ได้ str เสมอ', 'f-string'], before: 'DEPTH_UPGRADE_NEEDED', after: 'REFERENCE_COMPLETE', patterns: ['BE_THE_USER', 'CODE_TRACE', 'DEBUGGING', 'FIND_THE_MISTAKE'], why: 'ผู้เรียนเป็นผู้ใช้เอง พิมพ์ค่าแล้วเห็นว่า "16" เป็น str ในหน่วยความจำ บวกเลขแล้ว error จริง แก้ด้วย int() แล้วรันใหม่', interaction: true, visualization: true, simulation: false, codeExecution: true, limitation: 'คอนโซลรันเฉพาะโปรแกรมของบทเรียนด้วยตัวแปลขนาดเล็กที่ตรวจเทียบกับ python3 จริงในชุดทดสอบ — ผู้เรียนใส่ได้เฉพาะ input ไม่ใช่โค้ด', inserts: [] },
   {
     lessonId: 'prog-ctrl-loops',
     hardConcepts: ['range ไม่รวมค่าสุดท้าย', 'ตำแหน่งของตัวสะสม'],

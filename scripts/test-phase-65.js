@@ -47,7 +47,7 @@ const LESSONS = CURRICULUM.lessons.map((l) => l.id);
 await test('every curriculum lesson has a Learn-with-V2U script (curriculum ids unchanged)', () => {
   assert.strictEqual(LESSONS.length, 20); // 15 admission + 5 optional web
   for (const id of LESSONS) assert(getStudioScript(id), id);
-  assert.strictEqual(STUDIO_SCRIPTS.length, 8); // 3 subject references + 5 authored HTML lessons
+  assert.strictEqual(STUDIO_SCRIPTS.length, 12); // 3 subject references + 5 authored HTML lessons + 4 P0 mechanics lessons
 });
 
 await test('every script id exists in knowledge / the lesson’s steps; nothing new invented', () => {

@@ -35,6 +35,7 @@ async function test(name, fn) {
 
 console.log('=== Phase 69: Lesson-specific teaching depth ===\n');
 const K = await jiti.import(path.join(root, 'src/content/knowledge/index.ts'));
+const R = await jiti.import(path.join(root, 'src/interactive/registry.ts'));
 const { CURRICULUM: C } = await jiti.import(path.join(root, 'src/curriculum/data.ts'));
 const D = await jiti.import(path.join(root, 'src/interactive/studio/depth.ts'));
 const S = await jiti.import(path.join(root, 'src/interactive/studio/scripts.ts'));
@@ -47,11 +48,11 @@ const widgets = (id) => S.getStudioScript(id).chunks.filter((c) => c.kind === 'w
 const W = (id, kind) => widgets(id).find((w) => w.kind === kind);
 const ex = (id, eid) => get(id).workedExamples.find((e) => e.id === eid);
 
-await test('Teaching Depth Matrix covers all 20 lessons once; 3 subject references + 5 HTML references + 12 upgraded', () => {
+await test('Teaching Depth Matrix covers all 20 lessons once; 3 subject references + 5 HTML references + 4 P0 mechanics references + 8 upgraded', () => {
   assert.deepStrictEqual(D.DEPTH_PLANS.map((p) => p.lessonId).sort(), [...LESSONS].sort());
-  assert.strictEqual(D.DEPTH_PLANS.filter((p) => p.after === 'REFERENCE_COMPLETE').length, 8);
+  assert.strictEqual(D.DEPTH_PLANS.filter((p) => p.after === 'REFERENCE_COMPLETE').length, 12);
   for (const p of D.DEPTH_PLANS.filter((x) => x.lessonId.startsWith('web-'))) assert(p.patterns.includes('LIVE_BUILDER') && p.inserts.length === 0, p.lessonId);
-  assert.strictEqual(D.DEPTH_PLANS.filter((p) => p.after === 'DEPTH_UPGRADED').length, 12);
+  assert.strictEqual(D.DEPTH_PLANS.filter((p) => p.after === 'DEPTH_UPGRADED').length, 8);
   for (const p of D.DEPTH_PLANS) assert(p.patterns.length > 0 && p.why.length > 10 && p.hardConcepts.length > 0, p.lessonId);
 });
 
@@ -89,14 +90,14 @@ await test('numbers in visual patterns match the lessons’ worked examples and 
   assert(f1.answer === 'y = 2x + 1' && 2 <= 4 && 2 % 0.5 === 0 && 1 <= 6, 'reachable with the sliders');
   const tr = W('math-trig-ratios', 'triangle-sides'); const t1 = ex('math-trig-ratios', 'we-1');
   assert(t1.answer.includes(`${tr.opp}/${tr.hyp}`) && t1.answer.includes(`${tr.adj}/${tr.hyp}`) && tr.opp ** 2 + tr.adj ** 2 === tr.hyp ** 2);
-  const u = W('phy-vec-units', 'unit-ladder');
-  assert(ex('phy-vec-units', 'we-1').problem.includes(String(u.value)) && ex('phy-vec-units', 'we-1').answer === `${u.value / 3.6} m/s`);
+  const st =(id, sid) => R.getInteractiveLesson(id).steps.find((s) => s.id === sid).interaction;
+  const u = st('phy-vec-units', 'kmh-ms');
+  assert(ex('phy-vec-units', 'we-1').problem.includes(String(u.value)) && ex('phy-vec-units', 'we-1').answer === `${u.answer} m/s` && u.value / 3.6 === u.answer);
   const v = W('phy-vec-vectors', 'vector-explorer'); const v1 = ex('phy-vec-vectors', 'we-1');
   assert(v1.problem.includes(`${v.magnitude} N`) && v1.problem.includes(`${v.angle}°`));
   assert(v1.answer.includes((v.magnitude * Math.cos((v.angle * Math.PI) / 180)).toFixed(2)));
-  const m = W('phy-kin-1d', 'motion-explorer'); const k1 = ex('phy-kin-1d', 'we-1');
-  assert(k1.steps[0].includes(`u = ${m.u}, a = ${m.a}, t = ${m.t}`) && k1.answer.startsWith(`v = ${m.u + m.a * m.t} m/s`));
-  assert(k1.answer.includes(`s = ${m.u * m.t + 0.5 * m.a * m.t * m.t} m`));
+  const m = st('phy-kin-1d', 'brake'); const k2 = ex('phy-kin-1d', 'we-2');
+  assert(k2.problem.includes(`${m.u} m/s`) && k2.answer.startsWith(`s = ${m.goal.x} m`), 'brake goal = worked example 2');
 });
 
 await test('code traces: regenerated with real python3 = committed; outputs/errors match the lessons', async () => {

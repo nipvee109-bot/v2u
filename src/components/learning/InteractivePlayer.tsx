@@ -4,6 +4,11 @@ import { canContinue, EMPTY_RESULT } from '../../interactive/engine';
 import type { PlayerAction } from '../../interactive/engine';
 import { ChoiceQuestion, CodeQuestion, LabQuestion, OrderQuestion, SelfCheck, TypedQuestion } from './Questions';
 import { HtmlBuilder } from './studio/HtmlBuilder';
+import { MotionLab } from './mechanics/MotionLab';
+import { UnitTiles } from './mechanics/UnitTiles';
+import { Substitution } from './mechanics/Substitution';
+import { StoryModel } from './mechanics/StoryModel';
+import { PyConsole } from './mechanics/PyConsole';
 import { ThemeBanner } from './ThemeBanner';
 
 const TYPE_LABEL: Record<InteractiveStep['type'], string> = {
@@ -137,6 +142,11 @@ export function InteractivePlayer({ lesson, state, dispatch, onToCheck }: Player
                 {step.interaction.kind === 'code' && <CodeQuestion key={step.id} interaction={step.interaction} {...handlers} />}
                 {step.interaction.kind === 'lab' && <LabQuestion key={step.id} interaction={step.interaction} {...handlers} />}
                 {step.interaction.kind === 'html' && <HtmlBuilder key={step.id} interaction={step.interaction} saveKey={`${lesson.lessonId}/${step.id}`} {...handlers} />}
+                {step.interaction.kind === 'motion' && <MotionLab key={step.id} interaction={step.interaction} {...handlers} />}
+                {step.interaction.kind === 'units' && <UnitTiles key={step.id} interaction={step.interaction} {...handlers} />}
+                {step.interaction.kind === 'substitute' && <Substitution key={step.id} interaction={step.interaction} {...handlers} />}
+                {step.interaction.kind === 'story' && <StoryModel key={step.id} interaction={step.interaction} {...handlers} />}
+                {step.interaction.kind === 'console' && <PyConsole key={step.id} interaction={step.interaction} {...handlers} />}
               </div>
             )}
 

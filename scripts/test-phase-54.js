@@ -88,9 +88,10 @@ await test('6. V2U mode: every curriculum lesson has an interactive lesson (auth
   assert.deepStrictEqual(R.validateInteractiveLessons(), []);
   assert.strictEqual(lesson.source, 'authored');
   for (const l of C.lessons) assert(R.getInteractiveLesson(l.id), l.id);
-  const gen = R.getInteractiveLesson('phy-kin-1d'); // phy-dyn-newton became an authored lab in Phase 56
+  // phy-dyn-newton became an authored lab in Phase 56; phy-kin-1d became authored in the P0 mechanics wave (Phase 77)
+  const gen = R.getInteractiveLesson('phy-vec-vectors');
   assert.strictEqual(gen.source, 'generated');
-  const o = ORIGINAL_LESSONS.find((x) => x.lessonId === 'phy-kin-1d');
+  const o = ORIGINAL_LESSONS.find((x) => x.lessonId === 'phy-vec-vectors');
   assert(gen.steps.some((s) => s.interaction?.kind === 'self' && s.interaction.answer === o.tryIt[0].answer), 'generated from the original');
 });
 await test('7. Video mode exists in the shared flow and the Study Room keeps the curated resources', () => {

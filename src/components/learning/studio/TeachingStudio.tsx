@@ -22,6 +22,11 @@ import { gamesForLesson } from '../../../learning/games/registry';
 import type { StudioWidget } from '../../../interactive/studio/types';
 import { BalanceWidget, CartLab, RobotDebug, RobotRun } from './Widgets';
 import { HtmlBuilder } from './HtmlBuilder';
+import { MotionLab } from '../mechanics/MotionLab';
+import { UnitTiles } from '../mechanics/UnitTiles';
+import { Substitution } from '../mechanics/Substitution';
+import { StoryModel } from '../mechanics/StoryModel';
+import { PyConsole } from '../mechanics/PyConsole';
 
 /* "เรียนกับ V2U" as a teaching studio (Phase 64):
    HOOK → EXPLAIN → TRY → OBSERVE → WHY → RETRY → INDEPENDENT → SUMMARY → (existing check).
@@ -361,6 +366,11 @@ function StepBody({ step, state, dispatch, saveKey }: { step: InteractiveStep; s
           {i.kind === 'code' && <CodeQuestion key={step.id} interaction={i} {...handlers} />}
           {i.kind === 'lab' && <LabQuestion key={step.id} interaction={i} {...handlers} />}
           {i.kind === 'html' && <HtmlBuilder key={step.id} interaction={i} saveKey={saveKey ?? step.id} {...handlers} />}
+          {i.kind === 'motion' && <MotionLab key={step.id} interaction={i} {...handlers} />}
+          {i.kind === 'units' && <UnitTiles key={step.id} interaction={i} {...handlers} />}
+          {i.kind === 'substitute' && <Substitution key={step.id} interaction={i} {...handlers} />}
+          {i.kind === 'story' && <StoryModel key={step.id} interaction={i} {...handlers} />}
+          {i.kind === 'console' && <PyConsole key={step.id} interaction={i} {...handlers} />}
         </div>
       )}
       {step.afterVisual && (result.solved || result.revealed) && <div className="mt-3"><EquationCard lines={step.afterVisual.lines} caption={step.afterVisual.caption} tone="solved" /></div>}

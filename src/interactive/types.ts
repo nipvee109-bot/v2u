@@ -8,6 +8,9 @@
    ========================================================================= */
 
 import type { HtmlRequirement } from '../web/html';
+import type { KinVar, MotionGoal } from './mechanics/kinematics';
+import type { UnitExpr, UnitTile } from './mechanics/units';
+import type { Lin, StoryChip, StoryNames, StoryRow } from './mechanics/linearSystem';
 
 /** How the learner chose to study this sitting. */
 export type LearningMode = 'read' | 'video' | 'v2u';
@@ -62,6 +65,91 @@ export interface LabInteraction {
   question: { prompt: string; choices: string[]; correctIndex: number; hint: string; explanation: string };
 }
 
+/* ── P0 per-lesson mechanics (docs/per-lesson-learning-mechanics.md) ── */
+
+/** phy-kin-1d: Motion Over Time — a car on a track leaves a mark every second. */
+export interface MotionInteraction {
+  kind: 'motion';
+  prompt: string;
+  /** predict: place a pin where the car will be · target: set u/a to meet a goal · equation: pick the equation from known quantities */
+  mode: 'predict' | 'target' | 'equation';
+  u: number;
+  a: number;
+  /** predict: seconds already run before the first prediction */
+  shownUntil?: number;
+  /** predict: seconds to predict, in order (a later one is offered after a wrong prediction) */
+  predictAt?: number[];
+  goal?: MotionGoal;
+  /** target: which quantities the learner may change, with [min, max, step] */
+  controls?: { u?: [number, number, number]; a?: [number, number, number] };
+  /** seconds the run lasts (target/predict) */
+  runFor?: number;
+  trackMax: number;
+  tol: number;
+  equation?: { story: string; known: Partial<Record<KinVar, number>>; unknown: KinVar; answer: number; unit: string };
+  hint: string;
+  explanation: string;
+}
+
+/** phy-vec-units: Cancellation Tiles — choose factors and which way up; units cancel visibly. */
+export interface UnitsInteraction {
+  kind: 'units';
+  prompt: string;
+  value: number;
+  from: UnitExpr;
+  to: UnitExpr;
+  tiles: UnitTile[];
+  /** ask "bigger or smaller?" before any tile is placed */
+  predict?: 'bigger' | 'smaller';
+  /** the learner types the final number (less support) instead of seeing it computed */
+  learnerComputes?: boolean;
+  answer: number;
+  hint: string;
+  explanation: string;
+}
+
+/** math-alg-linear-system: Substitution Machine — replace every x by what x equals. */
+export interface SubstituteInteraction {
+  kind: 'substitute';
+  prompt: string;
+  /** relation with x alone after rearranging, e.g. x − y = 2 → {a:1, b:-1, c:2} */
+  relation: Lin;
+  /** the equation that receives the substitution */
+  target: Lin;
+  hint: string;
+  explanation: string;
+}
+
+/** math-alg-linear-system: Story → Model — name the unknowns, then build each equation from story pieces. */
+export interface StoryInteraction {
+  kind: 'story';
+  prompt: string;
+  story: string;
+  kindOfStory: 'money-count' | 'numbers';
+  /** phrases the learner can choose as the unknowns (some are given facts, not unknowns) */
+  phrases?: { id: string; text: string; is: 'x' | 'y' | 'given' }[];
+  names: StoryNames;
+  chips: StoryChip[];
+  rows: StoryRow[];
+  solution: { x: number; y: number };
+  hint: string;
+  explanation: string;
+}
+
+/** prog-py-io: Be-the-User console — the program waits, the learner types, memory and output follow. */
+export interface ConsoleInteraction {
+  kind: 'console';
+  prompt: string;
+  program: string;
+  /** run: finish one run with your own input · predict: predict output before running · fix: change the code until it runs */
+  goal: 'run' | 'predict' | 'fix';
+  predictions?: { input: string; choices: string[]; correctIndex: number }[];
+  /** fix: code edits the learner may apply (whole-program variants) — the right one is the one that runs */
+  fixes?: { label: string; program: string; correct: boolean }[];
+  hint: string;
+  explanation: string;
+}
+
 /** Web track: build or fix HTML in the Live Web Builder; checked on the parsed DOM (src/web/html.ts). */
 export interface HtmlBuildInteraction {
   kind: 'html';
@@ -96,7 +184,7 @@ export interface SelfCheckInteraction {
   answer: string;
 }
 
-export type Interaction = ChoiceInteraction | TypedInteraction | OrderInteraction | SelfCheckInteraction | CodeInteraction | LabInteraction | HtmlBuildInteraction;
+export type Interaction = ChoiceInteraction | TypedInteraction | OrderInteraction | SelfCheckInteraction | CodeInteraction | LabInteraction | HtmlBuildInteraction | MotionInteraction | UnitsInteraction | SubstituteInteraction | StoryInteraction | ConsoleInteraction;
 
 export type StepType = 'concept' | 'example' | 'think' | 'try' | 'challenge';
 

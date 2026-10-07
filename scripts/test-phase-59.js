@@ -166,7 +166,7 @@ await test('Backup round-trip still valid with the content registry change', () 
 await test('No game systems added in this phase', () => {
   const files = fs.readdirSync(path.join(root, 'src/interactive/lessons'));
   // html.ts = the Web track's HTML Live Web Builder lessons (teaching, not a game system)
-  assert.deepStrictEqual(files.sort(), ['codeBattle.ts', 'html.ts', 'linearEquation.ts', 'newtonLab.ts']);
+  assert.deepStrictEqual(files.sort(), ['codeBattle.ts', 'html.ts', 'linearEquation.ts', 'newtonLab.ts', 'perLessonP0.ts']);
   assert(!/leaderboard|inventory|xpEconomy|PixelLab/i.test(read('src/content/depth.ts') + read('src/content/audit.ts')));
 });
 

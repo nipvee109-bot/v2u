@@ -149,7 +149,75 @@ const WEB_HTML: StudioScript[] = [
   },
 ];
 
-export const STUDIO_SCRIPTS: StudioScript[] = [MATH, PHYSICS, PROGRAMMING, ...WEB_HTML];
+/* ── P0 per-lesson mechanics, wave 1 (docs/per-lesson-learning-mechanics.md) ──
+   ACTION → VISIBLE CONSEQUENCE → WHY → CHANGE SOMETHING → NEW CONSEQUENCE → INDEPENDENT. Explanations come after the action. */
+const step = (id: string, phase: StudioChunk['phase'], tutor?: string): StudioChunk => ({ id, phase, kind: 'step', stepId: id, ...(tutor ? { tutor } : {}) });
+const solo = (lessonId: string): string[] => [...(getLessonKnowledge(lessonId)?.independent ?? [])].sort((a, b) => a.level - b.level).map((p) => p.id);
+
+const P0: StudioScript[] = [
+  {
+    lessonId: 'phy-kin-1d', subject: 'physics', principle: 'ทำให้สูตรทดลองได้', experience: 'A',
+    chunks: [
+      { id: 'hook', phase: 'understand', kind: 'hook', tutor: 'ยังไม่ต้องดูสูตร — ดูรถวิ่งก่อน แล้วทายว่าอีก 1 วินาทีมันจะอยู่ตรงไหน' },
+      step('steady', 'understand', 'เลื่อนหมุดไปตรงที่คิดว่ารถจะอยู่ แล้วกด RUN'),
+      step('speeding', 'understand', 'คราวนี้รถเร่งขึ้น — รอยจะห่างเท่าเดิมไหม?'),
+      { id: 'why', phase: 'understand', kind: 'explain', title: 'สิ่งที่เกิดขึ้นเมื่อกี้ เพราะ…', concepts: ['c-accel', 'c-velocity', 'c-displacement'], rules: ['r-1', 'r-2'], tutor: 'สองสมการนี้แค่เขียนสิ่งที่คุณเพิ่งเห็นเป็นตัวเลข: ความเร็วเพิ่มทุกวินาที ระยะจึงเพิ่มเร็วขึ้น' },
+      step('flag', 'try', 'ลองหลายแบบได้ — สังเกตว่าเมื่อเปลี่ยน a รอยและกราฟเปลี่ยนอย่างไร'),
+      step('brake', 'try', 'เบรกคือความเร่งที่สวนทางการเคลื่อนที่'),
+      { id: 'graph', phase: 'try', kind: 'explain', title: 'กราฟ v–t บอกอะไร', concepts: ['c-vt'], rules: ['r-graph', 'r-3'], diagram: 'dg-vt' },
+      step('pick-equation', 'practice', 'ไม่ต้องจำว่าสมการไหนใช้เมื่อไร — ดูว่าโจทย์บอกอะไร ถามอะไร'),
+      { id: 'recover', phase: 'practice', kind: 'mistakes', title: 'จุดที่มักพลาด' },
+      { id: 'solo', phase: 'practice', kind: 'practice', title: 'ลองทำเอง', practiceIds: solo('phy-kin-1d'), tutor: 'เขียนสิ่งที่รู้ก่อน แล้วเลือกสมการเหมือนการ์ดเมื่อกี้' },
+      { id: 'summary', phase: 'practice', kind: 'summary' },
+    ],
+  },
+  {
+    lessonId: 'phy-vec-units', subject: 'physics', principle: 'ทำให้สูตรทดลองได้', experience: 'A',
+    chunks: [
+      { id: 'hook', phase: 'understand', kind: 'hook', tutor: 'ไม่ต้องจำว่าคูณหรือหาร — วางตัวประกอบให้หน่วยหายไปเอง' },
+      step('kg-g', 'understand', 'ลองวางด้านไหนก็ได้ แล้วดูว่าหน่วยหายหรือเพิ่ม'),
+      { id: 'why', phase: 'understand', kind: 'explain', title: 'สิ่งที่เกิดขึ้นเมื่อกี้ เพราะ…', concepts: ['c-factor', 'c-prefix'], rules: ['r-factor'], tutor: 'ตัวประกอบเท่ากับ 1 เสมอ จึงคูณได้โดยไม่เปลี่ยนปริมาณจริง' },
+      step('kmh-ms', 'try', 'ทายก่อน แล้วแปลงสองหน่วยพร้อมกัน — ระวังตัวประกอบที่ไม่เกี่ยว'),
+      { id: 'kmh', phase: 'try', kind: 'explain', title: '3.6 มาจากไหน', rules: ['r-kmh', 'r-prefix'] },
+      step('ms-kmh', 'practice', 'คราวนี้คำนวณตัวเลขเอง'),
+      { id: 'recover', phase: 'practice', kind: 'mistakes', title: 'จุดที่มักพลาด' },
+      { id: 'solo', phase: 'practice', kind: 'practice', title: 'ลองทำเอง', practiceIds: solo('phy-vec-units'), tutor: 'นึกภาพตัวประกอบที่ทำให้หน่วยเดิมตัดกัน แล้วค่อยคิดตัวเลข' },
+      { id: 'summary', phase: 'practice', kind: 'summary' },
+    ],
+  },
+  {
+    lessonId: 'math-alg-linear-system', subject: 'math', principle: 'ทำให้เรื่องยากมองเห็นได้', experience: 'A',
+    chunks: [
+      { id: 'hook', phase: 'understand', kind: 'hook', tutor: 'คำตอบของระบบคือคู่ (x, y) ที่ทำให้ไฟทั้งสองดวงติดพร้อมกัน — ลองหาดู' },
+      { id: 'pair', phase: 'understand', kind: 'widget', title: 'คู่ไหนทำให้จริงทั้งสองสมการ?', tutor: 'ขยับ x กับ y แล้วดูว่าสมการไหนจริงบ้าง', widget: { kind: 'pair-check', exampleId: 'we-1', eqs: [[3, 2, 16], [1, -1, 2]] } },
+      { id: 'why', phase: 'understand', kind: 'explain', title: 'สิ่งที่เกิดขึ้นเมื่อกี้ เพราะ…', concepts: ['c-pair'], rules: ['r-check2'] },
+      step('substitute', 'try', 'การเดาใช้เวลานาน — เครื่องแทนค่าทำให้เหลือตัวแปรเดียว'),
+      { id: 'sub', phase: 'try', kind: 'explain', title: 'ทำไมแทนแล้วยังถูก', concepts: ['c-sub'] },
+      step('tickets', 'try', 'ไม่ต้องรีบคำนวณ — ทำให้สมการ “พูด” เหมือนเรื่องราวก่อน'),
+      step('numbers', 'practice', 'คราวนี้ตั้งชื่อ x กับ y ไว้ให้แล้ว — สร้างสองสมการเองจากสิ่งที่โจทย์บอก'),
+      { id: 'recover', phase: 'practice', kind: 'mistakes', title: 'จุดที่มักพลาด' },
+      { id: 'solo', phase: 'practice', kind: 'practice', title: 'ลองทำเอง', practiceIds: solo('math-alg-linear-system'), tutor: 'เลือกวิธีที่ชอบ แล้วตรวจกับทั้งสองสมการทุกครั้ง' },
+      { id: 'summary', phase: 'practice', kind: 'summary' },
+    ],
+  },
+  {
+    lessonId: 'prog-py-io', subject: 'programming', principle: 'ทำให้โค้ดมีชีวิต', experience: 'A',
+    chunks: [
+      { id: 'hook', phase: 'understand', kind: 'hook', tutor: 'วันนี้คุณเป็นผู้ใช้ของโปรแกรม — โปรแกรมจะถาม คุณพิมพ์ แล้วดูว่าค่าไปอยู่ไหน' },
+      step('greet', 'understand', 'กด RUN แล้วพิมพ์ชื่อ'),
+      { id: 'io', phase: 'understand', kind: 'explain', title: 'สิ่งที่เกิดขึ้นเมื่อกี้ เพราะ…', concepts: ['c-input', 'c-print'] },
+      step('double', 'understand', 'ทายก่อน — ผลอาจไม่ใช่อย่างที่คิด'),
+      { id: 'convert', phase: 'try', kind: 'explain', title: 'แปลงข้อความเป็นตัวเลข', rules: ['r-input'], tutor: 'ค่าจาก input() เป็นข้อความเสมอ ถ้าจะคำนวณต้องแปลงก่อน' },
+      step('age', 'try', 'อ่านบรรทัดที่แดง แล้วดูชนิดในหน่วยความจำ'),
+      step('fstring', 'practice', 'โปรแกรมไม่ error แต่ผลไม่ใช่ — หาจุดที่ขาด'),
+      { id: 'recover', phase: 'practice', kind: 'mistakes', title: 'จุดที่มักพลาด' },
+      { id: 'solo', phase: 'practice', kind: 'practice', title: 'อ่านโค้ดแล้วบอกผลลัพธ์', practiceIds: solo('prog-py-io'), tutor: 'นึกถึงหน่วยความจำ: ค่าที่รับมาเป็นชนิดอะไร' },
+      { id: 'summary', phase: 'practice', kind: 'summary' },
+    ],
+  },
+];
+
+export const STUDIO_SCRIPTS: StudioScript[] = [MATH, PHYSICS, PROGRAMMING, ...WEB_HTML, ...P0];
 
 const SUBJECT: Record<string, { subject: StudioScript['subject']; principle: string; hook: string; practice: string }> = {
   math: { subject: 'math', principle: 'ทำให้เรื่องยากมองเห็นได้', hook: 'ดูภาพรวมก่อนว่าบทนี้ช่วยให้ทำอะไรได้ แล้วค่อยลงมือทีละขั้น', practice: 'ทำบนกระดาษก่อน แล้วพิมพ์คำตอบ — ถ้าผิด V2U จะใบ้ให้' },
