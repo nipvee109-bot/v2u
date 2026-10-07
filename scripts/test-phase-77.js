@@ -308,6 +308,30 @@ await test('SSR smoke: every P0 step renders its mechanic with labels and text s
   for (const n of Object.values(comp)) assert(tsx.includes(`<${n.name}`), n.name);
 });
 
+console.log('\n5b. phy-vec-units i-4 — scientific notation answers');
+const PC = await jiti.import(path.join(root, 'src/interactive/studio/practiceCheck.ts'));
+await test('i-4 (3 μm in m): equivalent scientific-notation forms are accepted', () => {
+  const p = K.getLessonKnowledge('phy-vec-units').independent.find((x) => x.id === 'i-4');
+  assert.strictEqual(p.verify.expected, 3e-6);
+  for (const v of ['3 × 10⁻⁶', '3×10⁻⁶', '3×10^-6', '3 x 10^-6', '3X10^-6', '3 * 10^-6', '3*10**-6', '3 · 10⁻⁶', '3 × 10^(-6)', '3.0 × 10⁻⁶', '30 × 10⁻⁷', '3e-6', '3E-6', '0.000003'])
+    assert.strictEqual(PC.checkPractice(p, { v }), 'correct', v);
+});
+await test('i-4: other values and ambiguous notation are still rejected (grading not loosened)', () => {
+  const p = K.getLessonKnowledge('phy-vec-units').independent.find((x) => x.id === 'i-4');
+  for (const v of ['3 × 10⁻⁵', '3 × 10⁻⁷', '3 × 10⁶', '-3 × 10⁻⁶', '10⁻⁶', '0', '0.001', '0.00003', '3', '3 × 10-6', '3×10', '3^-6', '3⁻⁶', '3 ÷ 10⁶', '3 × 10⁻⁶ m', '3 × 2⁻⁶', 'x10^-6', ''])
+    assert.strictEqual(PC.checkPractice(p, { v }), 'wrong', JSON.stringify(v));
+});
+await test('parser: existing plain / fraction / e-notation forms unchanged; no expressions', () => {
+  const N = PC.parseNumber;
+  assert.deepStrictEqual(['12', '-3.5', '−3', '1/2', '2.5e3', '1,000'].map(N), [12, -3.5, -3, 0.5, 2500, 1000]);
+  assert.deepStrictEqual(['3 × 10⁻⁶', '3x10^-6', '10⁻⁶', '1.5 × 10³', '2 × 10^+3'].map(N), [3e-6, 3e-6, 1e-6, 1500, 2000]);
+  for (const bad of ['2+2', '3²', '3 × 10', '3 × 10-6', '3 × 10^-6 + 1', 'alert(1)', '1/0', '10^', '× 10⁻⁶']) assert.strictEqual(N(bad), undefined, bad);
+  // tolerance: only tiny answers lose the absolute 0.005 floor; everything ≥ 0.01 keeps fair rounding
+  assert(Math.abs(PC.valueTolerance(0.6428) - 0.006428) < 1e-12);
+  assert.strictEqual(PC.valueTolerance(0.25), 0.005);
+  assert(PC.valueTolerance(3e-6) < 1e-7);
+});
+
 console.log('\n6. Boundaries — nothing else moves');
 await test('lesson count unchanged (20); proposed curriculum inactive; Diagnostic items unchanged', () => {
   assert.strictEqual(C.lessons.length, 20);
