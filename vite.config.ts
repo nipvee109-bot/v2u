@@ -3,9 +3,11 @@ import { assertSafeFrontendEnv } from './src/backend/supabaseEnv.ts';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   assertSafeFrontendEnv({ ...loadEnv(mode, process.cwd(), 'VITE_'), ...process.env });
   return {
+  // GitHub Pages serves the app from https://nipvee109-bot.github.io/v2u/; dev stays at /.
+  base: command === 'build' ? (process.env.V2U_BASE ?? '/v2u/') : '/',
   plugins: [
     react(),
     VitePWA({
